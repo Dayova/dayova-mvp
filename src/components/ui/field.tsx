@@ -41,7 +41,7 @@ function FieldControl({
 	return (
 		<View
 			className={cn(
-				"min-h-16 flex-row items-center rounded-input border border-transparent bg-card px-5 shadow-black/5 shadow-sm",
+				"min-h-16 flex-row items-center rounded-input border border-border bg-card px-5",
 				invalid && "border-destructive/70",
 				disabled && "opacity-50",
 				className,
@@ -68,7 +68,7 @@ function FieldTrigger({
 		<TouchableOpacity
 			activeOpacity={activeOpacity}
 			className={cn(
-				"min-h-16 flex-row items-center rounded-input border border-transparent bg-card px-5 shadow-black/5 shadow-sm",
+				"min-h-16 flex-row items-center rounded-input border border-border bg-card px-5",
 				invalid && "border-destructive/70",
 				disabled && "opacity-50",
 				className,

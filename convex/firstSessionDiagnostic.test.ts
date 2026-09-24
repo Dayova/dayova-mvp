@@ -2,6 +2,7 @@
 
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { AI_CONSENT_VERSION } from "../src/lib/ai-consent";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
@@ -923,6 +924,17 @@ test("uses diagnostic correctness to choose a different evidence target", async 
 
 test("does not start diagnostic generation from required topics without material", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await t.run(async (ctx) => {
+		await ctx.db.insert("users", {
+			tokenIdentifier: user.tokenIdentifier,
+			clerkId: "first-session-diagnostic",
+			email: "student@example.com",
+			aiConsentStatus: "granted",
+			aiConsentVersion: AI_CONSENT_VERSION,
+			aiConsentGrantedAt: 1,
+			aiConsentUpdatedAt: 1,
+		});
+	});
 	const learningPlanId = await createPlan(t);
 	await t.mutation(api.learningPlans.updateRequiredTopics, {
 		id: learningPlanId,

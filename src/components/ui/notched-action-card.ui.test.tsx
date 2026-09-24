@@ -38,6 +38,29 @@ function findVectorBackground(node: unknown): {
 }
 
 describe("NotchedActionCard", () => {
+	test("renders shared artwork without creating a dead press target", async () => {
+		const screen = await render(
+			<NotchedActionCard
+				actionIcon={<View />}
+				pressType="none"
+				testID="artwork-card"
+			>
+				<View />
+			</NotchedActionCard>,
+		);
+
+		const artwork = screen.getByTestId("artwork-card", {
+			includeHiddenElements: true,
+		});
+		expect(artwork.props).toMatchObject({
+			accessible: false,
+			accessibilityElementsHidden: true,
+			importantForAccessibility: "no-hide-descendants",
+			pointerEvents: "none",
+		});
+		expect(screen.queryByRole("button")).toBeNull();
+	});
+
 	test("expands its vector background to contain content taller than its minimum height", async () => {
 		const screen = await render(
 			<NotchedActionCard

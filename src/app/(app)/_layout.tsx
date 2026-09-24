@@ -29,7 +29,7 @@ export default function AppLayout() {
 			labelVisibilityMode="labeled"
 			minimizeBehavior="onScrollDown"
 			rippleColor={colors.systemSubtle}
-			shadowColor={colors.border}
+			shadowColor="transparent"
 			tintColor={colors.primaryStrong}
 		>
 			<NativeTabs.Trigger
@@ -60,30 +60,18 @@ export default function AppLayout() {
 			</NativeTabs.Trigger>
 
 			<NativeTabs.Trigger
-				name="analyse"
-				accessibilityLabel="Analyse"
-				disableAutomaticContentInsets
-			>
-				<NativeTabs.Trigger.Icon
-					md={{ default: "analytics", selected: "analytics" }}
-					sf={{ default: "chart.bar", selected: "chart.bar.fill" }}
-				/>
-				<NativeTabs.Trigger.Label>Analyse</NativeTabs.Trigger.Label>
-			</NativeTabs.Trigger>
-
-			<NativeTabs.Trigger
 				name="settings"
-				accessibilityLabel="Mehr"
+				accessibilityLabel="Einstellungen"
 				disableAutomaticContentInsets
 			>
 				<NativeTabs.Trigger.Icon
-					md={{ default: "more_horiz", selected: "more_horiz" }}
+					md={{ default: "settings", selected: "settings" }}
 					sf={{
-						default: "ellipsis.circle",
-						selected: "ellipsis.circle.fill",
+						default: "gearshape",
+						selected: "gearshape.fill",
 					}}
 				/>
-				<NativeTabs.Trigger.Label>Mehr</NativeTabs.Trigger.Label>
+				<NativeTabs.Trigger.Label>Einstellungen</NativeTabs.Trigger.Label>
 			</NativeTabs.Trigger>
 		</NativeTabs>
 	);

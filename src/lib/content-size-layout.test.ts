@@ -1,7 +1,14 @@
 import { describe, expect, test } from "vitest";
-import { getContentSizeLayout } from "./content-size-layout";
+import {
+	getContentSizeLayout,
+	SEMANTIC_HEADING_MAX_FONT_SIZE_MULTIPLIER,
+} from "./content-size-layout";
 
 describe("getContentSizeLayout", () => {
+	test("uses the approved large-title scaling curve", () => {
+		expect(SEMANTIC_HEADING_MAX_FONT_SIZE_MULTIPLIER).toBe(1.75);
+	});
+
 	test("preserves the approved 393-point phone baseline", () => {
 		expect(
 			getContentSizeLayout({

@@ -23,6 +23,23 @@ export type DashboardWeekProgress = {
 	totalLearningSessions: number;
 };
 
+export const getNextLearningStepAccessibilityLabel = ({
+	isStarted,
+	title,
+	dateLabel,
+	timeLabel,
+}: {
+	isStarted: boolean;
+	title: string;
+	dateLabel: string | null;
+	timeLabel: string | null;
+}) => {
+	const details = [dateLabel, timeLabel]
+		.filter((label): label is string => Boolean(label))
+		.join(", ");
+	return `${isStarted ? "Weiterlernen" : "Nächsten Lernschritt öffnen"}: ${title}${details ? `. ${details}` : ""}`;
+};
+
 export const getAdjacentDashboardDayKey = ({
 	selectedDayKey,
 	direction,
@@ -258,3 +275,7 @@ export const findNextActionableAgendaItem = ({
 				item.kind === "learningSession" &&
 				!isDashboardAgendaItemPast({ item, todayKey, currentMinutes }),
 		);
+
+// Filter by origin, not subject/title: homework and exams must stay visible.
+export const getVisibleDashboardEntries = (entries: DayEntry[]): DayEntry[] =>
+	entries.filter((entry) => entry.source !== "timetable");

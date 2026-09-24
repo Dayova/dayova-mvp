@@ -4,14 +4,30 @@ import type { SessionContentItem } from "./types";
 import { TheoryTopicPage } from "./theory-topic-page";
 
 jest.mock("react-native-reanimated", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
 	const Native =
 		jest.requireActual<typeof import("react-native")>("react-native");
 	return {
 		__esModule: true,
 		default: { View: Native.View },
+		Easing: { cubic: "cubic", out: (value: unknown) => value },
 		FadeInDown: { duration: () => undefined },
 		LinearTransition: { duration: () => undefined },
+		useAnimatedStyle: (factory: () => unknown) => factory(),
 		useReducedMotion: () => true,
+		useSharedValue: (initialValue: number) => {
+			const valueRef = React.useRef(initialValue);
+			return React.useMemo(
+				() => ({
+					get: () => valueRef.current,
+					set: (nextValue: number) => {
+						valueRef.current = nextValue;
+					},
+				}),
+				[],
+			);
+		},
+		withTiming: (value: number) => value,
 	};
 });
 

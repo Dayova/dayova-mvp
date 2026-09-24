@@ -6,6 +6,7 @@ import { z } from "zod";
 
 const ENTITLEMENT_ID = "dayova_full_access";
 const REVENUECAT_REQUEST_TIMEOUT_MS = 10_000;
+const NATIVE_STORES = new Set(["app_store", "play_store"]);
 
 const optionalRevenueCatDate = z.string().nullable().optional();
 const revenueCatSubscriberResponseSchema = z.object({
@@ -86,6 +87,9 @@ const fetchSubscriberSnapshot = async (
 	const subscription = productId
 		? payload.subscriber.subscriptions[productId]
 		: undefined;
+	const isNativeSubscription = Boolean(
+		subscription?.store && NATIVE_STORES.has(subscription.store),
+	);
 	const expiresAt = parseOptionalDate(entitlement?.expires_date);
 	const graceExpiresAt =
 		parseOptionalDate(subscription?.grace_period_expires_date) ??
@@ -100,27 +104,33 @@ const fetchSubscriberSnapshot = async (
 			: entitlement
 				? Number.POSITIVE_INFINITY
 				: 0;
-	const active = Boolean(entitlement && verifiedAt < activeThrough);
+	const active = Boolean(
+		entitlement && isNativeSubscription && verifiedAt < activeThrough,
+	);
 
 	return {
 		active,
 		snapshot: {
 			active,
-			...(expiresAt !== undefined ? { expiresAt } : {}),
-			...(graceExpiresAt !== undefined ? { graceExpiresAt } : {}),
-			...(productId ? { productId } : {}),
-			...(subscription?.store ? { store: subscription.store } : {}),
-			...(subscription
+			...(isNativeSubscription && expiresAt !== undefined ? { expiresAt } : {}),
+			...(isNativeSubscription && graceExpiresAt !== undefined
+				? { graceExpiresAt }
+				: {}),
+			...(isNativeSubscription && productId ? { productId } : {}),
+			...(isNativeSubscription && subscription?.store
+				? { store: subscription.store }
+				: {}),
+			...(isNativeSubscription && subscription
 				? { willRenew: !subscription.unsubscribe_detected_at }
 				: {}),
-			...(subscription?.billing_issues_detected_at
+			...(isNativeSubscription && subscription?.billing_issues_detected_at
 				? {
 						billingIssueDetectedAt: parseOptionalDate(
 							subscription.billing_issues_detected_at,
 						),
 					}
 				: {}),
-			...(payload.subscriber.management_url
+			...(isNativeSubscription && payload.subscriber.management_url
 				? { managementUrl: payload.subscriber.management_url }
 				: {}),
 			verifiedAt,

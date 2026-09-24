@@ -1,0 +1,3953 @@
+{
+  "date": "2026-09-13",
+  "base": "8eea8204a92c526a9d0a4b997b11f2fda57d6875",
+  "implementation": "2994195accd92c858ad688485763d84257bcf5ad",
+  "captures": {
+    "before": {
+      "method": "Android Emulator authenticated gRPC getScreenshot RGB888; native frames at 540x1200 encoded at 24 fps; duplicate last frame during capture delays",
+      "events": [
+        {
+          "choice": "c",
+          "down": 1.011,
+          "up": 1.195
+        },
+        {
+          "choice": "b",
+          "down": 2.31,
+          "up": 2.614
+        },
+        {
+          "choice": "a",
+          "down": 3.611,
+          "up": 3.808
+        },
+        {
+          "choice": "d",
+          "down": 4.716,
+          "up": 5.068
+        },
+        {
+          "choice": "c",
+          "down": 6.008,
+          "up": 6.097
+        },
+        {
+          "choice": "b",
+          "down": 6.351,
+          "up": 6.433
+        },
+        {
+          "choice": "a",
+          "down": 6.711,
+          "up": 6.793
+        },
+        {
+          "choice": "d",
+          "down": 7.066,
+          "up": 7.148
+        },
+        {
+          "choice": "c",
+          "down": 8.003,
+          "up": 8.207
+        }
+      ],
+      "samples": [
+        {
+          "time": 0.0187,
+          "latency": 0.0175,
+          "timestampUs": 1789318112336367
+        },
+        {
+          "time": 0.1019,
+          "latency": 0.0109,
+          "timestampUs": 1789318112425868
+        },
+        {
+          "time": 0.1616,
+          "latency": 0.0105,
+          "timestampUs": 1789318112486084
+        },
+        {
+          "time": 0.1773,
+          "latency": 0.0104,
+          "timestampUs": 1789318112501920
+        },
+        {
+          "time": 0.2194,
+          "latency": 0.0109,
+          "timestampUs": 1789318112543378
+        },
+        {
+          "time": 0.2599,
+          "latency": 0.0096,
+          "timestampUs": 1789318112585097
+        },
+        {
+          "time": 0.3046,
+          "latency": 0.0122,
+          "timestampUs": 1789318112627335
+        },
+        {
+          "time": 0.3532,
+          "latency": 0.0197,
+          "timestampUs": 1789318112668183
+        },
+        {
+          "time": 0.3996,
+          "latency": 0.024,
+          "timestampUs": 1789318112710313
+        },
+        {
+          "time": 0.4261,
+          "latency": 0.0089,
+          "timestampUs": 1789318112751932
+        },
+        {
+          "time": 0.4689,
+          "latency": 0.0101,
+          "timestampUs": 1789318112793825
+        },
+        {
+          "time": 0.5103,
+          "latency": 0.01,
+          "timestampUs": 1789318112835126
+        },
+        {
+          "time": 0.5518,
+          "latency": 0.0097,
+          "timestampUs": 1789318112877046
+        },
+        {
+          "time": 0.5927,
+          "latency": 0.0093,
+          "timestampUs": 1789318112918167
+        },
+        {
+          "time": 0.634,
+          "latency": 0.0089,
+          "timestampUs": 1789318112959881
+        },
+        {
+          "time": 0.6762,
+          "latency": 0.0091,
+          "timestampUs": 1789318113001868
+        },
+        {
+          "time": 0.7177,
+          "latency": 0.0088,
+          "timestampUs": 1789318113043585
+        },
+        {
+          "time": 0.7601,
+          "latency": 0.0098,
+          "timestampUs": 1789318113085184
+        },
+        {
+          "time": 0.8018,
+          "latency": 0.0094,
+          "timestampUs": 1789318113127294
+        },
+        {
+          "time": 0.843,
+          "latency": 0.0092,
+          "timestampUs": 1789318113168694
+        },
+        {
+          "time": 0.8854,
+          "latency": 0.01,
+          "timestampUs": 1789318113210260
+        },
+        {
+          "time": 0.9276,
+          "latency": 0.0107,
+          "timestampUs": 1789318113251639
+        },
+        {
+          "time": 0.9681,
+          "latency": 0.0095,
+          "timestampUs": 1789318113293374
+        },
+        {
+          "time": 1.0153,
+          "latency": 0.0149,
+          "timestampUs": 1789318113335195
+        },
+        {
+          "time": 1.0511,
+          "latency": 0.0091,
+          "timestampUs": 1789318113377057
+        },
+        {
+          "time": 1.1057,
+          "latency": 0.0218,
+          "timestampUs": 1789318113419162
+        },
+        {
+          "time": 1.1347,
+          "latency": 0.0094,
+          "timestampUs": 1789318113460224
+        },
+        {
+          "time": 1.1763,
+          "latency": 0.0093,
+          "timestampUs": 1789318113502163
+        },
+        {
+          "time": 1.2189,
+          "latency": 0.0104,
+          "timestampUs": 1789318113543356
+        },
+        {
+          "time": 1.2615,
+          "latency": 0.0112,
+          "timestampUs": 1789318113585130
+        },
+        {
+          "time": 1.313,
+          "latency": 0.0208,
+          "timestampUs": 1789318113627306
+        },
+        {
+          "time": 1.3571,
+          "latency": 0.0233,
+          "timestampUs": 1789318113668595
+        },
+        {
+          "time": 1.3883,
+          "latency": 0.0126,
+          "timestampUs": 1789318113710456
+        },
+        {
+          "time": 1.45,
+          "latency": 0.033,
+          "timestampUs": 1789318113752380
+        },
+        {
+          "time": 1.4687,
+          "latency": 0.0101,
+          "timestampUs": 1789318113793713
+        },
+        {
+          "time": 1.5124,
+          "latency": 0.0115,
+          "timestampUs": 1789318113835863
+        },
+        {
+          "time": 1.5532,
+          "latency": 0.0109,
+          "timestampUs": 1789318113877205
+        },
+        {
+          "time": 1.5962,
+          "latency": 0.0124,
+          "timestampUs": 1789318113918529
+        },
+        {
+          "time": 1.6364,
+          "latency": 0.0112,
+          "timestampUs": 1789318113959913
+        },
+        {
+          "time": 1.6764,
+          "latency": 0.0093,
+          "timestampUs": 1789318114001892
+        },
+        {
+          "time": 1.7177,
+          "latency": 0.009,
+          "timestampUs": 1789318114043589
+        },
+        {
+          "time": 1.7632,
+          "latency": 0.0126,
+          "timestampUs": 1789318114085625
+        },
+        {
+          "time": 1.8035,
+          "latency": 0.0117,
+          "timestampUs": 1789318114126755
+        },
+        {
+          "time": 1.8443,
+          "latency": 0.0104,
+          "timestampUs": 1789318114168888
+        },
+        {
+          "time": 1.8843,
+          "latency": 0.0092,
+          "timestampUs": 1789318114209841
+        },
+        {
+          "time": 1.937,
+          "latency": 0.0203,
+          "timestampUs": 1789318114251559
+        },
+        {
+          "time": 1.9692,
+          "latency": 0.0104,
+          "timestampUs": 1789318114293727
+        },
+        {
+          "time": 2.0093,
+          "latency": 0.0089,
+          "timestampUs": 1789318114335363
+        },
+        {
+          "time": 2.0523,
+          "latency": 0.0104,
+          "timestampUs": 1789318114376996
+        },
+        {
+          "time": 2.0931,
+          "latency": 0.0095,
+          "timestampUs": 1789318114418421
+        },
+        {
+          "time": 2.1347,
+          "latency": 0.009,
+          "timestampUs": 1789318114460583
+        },
+        {
+          "time": 2.1763,
+          "latency": 0.0093,
+          "timestampUs": 1789318114501925
+        },
+        {
+          "time": 2.2186,
+          "latency": 0.01,
+          "timestampUs": 1789318114543510
+        },
+        {
+          "time": 2.2598,
+          "latency": 0.0096,
+          "timestampUs": 1789318114585075
+        },
+        {
+          "time": 2.304,
+          "latency": 0.0119,
+          "timestampUs": 1789318114626903
+        },
+        {
+          "time": 2.354,
+          "latency": 0.0202,
+          "timestampUs": 1789318114668652
+        },
+        {
+          "time": 2.4201,
+          "latency": 0.045,
+          "timestampUs": 1789318114709982
+        },
+        {
+          "time": 2.4679,
+          "latency": 0.0094,
+          "timestampUs": 1789318114793737
+        },
+        {
+          "time": 2.5107,
+          "latency": 0.0101,
+          "timestampUs": 1789318114835807
+        },
+        {
+          "time": 2.5596,
+          "latency": 0.0132,
+          "timestampUs": 1789318114881399
+        },
+        {
+          "time": 2.6129,
+          "latency": 0.0294,
+          "timestampUs": 1789318114918264
+        },
+        {
+          "time": 2.6376,
+          "latency": 0.0122,
+          "timestampUs": 1789318114960293
+        },
+        {
+          "time": 2.6807,
+          "latency": 0.0135,
+          "timestampUs": 1789318115002299
+        },
+        {
+          "time": 2.7228,
+          "latency": 0.0133,
+          "timestampUs": 1789318115044633
+        },
+        {
+          "time": 2.7612,
+          "latency": 0.011,
+          "timestampUs": 1789318115084968
+        },
+        {
+          "time": 2.8309,
+          "latency": 0.0386,
+          "timestampUs": 1789318115127929
+        },
+        {
+          "time": 2.8468,
+          "latency": 0.0131,
+          "timestampUs": 1789318115168429
+        },
+        {
+          "time": 2.8864,
+          "latency": 0.0109,
+          "timestampUs": 1789318115210610
+        },
+        {
+          "time": 2.9282,
+          "latency": 0.0112,
+          "timestampUs": 1789318115251873
+        },
+        {
+          "time": 2.9693,
+          "latency": 0.0109,
+          "timestampUs": 1789318115293213
+        },
+        {
+          "time": 3.0097,
+          "latency": 0.0096,
+          "timestampUs": 1789318115334862
+        },
+        {
+          "time": 3.0513,
+          "latency": 0.0094,
+          "timestampUs": 1789318115376780
+        },
+        {
+          "time": 3.0924,
+          "latency": 0.0086,
+          "timestampUs": 1789318115418577
+        },
+        {
+          "time": 3.1357,
+          "latency": 0.0103,
+          "timestampUs": 1789318115460221
+        },
+        {
+          "time": 3.1797,
+          "latency": 0.0123,
+          "timestampUs": 1789318115502255
+        },
+        {
+          "time": 3.2174,
+          "latency": 0.0089,
+          "timestampUs": 1789318115543291
+        },
+        {
+          "time": 3.2748,
+          "latency": 0.0243,
+          "timestampUs": 1789318115585324
+        },
+        {
+          "time": 3.3621,
+          "latency": 0.0702,
+          "timestampUs": 1789318115626750
+        },
+        {
+          "time": 3.3983,
+          "latency": 0.02,
+          "timestampUs": 1789318115714123
+        },
+        {
+          "time": 3.4501,
+          "latency": 0.0318,
+          "timestampUs": 1789318115753201
+        },
+        {
+          "time": 3.4753,
+          "latency": 0.0155,
+          "timestampUs": 1789318115795273
+        },
+        {
+          "time": 3.538,
+          "latency": 0.0379,
+          "timestampUs": 1789318115834878
+        },
+        {
+          "time": 3.5642,
+          "latency": 0.0221,
+          "timestampUs": 1789318115876919
+        },
+        {
+          "time": 3.6326,
+          "latency": 0.0482,
+          "timestampUs": 1789318115919447
+        },
+        {
+          "time": 3.762,
+          "latency": 0.0697,
+          "timestampUs": 1789318116027361
+        },
+        {
+          "time": 3.8098,
+          "latency": 0.0177,
+          "timestampUs": 1789318116127170
+        },
+        {
+          "time": 3.8574,
+          "latency": 0.0238,
+          "timestampUs": 1789318116169027
+        },
+        {
+          "time": 3.9139,
+          "latency": 0.0385,
+          "timestampUs": 1789318116211357
+        },
+        {
+          "time": 3.9532,
+          "latency": 0.0358,
+          "timestampUs": 1789318116252334
+        },
+        {
+          "time": 3.9789,
+          "latency": 0.0198,
+          "timestampUs": 1789318116294093
+        },
+        {
+          "time": 4.011,
+          "latency": 0.0101,
+          "timestampUs": 1789318116335929
+        },
+        {
+          "time": 4.0511,
+          "latency": 0.009,
+          "timestampUs": 1789318116376887
+        },
+        {
+          "time": 4.0939,
+          "latency": 0.0103,
+          "timestampUs": 1789318116418488
+        },
+        {
+          "time": 4.1459,
+          "latency": 0.0198,
+          "timestampUs": 1789318116461066
+        },
+        {
+          "time": 4.1783,
+          "latency": 0.0112,
+          "timestampUs": 1789318116501999
+        },
+        {
+          "time": 4.2184,
+          "latency": 0.0097,
+          "timestampUs": 1789318116543608
+        },
+        {
+          "time": 4.2761,
+          "latency": 0.0258,
+          "timestampUs": 1789318116585179
+        },
+        {
+          "time": 4.339,
+          "latency": 0.0469,
+          "timestampUs": 1789318116626909
+        },
+        {
+          "time": 4.4564,
+          "latency": 0.0813,
+          "timestampUs": 1789318116709906
+        },
+        {
+          "time": 4.4803,
+          "latency": 0.0211,
+          "timestampUs": 1789318116795853
+        },
+        {
+          "time": 4.6988,
+          "latency": 0.1326,
+          "timestampUs": 1789318116901120
+        },
+        {
+          "time": 4.7425,
+          "latency": 0.0298,
+          "timestampUs": 1789318117048892
+        },
+        {
+          "time": 4.7646,
+          "latency": 0.0141,
+          "timestampUs": 1789318117085679
+        },
+        {
+          "time": 4.8041,
+          "latency": 0.0111,
+          "timestampUs": 1789318117127868
+        },
+        {
+          "time": 4.8982,
+          "latency": 0.0646,
+          "timestampUs": 1789318117168260
+        },
+        {
+          "time": 4.9291,
+          "latency": 0.0121,
+          "timestampUs": 1789318117251853
+        },
+        {
+          "time": 4.9687,
+          "latency": 0.0102,
+          "timestampUs": 1789318117293591
+        },
+        {
+          "time": 5.0114,
+          "latency": 0.0112,
+          "timestampUs": 1789318117335539
+        },
+        {
+          "time": 5.1242,
+          "latency": 0.0825,
+          "timestampUs": 1789318117376529
+        },
+        {
+          "time": 5.1552,
+          "latency": 0.0265,
+          "timestampUs": 1789318117463581
+        },
+        {
+          "time": 5.1886,
+          "latency": 0.0206,
+          "timestampUs": 1789318117502938
+        },
+        {
+          "time": 5.2576,
+          "latency": 0.0451,
+          "timestampUs": 1789318117547611
+        },
+        {
+          "time": 5.3136,
+          "latency": 0.0149,
+          "timestampUs": 1789318117634763
+        },
+        {
+          "time": 5.3669,
+          "latency": 0.0241,
+          "timestampUs": 1789318117677719
+        },
+        {
+          "time": 5.3953,
+          "latency": 0.014,
+          "timestampUs": 1789318117720839
+        },
+        {
+          "time": 5.4266,
+          "latency": 0.0096,
+          "timestampUs": 1789318117751830
+        },
+        {
+          "time": 5.7108,
+          "latency": 0.2518,
+          "timestampUs": 1789318117794139
+        },
+        {
+          "time": 5.7591,
+          "latency": 0.0087,
+          "timestampUs": 1789318118085156
+        },
+        {
+          "time": 5.801,
+          "latency": 0.0091,
+          "timestampUs": 1789318118126742
+        },
+        {
+          "time": 5.8431,
+          "latency": 0.0097,
+          "timestampUs": 1789318118168309
+        },
+        {
+          "time": 5.9154,
+          "latency": 0.04,
+          "timestampUs": 1789318118210220
+        },
+        {
+          "time": 5.9322,
+          "latency": 0.0154,
+          "timestampUs": 1789318118252336
+        },
+        {
+          "time": 5.9699,
+          "latency": 0.0113,
+          "timestampUs": 1789318118293449
+        },
+        {
+          "time": 6.0103,
+          "latency": 0.0102,
+          "timestampUs": 1789318118334948
+        },
+        {
+          "time": 6.0803,
+          "latency": 0.0375,
+          "timestampUs": 1789318118377777
+        },
+        {
+          "time": 6.1004,
+          "latency": 0.0158,
+          "timestampUs": 1789318118419440
+        },
+        {
+          "time": 6.1365,
+          "latency": 0.0106,
+          "timestampUs": 1789318118460887
+        },
+        {
+          "time": 6.1778,
+          "latency": 0.0106,
+          "timestampUs": 1789318118502057
+        },
+        {
+          "time": 6.2199,
+          "latency": 0.0109,
+          "timestampUs": 1789318118543889
+        },
+        {
+          "time": 6.2646,
+          "latency": 0.014,
+          "timestampUs": 1789318118585424
+        },
+        {
+          "time": 6.3144,
+          "latency": 0.0223,
+          "timestampUs": 1789318118627044
+        },
+        {
+          "time": 6.357,
+          "latency": 0.0231,
+          "timestampUs": 1789318118680059
+        },
+        {
+          "time": 6.3862,
+          "latency": 0.0109,
+          "timestampUs": 1789318118710067
+        },
+        {
+          "time": 6.4497,
+          "latency": 0.0325,
+          "timestampUs": 1789318118752885
+        },
+        {
+          "time": 6.4749,
+          "latency": 0.0151,
+          "timestampUs": 1789318118795058
+        },
+        {
+          "time": 6.5589,
+          "latency": 0.0575,
+          "timestampUs": 1789318118837376
+        },
+        {
+          "time": 6.5948,
+          "latency": 0.011,
+          "timestampUs": 1789318118918599
+        },
+        {
+          "time": 6.6498,
+          "latency": 0.0238,
+          "timestampUs": 1789318118961426
+        },
+        {
+          "time": 6.6869,
+          "latency": 0.02,
+          "timestampUs": 1789318119001846
+        },
+        {
+          "time": 6.7342,
+          "latency": 0.0256,
+          "timestampUs": 1789318119043543
+        },
+        {
+          "time": 6.7647,
+          "latency": 0.0143,
+          "timestampUs": 1789318119085902
+        },
+        {
+          "time": 6.8018,
+          "latency": 0.0097,
+          "timestampUs": 1789318119126626
+        },
+        {
+          "time": 6.847,
+          "latency": 0.0117,
+          "timestampUs": 1789318119170484
+        },
+        {
+          "time": 6.9156,
+          "latency": 0.04,
+          "timestampUs": 1789318119210634
+        },
+        {
+          "time": 6.9353,
+          "latency": 0.0183,
+          "timestampUs": 1789318119252613
+        },
+        {
+          "time": 7.0004,
+          "latency": 0.0418,
+          "timestampUs": 1789318119293884
+        },
+        {
+          "time": 7.0545,
+          "latency": 0.0114,
+          "timestampUs": 1789318119378135
+        },
+        {
+          "time": 7.0968,
+          "latency": 0.0126,
+          "timestampUs": 1789318119419104
+        },
+        {
+          "time": 7.1352,
+          "latency": 0.0095,
+          "timestampUs": 1789318119460667
+        },
+        {
+          "time": 7.1829,
+          "latency": 0.0154,
+          "timestampUs": 1789318119502324
+        },
+        {
+          "time": 7.2197,
+          "latency": 0.0108,
+          "timestampUs": 1789318119543970
+        },
+        {
+          "time": 7.2642,
+          "latency": 0.0136,
+          "timestampUs": 1789318119585390
+        },
+        {
+          "time": 7.3179,
+          "latency": 0.0258,
+          "timestampUs": 1789318119627285
+        },
+        {
+          "time": 7.3932,
+          "latency": 0.058,
+          "timestampUs": 1789318119672953
+        },
+        {
+          "time": 7.4995,
+          "latency": 0.082,
+          "timestampUs": 1789318119753767
+        },
+        {
+          "time": 7.6693,
+          "latency": 0.1659,
+          "timestampUs": 1789318119838284
+        },
+        {
+          "time": 7.7709,
+          "latency": 0.0613,
+          "timestampUs": 1789318120044443
+        },
+        {
+          "time": 7.8209,
+          "latency": 0.0287,
+          "timestampUs": 1789318120127018
+        },
+        {
+          "time": 7.9004,
+          "latency": 0.0668,
+          "timestampUs": 1789318120168690
+        },
+        {
+          "time": 7.9483,
+          "latency": 0.0312,
+          "timestampUs": 1789318120251828
+        },
+        {
+          "time": 7.9772,
+          "latency": 0.0186,
+          "timestampUs": 1789318120293782
+        },
+        {
+          "time": 8.027,
+          "latency": 0.0265,
+          "timestampUs": 1789318120335269
+        },
+        {
+          "time": 8.0637,
+          "latency": 0.0204,
+          "timestampUs": 1789318120378110
+        },
+        {
+          "time": 8.0928,
+          "latency": 0.0091,
+          "timestampUs": 1789318120418581
+        },
+        {
+          "time": 8.1535,
+          "latency": 0.021,
+          "timestampUs": 1789318120467488
+        },
+        {
+          "time": 8.1797,
+          "latency": 0.0126,
+          "timestampUs": 1789318120502010
+        },
+        {
+          "time": 8.3445,
+          "latency": 0.1323,
+          "timestampUs": 1789318120546891
+        },
+        {
+          "time": 8.4332,
+          "latency": 0.0485,
+          "timestampUs": 1789318120719636
+        },
+        {
+          "time": 8.503,
+          "latency": 0.0408,
+          "timestampUs": 1789318120799715
+        },
+        {
+          "time": 8.567,
+          "latency": 0.025,
+          "timestampUs": 1789318120877736
+        },
+        {
+          "time": 8.6261,
+          "latency": 0.0424,
+          "timestampUs": 1789318120918441
+        },
+        {
+          "time": 8.7943,
+          "latency": 0.1219,
+          "timestampUs": 1789318121007349
+        },
+        {
+          "time": 8.8729,
+          "latency": 0.0369,
+          "timestampUs": 1789318121171151
+        },
+        {
+          "time": 8.8984,
+          "latency": 0.0231,
+          "timestampUs": 1789318121211085
+        },
+        {
+          "time": 8.9277,
+          "latency": 0.0108,
+          "timestampUs": 1789318121251757
+        },
+        {
+          "time": 8.9688,
+          "latency": 0.0101,
+          "timestampUs": 1789318121293414
+        },
+        {
+          "time": 9.0117,
+          "latency": 0.0108,
+          "timestampUs": 1789318121335968
+        },
+        {
+          "time": 9.0521,
+          "latency": 0.01,
+          "timestampUs": 1789318121376967
+        },
+        {
+          "time": 9.0946,
+          "latency": 0.0109,
+          "timestampUs": 1789318121418930
+        },
+        {
+          "time": 9.1362,
+          "latency": 0.0108,
+          "timestampUs": 1789318121460915
+        },
+        {
+          "time": 9.1798,
+          "latency": 0.0129,
+          "timestampUs": 1789318121501831
+        },
+        {
+          "time": 9.2315,
+          "latency": 0.0221,
+          "timestampUs": 1789318121545593
+        },
+        {
+          "time": 9.2665,
+          "latency": 0.0151,
+          "timestampUs": 1789318121586382
+        },
+        {
+          "time": 9.3068,
+          "latency": 0.0147,
+          "timestampUs": 1789318121626990
+        },
+        {
+          "time": 9.3671,
+          "latency": 0.0335,
+          "timestampUs": 1789318121668428
+        },
+        {
+          "time": 9.4646,
+          "latency": 0.0886,
+          "timestampUs": 1789318121710863
+        },
+        {
+          "time": 9.5113,
+          "latency": 0.0099,
+          "timestampUs": 1789318121836514
+        },
+        {
+          "time": 9.5539,
+          "latency": 0.012,
+          "timestampUs": 1789318121876752
+        },
+        {
+          "time": 9.5934,
+          "latency": 0.0097,
+          "timestampUs": 1789318121918566
+        },
+        {
+          "time": 9.6356,
+          "latency": 0.01,
+          "timestampUs": 1789318121960359
+        },
+        {
+          "time": 9.6782,
+          "latency": 0.011,
+          "timestampUs": 1789318122001924
+        },
+        {
+          "time": 9.7181,
+          "latency": 0.0094,
+          "timestampUs": 1789318122043453
+        },
+        {
+          "time": 9.7614,
+          "latency": 0.0109,
+          "timestampUs": 1789318122085464
+        },
+        {
+          "time": 9.8139,
+          "latency": 0.0216,
+          "timestampUs": 1789318122127110
+        },
+        {
+          "time": 9.8456,
+          "latency": 0.0121,
+          "timestampUs": 1789318122168348
+        },
+        {
+          "time": 9.8879,
+          "latency": 0.0124,
+          "timestampUs": 1789318122210930
+        },
+        {
+          "time": 9.9288,
+          "latency": 0.012,
+          "timestampUs": 1789318122251671
+        },
+        {
+          "time": 9.9693,
+          "latency": 0.0105,
+          "timestampUs": 1789318122293621
+        }
+      ],
+      "video_sha256": "d1873525f92dff0f4a07f5de0438f6986ae71ea4bb69539c9f8089cc98f24ba6",
+      "coverage": "Coverage: 10.00-second video; 20 full-timeline frames sampled at 2 fps (0.5-second interval); 2 contact sheet(s); 18 additional frames from 00:00:02.250 to 00:00:03.000 at 24 fps; no audio stream."
+    },
+    "after": {
+      "method": "Android Emulator authenticated gRPC getScreenshot RGB888; native frames at 540x1200 encoded at 24 fps; duplicate last frame during capture delays",
+      "events": [
+        {
+          "choice": "c",
+          "down": 1.006,
+          "up": 1.2
+        },
+        {
+          "choice": "b",
+          "down": 2.314,
+          "up": 2.617
+        },
+        {
+          "choice": "a",
+          "down": 3.607,
+          "up": 3.806
+        },
+        {
+          "choice": "d",
+          "down": 4.703,
+          "up": 5.057
+        },
+        {
+          "choice": "c",
+          "down": 6.016,
+          "up": 6.103
+        },
+        {
+          "choice": "b",
+          "down": 6.364,
+          "up": 6.477
+        },
+        {
+          "choice": "a",
+          "down": 6.704,
+          "up": 6.8
+        },
+        {
+          "choice": "d",
+          "down": 7.056,
+          "up": 7.14
+        },
+        {
+          "choice": "c",
+          "down": 8.009,
+          "up": 8.214
+        }
+      ],
+      "samples": [
+        {
+          "time": 0.0148,
+          "latency": 0.0115,
+          "timestampUs": 1789318154442342
+        },
+        {
+          "time": 0.091,
+          "latency": 0.0414,
+          "timestampUs": 1789318154488408
+        },
+        {
+          "time": 0.1351,
+          "latency": 0.01,
+          "timestampUs": 1789318154564114
+        },
+        {
+          "time": 0.1793,
+          "latency": 0.0115,
+          "timestampUs": 1789318154606953
+        },
+        {
+          "time": 0.2191,
+          "latency": 0.01,
+          "timestampUs": 1789318154647988
+        },
+        {
+          "time": 0.2611,
+          "latency": 0.0106,
+          "timestampUs": 1789318154689677
+        },
+        {
+          "time": 0.3023,
+          "latency": 0.0102,
+          "timestampUs": 1789318154731076
+        },
+        {
+          "time": 0.3434,
+          "latency": 0.0097,
+          "timestampUs": 1789318154772686
+        },
+        {
+          "time": 0.3864,
+          "latency": 0.011,
+          "timestampUs": 1789318154814359
+        },
+        {
+          "time": 0.4388,
+          "latency": 0.0219,
+          "timestampUs": 1789318154855661
+        },
+        {
+          "time": 0.4685,
+          "latency": 0.01,
+          "timestampUs": 1789318154897431
+        },
+        {
+          "time": 0.5216,
+          "latency": 0.0209,
+          "timestampUs": 1789318154939630
+        },
+        {
+          "time": 0.5523,
+          "latency": 0.0102,
+          "timestampUs": 1789318154981115
+        },
+        {
+          "time": 0.595,
+          "latency": 0.0113,
+          "timestampUs": 1789318155022925
+        },
+        {
+          "time": 0.6392,
+          "latency": 0.014,
+          "timestampUs": 1789318155064091
+        },
+        {
+          "time": 0.6799,
+          "latency": 0.013,
+          "timestampUs": 1789318155105738
+        },
+        {
+          "time": 0.7207,
+          "latency": 0.0122,
+          "timestampUs": 1789318155147364
+        },
+        {
+          "time": 0.7759,
+          "latency": 0.0258,
+          "timestampUs": 1789318155189283
+        },
+        {
+          "time": 0.8051,
+          "latency": 0.0129,
+          "timestampUs": 1789318155231044
+        },
+        {
+          "time": 0.8455,
+          "latency": 0.0117,
+          "timestampUs": 1789318155272813
+        },
+        {
+          "time": 0.8898,
+          "latency": 0.0144,
+          "timestampUs": 1789318155315563
+        },
+        {
+          "time": 0.9274,
+          "latency": 0.0105,
+          "timestampUs": 1789318155355981
+        },
+        {
+          "time": 0.982,
+          "latency": 0.0236,
+          "timestampUs": 1789318155397395
+        },
+        {
+          "time": 1.0227,
+          "latency": 0.0223,
+          "timestampUs": 1789318155439226
+        },
+        {
+          "time": 1.0535,
+          "latency": 0.0116,
+          "timestampUs": 1789318155480793
+        },
+        {
+          "time": 1.0959,
+          "latency": 0.0118,
+          "timestampUs": 1789318155523094
+        },
+        {
+          "time": 1.1433,
+          "latency": 0.0177,
+          "timestampUs": 1789318155564643
+        },
+        {
+          "time": 1.1907,
+          "latency": 0.0232,
+          "timestampUs": 1789318155607225
+        },
+        {
+          "time": 1.2306,
+          "latency": 0.0213,
+          "timestampUs": 1789318155648391
+        },
+        {
+          "time": 1.3046,
+          "latency": 0.0518,
+          "timestampUs": 1789318155696416
+        },
+        {
+          "time": 1.37,
+          "latency": 0.0298,
+          "timestampUs": 1789318155779440
+        },
+        {
+          "time": 1.4118,
+          "latency": 0.0303,
+          "timestampUs": 1789318155820371
+        },
+        {
+          "time": 1.4501,
+          "latency": 0.0289,
+          "timestampUs": 1789318155861152
+        },
+        {
+          "time": 1.4907,
+          "latency": 0.0301,
+          "timestampUs": 1789318155900322
+        },
+        {
+          "time": 1.5283,
+          "latency": 0.0266,
+          "timestampUs": 1789318155942038
+        },
+        {
+          "time": 1.5933,
+          "latency": 0.0493,
+          "timestampUs": 1789318155983572
+        },
+        {
+          "time": 1.6974,
+          "latency": 0.0416,
+          "timestampUs": 1789318156095827
+        },
+        {
+          "time": 1.7638,
+          "latency": 0.0548,
+          "timestampUs": 1789318156151410
+        },
+        {
+          "time": 1.8272,
+          "latency": 0.0327,
+          "timestampUs": 1789318156234299
+        },
+        {
+          "time": 1.8741,
+          "latency": 0.0372,
+          "timestampUs": 1789318156275868
+        },
+        {
+          "time": 1.8964,
+          "latency": 0.0201,
+          "timestampUs": 1789318156315277
+        },
+        {
+          "time": 1.9309,
+          "latency": 0.0119,
+          "timestampUs": 1789318156358383
+        },
+        {
+          "time": 1.9703,
+          "latency": 0.0116,
+          "timestampUs": 1789318156397601
+        },
+        {
+          "time": 2.0139,
+          "latency": 0.0135,
+          "timestampUs": 1789318156439371
+        },
+        {
+          "time": 2.0533,
+          "latency": 0.0116,
+          "timestampUs": 1789318156480735
+        },
+        {
+          "time": 2.0944,
+          "latency": 0.0108,
+          "timestampUs": 1789318156522607
+        },
+        {
+          "time": 2.1362,
+          "latency": 0.0109,
+          "timestampUs": 1789318156564158
+        },
+        {
+          "time": 2.1886,
+          "latency": 0.0214,
+          "timestampUs": 1789318156606144
+        },
+        {
+          "time": 2.2191,
+          "latency": 0.0107,
+          "timestampUs": 1789318156647384
+        },
+        {
+          "time": 2.2619,
+          "latency": 0.0117,
+          "timestampUs": 1789318156689331
+        },
+        {
+          "time": 2.313,
+          "latency": 0.0208,
+          "timestampUs": 1789318156731116
+        },
+        {
+          "time": 2.3466,
+          "latency": 0.0132,
+          "timestampUs": 1789318156772342
+        },
+        {
+          "time": 2.3921,
+          "latency": 0.0166,
+          "timestampUs": 1789318156814408
+        },
+        {
+          "time": 2.4306,
+          "latency": 0.0138,
+          "timestampUs": 1789318156855748
+        },
+        {
+          "time": 2.47,
+          "latency": 0.0116,
+          "timestampUs": 1789318156897482
+        },
+        {
+          "time": 2.5115,
+          "latency": 0.0107,
+          "timestampUs": 1789318156940040
+        },
+        {
+          "time": 2.5887,
+          "latency": 0.0419,
+          "timestampUs": 1789318156985718
+        },
+        {
+          "time": 2.6386,
+          "latency": 0.0132,
+          "timestampUs": 1789318157064320
+        },
+        {
+          "time": 2.7707,
+          "latency": 0.1025,
+          "timestampUs": 1789318157107104
+        },
+        {
+          "time": 2.8277,
+          "latency": 0.0357,
+          "timestampUs": 1789318157230938
+        },
+        {
+          "time": 2.8529,
+          "latency": 0.019,
+          "timestampUs": 1789318157272927
+        },
+        {
+          "time": 2.8891,
+          "latency": 0.0133,
+          "timestampUs": 1789318157315144
+        },
+        {
+          "time": 2.9334,
+          "latency": 0.0163,
+          "timestampUs": 1789318157356507
+        },
+        {
+          "time": 3.0112,
+          "latency": 0.0489,
+          "timestampUs": 1789318157401512
+        },
+        {
+          "time": 3.061,
+          "latency": 0.0192,
+          "timestampUs": 1789318157480756
+        },
+        {
+          "time": 3.0977,
+          "latency": 0.0138,
+          "timestampUs": 1789318157523033
+        },
+        {
+          "time": 3.1434,
+          "latency": 0.0174,
+          "timestampUs": 1789318157564967
+        },
+        {
+          "time": 3.2036,
+          "latency": 0.0342,
+          "timestampUs": 1789318157608429
+        },
+        {
+          "time": 3.2353,
+          "latency": 0.0262,
+          "timestampUs": 1789318157648278
+        },
+        {
+          "time": 3.2719,
+          "latency": 0.0193,
+          "timestampUs": 1789318157692398
+        },
+        {
+          "time": 3.3219,
+          "latency": 0.0297,
+          "timestampUs": 1789318157731358
+        },
+        {
+          "time": 3.3566,
+          "latency": 0.0228,
+          "timestampUs": 1789318157772764
+        },
+        {
+          "time": 3.3895,
+          "latency": 0.0134,
+          "timestampUs": 1789318157815510
+        },
+        {
+          "time": 3.4309,
+          "latency": 0.0139,
+          "timestampUs": 1789318157855908
+        },
+        {
+          "time": 3.4709,
+          "latency": 0.0119,
+          "timestampUs": 1789318157897953
+        },
+        {
+          "time": 3.5127,
+          "latency": 0.011,
+          "timestampUs": 1789318157940671
+        },
+        {
+          "time": 3.56,
+          "latency": 0.0174,
+          "timestampUs": 1789318157981744
+        },
+        {
+          "time": 3.596,
+          "latency": 0.0125,
+          "timestampUs": 1789318158022447
+        },
+        {
+          "time": 3.6602,
+          "latency": 0.0351,
+          "timestampUs": 1789318158064076
+        },
+        {
+          "time": 3.7506,
+          "latency": 0.0757,
+          "timestampUs": 1789318158114195
+        },
+        {
+          "time": 3.8369,
+          "latency": 0.0297,
+          "timestampUs": 1789318158245988
+        },
+        {
+          "time": 3.9298,
+          "latency": 0.028,
+          "timestampUs": 1789318158340814
+        },
+        {
+          "time": 3.9758,
+          "latency": 0.0172,
+          "timestampUs": 1789318158397559
+        },
+        {
+          "time": 4.0151,
+          "latency": 0.014,
+          "timestampUs": 1789318158441431
+        },
+        {
+          "time": 4.0696,
+          "latency": 0.0278,
+          "timestampUs": 1789318158480856
+        },
+        {
+          "time": 4.1022,
+          "latency": 0.0187,
+          "timestampUs": 1789318158522372
+        },
+        {
+          "time": 4.1464,
+          "latency": 0.0213,
+          "timestampUs": 1789318158564173
+        },
+        {
+          "time": 4.1926,
+          "latency": 0.0253,
+          "timestampUs": 1789318158606236
+        },
+        {
+          "time": 4.2198,
+          "latency": 0.0109,
+          "timestampUs": 1789318158647874
+        },
+        {
+          "time": 4.2744,
+          "latency": 0.024,
+          "timestampUs": 1789318158689409
+        },
+        {
+          "time": 4.331,
+          "latency": 0.039,
+          "timestampUs": 1789318158730869
+        },
+        {
+          "time": 4.3624,
+          "latency": 0.0287,
+          "timestampUs": 1789318158772841
+        },
+        {
+          "time": 4.3935,
+          "latency": 0.0183,
+          "timestampUs": 1789318158814491
+        },
+        {
+          "time": 4.4499,
+          "latency": 0.0324,
+          "timestampUs": 1789318158856556
+        },
+        {
+          "time": 4.4914,
+          "latency": 0.0297,
+          "timestampUs": 1789318158903440
+        },
+        {
+          "time": 4.5172,
+          "latency": 0.0162,
+          "timestampUs": 1789318158940953
+        },
+        {
+          "time": 4.5604,
+          "latency": 0.0178,
+          "timestampUs": 1789318158981654
+        },
+        {
+          "time": 4.6088,
+          "latency": 0.0244,
+          "timestampUs": 1789318159024535
+        },
+        {
+          "time": 4.641,
+          "latency": 0.0155,
+          "timestampUs": 1789318159064351
+        },
+        {
+          "time": 4.688,
+          "latency": 0.0195,
+          "timestampUs": 1789318159110000
+        },
+        {
+          "time": 4.7235,
+          "latency": 0.0146,
+          "timestampUs": 1789318159147919
+        },
+        {
+          "time": 4.7649,
+          "latency": 0.0143,
+          "timestampUs": 1789318159189717
+        },
+        {
+          "time": 4.8066,
+          "latency": 0.0146,
+          "timestampUs": 1789318159230923
+        },
+        {
+          "time": 4.85,
+          "latency": 0.0138,
+          "timestampUs": 1789318159275092
+        },
+        {
+          "time": 4.9282,
+          "latency": 0.0531,
+          "timestampUs": 1789318159314180
+        },
+        {
+          "time": 4.9738,
+          "latency": 0.0154,
+          "timestampUs": 1789318159397601
+        },
+        {
+          "time": 5.0571,
+          "latency": 0.0561,
+          "timestampUs": 1789318159440131
+        },
+        {
+          "time": 5.3941,
+          "latency": 0.3106,
+          "timestampUs": 1789318159522749
+        },
+        {
+          "time": 5.9311,
+          "latency": 0.5139,
+          "timestampUs": 1789318159856152
+        },
+        {
+          "time": 6.0625,
+          "latency": 0.104,
+          "timestampUs": 1789318160399202
+        },
+        {
+          "time": 6.2073,
+          "latency": 0.1236,
+          "timestampUs": 1789318160522871
+        },
+        {
+          "time": 6.2789,
+          "latency": 0.0619,
+          "timestampUs": 1789318160658037
+        },
+        {
+          "time": 6.3928,
+          "latency": 0.0842,
+          "timestampUs": 1789318160747979
+        },
+        {
+          "time": 6.4645,
+          "latency": 0.0458,
+          "timestampUs": 1789318160857943
+        },
+        {
+          "time": 6.5742,
+          "latency": 0.0668,
+          "timestampUs": 1789318160946500
+        },
+        {
+          "time": 6.6719,
+          "latency": 0.0707,
+          "timestampUs": 1789318161040195
+        },
+        {
+          "time": 6.7355,
+          "latency": 0.0263,
+          "timestampUs": 1789318161153421
+        },
+        {
+          "time": 6.7798,
+          "latency": 0.0291,
+          "timestampUs": 1789318161190349
+        },
+        {
+          "time": 6.837,
+          "latency": 0.0445,
+          "timestampUs": 1789318161231502
+        },
+        {
+          "time": 6.9123,
+          "latency": 0.029,
+          "timestampUs": 1789318161322315
+        },
+        {
+          "time": 6.9665,
+          "latency": 0.0464,
+          "timestampUs": 1789318161359144
+        },
+        {
+          "time": 7.0313,
+          "latency": 0.026,
+          "timestampUs": 1789318161444491
+        },
+        {
+          "time": 7.063,
+          "latency": 0.0203,
+          "timestampUs": 1789318161481754
+        },
+        {
+          "time": 7.118,
+          "latency": 0.0326,
+          "timestampUs": 1789318161524332
+        },
+        {
+          "time": 7.1656,
+          "latency": 0.0399,
+          "timestampUs": 1789318161564649
+        },
+        {
+          "time": 7.1868,
+          "latency": 0.0193,
+          "timestampUs": 1789318161606556
+        },
+        {
+          "time": 7.2213,
+          "latency": 0.0126,
+          "timestampUs": 1789318161647787
+        },
+        {
+          "time": 7.2851,
+          "latency": 0.0345,
+          "timestampUs": 1789318161689639
+        },
+        {
+          "time": 7.3136,
+          "latency": 0.019,
+          "timestampUs": 1789318161733585
+        },
+        {
+          "time": 7.3519,
+          "latency": 0.0152,
+          "timestampUs": 1789318161776562
+        },
+        {
+          "time": 7.4191,
+          "latency": 0.0437,
+          "timestampUs": 1789318161816626
+        },
+        {
+          "time": 7.4801,
+          "latency": 0.0212,
+          "timestampUs": 1789318161897832
+        },
+        {
+          "time": 7.5322,
+          "latency": 0.0312,
+          "timestampUs": 1789318161940234
+        },
+        {
+          "time": 7.5805,
+          "latency": 0.0359,
+          "timestampUs": 1789318161983489
+        },
+        {
+          "time": 7.7984,
+          "latency": 0.2137,
+          "timestampUs": 1789318162023607
+        },
+        {
+          "time": 7.862,
+          "latency": 0.0219,
+          "timestampUs": 1789318162279012
+        },
+        {
+          "time": 7.8904,
+          "latency": 0.0149,
+          "timestampUs": 1789318162315616
+        },
+        {
+          "time": 7.9313,
+          "latency": 0.0139,
+          "timestampUs": 1789318162356500
+        },
+        {
+          "time": 7.9728,
+          "latency": 0.0141,
+          "timestampUs": 1789318162397860
+        },
+        {
+          "time": 8.0105,
+          "latency": 0.0103,
+          "timestampUs": 1789318162439183
+        },
+        {
+          "time": 8.0527,
+          "latency": 0.0107,
+          "timestampUs": 1789318162481461
+        },
+        {
+          "time": 8.1425,
+          "latency": 0.0586,
+          "timestampUs": 1789318162522702
+        },
+        {
+          "time": 8.1765,
+          "latency": 0.0091,
+          "timestampUs": 1789318162606213
+        },
+        {
+          "time": 8.2209,
+          "latency": 0.0119,
+          "timestampUs": 1789318162647871
+        },
+        {
+          "time": 8.2681,
+          "latency": 0.0168,
+          "timestampUs": 1789318162690363
+        },
+        {
+          "time": 8.3816,
+          "latency": 0.0897,
+          "timestampUs": 1789318162730731
+        },
+        {
+          "time": 8.4396,
+          "latency": 0.0226,
+          "timestampUs": 1789318162855931
+        },
+        {
+          "time": 8.4718,
+          "latency": 0.0132,
+          "timestampUs": 1789318162897560
+        },
+        {
+          "time": 8.5218,
+          "latency": 0.0216,
+          "timestampUs": 1789318162939079
+        },
+        {
+          "time": 8.6211,
+          "latency": 0.0487,
+          "timestampUs": 1789318163013002
+        },
+        {
+          "time": 8.7007,
+          "latency": 0.0753,
+          "timestampUs": 1789318163064289
+        },
+        {
+          "time": 8.7464,
+          "latency": 0.0377,
+          "timestampUs": 1789318163147812
+        },
+        {
+          "time": 8.8839,
+          "latency": 0.1283,
+          "timestampUs": 1789318163194597
+        },
+        {
+          "time": 8.9439,
+          "latency": 0.0268,
+          "timestampUs": 1789318163356099
+        },
+        {
+          "time": 8.9696,
+          "latency": 0.011,
+          "timestampUs": 1789318163397518
+        },
+        {
+          "time": 9.0206,
+          "latency": 0.0202,
+          "timestampUs": 1789318163439286
+        },
+        {
+          "time": 9.052,
+          "latency": 0.0098,
+          "timestampUs": 1789318163481112
+        },
+        {
+          "time": 9.1026,
+          "latency": 0.0189,
+          "timestampUs": 1789318163522678
+        },
+        {
+          "time": 9.1348,
+          "latency": 0.0096,
+          "timestampUs": 1789318163564067
+        },
+        {
+          "time": 9.1775,
+          "latency": 0.0106,
+          "timestampUs": 1789318163605767
+        },
+        {
+          "time": 9.2676,
+          "latency": 0.0591,
+          "timestampUs": 1789318163647434
+        },
+        {
+          "time": 9.3022,
+          "latency": 0.0102,
+          "timestampUs": 1789318163730860
+        },
+        {
+          "time": 9.3426,
+          "latency": 0.0091,
+          "timestampUs": 1789318163772393
+        },
+        {
+          "time": 9.3859,
+          "latency": 0.0108,
+          "timestampUs": 1789318163813970
+        },
+        {
+          "time": 9.4895,
+          "latency": 0.0725,
+          "timestampUs": 1789318163855922
+        },
+        {
+          "time": 9.5113,
+          "latency": 0.011,
+          "timestampUs": 1789318163939178
+        },
+        {
+          "time": 9.551,
+          "latency": 0.0091,
+          "timestampUs": 1789318163980769
+        },
+        {
+          "time": 9.5948,
+          "latency": 0.0112,
+          "timestampUs": 1789318164022584
+        },
+        {
+          "time": 9.6435,
+          "latency": 0.0183,
+          "timestampUs": 1789318164064126
+        },
+        {
+          "time": 9.6874,
+          "latency": 0.0206,
+          "timestampUs": 1789318164105697
+        },
+        {
+          "time": 9.7485,
+          "latency": 0.0399,
+          "timestampUs": 1789318164147347
+        },
+        {
+          "time": 9.7631,
+          "latency": 0.0128,
+          "timestampUs": 1789318164189428
+        },
+        {
+          "time": 9.8011,
+          "latency": 0.0093,
+          "timestampUs": 1789318164230653
+        },
+        {
+          "time": 9.8478,
+          "latency": 0.0141,
+          "timestampUs": 1789318164272698
+        },
+        {
+          "time": 9.8847,
+          "latency": 0.0096,
+          "timestampUs": 1789318164314051
+        },
+        {
+          "time": 9.9293,
+          "latency": 0.0125,
+          "timestampUs": 1789318164356915
+        },
+        {
+          "time": 10.0333,
+          "latency": 0.0742,
+          "timestampUs": 1789318164398023
+        }
+      ],
+      "video_sha256": "70ec3848ecec16d4d6c389fffc64ab108ccc617d45ada4ab667d0a421ca18b19",
+      "coverage": "Coverage: 10.00-second video; 20 full-timeline frames sampled at 2 fps (0.5-second interval); 2 contact sheet(s); 18 additional frames from 00:00:02.250 to 00:00:03.000 at 24 fps; no audio stream."
+    },
+    "after-dark": {
+      "method": "Android Emulator authenticated gRPC getScreenshot RGB888; native frames at 540x1200 encoded at 24 fps; duplicate last frame during capture delays",
+      "events": [
+        {
+          "choice": "c",
+          "down": 1.007,
+          "up": 1.19
+        },
+        {
+          "choice": "b",
+          "down": 2.315,
+          "up": 2.618
+        },
+        {
+          "choice": "a",
+          "down": 3.604,
+          "up": 3.791
+        },
+        {
+          "choice": "d",
+          "down": 4.702,
+          "up": 5.055
+        },
+        {
+          "choice": "c",
+          "down": 6.013,
+          "up": 6.117
+        },
+        {
+          "choice": "b",
+          "down": 6.355,
+          "up": 6.438
+        },
+        {
+          "choice": "a",
+          "down": 6.711,
+          "up": 6.806
+        },
+        {
+          "choice": "d",
+          "down": 7.057,
+          "up": 7.141
+        },
+        {
+          "choice": "c",
+          "down": 8.008,
+          "up": 8.21
+        }
+      ],
+      "samples": [
+        {
+          "time": 0.015,
+          "latency": 0.0143,
+          "timestampUs": 1789318208604763
+        },
+        {
+          "time": 0.0528,
+          "latency": 0.0108,
+          "timestampUs": 1789318208645773
+        },
+        {
+          "time": 0.0936,
+          "latency": 0.01,
+          "timestampUs": 1789318208687368
+        },
+        {
+          "time": 0.1446,
+          "latency": 0.0158,
+          "timestampUs": 1789318208732749
+        },
+        {
+          "time": 0.203,
+          "latency": 0.0329,
+          "timestampUs": 1789318208774873
+        },
+        {
+          "time": 0.2477,
+          "latency": 0.0339,
+          "timestampUs": 1789318208818423
+        },
+        {
+          "time": 0.2841,
+          "latency": 0.0341,
+          "timestampUs": 1789318208854048
+        },
+        {
+          "time": 0.3077,
+          "latency": 0.0144,
+          "timestampUs": 1789318208897348
+        },
+        {
+          "time": 0.3428,
+          "latency": 0.0092,
+          "timestampUs": 1789318208937503
+        },
+        {
+          "time": 0.3842,
+          "latency": 0.0087,
+          "timestampUs": 1789318208979374
+        },
+        {
+          "time": 0.4273,
+          "latency": 0.0101,
+          "timestampUs": 1789318209020977
+        },
+        {
+          "time": 0.4672,
+          "latency": 0.0088,
+          "timestampUs": 1789318209062223
+        },
+        {
+          "time": 0.5099,
+          "latency": 0.0095,
+          "timestampUs": 1789318209104280
+        },
+        {
+          "time": 0.5509,
+          "latency": 0.0091,
+          "timestampUs": 1789318209145543
+        },
+        {
+          "time": 0.5933,
+          "latency": 0.0095,
+          "timestampUs": 1789318209187622
+        },
+        {
+          "time": 0.6345,
+          "latency": 0.0094,
+          "timestampUs": 1789318209229030
+        },
+        {
+          "time": 0.6767,
+          "latency": 0.0096,
+          "timestampUs": 1789318209270997
+        },
+        {
+          "time": 0.7187,
+          "latency": 0.0101,
+          "timestampUs": 1789318209312438
+        },
+        {
+          "time": 0.7613,
+          "latency": 0.0111,
+          "timestampUs": 1789318209354102
+        },
+        {
+          "time": 0.8032,
+          "latency": 0.0113,
+          "timestampUs": 1789318209395815
+        },
+        {
+          "time": 0.8453,
+          "latency": 0.0114,
+          "timestampUs": 1789318209437661
+        },
+        {
+          "time": 0.8871,
+          "latency": 0.012,
+          "timestampUs": 1789318209479086
+        },
+        {
+          "time": 0.9262,
+          "latency": 0.0089,
+          "timestampUs": 1789318209521066
+        },
+        {
+          "time": 0.9793,
+          "latency": 0.0207,
+          "timestampUs": 1789318209563089
+        },
+        {
+          "time": 1.0618,
+          "latency": 0.0616,
+          "timestampUs": 1789318209604364
+        },
+        {
+          "time": 1.1068,
+          "latency": 0.023,
+          "timestampUs": 1789318209688022
+        },
+        {
+          "time": 1.1867,
+          "latency": 0.0613,
+          "timestampUs": 1789318209729102
+        },
+        {
+          "time": 1.2231,
+          "latency": 0.0135,
+          "timestampUs": 1789318209813731
+        },
+        {
+          "time": 1.2626,
+          "latency": 0.0122,
+          "timestampUs": 1789318209854462
+        },
+        {
+          "time": 1.3685,
+          "latency": 0.0767,
+          "timestampUs": 1789318209895633
+        },
+        {
+          "time": 1.4073,
+          "latency": 0.0318,
+          "timestampUs": 1789318209979290
+        },
+        {
+          "time": 1.4651,
+          "latency": 0.0481,
+          "timestampUs": 1789318210020854
+        },
+        {
+          "time": 1.5419,
+          "latency": 0.0413,
+          "timestampUs": 1789318210104338
+        },
+        {
+          "time": 1.5948,
+          "latency": 0.0108,
+          "timestampUs": 1789318210187785
+        },
+        {
+          "time": 1.6358,
+          "latency": 0.0107,
+          "timestampUs": 1789318210229076
+        },
+        {
+          "time": 1.6782,
+          "latency": 0.0109,
+          "timestampUs": 1789318210271209
+        },
+        {
+          "time": 1.7192,
+          "latency": 0.0106,
+          "timestampUs": 1789318210312417
+        },
+        {
+          "time": 1.7778,
+          "latency": 0.0273,
+          "timestampUs": 1789318210354572
+        },
+        {
+          "time": 1.8026,
+          "latency": 0.0104,
+          "timestampUs": 1789318210396060
+        },
+        {
+          "time": 1.8555,
+          "latency": 0.0217,
+          "timestampUs": 1789318210437769
+        },
+        {
+          "time": 1.887,
+          "latency": 0.0117,
+          "timestampUs": 1789318210479044
+        },
+        {
+          "time": 1.9261,
+          "latency": 0.0089,
+          "timestampUs": 1789318210520999
+        },
+        {
+          "time": 1.9678,
+          "latency": 0.0092,
+          "timestampUs": 1789318210562508
+        },
+        {
+          "time": 2.0101,
+          "latency": 0.0097,
+          "timestampUs": 1789318210604311
+        },
+        {
+          "time": 2.0725,
+          "latency": 0.0102,
+          "timestampUs": 1789318210666230
+        },
+        {
+          "time": 2.1193,
+          "latency": 0.0354,
+          "timestampUs": 1789318210687659
+        },
+        {
+          "time": 2.1354,
+          "latency": 0.0102,
+          "timestampUs": 1789318210729076
+        },
+        {
+          "time": 2.177,
+          "latency": 0.0102,
+          "timestampUs": 1789318210770750
+        },
+        {
+          "time": 2.2294,
+          "latency": 0.0206,
+          "timestampUs": 1789318210812699
+        },
+        {
+          "time": 2.2693,
+          "latency": 0.0186,
+          "timestampUs": 1789318210854592
+        },
+        {
+          "time": 2.3142,
+          "latency": 0.0222,
+          "timestampUs": 1789318210896163
+        },
+        {
+          "time": 2.3446,
+          "latency": 0.0112,
+          "timestampUs": 1789318210937310
+        },
+        {
+          "time": 2.3911,
+          "latency": 0.0155,
+          "timestampUs": 1789318210979600
+        },
+        {
+          "time": 2.4285,
+          "latency": 0.0114,
+          "timestampUs": 1789318211020998
+        },
+        {
+          "time": 2.481,
+          "latency": 0.0223,
+          "timestampUs": 1789318211062704
+        },
+        {
+          "time": 2.5131,
+          "latency": 0.0127,
+          "timestampUs": 1789318211104224
+        },
+        {
+          "time": 2.568,
+          "latency": 0.0259,
+          "timestampUs": 1789318211145989
+        },
+        {
+          "time": 2.5954,
+          "latency": 0.0118,
+          "timestampUs": 1789318211187526
+        },
+        {
+          "time": 2.6376,
+          "latency": 0.0122,
+          "timestampUs": 1789318211230055
+        },
+        {
+          "time": 2.6796,
+          "latency": 0.0126,
+          "timestampUs": 1789318211271046
+        },
+        {
+          "time": 2.7342,
+          "latency": 0.0254,
+          "timestampUs": 1789318211313642
+        },
+        {
+          "time": 2.8026,
+          "latency": 0.0512,
+          "timestampUs": 1789318211358778
+        },
+        {
+          "time": 2.8517,
+          "latency": 0.0174,
+          "timestampUs": 1789318211438508
+        },
+        {
+          "time": 2.908,
+          "latency": 0.0315,
+          "timestampUs": 1789318211480514
+        },
+        {
+          "time": 2.9377,
+          "latency": 0.0206,
+          "timestampUs": 1789318211521147
+        },
+        {
+          "time": 2.9775,
+          "latency": 0.0185,
+          "timestampUs": 1789318211562977
+        },
+        {
+          "time": 3.0165,
+          "latency": 0.0135,
+          "timestampUs": 1789318211606873
+        },
+        {
+          "time": 3.0641,
+          "latency": 0.0198,
+          "timestampUs": 1789318211650681
+        },
+        {
+          "time": 3.108,
+          "latency": 0.0243,
+          "timestampUs": 1789318211687507
+        },
+        {
+          "time": 3.1362,
+          "latency": 0.0109,
+          "timestampUs": 1789318211729132
+        },
+        {
+          "time": 3.1815,
+          "latency": 0.0143,
+          "timestampUs": 1789318211771098
+        },
+        {
+          "time": 3.2177,
+          "latency": 0.0092,
+          "timestampUs": 1789318211812363
+        },
+        {
+          "time": 3.2597,
+          "latency": 0.0093,
+          "timestampUs": 1789318211854310
+        },
+        {
+          "time": 3.3015,
+          "latency": 0.0092,
+          "timestampUs": 1789318211896087
+        },
+        {
+          "time": 3.3447,
+          "latency": 0.0109,
+          "timestampUs": 1789318211937624
+        },
+        {
+          "time": 3.3849,
+          "latency": 0.0096,
+          "timestampUs": 1789318211979086
+        },
+        {
+          "time": 3.4279,
+          "latency": 0.0106,
+          "timestampUs": 1789318212021178
+        },
+        {
+          "time": 3.4689,
+          "latency": 0.0103,
+          "timestampUs": 1789318212062445
+        },
+        {
+          "time": 3.5221,
+          "latency": 0.0217,
+          "timestampUs": 1789318212104304
+        },
+        {
+          "time": 3.5521,
+          "latency": 0.01,
+          "timestampUs": 1789318212145922
+        },
+        {
+          "time": 3.594,
+          "latency": 0.0105,
+          "timestampUs": 1789318212187354
+        },
+        {
+          "time": 3.637,
+          "latency": 0.0115,
+          "timestampUs": 1789318212229428
+        },
+        {
+          "time": 3.6787,
+          "latency": 0.0116,
+          "timestampUs": 1789318212271064
+        },
+        {
+          "time": 3.7203,
+          "latency": 0.0118,
+          "timestampUs": 1789318212312464
+        },
+        {
+          "time": 3.7622,
+          "latency": 0.012,
+          "timestampUs": 1789318212354080
+        },
+        {
+          "time": 3.8331,
+          "latency": 0.035,
+          "timestampUs": 1789318212402108
+        },
+        {
+          "time": 3.9462,
+          "latency": 0.082,
+          "timestampUs": 1789318212468064
+        },
+        {
+          "time": 3.9999,
+          "latency": 0.041,
+          "timestampUs": 1789318212563277
+        },
+        {
+          "time": 4.0278,
+          "latency": 0.0172,
+          "timestampUs": 1789318212615277
+        },
+        {
+          "time": 4.0668,
+          "latency": 0.0248,
+          "timestampUs": 1789318212646128
+        },
+        {
+          "time": 4.0938,
+          "latency": 0.0102,
+          "timestampUs": 1789318212687447
+        },
+        {
+          "time": 4.2283,
+          "latency": 0.1014,
+          "timestampUs": 1789318212732034
+        },
+        {
+          "time": 4.2636,
+          "latency": 0.0131,
+          "timestampUs": 1789318212854496
+        },
+        {
+          "time": 4.3035,
+          "latency": 0.0116,
+          "timestampUs": 1789318212897115
+        },
+        {
+          "time": 4.3488,
+          "latency": 0.015,
+          "timestampUs": 1789318212938219
+        },
+        {
+          "time": 4.3899,
+          "latency": 0.0126,
+          "timestampUs": 1789318212982195
+        },
+        {
+          "time": 4.4282,
+          "latency": 0.0114,
+          "timestampUs": 1789318213020598
+        },
+        {
+          "time": 4.4689,
+          "latency": 0.0104,
+          "timestampUs": 1789318213062313
+        },
+        {
+          "time": 4.5193,
+          "latency": 0.0174,
+          "timestampUs": 1789318213106571
+        },
+        {
+          "time": 4.5611,
+          "latency": 0.0187,
+          "timestampUs": 1789318213146470
+        },
+        {
+          "time": 4.6212,
+          "latency": 0.0377,
+          "timestampUs": 1789318213188556
+        },
+        {
+          "time": 4.6618,
+          "latency": 0.0351,
+          "timestampUs": 1789318213230577
+        },
+        {
+          "time": 4.6914,
+          "latency": 0.0242,
+          "timestampUs": 1789318213271194
+        },
+        {
+          "time": 4.7334,
+          "latency": 0.0235,
+          "timestampUs": 1789318213313985
+        },
+        {
+          "time": 4.763,
+          "latency": 0.0124,
+          "timestampUs": 1789318213354375
+        },
+        {
+          "time": 4.8073,
+          "latency": 0.0149,
+          "timestampUs": 1789318213396690
+        },
+        {
+          "time": 4.8757,
+          "latency": 0.0418,
+          "timestampUs": 1789318213437780
+        },
+        {
+          "time": 4.9272,
+          "latency": 0.0101,
+          "timestampUs": 1789318213521178
+        },
+        {
+          "time": 4.9683,
+          "latency": 0.0094,
+          "timestampUs": 1789318213562920
+        },
+        {
+          "time": 5.0113,
+          "latency": 0.011,
+          "timestampUs": 1789318213604184
+        },
+        {
+          "time": 5.0526,
+          "latency": 0.0106,
+          "timestampUs": 1789318213645837
+        },
+        {
+          "time": 5.1092,
+          "latency": 0.0255,
+          "timestampUs": 1789318213687687
+        },
+        {
+          "time": 5.1492,
+          "latency": 0.0238,
+          "timestampUs": 1789318213729277
+        },
+        {
+          "time": 5.2298,
+          "latency": 0.063,
+          "timestampUs": 1789318213770695
+        },
+        {
+          "time": 5.283,
+          "latency": 0.0316,
+          "timestampUs": 1789318213856100
+        },
+        {
+          "time": 5.4905,
+          "latency": 0.1976,
+          "timestampUs": 1789318213896609
+        },
+        {
+          "time": 5.561,
+          "latency": 0.0607,
+          "timestampUs": 1789318214104718
+        },
+        {
+          "time": 5.6581,
+          "latency": 0.0742,
+          "timestampUs": 1789318214188164
+        },
+        {
+          "time": 5.7608,
+          "latency": 0.0941,
+          "timestampUs": 1789318214270640
+        },
+        {
+          "time": 5.8068,
+          "latency": 0.0149,
+          "timestampUs": 1789318214395797
+        },
+        {
+          "time": 5.8504,
+          "latency": 0.0169,
+          "timestampUs": 1789318214437525
+        },
+        {
+          "time": 5.8977,
+          "latency": 0.0173,
+          "timestampUs": 1789318214484412
+        },
+        {
+          "time": 5.9312,
+          "latency": 0.0138,
+          "timestampUs": 1789318214521631
+        },
+        {
+          "time": 6.0378,
+          "latency": 0.0764,
+          "timestampUs": 1789318214565574
+        },
+        {
+          "time": 6.0662,
+          "latency": 0.0242,
+          "timestampUs": 1789318214645881
+        },
+        {
+          "time": 6.1057,
+          "latency": 0.0223,
+          "timestampUs": 1789318214687264
+        },
+        {
+          "time": 6.1501,
+          "latency": 0.0249,
+          "timestampUs": 1789318214729049
+        },
+        {
+          "time": 6.1835,
+          "latency": 0.0147,
+          "timestampUs": 1789318214772843
+        },
+        {
+          "time": 6.223,
+          "latency": 0.0136,
+          "timestampUs": 1789318214814356
+        },
+        {
+          "time": 6.2616,
+          "latency": 0.0114,
+          "timestampUs": 1789318214854277
+        },
+        {
+          "time": 6.3767,
+          "latency": 0.0847,
+          "timestampUs": 1789318214895872
+        },
+        {
+          "time": 6.4417,
+          "latency": 0.0247,
+          "timestampUs": 1789318215020964
+        },
+        {
+          "time": 6.4707,
+          "latency": 0.0122,
+          "timestampUs": 1789318215062363
+        },
+        {
+          "time": 6.5109,
+          "latency": 0.0107,
+          "timestampUs": 1789318215104336
+        },
+        {
+          "time": 6.5519,
+          "latency": 0.0098,
+          "timestampUs": 1789318215145950
+        },
+        {
+          "time": 6.5951,
+          "latency": 0.0116,
+          "timestampUs": 1789318215187389
+        },
+        {
+          "time": 6.6694,
+          "latency": 0.0437,
+          "timestampUs": 1789318215229551
+        },
+        {
+          "time": 6.8087,
+          "latency": 0.0999,
+          "timestampUs": 1789318215312708
+        },
+        {
+          "time": 6.8961,
+          "latency": 0.0622,
+          "timestampUs": 1789318215437913
+        },
+        {
+          "time": 6.9831,
+          "latency": 0.0646,
+          "timestampUs": 1789318215522468
+        },
+        {
+          "time": 7.0223,
+          "latency": 0.0218,
+          "timestampUs": 1789318215604272
+        },
+        {
+          "time": 7.0523,
+          "latency": 0.0102,
+          "timestampUs": 1789318215645990
+        },
+        {
+          "time": 7.1383,
+          "latency": 0.0143,
+          "timestampUs": 1789318215728038
+        },
+        {
+          "time": 7.2276,
+          "latency": 0.06,
+          "timestampUs": 1789318215772250
+        },
+        {
+          "time": 7.2784,
+          "latency": 0.0255,
+          "timestampUs": 1789318215857736
+        },
+        {
+          "time": 7.4418,
+          "latency": 0.149,
+          "timestampUs": 1789318215896684
+        },
+        {
+          "time": 7.4977,
+          "latency": 0.0391,
+          "timestampUs": 1789318216062686
+        },
+        {
+          "time": 7.6297,
+          "latency": 0.1294,
+          "timestampUs": 1789318216104315
+        },
+        {
+          "time": 7.7206,
+          "latency": 0.0536,
+          "timestampUs": 1789318216271251
+        },
+        {
+          "time": 7.8059,
+          "latency": 0.0537,
+          "timestampUs": 1789318216356652
+        },
+        {
+          "time": 7.9172,
+          "latency": 0.0837,
+          "timestampUs": 1789318216437369
+        },
+        {
+          "time": 7.9749,
+          "latency": 0.0144,
+          "timestampUs": 1789318216564751
+        },
+        {
+          "time": 8.1497,
+          "latency": 0.1494,
+          "timestampUs": 1789318216604891
+        },
+        {
+          "time": 8.236,
+          "latency": 0.0668,
+          "timestampUs": 1789318216773842
+        },
+        {
+          "time": 8.3569,
+          "latency": 0.1049,
+          "timestampUs": 1789318216856959
+        },
+        {
+          "time": 8.3904,
+          "latency": 0.015,
+          "timestampUs": 1789318216979265
+        },
+        {
+          "time": 8.5548,
+          "latency": 0.1379,
+          "timestampUs": 1789318217020872
+        },
+        {
+          "time": 8.6194,
+          "latency": 0.0356,
+          "timestampUs": 1789318217187613
+        },
+        {
+          "time": 8.6689,
+          "latency": 0.0434,
+          "timestampUs": 1789318217229689
+        },
+        {
+          "time": 8.7287,
+          "latency": 0.0197,
+          "timestampUs": 1789318217313055
+        },
+        {
+          "time": 8.7682,
+          "latency": 0.0179,
+          "timestampUs": 1789318217354463
+        },
+        {
+          "time": 8.8046,
+          "latency": 0.0127,
+          "timestampUs": 1789318217395841
+        },
+        {
+          "time": 8.8588,
+          "latency": 0.0245,
+          "timestampUs": 1789318217438392
+        },
+        {
+          "time": 8.8872,
+          "latency": 0.0118,
+          "timestampUs": 1789318217479335
+        },
+        {
+          "time": 8.9657,
+          "latency": 0.0458,
+          "timestampUs": 1789318217524059
+        },
+        {
+          "time": 9.0312,
+          "latency": 0.0309,
+          "timestampUs": 1789318217604235
+        },
+        {
+          "time": 9.1137,
+          "latency": 0.0719,
+          "timestampUs": 1789318217645682
+        },
+        {
+          "time": 9.1438,
+          "latency": 0.0184,
+          "timestampUs": 1789318217729664
+        },
+        {
+          "time": 9.1776,
+          "latency": 0.0109,
+          "timestampUs": 1789318217770560
+        },
+        {
+          "time": 9.2177,
+          "latency": 0.0091,
+          "timestampUs": 1789318217812454
+        },
+        {
+          "time": 9.2775,
+          "latency": 0.0266,
+          "timestampUs": 1789318217855534
+        },
+        {
+          "time": 9.313,
+          "latency": 0.021,
+          "timestampUs": 1789318217896189
+        },
+        {
+          "time": 9.3444,
+          "latency": 0.0109,
+          "timestampUs": 1789318217937477
+        },
+        {
+          "time": 9.3862,
+          "latency": 0.0107,
+          "timestampUs": 1789318217979461
+        },
+        {
+          "time": 9.4557,
+          "latency": 0.0389,
+          "timestampUs": 1789318218020686
+        },
+        {
+          "time": 9.517,
+          "latency": 0.0579,
+          "timestampUs": 1789318218063245
+        },
+        {
+          "time": 9.5612,
+          "latency": 0.0189,
+          "timestampUs": 1789318218146088
+        },
+        {
+          "time": 9.6136,
+          "latency": 0.0295,
+          "timestampUs": 1789318218187996
+        },
+        {
+          "time": 9.7133,
+          "latency": 0.0834,
+          "timestampUs": 1789318218233911
+        },
+        {
+          "time": 9.7618,
+          "latency": 0.0114,
+          "timestampUs": 1789318218354339
+        },
+        {
+          "time": 9.803,
+          "latency": 0.0111,
+          "timestampUs": 1789318218395708
+        },
+        {
+          "time": 9.8524,
+          "latency": 0.0188,
+          "timestampUs": 1789318218437428
+        },
+        {
+          "time": 9.9212,
+          "latency": 0.0457,
+          "timestampUs": 1789318218479292
+        },
+        {
+          "time": 9.9681,
+          "latency": 0.0087,
+          "timestampUs": 1789318218563437
+        }
+      ],
+      "video_sha256": "ee2245474661fa91ae24145ea2d79e9d38bbc4e42e37fc08dff8d712732a50a7",
+      "coverage": "Coverage: 10.00-second video; 20 full-timeline frames sampled at 2 fps (0.5-second interval); 2 contact sheet(s); no audio stream."
+    },
+    "reduced-motion": {
+      "method": "Android Emulator authenticated gRPC getScreenshot RGB888; native frames at 540x1200 encoded at 24 fps; duplicate last frame during capture delays",
+      "events": [
+        {
+          "choice": "c",
+          "down": 1.016,
+          "up": 1.203
+        },
+        {
+          "choice": "b",
+          "down": 2.314,
+          "up": 2.617
+        },
+        {
+          "choice": "a",
+          "down": 3.607,
+          "up": 3.789
+        },
+        {
+          "choice": "d",
+          "down": 4.714,
+          "up": 5.068
+        },
+        {
+          "choice": "c",
+          "down": 6.005,
+          "up": 6.09
+        },
+        {
+          "choice": "b",
+          "down": 6.366,
+          "up": 6.45
+        },
+        {
+          "choice": "a",
+          "down": 6.711,
+          "up": 6.809
+        },
+        {
+          "choice": "d",
+          "down": 7.054,
+          "up": 7.14
+        },
+        {
+          "choice": "c",
+          "down": 8.009,
+          "up": 8.211
+        }
+      ],
+      "samples": [
+        {
+          "time": 0.019,
+          "latency": 0.015,
+          "timestampUs": 1789318351976014
+        },
+        {
+          "time": 0.0724,
+          "latency": 0.0303,
+          "timestampUs": 1789318352015467
+        },
+        {
+          "time": 0.0955,
+          "latency": 0.012,
+          "timestampUs": 1789318352055271
+        },
+        {
+          "time": 0.1371,
+          "latency": 0.0116,
+          "timestampUs": 1789318352097189
+        },
+        {
+          "time": 0.1775,
+          "latency": 0.0103,
+          "timestampUs": 1789318352138916
+        },
+        {
+          "time": 0.9964,
+          "latency": 0.7875,
+          "timestampUs": 1789318352180754
+        },
+        {
+          "time": 1.0511,
+          "latency": 0.0339,
+          "timestampUs": 1789318352988602
+        },
+        {
+          "time": 1.0949,
+          "latency": 0.0114,
+          "timestampUs": 1789318353055429
+        },
+        {
+          "time": 1.1364,
+          "latency": 0.011,
+          "timestampUs": 1789318353096937
+        },
+        {
+          "time": 1.1778,
+          "latency": 0.0105,
+          "timestampUs": 1789318353138878
+        },
+        {
+          "time": 1.2226,
+          "latency": 0.0136,
+          "timestampUs": 1789318353180639
+        },
+        {
+          "time": 1.2615,
+          "latency": 0.011,
+          "timestampUs": 1789318353222135
+        },
+        {
+          "time": 1.305,
+          "latency": 0.013,
+          "timestampUs": 1789318353263688
+        },
+        {
+          "time": 1.3461,
+          "latency": 0.0121,
+          "timestampUs": 1789318353305678
+        },
+        {
+          "time": 1.3877,
+          "latency": 0.0126,
+          "timestampUs": 1789318353346748
+        },
+        {
+          "time": 1.4506,
+          "latency": 0.0338,
+          "timestampUs": 1789318353388390
+        },
+        {
+          "time": 1.4703,
+          "latency": 0.0115,
+          "timestampUs": 1789318353430301
+        },
+        {
+          "time": 1.5107,
+          "latency": 0.0103,
+          "timestampUs": 1789318353471973
+        },
+        {
+          "time": 1.5528,
+          "latency": 0.0108,
+          "timestampUs": 1789318353513622
+        },
+        {
+          "time": 1.5937,
+          "latency": 0.01,
+          "timestampUs": 1789318353555409
+        },
+        {
+          "time": 1.6362,
+          "latency": 0.011,
+          "timestampUs": 1789318353596735
+        },
+        {
+          "time": 1.6779,
+          "latency": 0.0109,
+          "timestampUs": 1789318353638560
+        },
+        {
+          "time": 1.7182,
+          "latency": 0.0097,
+          "timestampUs": 1789318353680095
+        },
+        {
+          "time": 1.7604,
+          "latency": 0.0101,
+          "timestampUs": 1789318353721837
+        },
+        {
+          "time": 1.803,
+          "latency": 0.0109,
+          "timestampUs": 1789318353763665
+        },
+        {
+          "time": 1.8456,
+          "latency": 0.0116,
+          "timestampUs": 1789318353805576
+        },
+        {
+          "time": 1.8904,
+          "latency": 0.0152,
+          "timestampUs": 1789318353846842
+        },
+        {
+          "time": 1.9393,
+          "latency": 0.022,
+          "timestampUs": 1789318353889257
+        },
+        {
+          "time": 1.9929,
+          "latency": 0.0341,
+          "timestampUs": 1789318353930658
+        },
+        {
+          "time": 2.0122,
+          "latency": 0.012,
+          "timestampUs": 1789318353971942
+        },
+        {
+          "time": 2.0553,
+          "latency": 0.0135,
+          "timestampUs": 1789318354013627
+        },
+        {
+          "time": 2.0992,
+          "latency": 0.0154,
+          "timestampUs": 1789318354055586
+        },
+        {
+          "time": 2.1499,
+          "latency": 0.024,
+          "timestampUs": 1789318354097676
+        },
+        {
+          "time": 2.1788,
+          "latency": 0.0119,
+          "timestampUs": 1789318354138605
+        },
+        {
+          "time": 2.2212,
+          "latency": 0.0125,
+          "timestampUs": 1789318354180422
+        },
+        {
+          "time": 2.261,
+          "latency": 0.0102,
+          "timestampUs": 1789318354222330
+        },
+        {
+          "time": 2.3548,
+          "latency": 0.0629,
+          "timestampUs": 1789318354263762
+        },
+        {
+          "time": 2.4553,
+          "latency": 0.068,
+          "timestampUs": 1789318354358991
+        },
+        {
+          "time": 2.4977,
+          "latency": 0.0388,
+          "timestampUs": 1789318354430745
+        },
+        {
+          "time": 2.541,
+          "latency": 0.0396,
+          "timestampUs": 1789318354473185
+        },
+        {
+          "time": 2.5924,
+          "latency": 0.0493,
+          "timestampUs": 1789318354515758
+        },
+        {
+          "time": 2.6463,
+          "latency": 0.0197,
+          "timestampUs": 1789318354600311
+        },
+        {
+          "time": 2.6802,
+          "latency": 0.0129,
+          "timestampUs": 1789318354639035
+        },
+        {
+          "time": 2.7244,
+          "latency": 0.0156,
+          "timestampUs": 1789318354680531
+        },
+        {
+          "time": 2.7676,
+          "latency": 0.0174,
+          "timestampUs": 1789318354722291
+        },
+        {
+          "time": 2.817,
+          "latency": 0.0249,
+          "timestampUs": 1789318354763764
+        },
+        {
+          "time": 2.8734,
+          "latency": 0.0394,
+          "timestampUs": 1789318354805724
+        },
+        {
+          "time": 3.0093,
+          "latency": 0.1318,
+          "timestampUs": 1789318354851114
+        },
+        {
+          "time": 3.0689,
+          "latency": 0.024,
+          "timestampUs": 1789318355017260
+        },
+        {
+          "time": 3.1002,
+          "latency": 0.0158,
+          "timestampUs": 1789318355057170
+        },
+        {
+          "time": 3.1411,
+          "latency": 0.0156,
+          "timestampUs": 1789318355097448
+        },
+        {
+          "time": 3.1824,
+          "latency": 0.0152,
+          "timestampUs": 1789318355139053
+        },
+        {
+          "time": 3.2236,
+          "latency": 0.0144,
+          "timestampUs": 1789318355180941
+        },
+        {
+          "time": 3.268,
+          "latency": 0.0163,
+          "timestampUs": 1789318355224521
+        },
+        {
+          "time": 3.3055,
+          "latency": 0.0137,
+          "timestampUs": 1789318355264211
+        },
+        {
+          "time": 3.3495,
+          "latency": 0.0159,
+          "timestampUs": 1789318355305264
+        },
+        {
+          "time": 3.3916,
+          "latency": 0.0163,
+          "timestampUs": 1789318355346967
+        },
+        {
+          "time": 3.4305,
+          "latency": 0.0137,
+          "timestampUs": 1789318355388663
+        },
+        {
+          "time": 3.4707,
+          "latency": 0.012,
+          "timestampUs": 1789318355430344
+        },
+        {
+          "time": 3.5232,
+          "latency": 0.0227,
+          "timestampUs": 1789318355472145
+        },
+        {
+          "time": 3.5651,
+          "latency": 0.0232,
+          "timestampUs": 1789318355513680
+        },
+        {
+          "time": 3.5963,
+          "latency": 0.0128,
+          "timestampUs": 1789318355555283
+        },
+        {
+          "time": 3.6369,
+          "latency": 0.0114,
+          "timestampUs": 1789318355597313
+        },
+        {
+          "time": 3.6806,
+          "latency": 0.0134,
+          "timestampUs": 1789318355638852
+        },
+        {
+          "time": 3.7212,
+          "latency": 0.0126,
+          "timestampUs": 1789318355680220
+        },
+        {
+          "time": 3.7732,
+          "latency": 0.0229,
+          "timestampUs": 1789318355721856
+        },
+        {
+          "time": 3.8075,
+          "latency": 0.0156,
+          "timestampUs": 1789318355763405
+        },
+        {
+          "time": 3.8861,
+          "latency": 0.039,
+          "timestampUs": 1789318355819186
+        },
+        {
+          "time": 3.9426,
+          "latency": 0.0252,
+          "timestampUs": 1789318355890118
+        },
+        {
+          "time": 3.9753,
+          "latency": 0.0163,
+          "timestampUs": 1789318355930859
+        },
+        {
+          "time": 4.034,
+          "latency": 0.0327,
+          "timestampUs": 1789318355975623
+        },
+        {
+          "time": 4.0552,
+          "latency": 0.0131,
+          "timestampUs": 1789318356013660
+        },
+        {
+          "time": 4.1021,
+          "latency": 0.017,
+          "timestampUs": 1789318356057153
+        },
+        {
+          "time": 4.1509,
+          "latency": 0.0254,
+          "timestampUs": 1789318356098218
+        },
+        {
+          "time": 4.1864,
+          "latency": 0.0195,
+          "timestampUs": 1789318356138594
+        },
+        {
+          "time": 4.2309,
+          "latency": 0.0195,
+          "timestampUs": 1789318356183144
+        },
+        {
+          "time": 4.2711,
+          "latency": 0.0205,
+          "timestampUs": 1789318356222417
+        },
+        {
+          "time": 4.3058,
+          "latency": 0.0137,
+          "timestampUs": 1789318356264256
+        },
+        {
+          "time": 4.3515,
+          "latency": 0.0177,
+          "timestampUs": 1789318356305438
+        },
+        {
+          "time": 4.3887,
+          "latency": 0.0135,
+          "timestampUs": 1789318356346949
+        },
+        {
+          "time": 4.4301,
+          "latency": 0.0129,
+          "timestampUs": 1789318356388885
+        },
+        {
+          "time": 4.4793,
+          "latency": 0.0207,
+          "timestampUs": 1789318356430145
+        },
+        {
+          "time": 4.5107,
+          "latency": 0.0103,
+          "timestampUs": 1789318356472024
+        },
+        {
+          "time": 4.5525,
+          "latency": 0.0105,
+          "timestampUs": 1789318356513828
+        },
+        {
+          "time": 4.5936,
+          "latency": 0.0101,
+          "timestampUs": 1789318356555186
+        },
+        {
+          "time": 4.6344,
+          "latency": 0.0093,
+          "timestampUs": 1789318356596745
+        },
+        {
+          "time": 4.6781,
+          "latency": 0.0112,
+          "timestampUs": 1789318356638577
+        },
+        {
+          "time": 4.7209,
+          "latency": 0.0125,
+          "timestampUs": 1789318356680028
+        },
+        {
+          "time": 4.7735,
+          "latency": 0.0231,
+          "timestampUs": 1789318356721901
+        },
+        {
+          "time": 4.8033,
+          "latency": 0.0115,
+          "timestampUs": 1789318356763347
+        },
+        {
+          "time": 4.8475,
+          "latency": 0.0137,
+          "timestampUs": 1789318356805365
+        },
+        {
+          "time": 4.8859,
+          "latency": 0.0105,
+          "timestampUs": 1789318356846982
+        },
+        {
+          "time": 4.9278,
+          "latency": 0.0106,
+          "timestampUs": 1789318356888911
+        },
+        {
+          "time": 4.9704,
+          "latency": 0.0116,
+          "timestampUs": 1789318356930440
+        },
+        {
+          "time": 5.0115,
+          "latency": 0.011,
+          "timestampUs": 1789318356972027
+        },
+        {
+          "time": 5.0524,
+          "latency": 0.0106,
+          "timestampUs": 1789318357013407
+        },
+        {
+          "time": 5.0953,
+          "latency": 0.0118,
+          "timestampUs": 1789318357055057
+        },
+        {
+          "time": 5.1359,
+          "latency": 0.0106,
+          "timestampUs": 1789318357096819
+        },
+        {
+          "time": 5.1907,
+          "latency": 0.0233,
+          "timestampUs": 1789318357139021
+        },
+        {
+          "time": 5.2265,
+          "latency": 0.018,
+          "timestampUs": 1789318357180269
+        },
+        {
+          "time": 5.2708,
+          "latency": 0.0203,
+          "timestampUs": 1789318357222213
+        },
+        {
+          "time": 5.3036,
+          "latency": 0.0114,
+          "timestampUs": 1789318357263777
+        },
+        {
+          "time": 5.3558,
+          "latency": 0.0219,
+          "timestampUs": 1789318357305465
+        },
+        {
+          "time": 5.3981,
+          "latency": 0.0226,
+          "timestampUs": 1789318357346991
+        },
+        {
+          "time": 5.4308,
+          "latency": 0.0136,
+          "timestampUs": 1789318357388819
+        },
+        {
+          "time": 5.4725,
+          "latency": 0.0139,
+          "timestampUs": 1789318357430372
+        },
+        {
+          "time": 5.5442,
+          "latency": 0.041,
+          "timestampUs": 1789318357475861
+        },
+        {
+          "time": 5.6007,
+          "latency": 0.0159,
+          "timestampUs": 1789318357557129
+        },
+        {
+          "time": 5.6433,
+          "latency": 0.0169,
+          "timestampUs": 1789318357598404
+        },
+        {
+          "time": 5.758,
+          "latency": 0.091,
+          "timestampUs": 1789318357638663
+        },
+        {
+          "time": 5.8033,
+          "latency": 0.0114,
+          "timestampUs": 1789318357763463
+        },
+        {
+          "time": 5.8475,
+          "latency": 0.0136,
+          "timestampUs": 1789318357805548
+        },
+        {
+          "time": 5.8991,
+          "latency": 0.0239,
+          "timestampUs": 1789318357846851
+        },
+        {
+          "time": 5.9457,
+          "latency": 0.0286,
+          "timestampUs": 1789318357888946
+        },
+        {
+          "time": 5.971,
+          "latency": 0.0121,
+          "timestampUs": 1789318357930672
+        },
+        {
+          "time": 6.0126,
+          "latency": 0.0121,
+          "timestampUs": 1789318357972126
+        },
+        {
+          "time": 6.0545,
+          "latency": 0.0125,
+          "timestampUs": 1789318358013699
+        },
+        {
+          "time": 6.1103,
+          "latency": 0.0268,
+          "timestampUs": 1789318358055326
+        },
+        {
+          "time": 6.1431,
+          "latency": 0.0178,
+          "timestampUs": 1789318358097356
+        },
+        {
+          "time": 6.1961,
+          "latency": 0.0272,
+          "timestampUs": 1789318358140636
+        },
+        {
+          "time": 6.2782,
+          "latency": 0.0664,
+          "timestampUs": 1789318358183623
+        },
+        {
+          "time": 6.3218,
+          "latency": 0.0263,
+          "timestampUs": 1789318358267536
+        },
+        {
+          "time": 6.3812,
+          "latency": 0.0472,
+          "timestampUs": 1789318358305551
+        },
+        {
+          "time": 6.4302,
+          "latency": 0.0132,
+          "timestampUs": 1789318358388684
+        },
+        {
+          "time": 6.5035,
+          "latency": 0.045,
+          "timestampUs": 1789318358430177
+        },
+        {
+          "time": 6.5554,
+          "latency": 0.0126,
+          "timestampUs": 1789318358514664
+        },
+        {
+          "time": 6.8126,
+          "latency": 0.2292,
+          "timestampUs": 1789318358555161
+        },
+        {
+          "time": 7.1007,
+          "latency": 0.2673,
+          "timestampUs": 1789318358805086
+        },
+        {
+          "time": 7.1488,
+          "latency": 0.0226,
+          "timestampUs": 1789318359102132
+        },
+        {
+          "time": 7.195,
+          "latency": 0.0282,
+          "timestampUs": 1789318359138465
+        },
+        {
+          "time": 7.2766,
+          "latency": 0.0571,
+          "timestampUs": 1789318359192711
+        },
+        {
+          "time": 7.3071,
+          "latency": 0.0147,
+          "timestampUs": 1789318359264228
+        },
+        {
+          "time": 7.3482,
+          "latency": 0.0148,
+          "timestampUs": 1789318359305113
+        },
+        {
+          "time": 7.3877,
+          "latency": 0.0123,
+          "timestampUs": 1789318359347104
+        },
+        {
+          "time": 7.4409,
+          "latency": 0.0238,
+          "timestampUs": 1789318359388904
+        },
+        {
+          "time": 7.4769,
+          "latency": 0.0183,
+          "timestampUs": 1789318359430351
+        },
+        {
+          "time": 7.5115,
+          "latency": 0.0112,
+          "timestampUs": 1789318359471843
+        },
+        {
+          "time": 7.5531,
+          "latency": 0.011,
+          "timestampUs": 1789318359513897
+        },
+        {
+          "time": 7.601,
+          "latency": 0.0168,
+          "timestampUs": 1789318359556324
+        },
+        {
+          "time": 7.6497,
+          "latency": 0.0242,
+          "timestampUs": 1789318359597463
+        },
+        {
+          "time": 7.6769,
+          "latency": 0.01,
+          "timestampUs": 1789318359638561
+        },
+        {
+          "time": 7.7308,
+          "latency": 0.0222,
+          "timestampUs": 1789318359680222
+        },
+        {
+          "time": 7.7608,
+          "latency": 0.0105,
+          "timestampUs": 1789318359721955
+        },
+        {
+          "time": 7.8623,
+          "latency": 0.0702,
+          "timestampUs": 1789318359763939
+        },
+        {
+          "time": 7.922,
+          "latency": 0.0465,
+          "timestampUs": 1789318359847115
+        },
+        {
+          "time": 7.9993,
+          "latency": 0.0407,
+          "timestampUs": 1789318359930256
+        },
+        {
+          "time": 8.0137,
+          "latency": 0.0132,
+          "timestampUs": 1789318359972226
+        },
+        {
+          "time": 8.0533,
+          "latency": 0.0113,
+          "timestampUs": 1789318360013868
+        },
+        {
+          "time": 8.0975,
+          "latency": 0.0136,
+          "timestampUs": 1789318360056067
+        },
+        {
+          "time": 8.1392,
+          "latency": 0.0139,
+          "timestampUs": 1789318360096919
+        },
+        {
+          "time": 8.18,
+          "latency": 0.0133,
+          "timestampUs": 1789318360138834
+        },
+        {
+          "time": 8.219,
+          "latency": 0.0104,
+          "timestampUs": 1789318360180221
+        },
+        {
+          "time": 8.2681,
+          "latency": 0.016,
+          "timestampUs": 1789318360223869
+        },
+        {
+          "time": 8.3215,
+          "latency": 0.0265,
+          "timestampUs": 1789318360266851
+        },
+        {
+          "time": 8.3501,
+          "latency": 0.0164,
+          "timestampUs": 1789318360305435
+        },
+        {
+          "time": 8.3923,
+          "latency": 0.0171,
+          "timestampUs": 1789318360346851
+        },
+        {
+          "time": 8.4455,
+          "latency": 0.0285,
+          "timestampUs": 1789318360388725
+        },
+        {
+          "time": 8.4769,
+          "latency": 0.0184,
+          "timestampUs": 1789318360430364
+        },
+        {
+          "time": 8.5126,
+          "latency": 0.0121,
+          "timestampUs": 1789318360472166
+        },
+        {
+          "time": 8.5652,
+          "latency": 0.0231,
+          "timestampUs": 1789318360513729
+        },
+        {
+          "time": 8.5968,
+          "latency": 0.0129,
+          "timestampUs": 1789318360556669
+        },
+        {
+          "time": 8.6354,
+          "latency": 0.0103,
+          "timestampUs": 1789318360596762
+        },
+        {
+          "time": 8.6777,
+          "latency": 0.0105,
+          "timestampUs": 1789318360638772
+        },
+        {
+          "time": 8.7253,
+          "latency": 0.0165,
+          "timestampUs": 1789318360680421
+        },
+        {
+          "time": 8.7611,
+          "latency": 0.011,
+          "timestampUs": 1789318360721744
+        },
+        {
+          "time": 8.8104,
+          "latency": 0.0184,
+          "timestampUs": 1789318360763754
+        },
+        {
+          "time": 8.8469,
+          "latency": 0.0134,
+          "timestampUs": 1789318360805117
+        },
+        {
+          "time": 8.8965,
+          "latency": 0.0212,
+          "timestampUs": 1789318360847081
+        },
+        {
+          "time": 8.9298,
+          "latency": 0.0127,
+          "timestampUs": 1789318360888985
+        },
+        {
+          "time": 9.0119,
+          "latency": 0.0533,
+          "timestampUs": 1789318360930433
+        },
+        {
+          "time": 9.0592,
+          "latency": 0.0158,
+          "timestampUs": 1789318361016426
+        },
+        {
+          "time": 9.1832,
+          "latency": 0.0996,
+          "timestampUs": 1789318361055312
+        },
+        {
+          "time": 9.3448,
+          "latency": 0.1363,
+          "timestampUs": 1789318361180055
+        },
+        {
+          "time": 9.3975,
+          "latency": 0.0224,
+          "timestampUs": 1789318361346630
+        },
+        {
+          "time": 9.4335,
+          "latency": 0.0166,
+          "timestampUs": 1789318361388525
+        },
+        {
+          "time": 9.4787,
+          "latency": 0.0198,
+          "timestampUs": 1789318361430570
+        },
+        {
+          "time": 9.544,
+          "latency": 0.0435,
+          "timestampUs": 1789318361472160
+        },
+        {
+          "time": 9.6119,
+          "latency": 0.0285,
+          "timestampUs": 1789318361555512
+        },
+        {
+          "time": 9.6362,
+          "latency": 0.0109,
+          "timestampUs": 1789318361596943
+        },
+        {
+          "time": 9.6779,
+          "latency": 0.0109,
+          "timestampUs": 1789318361638553
+        },
+        {
+          "time": 9.72,
+          "latency": 0.0113,
+          "timestampUs": 1789318361680392
+        },
+        {
+          "time": 9.7718,
+          "latency": 0.0217,
+          "timestampUs": 1789318361721816
+        },
+        {
+          "time": 9.813,
+          "latency": 0.0211,
+          "timestampUs": 1789318361763512
+        },
+        {
+          "time": 9.8485,
+          "latency": 0.0148,
+          "timestampUs": 1789318361805329
+        },
+        {
+          "time": 9.9146,
+          "latency": 0.0393,
+          "timestampUs": 1789318361847391
+        },
+        {
+          "time": 9.9313,
+          "latency": 0.013,
+          "timestampUs": 1789318361890103
+        },
+        {
+          "time": 9.9727,
+          "latency": 0.013,
+          "timestampUs": 1789318361932717
+        }
+      ],
+      "video_sha256": "94e16700041751fddcf637cce008ca05fcddcd6c18daf22cc54bb2b8c8a0057b",
+      "coverage": "Coverage: 10.00-second video; 20 full-timeline frames sampled at 2 fps (0.5-second interval); 2 contact sheet(s); no audio stream."
+    }
+  }
+}
