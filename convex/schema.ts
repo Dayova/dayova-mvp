@@ -155,6 +155,7 @@ export default defineSchema({
 		aiConsentUpdatedAt: v.optional(v.number()),
 		learningTimesBackfillVersion: v.optional(v.number()),
 		learningTimeIntroPromptHandledAt: v.optional(v.number()),
+		learningRoutineDismissedDateKey: v.optional(v.string()),
 		behavioralLearningTimeSuggestionDismissedFingerprint: v.optional(
 			v.string(),
 		),

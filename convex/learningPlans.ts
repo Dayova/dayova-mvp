@@ -12,6 +12,7 @@ import {
 } from "./_generated/server";
 import {
 	advanceRollingLearningPlan,
+	computeLearningTimeImpact,
 	rescheduleFutureLearningPlanSessions,
 } from "./adaptiveLearningPlan";
 import {
@@ -2749,6 +2750,173 @@ export const rescheduleAfterLearningTimesChanged = internalMutation({
 		return { rescheduledCount, unscheduledCount };
 	},
 });
+export const applyLearningTimeImpact = internalMutation({
+	args: { expectedRevision: v.optional(v.string()) },
+	returns: v.object({
+		rescheduledCount: v.number(),
+		unscheduledCount: v.number(),
+	}),
+	handler: async (ctx, args) => {
+		const owner = await requireOwnerTokenIdentifierForMutation(ctx);
+		const times = await ctx.db
+			.query("userLearningTimes")
+			.withIndex("by_ownerTokenIdentifier", (q) =>
+				q.eq("ownerTokenIdentifier", owner),
+			)
+			.take(50);
+		const impact = await computeLearningTimeImpact(
+			ctx,
+			owner,
+			times.map(({ dayOfWeek, startTime, endTime }) => ({
+				dayOfWeek,
+				startTime,
+				endTime,
+			})),
+			Date.now(),
+		);
+		if (impact.conflicts.length)
+			throwUserFacingError(
+				"Mit diesen Zeiten passen nicht alle Lernschritte vor deine Prüfungen. Deine bisherigen Zeiten bleiben unverändert.",
+			);
+		if (args.expectedRevision && args.expectedRevision !== impact.revision)
+			throwUserFacingError(
+				"Dein Plan hat sich geändert. Bitte prüfe die neue Vorschau.",
+			);
+		for (const change of impact.changes) {
+			const session = await ctx.db.get(
+				"learningPlanSessions",
+				change.sessionId,
+			);
+			if (session) await clearSessionDayEntry(ctx, session);
+		}
+		for (const change of impact.changes) {
+			await ctx.db.patch("learningPlanSessions", change.sessionId, {
+				dateKey: change.dateKey,
+				dateLabel: change.dateLabel,
+				startTime: change.startTime,
+				updatedAt: Date.now(),
+			});
+			const session = await ctx.db.get(
+				"learningPlanSessions",
+				change.sessionId,
+			);
+			const plan = await ctx.db.get("learningPlans", change.planId);
+			if (
+				session &&
+				plan?.status === "accepted" &&
+				session.planningStatus !== "provisional"
+			)
+				await syncSessionDayEntry(ctx, plan, session);
+		}
+		return { rescheduledCount: impact.changes.length, unscheduledCount: 0 };
+	},
+});
+
+export const moveSessionToday = mutation({
+	args: {
+		sessionId: v.id("learningPlanSessions"),
+		startTime: v.string(),
+		expectedUpdatedAt: v.number(),
+	},
+	returns: v.null(),
+	handler: async (ctx, args) => {
+		const owner = await requireOwnerTokenIdentifierForMutation(ctx);
+		const session = await ctx.db.get("learningPlanSessions", args.sessionId);
+		const today = getBerlinDayKey(new Date().toISOString());
+		if (!today)
+			throwUserFacingError("Das heutige Datum konnte nicht bestimmt werden.");
+		if (
+			!session ||
+			session.ownerTokenIdentifier !== owner ||
+			session.dateKey !== today ||
+			getSessionExecutionStatus(session) !== "notStarted" ||
+			session.planningStatus === "provisional" ||
+			session.updatedAt !== args.expectedUpdatedAt
+		)
+			throwUserFacingError(
+				"Dieser Lernschritt hat sich geändert. Bitte öffne die Auswahl erneut.",
+			);
+		const plan = await ctx.db.get("learningPlans", session.learningPlanId);
+		if (
+			!plan ||
+			plan.ownerTokenIdentifier !== owner ||
+			plan.status !== "accepted" ||
+			plan.examDateKey <= today
+		)
+			throwUserFacingError(
+				"Dieser Lernplan kann heute nicht mehr verschoben werden.",
+			);
+		const match = /^(\d{2}):(\d{2})$/.exec(args.startTime);
+		const hour = Number(match?.[1]);
+		const minute = Number(match?.[2]);
+		const nowTime = new Intl.DateTimeFormat("en-GB", {
+			timeZone: "Europe/Berlin",
+			hour: "2-digit",
+			minute: "2-digit",
+			hourCycle: "h23",
+		}).format(new Date());
+		if (
+			!match ||
+			hour > 23 ||
+			minute > 59 ||
+			args.startTime <= nowTime ||
+			hour * 60 + minute + session.durationMinutes > 1440
+		)
+			throwUserFacingError(
+				"Bitte wähle eine spätere Uhrzeit, zu der die ganze Einheit noch heute passt.",
+			);
+		// A provisional next step is not yet a calendar entry, but its ordering
+		// must still survive a one-off move of the committed step.
+		const siblings = await ctx.db
+			.query("learningPlanSessions")
+			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+				q.eq("learningPlanId", plan._id),
+			)
+			.take(51);
+		if (
+			siblings.length > 50 ||
+			siblings.some(
+				(next) =>
+					next.sortOrder > session.sortOrder &&
+					getSessionExecutionStatus(next) === "notStarted" &&
+					(next.dateKey < today ||
+						(next.dateKey === today &&
+							Number(next.startTime.slice(0, 2)) * 60 +
+								Number(next.startTime.slice(3)) <
+								hour * 60 + minute + session.durationMinutes)),
+			)
+		)
+			throwUserFacingError(
+				"Diese Zeit würde den nächsten Lernschritt überholen. Bitte wähle eine frühere Uhrzeit oder passe den Lernplan an.",
+			);
+		await assertNoScheduleConflict(ctx, {
+			ownerTokenIdentifier: owner,
+			dayKey: today,
+			time: args.startTime,
+			durationMinutes: session.durationMinutes,
+			excludeDayEntryId: session.dayEntryId,
+			excludeLearningPlanSessionId: session._id,
+		});
+		await ctx.db.patch("learningPlanSessions", session._id, {
+			startTime: args.startTime,
+			updatedAt: Date.now(),
+		});
+		await syncSessionDayEntry(ctx, plan, {
+			...session,
+			startTime: args.startTime,
+		});
+		const profile = await ctx.db
+			.query("users")
+			.withIndex("by_tokenIdentifier", (q) => q.eq("tokenIdentifier", owner))
+			.unique();
+		if (profile)
+			await ctx.db.patch("users", profile._id, {
+				learningRoutineDismissedDateKey: today,
+			});
+		return null;
+	},
+});
+
 export const startSession = mutation({
 	args: {
 		sessionId: v.id("learningPlanSessions"),

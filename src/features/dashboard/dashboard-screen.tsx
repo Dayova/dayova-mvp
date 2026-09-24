@@ -54,6 +54,7 @@ import {
 	DashboardNextStepCard,
 	DashboardWeeklyProgressCard,
 } from "./dashboard-product-cards";
+import { LearningRoutineCoach } from "./learning-routine-coach";
 
 const triggerDaySelectionHaptic = () => {
 	void triggerSelectionHaptic({
@@ -768,25 +769,28 @@ export function DashboardScreen() {
 					paddingBottom: Math.max(insets.bottom + 72, 104),
 				}}
 			>
-				<DashboardHighlightCarousel>
-					<DashboardNextStepCard
-						mode="screen"
-						fallbackAction={nextStepFallbackAction}
-						item={nextLearningStep}
-						isLoading={
-							entriesByDay === undefined || learningPlans === undefined
-						}
-						todayKey={todayKey}
-						onOpenFallback={openNextStepFallback}
-						onOpenItem={openItem}
-					/>
-					<DashboardWeeklyProgressCard
-						mode="screen"
-						isLoading={entriesByDay === undefined}
-						progress={weekProgress}
-						onOpenLearningPlans={openLearningPlans}
-					/>
-				</DashboardHighlightCarousel>
+				<View>
+					<DashboardHighlightCarousel>
+						<DashboardNextStepCard
+							mode="screen"
+							fallbackAction={nextStepFallbackAction}
+							item={nextLearningStep}
+							isLoading={
+								entriesByDay === undefined || learningPlans === undefined
+							}
+							todayKey={todayKey}
+							onOpenFallback={openNextStepFallback}
+							onOpenItem={openItem}
+						/>
+						<DashboardWeeklyProgressCard
+							mode="screen"
+							isLoading={entriesByDay === undefined}
+							progress={weekProgress}
+							onOpenLearningPlans={openLearningPlans}
+						/>
+					</DashboardHighlightCarousel>
+					<LearningRoutineCoach referenceTime={now.getTime()} />
+				</View>
 
 				<View className="z-10 flex-row items-center justify-between bg-background px-6 pt-5 pb-6">
 					<View className="min-w-0 flex-1 pr-4">

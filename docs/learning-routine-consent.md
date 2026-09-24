@@ -26,10 +26,19 @@ Product requirements and remaining acceptance work live in
   fingerprint. Accepting, undoing or manually changing a schedule starts a new
   observation period. Query reference time refreshes when the learning path is
   focused and once per minute while focused.
-- The existing future-session rescheduler is transactional: an incomplete
-  result aborts the entire behavioral acceptance/undo. Started/completed
-  sessions are not rescheduled. This is a safety guard, **not** a pre-consent
-  impact preview or a full-learning-plan deadline guarantee.
+- Behavioral acceptance now opens a read-only impact sheet. The same scheduling
+  calculation powers the preview and atomic application, reserves slots across
+  plans and refuses deadline conflicts or stale consent. Started/completed
+  sessions are not rescheduled. This covers the existing rolling horizon, **not**
+  a guarantee that every future topic will fit before the exam.
+- Home coaching is inline and voluntary. Earlier/later opens a time picker and
+  an explicit choice: move only today's unstarted committed step, or open regular
+  learning-time settings. The one-off mutation preserves content/progress and
+  checks ownership, revision, overlaps, date boundaries and next-step ordering.
+  Dismissal hides coaching for the day; the global behavioral snooze also applies.
+- Local start/forgotten reminders are no longer planned for started, completed,
+  partially completed, missed or adjusted sessions. Notification permission and
+  preferences remain independent.
 - One stored undo record restores the last accepted windows. It is bound to
   row identities, values and revisions and cannot overwrite subsequent edits.
   Undo also restarts observation. Notification preferences are not modified.
@@ -39,13 +48,9 @@ Product requirements and remaining acceptance work live in
 This draft is not the complete routine-coaching feature and must not be shipped
 as if all DAY-475 acceptance criteria were met:
 
-- Read-only pre-consent preview of affected future sessions/deadline conflicts,
-  sharing scheduling rules with the actual apply operation.
-- Voluntary home-screen missed-time check-in, with distinct one-off “only today”
-  and explicitly confirmed recurring changes; never infer preferences from absence.
-- Reminder lifecycle regression checks, including early completion and separate
-  notification consent.
 - Combined QA integration, native iPhone/Android tests and compact visual evidence.
+- Real-device notification cancellation/delivery and fresh-account first-plan
+  upload/AI/knowledge-check acceptance. Mocked tests do not close these gates.
 
 No backend deployment, simulator update, production OTA or real-device
 verification is implied by the automated checks. Deploy this schema together
@@ -61,5 +66,13 @@ combined QA backend with the narrower PR #651 branch.
 - `learning-plan-review-times.ui.test.tsx`: renders the actual review screen with
   suggested defaults and verifies that starting remains enabled without a time question.
 - `learning-time-suggestion-card.ui.test.tsx`: explicit actions and before/after copy.
+- `learningRoutine.test.ts`: voluntary dismissal, owner isolation, one-off
+  preservation, stale/started/overlapping rejection and read-only slot reservation.
+- `learning-time-impact-sheet.ui.test.tsx`: no automatic acceptance, cancellation,
+  revision-bound acceptance and disabled loading/stale/conflicting previews.
+- `learning-routine-coach.ui.test.tsx`: voluntary home prompt, one-off consent and
+  a separate route for regular preferences.
+- `notification-planner.test.ts`: terminal/started learning states do not retain
+  future start/forgotten notifications.
 
 These use fixtures and mocked clocks, not multi-week observations on devices.
