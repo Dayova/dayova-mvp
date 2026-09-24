@@ -73,7 +73,15 @@ describe("behavioral suggestion", () => {
 		const onContinue = jest.fn();
 		const screen = await render(
 			<LearningTimeSuggestionCard
-				entries={[{ dayOfWeek: 1, startTime: "20:00", endTime: "00:00" }]}
+				entries={[
+					{
+						dayOfWeek: 1,
+						startTime: "20:00",
+						endTime: "00:00",
+						previousStartTime: "17:00",
+						previousEndTime: "21:00",
+					},
+				]}
 				variant="behavioral"
 				isBusy={false}
 				evidenceSessionCount={5}
@@ -87,9 +95,11 @@ describe("behavioral suggestion", () => {
 		);
 
 		expect(
-			screen.getByText("Dein Lernrhythmus hat sich verschoben"),
+			screen.getByText("Passen diese Lernzeiten besser?"),
 		).toBeOnTheScreen();
-		expect(screen.getByText("Mo 20:00–Mitternacht")).toBeOnTheScreen();
+		expect(
+			screen.getByText("Mo 17:00–21:00 → 20:00–Mitternacht"),
+		).toBeOnTheScreen();
 		expect(
 			screen.getByText(/letzten 5 abgeschlossenen Lernsessions/),
 		).toBeOnTheScreen();

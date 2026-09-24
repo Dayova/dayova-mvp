@@ -1,5 +1,10 @@
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import {
+	Stack,
+	useFocusEffect,
+	useLocalSearchParams,
+	useRouter,
+} from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	ActivityIndicator,
@@ -299,6 +304,13 @@ export default function LearningPlanSessionsScreen() {
 	const respondToBehavioralSuggestion = useMutation(
 		api.learningTimes.respondToBehavioralSuggestion,
 	);
+	const undoBehavioralSuggestion = useMutation(
+		api.learningTimes.undoBehavioralSuggestion,
+	);
+	const canUndoBehavioralSuggestion = useQuery(
+		api.learningTimes.canUndoBehavioralSuggestion,
+		user && isConvexAuthenticated ? {} : "skip",
+	);
 	const dismissLearningTimePrompt = useMutation(
 		api.learningPlans.dismissLearningTimePrompt,
 	);
@@ -308,7 +320,18 @@ export default function LearningPlanSessionsScreen() {
 	const [learningTimeActionError, setLearningTimeActionError] = useState<
 		string | null
 	>(null);
-	const [behaviorSuggestionReferenceTime] = useState(() => Date.now());
+	const [behaviorSuggestionReferenceTime, setBehaviorSuggestionReferenceTime] =
+		useState(() => Date.now());
+	useFocusEffect(
+		useCallback(() => {
+			setBehaviorSuggestionReferenceTime(Date.now());
+			const interval = setInterval(
+				() => setBehaviorSuggestionReferenceTime(Date.now()),
+				60_000,
+			);
+			return () => clearInterval(interval);
+		}, []),
+	);
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && planId
@@ -503,6 +526,34 @@ export default function LearningPlanSessionsScreen() {
 					<View />
 				) : selectedSession ? (
 					<>
+						{canUndoBehavioralSuggestion ? (
+							<View className="mb-4 gap-3">
+								<Text className="font-poppins text-body-3 text-secondary-text">
+									Deine Lernzeiten wurden angepasst. Du kannst die letzte
+									Übernahme rückgängig machen, solange du die Zeiten nicht
+									erneut geändert hast.
+								</Text>
+								<Button
+									variant="neutral"
+									disabled={isLearningTimeActionBusy}
+									onPress={() =>
+										void runLearningTimeAction(() =>
+											undoBehavioralSuggestion({}),
+										)
+									}
+								>
+									<Text>Änderung rückgängig machen</Text>
+								</Button>
+								{learningTimeActionError ? (
+									<Text
+										accessibilityRole="alert"
+										className="font-poppins text-body-4 text-destructive"
+									>
+										{learningTimeActionError}
+									</Text>
+								) : null}
+							</View>
+						) : null}
 						{showLearningTimeReminder && learningTimeSuggestion ? (
 							<View className="gap-3">
 								<LearningTimeSuggestionCard
