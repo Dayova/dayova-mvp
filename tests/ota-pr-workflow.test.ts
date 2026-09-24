@@ -127,7 +127,12 @@ const evaluate = (expression: string, context: Record<string, unknown>) =>
 		contains: (value: string, part: string) => value.includes(part),
 	});
 
-const event = (eventName: string, association = "MEMBER", fork = false) => ({
+const event = (
+	eventName: string,
+	association = "MEMBER",
+	fork = false,
+	baseRef = "main",
+) => ({
 	event_name: eventName,
 	sha: "0123456789abcdef0123456789abcdef01234567",
 	ref_name: eventName === "push" ? "main" : "feature",
@@ -142,12 +147,17 @@ const event = (eventName: string, association = "MEMBER", fork = false) => ({
 					full_name: fork ? "external/fork" : "Dayova/dayova-mvp",
 				},
 			},
-			base: { repo: { id: 123, full_name: "Dayova/dayova-mvp" } },
+			base: { ref: baseRef, repo: { id: 123, full_name: "Dayova/dayova-mvp" } },
 		},
 	},
 });
 
 describe("PR OTA workflow routing", () => {
+	it("starts for PRs targeting stack branches as well as main", () => {
+		expect(workflow.on.pull_request.branches).toBeUndefined();
+		expect(workflow.on.pull_request.types).toContain("synchronize");
+	});
+
 	it.each([undefined, null])("rejects missing repository IDs (%s)", (id) => {
 		const github = event("pull_request");
 		const pullRequest = github.event.pull_request;
@@ -173,6 +183,11 @@ describe("PR OTA workflow routing", () => {
 		["owner PR", event("pull_request", "OWNER"), true],
 		["member PR", event("pull_request"), true],
 		["collaborator PR", event("pull_request", "COLLABORATOR"), true],
+		[
+			"trusted stacked PR",
+			event("pull_request", "MEMBER", false, "codex/parent"),
+			true,
+		],
 		["untrusted PR", event("pull_request", "CONTRIBUTOR"), false],
 		["owner fork PR", event("pull_request", "OWNER", true), false],
 		["member fork PR", event("pull_request", "MEMBER", true), false],

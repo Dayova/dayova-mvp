@@ -67,8 +67,9 @@ uncommitted upload is not acceptable provenance.
 
 ### Pull request feedback
 
-CI checks OTA compatibility before merge for trusted contributors' PRs targeting
-`main` from this repository. After lint, typecheck and tests pass, the same
+CI checks OTA compatibility before merge for trusted contributors' PRs from
+this repository, including stacked PRs targeting another branch. After lint,
+typecheck and tests pass, the same
 production fingerprint and OTA jobs used on `main` verify both platform exports
 and compare the candidate with the distributed-binary baseline. Fork PRs do not
 run the production-scoped quality-check, fingerprint, or OTA jobs, including
@@ -80,19 +81,20 @@ unconfirmed result when an upstream job fails or is skipped. The native EAS
 `github-comment` job posts that same rendered report to the PR conversation using
 the existing GitHub integration.
 
-The GitHub **Keep OTA comment current** workflow marks an existing report
-**⏳ Latest commit not yet evaluated** when a PR is updated. It replaces the old
-verdict, names the latest and previously assessed commits, and links to current
-checks. The final EAS report replaces that pending message. Until then,
-compatibility remains unconfirmed, including when a run is canceled.
+For PRs targeting `main`, the GitHub **Keep OTA comment current** workflow
+attempts to mark an existing report **⏳ Latest commit not yet evaluated** when
+a PR is updated. Its GitHub
+Actions token currently cannot edit Expo bot comments (HTTP 403), so this
+pending edit can fail. The final EAS report can still update Expo's own comment.
+Until its checked commit matches the live PR head, compatibility remains
+unconfirmed, including when a run is canceled.
 
-The notifier also handles EAS comment events: it reads the live PR head and
-corrects late results for older commits, while preserving results for the current
-head. Updates are asynchronous; always compare the report's commit with the PR
-head. It edits the same Expo bot comment and preserves EAS's comment identifier.
-It uses GitHub's automatic token with issue-comment write and PR read permissions,
-does not check out or execute PR code, and needs no production credentials.
-The notifier activates after its workflow is merged into the default branch.
+The notifier also handles EAS comment events and reads the live PR head. Its
+permission limitation means it cannot currently correct late results in an
+Expo bot comment. Updates are asynchronous; always compare the report's commit
+with the PR head. The notifier uses GitHub's automatic token with issue-comment
+write and PR read permissions, does not check out or execute PR code, and needs
+no production credentials.
 
 Incompatibility is advisory: a legitimate native change can merge, but
 production OTA remains blocked until the required
