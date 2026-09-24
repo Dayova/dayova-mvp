@@ -16,7 +16,6 @@ import {
 	Clock3,
 	NotebookPen,
 	Timer,
-	Trash2,
 } from "~/components/ui/icon";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
@@ -531,7 +530,6 @@ export default function EntryDetailScreen() {
 				) : null}
 				{canDelete ? (
 					<Button className="mt-5" variant="destructive" onPress={handleDelete}>
-						<Trash2 size={18} color={colors.onPrimary} strokeWidth={2.3} />
 						<Text>Eintrag löschen</Text>
 					</Button>
 				) : null}

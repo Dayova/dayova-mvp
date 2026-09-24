@@ -32,9 +32,9 @@ const buttonVariants = cva(
 					Platform.select({ web: "hover:bg-button-neutral/90" }),
 				),
 				destructive: cn(
-					"border-destructive border-hairline bg-destructive active:bg-destructive/90",
+					"border border-danger-action bg-danger-subtle active:opacity-80",
 					Platform.select({
-						web: "hover:bg-destructive/90 focus-visible:ring-destructive/30",
+						web: "hover:opacity-80 focus-visible:ring-destructive/20",
 					}),
 				),
 				outline: cn(
@@ -82,7 +82,7 @@ const buttonTextVariants = cva(
 			variant: {
 				default: "text-white",
 				neutral: "text-background",
-				destructive: "text-white",
+				destructive: "text-danger-action",
 				outline: "text-background",
 				ghost: "group-active:text-primary-strong",
 				link: cn(

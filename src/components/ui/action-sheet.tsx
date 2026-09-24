@@ -91,7 +91,6 @@ function ActionSheet<T extends string>({
 									? "text-center font-semibold text-body-1"
 									: "text-body-2",
 							)}
-							numberOfLines={2}
 						>
 							{option.title}
 						</Text>
@@ -101,7 +100,6 @@ function ActionSheet<T extends string>({
 									"font-poppins text-body-4 text-secondary-text",
 									isTile && "text-center",
 								)}
-								numberOfLines={2}
 							>
 								{option.description}
 							</Text>

@@ -69,11 +69,11 @@ function AiConsentSheet({
 				{isBusy ? (
 					<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
 				) : (
-					<Text>Fertig</Text>
+					<Text className="shrink text-center">Fertig</Text>
 				)}
 			</Button>
 			<Button disabled={isBusy} onPress={onWithdraw} variant="neutral">
-				<Text>Zustimmung widerrufen</Text>
+				<Text className="shrink text-center">Zustimmung widerrufen</Text>
 			</Button>
 		</View>
 	) : (
@@ -82,7 +82,7 @@ function AiConsentSheet({
 				{isBusy ? (
 					<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
 				) : (
-					<Text>Zustimmen und fortfahren</Text>
+					<Text className="shrink text-center">Zustimmen und fortfahren</Text>
 				)}
 			</Button>
 			<Button
@@ -90,7 +90,7 @@ function AiConsentSheet({
 				onPress={isRequired ? onDecline : onClose}
 				variant="neutral"
 			>
-				<Text>Nicht zustimmen</Text>
+				<Text className="shrink text-center">Nicht zustimmen</Text>
 			</Button>
 		</View>
 	);
@@ -104,7 +104,6 @@ function AiConsentSheet({
 			dismissible={!isRequired && !isBusy}
 			showCloseButton={!isRequired}
 			closeAccessibilityLabel="KI-Datenschutz schließen"
-			size="content"
 			scrollable
 			footer={footer}
 		>
@@ -156,13 +155,13 @@ function AiConsentSheet({
 
 				<Button
 					accessibilityHint="Öffnet die Dayova-Datenschutzerklärung."
-					className="self-start px-0 shadow-none"
+					className="max-w-full self-start px-0 shadow-none"
 					disabled={isBusy}
 					onPress={onOpenPrivacy}
 					variant="link"
 					size="sm"
 				>
-					<Text>Mehr zum Datenschutz</Text>
+					<Text className="shrink">Mehr zum Datenschutz</Text>
 				</Button>
 				{errorMessage ? <ErrorMessage>{errorMessage}</ErrorMessage> : null}
 			</View>

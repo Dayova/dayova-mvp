@@ -14,7 +14,6 @@ import {
 	CalendarDays,
 	ChevronDown,
 	Clock3,
-	Trash2,
 } from "~/components/ui/icon";
 import { Input } from "~/components/ui/input";
 import {
@@ -137,15 +136,16 @@ function LessonEditorCard({
 							{weekday.shortLabel}
 						</Text>
 					</Pressable>
-					<Pressable
+					<Button
 						accessibilityLabel={`${lessonLabel} entfernen`}
 						accessibilityRole="button"
-						hitSlop={4}
-						className="h-11 w-11 items-center justify-center rounded-full bg-muted active:opacity-75"
+						variant="destructive"
+						size="sm"
+						className="shrink"
 						onPress={onRemove}
 					>
-						<Trash2 size={18} color={colors.wrong} strokeWidth={2} />
-					</Pressable>
+						<Text className="shrink text-center">Entfernen</Text>
+					</Button>
 				</View>
 			</View>
 

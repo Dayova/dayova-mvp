@@ -126,7 +126,7 @@ variant or `accessibilityRole="header"`; the primitive owns the documented
 large-title scaling curve. Do not reproduce `maxFontSizeMultiplier` values in
 individual screens. Non-heading text keeps unrestricted system scaling.
 
-Light-mode pill buttons have exactly two visual appearances: the light-mode
+Non-destructive light-mode pill buttons have two visual appearances: the light-mode
 gradient button and the black button using the primary text color `#1A1A1A`.
 There are no white pill buttons in the current light-mode design system. Both
 appearances are 56px tall with a 44px radius and a 0.3px inside stroke: gradient
@@ -139,6 +139,22 @@ Production screens use the shared `Button` and `BackButton` components for
 these actions. A screen-local clone is not an allowed visual variant; add a
 shared variant and update this context if a new interaction contract is truly
 needed.
+
+### Popup and destructive-action follow-up — 24 September 2026
+
+Philipp's supplied popup reference supersedes the inline title/close layout:
+the drag handle stays; the close control occupies its own right-aligned row at
+every text size, followed by 20px to the full-width title and 12px to supporting
+copy. Content follows with 24px spacing. Content sizing and accessible scrolling
+from DAY-470 remain intact. Busy/non-dismissible dialogs do not reserve an empty
+close-button row.
+
+Destructive buttons are an explicit functional exception to the two neutral/
+primary appearances above: use the shared `destructive` Button variant, with a
+1px red outline, subtle red fill, and contrasting red text, without a decorative
+icon. `danger-action` and `danger-subtle` are paired action tokens in both themes;
+the existing error/status `destructive` token is unchanged. Loading indicators
+use `dangerAction`. Keep confirmations and disabled/busy guards unchanged.
 
 The empty timetable uses one full-width gradient import button and a full-width
 neutral manual-entry button. File and camera are equal sources inside the shared
