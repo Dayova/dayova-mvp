@@ -6,7 +6,7 @@ import {
 	type TextInput,
 	View,
 } from "react-native";
-import { AddIcon } from "~/components/ui/add-icon";
+import { AddOptionButton } from "~/components/ui/add-option-button";
 import { Button } from "~/components/ui/button";
 import {
 	DayovaSheetFrame,
@@ -151,17 +151,7 @@ function SubjectPickerContent({
 				</View>
 			) : null}
 
-			<Pressable
-				accessibilityLabel="Fach hinzufügen"
-				accessibilityRole="button"
-				className="min-h-16 flex-row items-center gap-4 rounded-[22px] border border-primary/50 border-dashed bg-card px-5 py-3 active:opacity-80"
-				onPress={onAdd}
-			>
-				<AddIcon />
-				<Text className="flex-1 font-poppins font-semibold text-body-2 text-primary">
-					Fach hinzufügen
-				</Text>
-			</Pressable>
+			<AddOptionButton label="Fach hinzufügen" onPress={onAdd} />
 		</View>
 	);
 }

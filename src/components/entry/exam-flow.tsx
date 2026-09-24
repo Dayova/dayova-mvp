@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { type TextInput, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import { AddOptionButton } from "~/components/ui/add-option-button";
+import { Button } from "~/components/ui/button";
+import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
 import {
 	Field,
 	FieldAccessory,
@@ -15,7 +18,6 @@ import {
 	Mic,
 	NotebookPen,
 	Pencil,
-	Plus,
 } from "~/components/ui/icon";
 import { Input } from "~/components/ui/input";
 import {
@@ -36,8 +38,6 @@ const EXAM_TYPE_OPTIONS = [
 	{ label: "Präsentation", Icon: Computer },
 ] as const;
 
-const CUSTOM_EXAM_TYPE_LABEL = "Andere Prüfungsart";
-
 function ExamTypePicker({
 	selectedValue,
 	onSelect,
@@ -45,76 +45,84 @@ function ExamTypePicker({
 	selectedValue: string;
 	onSelect: (value: string) => void;
 }) {
-	const customInputRef = useRef<TextInput>(null);
-	const [isCustomSelected, setIsCustomSelected] = useState(
-		() =>
-			selectedValue.length > 0 &&
-			!EXAM_TYPE_OPTIONS.some((option) => option.label === selectedValue),
-	);
-
-	useEffect(() => {
-		if (!isCustomSelected) return;
-		const frame = requestAnimationFrame(() => customInputRef.current?.focus());
-		return () => cancelAnimationFrame(frame);
-	}, [isCustomSelected]);
-
-	const selectPreset = (value: string) => {
-		setIsCustomSelected(false);
-		onSelect(value);
+	const [showAdd, setShowAdd] = useState(false);
+	const [draft, setDraft] = useState("");
+	const isCustom =
+		selectedValue.length > 0 &&
+		!EXAM_TYPE_OPTIONS.some((option) => option.label === selectedValue);
+	const cleanedName = draft.trim().replace(/\s+/g, " ");
+	const close = () => setShowAdd(false);
+	const save = () => {
+		if (!cleanedName) return;
+		const preset = EXAM_TYPE_OPTIONS.find(
+			(option) =>
+				option.label.toLocaleLowerCase("de") ===
+				cleanedName.toLocaleLowerCase("de"),
+		);
+		onSelect(preset?.label ?? cleanedName);
+		close();
 	};
-
-	const selectCustom = () => {
-		if (isCustomSelected) {
-			customInputRef.current?.focus();
-			return;
-		}
-		setIsCustomSelected(true);
-		onSelect("");
-	};
-
 	return (
-		<View className="gap-3" accessibilityRole="radiogroup">
-			{EXAM_TYPE_OPTIONS.map((option) => {
-				const isSelected = !isCustomSelected && selectedValue === option.label;
-
-				return (
+		<View className="gap-3">
+			<View className="gap-3" accessibilityRole="radiogroup">
+				{EXAM_TYPE_OPTIONS.map((option) => (
 					<SingleSelectOption
 						key={option.label}
 						Icon={option.Icon}
 						label={option.label}
-						selected={isSelected}
-						onPress={() => selectPreset(option.label)}
+						selected={selectedValue === option.label}
+						onPress={() => onSelect(option.label)}
 					/>
-				);
-			})}
-
-			<SingleSelectOption
-				Icon={Plus}
-				label={CUSTOM_EXAM_TYPE_LABEL}
-				selected={isCustomSelected}
-				onPress={selectCustom}
+				))}
+				{isCustom ? (
+					<SingleSelectOption
+						Icon={Pencil}
+						label={selectedValue}
+						selected
+						onPress={() => {
+							setDraft(selectedValue);
+							setShowAdd(true);
+						}}
+					/>
+				) : null}
+			</View>
+			<AddOptionButton
+				label="Prüfungsart hinzufügen"
+				onPress={() => {
+					setDraft(isCustom ? selectedValue : "");
+					setShowAdd(true);
+				}}
 			/>
-
-			{isCustomSelected ? (
-				<Animated.View
-					entering={FadeInDown.duration(220)}
-					className="gap-2 pt-1"
-				>
-					<Text className="font-poppins text-body-4 text-text">
-						Eigene Prüfungsart
-					</Text>
+			<DayovaSheetFrame
+				visible={showAdd}
+				onClose={close}
+				title="Prüfungsart hinzufügen"
+				description="Gib eine Prüfungsart ein, die noch nicht in der Liste steht. Sie wird für diese Prüfung verwendet."
+				closeAccessibilityLabel="Prüfungsart hinzufügen schließen"
+				scrollable
+				size="content"
+			>
+				<View className="gap-4">
 					<View className="min-h-16 flex-row items-center rounded-input border border-border bg-card px-5">
 						<Input
-							ref={customInputRef}
-							value={selectedValue}
-							onChangeText={onSelect}
+							accessibilityLabel="Name der Prüfungsart"
+							autoCapitalize="words"
+							maxLength={60}
 							placeholder="Zum Beispiel Vokabeltest"
 							returnKeyType="done"
-							maxLength={60}
+							value={draft}
+							onChangeText={setDraft}
+							onSubmitEditing={save}
 						/>
 					</View>
-				</Animated.View>
-			) : null}
+					<Button disabled={!cleanedName} onPress={save}>
+						<Text>Prüfungsart hinzufügen</Text>
+					</Button>
+					<Button variant="outline" onPress={close}>
+						<Text>Abbrechen</Text>
+					</Button>
+				</View>
+			</DayovaSheetFrame>
 		</View>
 	);
 }
