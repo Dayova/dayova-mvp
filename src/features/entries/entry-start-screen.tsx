@@ -2,7 +2,11 @@ import { useLocalSearchParams } from "expo-router";
 import { CommonActions, useNavigation } from "expo-router/react-navigation";
 import { useLayoutEffect } from "react";
 import { useEntryDraft } from "./entry-draft";
-import { type EntryParams, EXAM_RESUME_ROUTES } from "./entry-routes";
+import {
+	type EntryParams,
+	EXAM_RESUME_ROUTES,
+	resolveEntryStartParams,
+} from "./entry-routes";
 import { EntryStepScreen } from "./entry-step-screen";
 
 export function EntryStartScreen() {
@@ -10,13 +14,10 @@ export function EntryStartScreen() {
 	const { draft, initialized, initialize } = useEntryDraft();
 	const params = useLocalSearchParams<EntryParams>();
 	useLayoutEffect(() => {
-		if (initialized || !initialize(params)) return;
-		if (
-			params.type === "exam" &&
-			params.step === "learningAvailability" &&
-			params.subject?.trim() &&
-			params.examTypeLabel?.trim()
-		) {
+		if (initialized) return;
+		const entry = resolveEntryStartParams(params);
+		if (!initialize(entry.params)) return;
+		if (entry.restoreExamHistory) {
 			// Old resume URLs still enter here. Rebuild real predecessors once,
 			// so Back from a resumed exam visits Date, Subject, then Exam type.
 			navigation.dispatch(

@@ -207,6 +207,7 @@ beforeEach(() => {
 	mockParams = {
 		type: "exam",
 		step: "learningAvailability",
+		examDayEntryId: "exam-1",
 		subject: "Biologie",
 		examTypeLabel: "Klassenarbeit",
 		dayKey: "2026-09-30",
@@ -252,8 +253,8 @@ describe("exam creation across the topics boundary", () => {
 			topicDescription: "Zellteilung und Mitose",
 			examDayEntryId: "exam-1",
 		});
-		expect(mockCreateEntry).toHaveBeenCalledTimes(1);
-		expect(mockUpdateEntry).toHaveBeenCalledTimes(1);
+		expect(mockCreateEntry).not.toHaveBeenCalled();
+		expect(mockUpdateEntry).toHaveBeenCalledTimes(2);
 		await screen.unmount();
 	});
 
@@ -383,6 +384,47 @@ describe("entry native history and shared answers", () => {
 		).toBeOnTheScreen();
 	});
 
+	test.each([
+		["missing exam ID", { dayKey: "2026-09-30" }],
+		["missing date", { examDayEntryId: "exam-1" }],
+		["invalid date", { examDayEntryId: "exam-1", dayKey: "2026-02-30" }],
+	])("starts a clean flow for a resume with %s", async (_reason, fields) => {
+		mockParams = {
+			type: "exam",
+			step: "learningAvailability",
+			subject: "Biologie",
+			examTypeLabel: "Klassenarbeit",
+			...fields,
+		};
+		const screen = await render(<NewEntryScreen />);
+		expect(screen.getByTestId("entry-history").props.children).toBe("index");
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+		expect(
+			screen.getByRole("radio", { name: "Klassenarbeit" }).props
+				.accessibilityState.selected,
+		).toBe(false);
+		expect(mockUpdateEntry).not.toHaveBeenCalled();
+	});
+
+	test("never updates an old exam from an incomplete resume link", async () => {
+		mockParams = {
+			type: "exam",
+			step: "learningAvailability",
+			examDayEntryId: "exam-1",
+			subject: "Biologie",
+			examTypeLabel: "Klassenarbeit",
+		};
+		const screen = await render(<NewEntryScreen />);
+		await fireEvent.press(screen.getByRole("radio", { name: "Klausur" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(screen.getByRole("radio", { name: "Chemie" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(mockCreateEntry).toHaveBeenCalledTimes(1);
+		expect(mockUpdateEntry).not.toHaveBeenCalled();
+	});
+
 	test("a new flow cannot inherit answers from a discarded flow", async () => {
 		mockParams = { type: "exam" };
 		let screen = await render(<NewEntryScreen />);
@@ -415,7 +457,7 @@ describe("entry native history and shared answers", () => {
 
 	test("blocks repeated saves and Back while a save is pending, then recovers after failure", async () => {
 		let rejectSave: (reason: Error) => void = () => {};
-		mockCreateEntry.mockImplementationOnce(
+		mockUpdateEntry.mockImplementationOnce(
 			() =>
 				new Promise((_resolve, reject) => {
 					rejectSave = reject;
@@ -429,7 +471,7 @@ describe("entry native history and shared answers", () => {
 		expect(screen.getByTestId("entry-history").props.children).toBe(
 			"index,subject,date,availability",
 		);
-		expect(mockCreateEntry).toHaveBeenCalledTimes(1);
+		expect(mockUpdateEntry).toHaveBeenCalledTimes(1);
 		await act(() => rejectSave(new Error("Offline")));
 		expect(screen.getByText("Offline")).toBeOnTheScreen();
 		await act(() => mockProgress.onBack());

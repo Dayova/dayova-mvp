@@ -30,6 +30,23 @@ and incomplete resume, fresh-draft isolation, homework notes, duplicate saves,
 and recovery after a failed save. External destinations are mocked in these tests;
 real native route replacement is checked below.
 
+### 2026-09-24 resume-link review follow-up
+
+The review found that a partial availability URL could restore the full stack
+without a saved exam ID or valid date. The first-step initializer now accepts a
+resume only when its exam ID, subject, exam type, and canonical day key are all
+present and valid. An incomplete link starts a fresh exam at Exam type and does
+not retain the old exam ID or prefills. This prevents saving a partial link from
+silently changing the referenced exam's date. The rendered navigation regression
+failed on the original code for missing ID, missing date, and invalid date; it
+passes after the fix. A save-path test also confirms that a restarted flow cannot
+update the old exam. A complete cold resume still restores all predecessors.
+
+After this follow-up, local validation passed: 67 Jest suites / 292 tests,
+118 Vitest files / 764 tests, TypeScript, Biome, ESLint, and whitespace checks.
+The native recordings below predate this URL-validation change; they remain
+evidence for the unchanged gesture mechanics and the complete resume path.
+
 ## Native test scope
 
 Native verification uses isolated data and the actual entry routes, provider,

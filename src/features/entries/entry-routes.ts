@@ -1,3 +1,5 @@
+import { getDayKey, parseDayKey } from "~/lib/day-key";
+
 export const ENTRY_AVAILABILITY_PATH = "/entry/new/availability";
 
 export type EntryStep =
@@ -41,3 +43,24 @@ export const EXAM_RESUME_ROUTES = [
 	"date",
 	"availability",
 ] as const;
+
+export function resolveEntryStartParams(params: EntryParams) {
+	const examResumeRequested =
+		params.type === "exam" &&
+		(params.step === "learningAvailability" || Boolean(params.examDayEntryId));
+	if (!examResumeRequested) return { params, restoreExamHistory: false };
+
+	const parsedDay = parseDayKey(params.dayKey);
+	const restoreExamHistory = Boolean(
+		params.step === "learningAvailability" &&
+			params.examDayEntryId?.trim() &&
+			params.subject?.trim() &&
+			params.examTypeLabel?.trim() &&
+			parsedDay &&
+			getDayKey(parsedDay) === params.dayKey,
+	);
+
+	return restoreExamHistory
+		? { params, restoreExamHistory }
+		: { params: { type: "exam" }, restoreExamHistory: false };
+}
