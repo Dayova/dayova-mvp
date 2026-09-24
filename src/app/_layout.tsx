@@ -89,7 +89,7 @@ function AppNavigator() {
 							}}
 						/>
 						<Stack.Screen
-							name="timetable/index"
+							name="timetable"
 							options={{
 								contentStyle: { backgroundColor: colors.background },
 								gestureEnabled: true,

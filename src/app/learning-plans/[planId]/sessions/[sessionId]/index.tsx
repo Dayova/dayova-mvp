@@ -24,8 +24,8 @@ import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
 import { ChoiceList } from "~/features/learning-plans/choice-list";
 import { LearningSessionCompletion } from "~/features/learning-plans/learning-session-completion";
-import { getLearningSessionAnalysisDestination } from "~/features/learning-plans/session-analysis-navigation";
 import { learningSessionAnalyticsProperties } from "~/features/learning-plans/session-analytics";
+import { getLearningSessionCompletionDestination } from "~/features/learning-plans/session-completion-navigation";
 import { FeedbackView } from "~/features/learning-plans/session-feedback";
 import { getLearningSessionBackTarget } from "~/features/learning-plans/session-navigation";
 import {
@@ -579,7 +579,7 @@ export default function LearningSessionContentScreen() {
 		}
 	};
 
-	const completeAndOpenAnalysis = async () => {
+	const completeAndOpenLearningPlan = async () => {
 		if (!sessionId || isBusy) return;
 
 		setIsBusy(true);
@@ -601,10 +601,10 @@ export default function LearningSessionContentScreen() {
 					},
 				);
 			}
-			router.dismissTo(getLearningSessionAnalysisDestination(planId));
+			router.dismissTo(getLearningSessionCompletionDestination(planId));
 		} catch (error) {
 			setErrorMessage(
-				getErrorMessage(error, "Die Analyse konnte nicht geöffnet werden."),
+				getErrorMessage(error, "Der Lernplan konnte nicht geöffnet werden."),
 			);
 		} finally {
 			setIsBusy(false);
@@ -898,7 +898,7 @@ export default function LearningSessionContentScreen() {
 								<View
 									accessible
 									accessibilityLabel={`Verbleibende Zeit: ${formatRemainingTime(displayedRemainingSeconds)}`}
-									className="min-h-12 min-w-[92px] flex-row items-center justify-center gap-2 rounded-full border-hairline border-praxis/20 bg-praxis-subtle px-4 shadow-black/5 shadow-sm"
+									className="min-h-12 min-w-[92px] flex-row items-center justify-center gap-2 rounded-full border-hairline border-praxis/20 bg-praxis-subtle px-4"
 								>
 									<Timer
 										size={18}
@@ -1005,7 +1005,7 @@ export default function LearningSessionContentScreen() {
 						onPrimary={
 							completionPhase === "theory"
 								? completeAndLeave
-								: completeAndOpenAnalysis
+								: completeAndOpenLearningPlan
 						}
 						isBusy={isBusy}
 					/>

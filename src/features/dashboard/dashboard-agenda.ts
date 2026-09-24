@@ -275,3 +275,7 @@ export const findNextActionableAgendaItem = ({
 				item.kind === "learningSession" &&
 				!isDashboardAgendaItemPast({ item, todayKey, currentMinutes }),
 		);
+
+// Filter by origin, not subject/title: homework and exams must stay visible.
+export const getVisibleDashboardEntries = (entries: DayEntry[]): DayEntry[] =>
+	entries.filter((entry) => entry.source !== "timetable");
