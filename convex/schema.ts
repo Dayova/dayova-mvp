@@ -219,6 +219,23 @@ export default defineSchema({
 		),
 		behavioralLearningTimeSuggestionSnoozedFingerprint: v.optional(v.string()),
 		behavioralLearningTimeSuggestionSnoozedAt: v.optional(v.number()),
+		behavioralLearningTimeObservationStartedAt: v.optional(v.number()),
+		behavioralLearningTimeUndo: v.optional(
+			v.object({
+				expectedSchedule: v.string(),
+				entries: v.array(
+					v.object({
+						id: v.id("userLearningTimes"),
+						startTime: v.string(),
+						endTime: v.string(),
+						preferenceStatus: v.optional(
+							v.union(v.literal("systemDefault"), v.literal("confirmed")),
+						),
+						proposedForLearningPlanId: v.optional(v.id("learningPlans")),
+					}),
+				),
+			}),
+		),
 	})
 		.index("by_tokenIdentifier", ["tokenIdentifier"])
 		.index("by_clerkId", ["clerkId"])
@@ -895,6 +912,10 @@ export default defineSchema({
 			"dateKey",
 		])
 		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
+		.index("by_ownerTokenIdentifier_and_startedAt", [
+			"ownerTokenIdentifier",
+			"startedAt",
+		])
 		.index("by_dateKey", ["dateKey"]),
 	learningSessionContentItems: defineTable({
 		ownerTokenIdentifier: v.string(),

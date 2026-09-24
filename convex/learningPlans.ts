@@ -50,7 +50,11 @@ import {
 import { isLearningSessionCompositionEligible } from "./learningSessionComposition";
 import { deleteSessionLearningDataForSession } from "./learningSessionContent";
 import { alignSessionDurationReferences } from "./learningSessionDurationText";
-import { deriveBehavioralLearningTimeSuggestion } from "./learningTimeBehavior";
+import {
+	BEHAVIOR_OBSERVATION_WINDOW_MS,
+	deriveBehavioralLearningTimeSuggestion,
+	isBehavioralSuggestionSnoozed,
+} from "./learningTimeBehavior";
 import {
 	learningEvidenceDimensionValidator,
 	learningTopicValidator,
@@ -70,7 +74,6 @@ const MAX_SCHEDULING_DAY_ENTRIES = 500;
 const MAX_SCHEDULING_LOOKAHEAD_DAYS = 366;
 const MIN_ROLLING_HORIZON_MINUTES = 20;
 const MAX_BEHAVIOR_SESSIONS = 30;
-const BEHAVIOR_SUGGESTION_SNOOZE_MS = 14 * 24 * 60 * 60 * 1_000;
 const MIN_DIAGNOSTIC_QUESTION_COUNT = 5;
 const MAX_DIAGNOSTIC_QUESTION_COUNT = 10;
 // Convex Node actions have a 10-minute platform ceiling. Allow one extra minute
@@ -1302,8 +1305,15 @@ export const getSnapshot = query({
 			getOwnerUser(ctx, ownerTokenIdentifier),
 			ctx.db
 				.query("learningPlanSessions")
-				.withIndex("by_ownerTokenIdentifier", (q) =>
-					q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+				.withIndex("by_ownerTokenIdentifier_and_startedAt", (q) =>
+					q
+						.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+						.gte(
+							"startedAt",
+							(args.behaviorSuggestionReferenceTime ?? 0) -
+								BEHAVIOR_OBSERVATION_WINDOW_MS,
+						)
+						.lte("startedAt", args.behaviorSuggestionReferenceTime ?? 0),
 				)
 				.order("desc")
 				.take(MAX_BEHAVIOR_SESSIONS),
@@ -1323,21 +1333,17 @@ export const getSnapshot = query({
 				})),
 				learningTimes,
 				grade: user?.grade,
+				referenceTime: args.behaviorSuggestionReferenceTime ?? 0,
+				observationStartedAt: user?.behavioralLearningTimeObservationStartedAt,
 			}) ?? undefined;
 		const behavioralSuggestionIsDismissed = Boolean(
 			behavioralLearningTimeSuggestion &&
 				user?.behavioralLearningTimeSuggestionDismissedFingerprint ===
 					behavioralLearningTimeSuggestion.fingerprint,
 		);
-		const behavioralSuggestionIsSnoozed = Boolean(
-			behavioralLearningTimeSuggestion &&
-				user?.behavioralLearningTimeSuggestionSnoozedFingerprint ===
-					behavioralLearningTimeSuggestion.fingerprint &&
-				user.behavioralLearningTimeSuggestionSnoozedAt !== undefined &&
-				(args.behaviorSuggestionReferenceTime === undefined ||
-					args.behaviorSuggestionReferenceTime -
-						user.behavioralLearningTimeSuggestionSnoozedAt <
-						BEHAVIOR_SUGGESTION_SNOOZE_MS),
+		const behavioralSuggestionIsSnoozed = isBehavioralSuggestionSnoozed(
+			user?.behavioralLearningTimeSuggestionSnoozedAt,
+			args.behaviorSuggestionReferenceTime ?? 0,
 		);
 		const progress = await ctx.db
 			.query("learningPlanGenerationProgress")

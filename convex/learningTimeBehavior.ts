@@ -6,7 +6,16 @@ import {
 } from "./learningTimePolicy";
 
 const MIN_ELIGIBLE_SESSIONS = 5;
-const MIN_REPEATED_DAY_SESSIONS = 2;
+const MIN_REPEATED_DAY_SESSIONS = 3;
+export const BEHAVIOR_OBSERVATION_WINDOW_MS = 28 * 86_400_000;
+export const BEHAVIOR_SUGGESTION_SNOOZE_MS = 14 * 86_400_000;
+export const isBehavioralSuggestionSnoozed = (
+	snoozedAt: number | undefined,
+	referenceTime: number,
+) =>
+	snoozedAt !== undefined &&
+	referenceTime - snoozedAt < BEHAVIOR_SUGGESTION_SNOOZE_MS;
+const MIN_OBSERVATION_SPAN_MS = 14 * 86_400_000;
 const MIN_DIRECTIONAL_SHIFT_MINUTES = 45;
 const MIN_MEDIAN_SHIFT_MINUTES = 60;
 const MAX_ABSOLUTE_SHIFT_MINUTES = 12 * 60;
@@ -25,6 +34,7 @@ type LearningTime = {
 	dayOfWeek: number;
 	startTime: string;
 	endTime: string;
+	preferenceStatus?: string;
 };
 
 export type BehavioralLearningTimeSuggestion = {
@@ -32,7 +42,9 @@ export type BehavioralLearningTimeSuggestion = {
 	evidenceSessionCount: number;
 	plannedStartTime: string;
 	observedStartTime: string;
-	entries: LearningTime[];
+	entries: Array<
+		LearningTime & { previousStartTime: string; previousEndTime: string }
+	>;
 };
 
 type ObservedSession = {
@@ -40,6 +52,8 @@ type ObservedSession = {
 	actualStartMinutes: number;
 	plannedStartMinutes: number;
 	deviationMinutes: number;
+	startedAt: number;
+	dateKey: string;
 };
 
 const median = (values: number[]) => {
@@ -119,12 +133,15 @@ const observeSession = (session: BehaviorSession): ObservedSession | null => {
 	const actual = getBerlinStart(session.startedAt);
 	if (plannedStartMinutes === null || !actual) return null;
 	const dayDistance = dateDistanceMinutes(session.dateKey, actual.dateKey);
-	if (dayDistance === null) return null;
+	// Moving a session to another day is not evidence for a recurring time shift.
+	if (dayDistance !== 0) return null;
 	const deviationMinutes =
 		dayDistance + actual.startMinutes - plannedStartMinutes;
 	if (Math.abs(deviationMinutes) > MAX_ABSOLUTE_SHIFT_MINUTES) return null;
 	return {
 		dayOfWeek: actual.dayOfWeek,
+		startedAt: session.startedAt,
+		dateKey: actual.dateKey,
 		actualStartMinutes: actual.startMinutes,
 		plannedStartMinutes,
 		deviationMinutes,
@@ -150,35 +167,36 @@ export const deriveBehavioralLearningTimeSuggestion = ({
 	sessions,
 	learningTimes,
 	grade,
+	referenceTime,
+	observationStartedAt = 0,
 }: {
 	sessions: BehaviorSession[];
 	learningTimes: LearningTime[];
 	grade?: string;
+	referenceTime: number;
+	observationStartedAt?: number;
 }): BehavioralLearningTimeSuggestion | null => {
-	if (learningTimes.length === 0) return null;
+	if (learningTimes.length === 0 || !Number.isFinite(referenceTime))
+		return null;
 	const observedSessions = sessions
+		.filter(
+			(session) =>
+				session.startedAt !== undefined &&
+				session.startedAt <= referenceTime &&
+				session.startedAt >= referenceTime - BEHAVIOR_OBSERVATION_WINDOW_MS &&
+				session.startedAt > observationStartedAt,
+		)
 		.map(observeSession)
 		.filter((session): session is ObservedSession => session !== null);
 	if (observedSessions.length < MIN_ELIGIBLE_SESSIONS) return null;
-
-	const medianDeviation = median(
-		observedSessions.map((session) => session.deviationMinutes),
+	const timestamps = observedSessions.map((session) =>
+		Date.parse(`${session.dateKey}T00:00:00Z`),
 	);
 	if (
-		medianDeviation === null ||
-		Math.abs(medianDeviation) < MIN_MEDIAN_SHIFT_MINUTES
-	) {
+		Math.max(...timestamps) - Math.min(...timestamps) <
+		MIN_OBSERVATION_SPAN_MS
+	)
 		return null;
-	}
-	const direction = Math.sign(medianDeviation);
-	const directionalSessionCount = observedSessions.filter(
-		(session) =>
-			Math.sign(session.deviationMinutes) === direction &&
-			Math.abs(session.deviationMinutes) >= MIN_DIRECTIONAL_SHIFT_MINUTES,
-	).length;
-	if (directionalSessionCount < Math.ceil(observedSessions.length * 0.75)) {
-		return null;
-	}
 
 	const sessionsByDay = new Map<number, ObservedSession[]>();
 	for (const session of observedSessions) {
@@ -187,20 +205,39 @@ export const deriveBehavioralLearningTimeSuggestion = ({
 		sessionsByDay.set(session.dayOfWeek, current);
 	}
 	const repeatedObservedDays = [...sessionsByDay.entries()]
-		.filter(
-			([, daySessions]) => daySessions.length >= MIN_REPEATED_DAY_SESSIONS,
-		)
+		.filter(([day, daySessions]) => {
+			// Multiple windows on one weekday are ambiguous: never replace them all.
+			if (learningTimes.filter((time) => time.dayOfWeek === day).length !== 1)
+				return false;
+			if (
+				new Set(daySessions.map((session) => session.dateKey)).size <
+				MIN_REPEATED_DAY_SESSIONS
+			)
+				return false;
+			const medianDeviation = median(
+				daySessions.map((session) => session.deviationMinutes),
+			);
+			if (
+				medianDeviation === null ||
+				Math.abs(medianDeviation) < MIN_MEDIAN_SHIFT_MINUTES
+			)
+				return false;
+			const direction = Math.sign(medianDeviation);
+			return (
+				daySessions.filter(
+					(session) =>
+						Math.sign(session.deviationMinutes) === direction &&
+						Math.abs(session.deviationMinutes) >= MIN_DIRECTIONAL_SHIFT_MINUTES,
+				).length >= Math.ceil(daySessions.length * 0.75)
+			);
+		})
 		.sort(
 			([leftDay, leftSessions], [rightDay, rightSessions]) =>
 				rightSessions.length - leftSessions.length || leftDay - rightDay,
 		)
 		.slice(0, MAX_SUGGESTED_DAYS)
 		.map(([dayOfWeek]) => dayOfWeek);
-	const currentDays = [...new Set(learningTimes.map((time) => time.dayOfWeek))]
-		.sort((left, right) => left - right)
-		.slice(0, MAX_SUGGESTED_DAYS);
-	const suggestedDays =
-		repeatedObservedDays.length > 0 ? repeatedObservedDays : currentDays;
+	const suggestedDays = repeatedObservedDays;
 	if (suggestedDays.length === 0) return null;
 
 	const observedMedian = median(
@@ -209,25 +246,28 @@ export const deriveBehavioralLearningTimeSuggestion = ({
 	const plannedMedian = median(
 		observedSessions.map((session) => session.plannedStartMinutes),
 	);
-	const typicalDuration = Math.max(
-		30,
-		median(
-			learningTimes
-				.map(getWindowDuration)
-				.filter((duration): duration is number => duration !== null),
-		) ?? 60,
-	);
 	if (observedMedian === null || plannedMedian === null) return null;
 
 	const automaticWindow = getAutomaticLearningWindow(grade);
-	const entries = suggestedDays.map((dayOfWeek) => {
+	const entries = suggestedDays.flatMap((dayOfWeek) => {
+		const current = learningTimes.find((time) => time.dayOfWeek === dayOfWeek);
+		if (!current) return [];
+		const typicalDuration =
+			current.preferenceStatus === "systemDefault"
+				? 60
+				: (getWindowDuration(current) ?? 60);
+		if (
+			typicalDuration >
+			automaticWindow.endMinutes - automaticWindow.startMinutes
+		)
+			return [];
 		const dayMedian = median(
 			(sessionsByDay.get(dayOfWeek) ?? []).map(
 				(session) => session.actualStartMinutes,
 			),
 		);
 		const startMinutes = Math.min(
-			automaticWindow.endMinutes - 30,
+			automaticWindow.endMinutes - typicalDuration,
 			Math.max(
 				automaticWindow.startMinutes,
 				roundToHalfHour(dayMedian ?? observedMedian),
@@ -237,12 +277,26 @@ export const deriveBehavioralLearningTimeSuggestion = ({
 			automaticWindow.endMinutes,
 			startMinutes + typicalDuration,
 		);
-		return {
-			dayOfWeek,
-			startTime: formatLearningWindowTime(startMinutes),
-			endTime: formatLearningWindowTime(endMinutes),
-		};
+		return [
+			{
+				dayOfWeek,
+				previousStartTime: current.startTime,
+				previousEndTime: current.endTime,
+				startTime: formatLearningWindowTime(startMinutes),
+				endTime: formatLearningWindowTime(endMinutes),
+			},
+		];
 	});
+	const changedEntries = entries.filter(
+		(entry) =>
+			!learningTimes.some(
+				(time) =>
+					time.dayOfWeek === entry.dayOfWeek &&
+					time.startTime === entry.startTime &&
+					time.endTime === entry.endTime,
+			),
+	);
+	if (changedEntries.length === 0) return null;
 	const currentFingerprint = buildFingerprint(
 		learningTimes
 			.map(({ dayOfWeek, startTime, endTime }) => ({
@@ -256,14 +310,14 @@ export const deriveBehavioralLearningTimeSuggestion = ({
 					left.startTime.localeCompare(right.startTime),
 			),
 	);
-	const fingerprint = buildFingerprint(entries);
-	if (!fingerprint || fingerprint === currentFingerprint) return null;
+	// Bind consent to the full current schedule, not just the proposed result.
+	const fingerprint = `${currentFingerprint}=>${buildFingerprint(changedEntries)}`;
 
 	return {
 		fingerprint,
 		evidenceSessionCount: observedSessions.length,
 		plannedStartTime: formatLearningWindowTime(plannedMedian),
 		observedStartTime: formatLearningWindowTime(observedMedian),
-		entries,
+		entries: changedEntries,
 	};
 };

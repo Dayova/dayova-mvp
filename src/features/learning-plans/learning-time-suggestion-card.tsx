@@ -10,6 +10,8 @@ type SuggestedLearningTime = {
 	dayOfWeek: number;
 	startTime: string;
 	endTime: string;
+	previousStartTime?: string;
+	previousEndTime?: string;
 };
 
 const dayLabel = (dayOfWeek: number) =>
@@ -20,8 +22,6 @@ export function LearningTimeSuggestionCard({
 	variant,
 	isBusy,
 	evidenceSessionCount,
-	plannedStartTime,
-	observedStartTime,
 	onConfirm,
 	onAdjust,
 	onKeep,
@@ -45,7 +45,7 @@ export function LearningTimeSuggestionCard({
 	const summary = entries
 		.map(
 			(entry) =>
-				`${dayLabel(entry.dayOfWeek)} ${formatDisplayTime(entry.startTime)}–${formatDisplayTime(entry.endTime)}`,
+				`${dayLabel(entry.dayOfWeek)} ${entry.previousStartTime && entry.previousEndTime ? `${entry.previousStartTime}–${formatDisplayTime(entry.previousEndTime)} → ` : ""}${formatDisplayTime(entry.startTime)}–${formatDisplayTime(entry.endTime)}`,
 		)
 		.join(" · ");
 
@@ -62,14 +62,14 @@ export function LearningTimeSuggestionCard({
 				<View className="min-w-0 flex-1">
 					<Text className="font-poppins font-semibold text-body-3 text-text">
 						{isBehavioral
-							? "Dein Lernrhythmus hat sich verschoben"
+							? "Passen diese Lernzeiten besser?"
 							: isReminder
 								? "Mach deinen Lernplan noch genauer"
 								: "Vorgeschlagene Lernzeiten"}
 					</Text>
 					<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
 						{isBehavioral
-							? `Basierend auf deinen letzten ${evidenceSessionCount ?? "mehreren"} abgeschlossenen Lernsessions startest du meist gegen ${observedStartTime ?? "eine andere Uhrzeit"} statt ${plannedStartTime ?? "zur geplanten Zeit"}. Geändert wird erst nach deiner Zustimmung.`
+							? `In deinen letzten ${evidenceSessionCount ?? "mehreren"} abgeschlossenen Lernsessions über mindestens zwei Wochen zeigt sich an diesen Tagen ein anderes Startmuster. Möchtest du die vorgeschlagenen Zeiten ausprobieren? Andere Tage bleiben unverändert. Geändert wird erst nach deiner Zustimmung. Lernen kannst du weiterhin jederzeit.`
 							: isReminder
 								? "Bestätige oder ändere die vorgeschlagenen Zeiten. Deine bisherigen Fortschritte bleiben erhalten."
 								: "Du kannst Lernzeiten jetzt eintragen oder später ergänzen. Bis dahin plant Dayova mit diesen vorgeschlagenen Zeiten. Lernen kannst du jederzeit."}
