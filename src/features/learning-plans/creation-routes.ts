@@ -48,9 +48,15 @@ export const learningPlanResumePath = (
 	id: Id<"learningPlans">,
 	status: "draft" | "questionsReady" | "generated" | "accepted",
 	diagnosticPlacement?: "firstSession",
+	origin?: "learningPlans",
 ) => {
 	if (status === "draft") {
-		return `${ROUTES.createLearningPlan}?learningPlanId=${encodeURIComponent(id)}&step=material` as const;
+		const query = buildRouteQuery([
+			["learningPlanId", id],
+			["step", "material"],
+			["origin", origin],
+		]);
+		return `${ROUTES.createLearningPlan}?${query}` as const;
 	}
 	if (status === "questionsReady") {
 		return learningPlanStepPath(id, "analysis");

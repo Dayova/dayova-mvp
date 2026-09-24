@@ -87,6 +87,7 @@ export default function NewLearningPlanScreen() {
 		topicDescription?: string;
 		teacherGuidance?: string;
 		fromExamEntry?: string;
+		origin?: string;
 		errorMessage?: string;
 	}>();
 	const { user } = useAuthSession();
@@ -130,6 +131,8 @@ export default function NewLearningPlanScreen() {
 	const [isUploadSheetVisible, setIsUploadSheetVisible] = useState(false);
 	const [isPauseConfirmationVisible, setIsPauseConfirmationVisible] =
 		useState(false);
+	const [dismissTarget, setDismissTarget] = useState<string | null>(null);
+	const hasDispatchedDismissRef = useRef(false);
 	const pendingUploadRequestRef = useRef<PendingUploadRequest | null>(null);
 	const topicActionGateRef = useRef(createAsyncActionGate());
 	const [openingUploadAction, setOpeningUploadAction] =
@@ -570,11 +573,11 @@ export default function NewLearningPlanScreen() {
 			return true;
 		}
 		if (learningPlanId) {
-			dismissToOrReplace(router, ROUTES.learningPlans);
+			setDismissTarget(ROUTES.learningPlans);
 			return true;
 		}
 		if (examDayEntryId) {
-			dismissToOrReplace(router, `/entry/${examDayEntryId}`);
+			setDismissTarget(`/entry/${examDayEntryId}`);
 			return true;
 		}
 		if (initialLearningPlanId) {
@@ -587,10 +590,13 @@ export default function NewLearningPlanScreen() {
 	};
 
 	const goBack = () => {
+		if (dismissTarget) return true;
 		const intent = getLearningPlanCreationBackIntent({
 			step: setupStep,
 			hasSavedDraft: Boolean(learningPlanId),
 			isPauseConfirmationVisible,
+			openedFromPlans:
+				setupOrigin === "resumedDraft" && params.origin === "learningPlans",
 		});
 		if (intent.kind === "ignore") return true;
 		if (intent.kind === "previousStep") {
@@ -606,7 +612,12 @@ export default function NewLearningPlanScreen() {
 		return exitCreation();
 	};
 
-	useBackIntent(hasExamEntry, goBack);
+	useBackIntent(hasExamEntry && !dismissTarget, goBack);
+	useEffect(() => {
+		if (!dismissTarget || hasDispatchedDismissRef.current) return;
+		hasDispatchedDismissRef.current = true;
+		dismissToOrReplace(router, dismissTarget);
+	}, [dismissTarget, router]);
 	useLearningPlanCreationProgress({
 		active: true,
 		currentStep: currentProgressStep,
@@ -710,7 +721,7 @@ export default function NewLearningPlanScreen() {
 				onClose={() => setIsPauseConfirmationVisible(false)}
 				onConfirm={() => {
 					setIsPauseConfirmationVisible(false);
-					dismissToOrReplace(router, ROUTES.learningPlans);
+					setDismissTarget(ROUTES.learningPlans);
 				}}
 			/>
 		</Screen>

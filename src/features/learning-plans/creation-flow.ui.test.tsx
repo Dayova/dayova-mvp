@@ -32,6 +32,8 @@ let mockSnapshot:
 	| { plan: { topicDescription: string }; documents: never[] }
 	| undefined;
 let mockPauseVisible = false;
+let mockBackIntentEnabled = false;
+let mockConfirmPause: (() => void) | null = null;
 jest.mock("convex/react", () => ({
 	useConvexAuth: () => ({ isAuthenticated: true }),
 	useConvex: () => ({ query: async () => mockAvailability }),
@@ -90,7 +92,10 @@ jest.mock("~/lib/navigation", () => ({
 	...jest.requireActual<typeof import("~/lib/navigation-actions")>(
 		"~/lib/navigation-actions",
 	),
-	useBackIntent: (_enabled: boolean, onBack: () => boolean) => onBack,
+	useBackIntent: (enabled: boolean, onBack: () => boolean) => {
+		mockBackIntentEnabled = enabled;
+		return onBack;
+	},
 }));
 jest.mock("~/context/AuthContext", () => ({
 	useAuthSession: () => ({ user: { id: "user" } }),
@@ -135,8 +140,15 @@ jest.mock("~/components/ui/screen", () => {
 });
 jest.mock("~/components/ui/action-sheet", () => ({ ActionSheet: () => null }));
 jest.mock("~/components/ui/confirmation-sheet", () => ({
-	ConfirmationSheet: ({ visible }: { visible: boolean }) => {
+	ConfirmationSheet: ({
+		visible,
+		onConfirm,
+	}: {
+		visible: boolean;
+		onConfirm: () => void;
+	}) => {
 		mockPauseVisible = visible;
+		mockConfirmPause = visible ? onConfirm : null;
 		return null;
 	},
 }));
@@ -204,6 +216,8 @@ beforeEach(() => {
 	mockUpdateEntry.mockResolvedValue(undefined);
 	mockSnapshot = undefined;
 	mockPauseVisible = false;
+	mockBackIntentEnabled = false;
+	mockConfirmPause = null;
 	mockParams = {
 		type: "exam",
 		step: "learningAvailability",
@@ -300,6 +314,26 @@ describe("exam creation across the topics boundary", () => {
 		expect(mockRouter.replace).not.toHaveBeenCalled();
 	});
 
+	test("returns to Plans from material opened on a saved plan card", async () => {
+		mockParams = {
+			learningPlanId: "plan-1",
+			step: "material",
+			origin: "learningPlans",
+		};
+		mockSnapshot = {
+			plan: { topicDescription: "Zellteilung und Mitose" },
+			documents: [],
+		};
+		mockRouter.dismissTo.mockImplementationOnce(() => {
+			expect(mockBackIntentEnabled).toBe(false);
+		});
+		await render(<NewLearningPlanScreen />);
+		await act(() => mockProgress.onBack());
+		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans");
+		expect(mockRouter.setParams).not.toHaveBeenCalled();
+		expect(mockPauseVisible).toBe(false);
+	});
+
 	test("still confirms pausing a saved learning-plan draft", async () => {
 		mockParams = {
 			learningPlanId: "plan-1",
@@ -311,11 +345,16 @@ describe("exam creation across the topics boundary", () => {
 			plan: { topicDescription: "Zellteilung und Mitose" },
 			documents: [],
 		};
+		mockRouter.dismissTo.mockImplementationOnce(() => {
+			expect(mockBackIntentEnabled).toBe(false);
+		});
 		await render(<NewLearningPlanScreen />);
 		await act(() => mockProgress.onBack());
 		expect(mockPauseVisible).toBe(true);
 		expect(mockRouter.replace).not.toHaveBeenCalled();
 		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+		await act(() => mockConfirmPause?.());
+		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans");
 	});
 });
 

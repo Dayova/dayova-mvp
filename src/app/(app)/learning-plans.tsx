@@ -104,7 +104,12 @@ type DeleteTarget =
 	| { kind: "homework"; item: HomeworkOverview };
 
 const getPlanHref = (plan: LearningPlanOverview) =>
-	learningPlanResumePath(plan.id, plan.status, plan.diagnosticPlacement);
+	learningPlanResumePath(
+		plan.id,
+		plan.status,
+		plan.diagnosticPlacement,
+		"learningPlans",
+	);
 
 const formatDateFromKey = (dayKey: string) => {
 	const date = parseDayKey(dayKey);
