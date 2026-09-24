@@ -150,6 +150,7 @@ export default function NewLearningPlanScreen() {
 		params.topicDescription ?? params.teacherGuidance ?? null,
 	);
 	const [isBusy, setIsBusy] = useState(false);
+	const [isPostponingMaterial, setIsPostponingMaterial] = useState(false);
 	const [isUploading, setIsUploading] = useState(false);
 	const [retryingDocumentId, setRetryingDocumentId] =
 		useState<Id<"learningPlanDocuments"> | null>(null);
@@ -195,6 +196,7 @@ export default function NewLearningPlanScreen() {
 	const isPlanSnapshotLoading = Boolean(learningPlanId && snapshot === null);
 	const canUpload =
 		canWrite &&
+		!isPostponingMaterial &&
 		!isBusy &&
 		!openingUploadAction &&
 		!isPlanSnapshotLoading &&
@@ -696,16 +698,7 @@ export default function NewLearningPlanScreen() {
 				if (!isMeaningfulTopicDescription(topics)) {
 					throw new Error("Prüfungsthemen fehlen.");
 				}
-				if (setupOrigin === "resumedDraft") {
-					dismissToOrReplace(router, ROUTES.learningPlans);
-					return;
-				}
-				router.replace(
-					examEntrySuccessPath({
-						dayKey: examDateKey,
-						examDateLabel,
-					}),
-				);
+				setIsPostponingMaterial(true);
 			},
 		);
 	};
@@ -795,7 +788,21 @@ export default function NewLearningPlanScreen() {
 		return exitCreation();
 	};
 
-	useBackIntent(hasExamEntry, goBack);
+	useBackIntent(hasExamEntry, goBack, {
+		allowRouteRemoval: isPostponingMaterial,
+	});
+	// Commit the explicit exit intent before removing this protected native route.
+	// Ordinary Back/swipe still follows the saved-draft pause confirmation.
+	useEffect(() => {
+		if (!isPostponingMaterial) return;
+		if (setupOrigin === "resumedDraft") {
+			dismissToOrReplace(router, ROUTES.learningPlans);
+		} else {
+			router.replace(
+				examEntrySuccessPath({ dayKey: examDateKey, examDateLabel }),
+			);
+		}
+	}, [isPostponingMaterial, setupOrigin, router, examDateKey, examDateLabel]);
 	useLearningPlanCreationProgress({
 		active: true,
 		currentStep: currentProgressStep,

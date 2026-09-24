@@ -65,6 +65,7 @@ let mockSnapshot:
 	| { plan: { topicDescription: string }; documents: never[] }
 	| undefined;
 let mockPauseVisible = false;
+let mockRemovalAllowed = false;
 jest.mock("convex/react", () => ({
 	useConvexAuth: () => ({ isAuthenticated: true }),
 	useQueries: () => ({
@@ -84,6 +85,8 @@ jest.mock("convex/react", () => ({
 			reference as Parameters<typeof getFunctionName>[0],
 		);
 		if (functionName === "dayEntries:create") return mockCreateEntry;
+		if (functionName === "learningPlans:createDraft")
+			return async () => "plan-1";
 		if (functionName === "learningPlans:generateUploadUrl") {
 			return mockGenerateUploadUrl;
 		}
@@ -147,7 +150,14 @@ jest.mock("~/lib/navigation", () => ({
 	...jest.requireActual<typeof import("~/lib/navigation-actions")>(
 		"~/lib/navigation-actions",
 	),
-	useBackIntent: (_enabled: boolean, onBack: () => boolean) => onBack,
+	useBackIntent: (
+		_enabled: boolean,
+		onBack: () => boolean,
+		options?: { allowRouteRemoval?: boolean },
+	) => {
+		mockRemovalAllowed = options?.allowRouteRemoval ?? false;
+		return onBack;
+	},
 }));
 jest.mock("~/context/AuthContext", () => ({
 	useAuthSession: () => ({ user: { id: "user" } }),
@@ -451,6 +461,32 @@ describe("exam creation across the topics boundary", () => {
 		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
 	});
 
+	test("releases removal protection before completing a new exam with material later", async () => {
+		mockParams = {
+			examDayEntryId: "exam-1",
+			step: "topic",
+			topicDescription: "Zellteilung und Mitose",
+		};
+		mockSnapshot = {
+			plan: { topicDescription: "Zellteilung und Mitose" },
+			documents: [],
+		};
+		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(mockRemovalAllowed).toBe(false);
+		let removalAllowedAtDispatch = false;
+		mockRouter.replace.mockImplementationOnce(() => {
+			removalAllowedAtDispatch = mockRemovalAllowed;
+		});
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Später hinzufügen" }),
+		);
+		expect(mockRouter.replace).toHaveBeenCalledWith(
+			expect.stringContaining("/entry/success?"),
+		);
+		expect(removalAllowedAtDispatch).toBe(true);
+	});
+
 	test("lets a resumed materialless draft be postponed again", async () => {
 		mockParams = {
 			learningPlanId: "plan-1",
@@ -462,10 +498,16 @@ describe("exam creation across the topics boundary", () => {
 			documents: [],
 		};
 		const screen = await render(<NewLearningPlanScreen />);
+		expect(mockRemovalAllowed).toBe(false);
+		let removalAllowedAtDispatch = false;
+		mockRouter.dismissTo.mockImplementationOnce(() => {
+			removalAllowedAtDispatch = mockRemovalAllowed;
+		});
 		await fireEvent.press(
 			screen.getByRole("button", { name: "Später hinzufügen" }),
 		);
 		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans");
+		expect(removalAllowedAtDispatch).toBe(true);
 		expect(mockRouter.replace).not.toHaveBeenCalled();
 	});
 
