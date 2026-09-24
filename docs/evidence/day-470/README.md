@@ -105,6 +105,41 @@ current implementation before and after scrolling.
 | :---: | :---: | :---: | :---: |
 | <a href="https://github.com/user-attachments/assets/f94ff77a-41db-4ee6-935d-e81354c7b937"><img src="https://github.com/user-attachments/assets/f94ff77a-41db-4ee6-935d-e81354c7b937" alt="DAY-470 long material standard top" width="160" /></a> | <a href="https://github.com/user-attachments/assets/1b7002c2-9fb7-43f4-88ca-b68fdc9c5d76"><img src="https://github.com/user-attachments/assets/1b7002c2-9fb7-43f4-88ca-b68fdc9c5d76" alt="DAY-470 long material standard end" width="160" /></a> | <a href="https://github.com/user-attachments/assets/adc6ec5d-93b1-4866-a565-7a8f9a068a50"><img src="https://github.com/user-attachments/assets/adc6ec5d-93b1-4866-a565-7a8f9a068a50" alt="DAY-470 long material enlarged top" width="160" /></a> | <a href="https://github.com/user-attachments/assets/a6373871-6c4e-4125-8ae3-3d2ac91f1fb0"><img src="https://github.com/user-attachments/assets/a6373871-6c4e-4125-8ae3-3d2ac91f1fb0" alt="DAY-470 long material enlarged end" width="160" /></a> |
 
+## Privacy link: before and after the clipping fix
+
+The earlier Android evidence contained a real defect: the rounded Button mask cut into the first letters of **Mehr zum Datenschutz** at 200% text size. Link buttons now render without that clipping mask. The small/large button sizes inherit rounding from the base so they cannot override the link variant.
+
+Same Pixel 9 emulator, 1080×2424, dark appearance, `font_scale=2.0`, and privacy sheet scrolled to the end. Left: `b0b9b73c` before this follow-up fix. Right: the corrected link. The gallery background is test-only.
+
+| Before link fix | With link fix |
+| :---: | :---: |
+| <a href="https://github.com/user-attachments/assets/b12cf150-8a18-48f5-a2ab-9af18886c674"><img src="https://github.com/user-attachments/assets/b12cf150-8a18-48f5-a2ab-9af18886c674" alt="DAY-470 privacy-link-before-fix" width="180" /></a> | <a href="https://github.com/user-attachments/assets/5a5893e7-49fd-46df-a685-fb0a796e83f0"><img src="https://github.com/user-attachments/assets/5a5893e7-49fd-46df-a685-fb0a796e83f0" alt="DAY-470 privacy-link-after-fix" width="180" /></a> |
+
+The native pixel probe for the D's left stem fails before (10/41 pixels) and passes after (41/41); visual inspection also confirms the complete M. A native Maestro check confirms the privacy link and both actions are visible and tapping the link invokes the fixture callback. This does not verify the external privacy webpage. The old clipped screenshot is retained only as the labeled before state; the Android example in the PR description now uses the corrected capture.
+
+Capture URLs and image hashes: [privacy-link-provenance.json](privacy-link-provenance.json).
+
+## Replaying the privacy-link pixel probe
+
+The fixture-specific probe checks the missing left stem on the original native PNG.
+Use it only with the documented viewport, scale, theme, and scroll position;
+use visual inspection alongside it. It does not replace a full screenshot suite.
+With Python and Pillow installed:
+
+```sh
+python3 docs/evidence/day-470/privacy-link-pixel-check.py /path/to/privacy-link-before-fix.png
+# Fails: D left stem: 10/41 cyan pixels
+python3 docs/evidence/day-470/privacy-link-pixel-check.py /path/to/privacy-link-after-fix.png
+# Passes: D left stem: 41/41 cyan pixels
+```
+
+Both screenshots use the existing native component gallery and Poppins fonts.
+Open the privacy case, then swipe within the text body (x=540, y=1400 to y=700,
+450 ms), until the bottom is reached. Avoid starting the gesture over the action
+buttons. No image pixels were altered. The only product change between the two
+captures is `src/components/ui/button.tsx`; its corrected SHA-256 is
+`1e6752a417494354b6a8048ba2a8dd31adedf5c4934001273e973bbe9f06e30c`.
+
 ## Coverage limits
 
 The attached native screenshots are still-image evidence of the inspected states.
