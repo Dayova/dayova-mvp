@@ -68,7 +68,7 @@ function ConfirmationSheet({
 				<ActivityIndicator
 					color={
 						confirmTone === "destructive"
-							? colors.background
+							? colors.dangerAction
 							: DAYOVA_DESIGN_SYSTEM.colors.light1
 					}
 				/>
@@ -111,7 +111,7 @@ function ConfirmationSheet({
 		<DayovaSheetFrame
 			visible={visible}
 			title={title}
-			description={scrollable ? undefined : description}
+			description={description}
 			onClose={safeClose}
 			dismissible={!isBusy}
 			closeAccessibilityLabel={closeAccessibilityLabel}
@@ -120,11 +120,6 @@ function ConfirmationSheet({
 			maxWidth={maxWidth}
 			scrollable={scrollable}
 		>
-			{scrollable ? (
-				<Text className="font-poppins text-body-3 text-secondary-text">
-					{description}
-				</Text>
-			) : null}
 			{error}
 			{scrollable ? null : actions}
 		</DayovaSheetFrame>

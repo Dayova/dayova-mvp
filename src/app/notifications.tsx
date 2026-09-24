@@ -24,13 +24,7 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { NotificationDeliveryInfoSheet } from "~/components/notification-delivery-info-sheet";
 import { ScreenHeader as Header } from "~/components/screen-header";
-import {
-	BellOff,
-	BookOpen,
-	ClipboardList,
-	Mail,
-	Trash2,
-} from "~/components/ui/icon";
+import { BellOff, BookOpen, ClipboardList, Mail } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
@@ -243,10 +237,12 @@ function NotificationCard({
 				style={deleteBackgroundAnimatedStyle}
 			>
 				<Animated.View
-					className="mr-5 h-[52px] w-[52px] items-center justify-center rounded-full bg-card/20"
+					className="mr-3 min-h-12 items-center justify-center rounded-button border border-danger-action bg-danger-subtle px-3 py-2"
 					style={deleteIconAnimatedStyle}
 				>
-					<Trash2 size={27} color="#FFFFFF" strokeWidth={2.3} />
+					<Text className="font-semibold text-body-4 text-danger-action">
+						Löschen
+					</Text>
 				</Animated.View>
 			</Animated.View>
 			<GestureDetector gesture={panGesture}>
