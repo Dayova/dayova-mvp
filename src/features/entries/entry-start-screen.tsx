@@ -3,7 +3,7 @@ import { CommonActions, useNavigation } from "expo-router/react-navigation";
 import { useLayoutEffect } from "react";
 import { useEntryDraft } from "./entry-draft";
 import {
-	type EntryParams,
+	type EntrySearchParams,
 	EXAM_RESUME_ROUTES,
 	resolveEntryStartParams,
 } from "./entry-routes";
@@ -12,7 +12,7 @@ import { EntryStepScreen } from "./entry-step-screen";
 export function EntryStartScreen() {
 	const navigation = useNavigation();
 	const { draft, initialized, initialize } = useEntryDraft();
-	const params = useLocalSearchParams<EntryParams>();
+	const params = useLocalSearchParams<EntrySearchParams>();
 	useLayoutEffect(() => {
 		if (initialized) return;
 		const entry = resolveEntryStartParams(params);

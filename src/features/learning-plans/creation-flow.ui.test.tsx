@@ -14,7 +14,7 @@ import { EntryDraftProvider } from "~/features/entries/entry-draft";
 import { EntryStartScreen } from "~/features/entries/entry-start-screen";
 import { EntryStepScreen } from "~/features/entries/entry-step-screen";
 
-let mockParams: Record<string, string> = {};
+let mockParams: Record<string, string | string[]> = {};
 let mockProgress: { currentStep: number; onBack: () => void };
 const mockRouter = {
 	replace: jest.fn(),
@@ -531,55 +531,56 @@ describe("entry native history and shared answers", () => {
 	});
 });
 
-test("initializes a cold resume from leaf URL params when the parent layout has none", async () => {
+function parseEntryUrl(url: string) {
 	const { getStateFromPath } = jest.requireActual<
 		typeof import("expo-router/build/fork/getStateFromPath")
 	>("expo-router/build/fork/getStateFromPath");
 	const state = getStateFromPath<{
 		"(creation)": NavigatorScreenParams<{
 			"entry/new": NavigatorScreenParams<{
-				index: Record<string, string> | undefined;
+				index: Record<string, string | string[]> | undefined;
 				subject: undefined;
 				date: undefined;
 				availability: undefined;
 			}>;
 		}>;
-	}>(
-		"/entry/new?type=exam&step=learningAvailability&subject=Chemie&examTypeLabel=Klausur&examDayEntryId=exam-1&dayKey=2026-10-01&durationMinutes=90",
-		{
-			screens: {
-				"(creation)": {
-					path: "",
-					screens: {
-						"entry/new": {
-							path: "entry/new",
-							screens: {
-								index: "",
-								subject: "subject",
-								date: "date",
-								availability: "availability",
-							},
+	}>(url, {
+		screens: {
+			"(creation)": {
+				path: "",
+				screens: {
+					"entry/new": {
+						path: "entry/new",
+						screens: {
+							index: "",
+							subject: "subject",
+							date: "date",
+							availability: "availability",
 						},
 					},
 				},
 			},
 		},
-	);
+	});
 	const layout = state?.routes[0].state?.routes[0];
 	expect(layout?.params).toBeUndefined();
-	const leaf = layout?.state?.routes[0];
-	expect(leaf?.params).toMatchObject({
+	return (layout?.state?.routes[0].params ?? {}) as Record<
+		string,
+		string | string[]
+	>;
+}
+
+test("initializes a cold resume from leaf URL params when the parent layout has none", async () => {
+	const params = parseEntryUrl(
+		"/entry/new?type=exam&step=learningAvailability&subject=Chemie&examTypeLabel=Klausur&examDayEntryId=exam-1&dayKey=2026-10-01&durationMinutes=90",
+	);
+	expect(params).toMatchObject({
 		type: "exam",
 		examDayEntryId: "exam-1",
 		subject: "Chemie",
 		durationMinutes: "90",
 	});
-	mockParams = Object.fromEntries(
-		Object.entries(leaf?.params ?? {}).map(([key, value]) => [
-			key,
-			String(value),
-		]),
-	);
+	mockParams = params;
 	const screen = await render(<NewEntryScreen />);
 	expect(screen.getByTestId("entry-history").props.children).toBe(
 		"index,subject,date,availability",
@@ -595,4 +596,32 @@ test("initializes a cold resume from leaf URL params when the parent layout has 
 		}),
 	);
 	expect(mockCreateEntry).not.toHaveBeenCalled();
+});
+
+test.each([
+	"examDayEntryId",
+	"subject",
+	"examTypeLabel",
+])("starts cleanly when a cold resume URL repeats %s", async (repeatedKey) => {
+	const params = parseEntryUrl(
+		`/entry/new?type=exam&step=learningAvailability&subject=Chemie&examTypeLabel=Klausur&examDayEntryId=exam-1&dayKey=2026-10-01&durationMinutes=90&${repeatedKey}=second`,
+	);
+	expect(params[repeatedKey]).toEqual([expect.any(String), "second"]);
+	mockParams = params;
+	const screen = await render(<NewEntryScreen />);
+	expect(screen.getByTestId("entry-history").props.children).toBe("index");
+	expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+	expect(mockUpdateEntry).not.toHaveBeenCalled();
+});
+
+test("starts cleanly when repeated exam IDs imply a resume without a step", async () => {
+	const params = parseEntryUrl(
+		"/entry/new?type=exam&subject=Chemie&examTypeLabel=Klausur&examDayEntryId=exam-1&examDayEntryId=exam-2&dayKey=2026-10-01&durationMinutes=90",
+	);
+	expect(params.examDayEntryId).toEqual(["exam-1", "exam-2"]);
+	mockParams = params;
+	const screen = await render(<NewEntryScreen />);
+	expect(screen.getByTestId("entry-history").props.children).toBe("index");
+	expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+	expect(mockUpdateEntry).not.toHaveBeenCalled();
 });

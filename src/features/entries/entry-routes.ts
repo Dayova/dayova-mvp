@@ -24,6 +24,14 @@ export type EntryParams = {
 	topicDescription?: string;
 };
 
+export type EntrySearchParams = {
+	[key in keyof EntryParams]?: string | string[];
+};
+
+function singleValue(value: string | string[] | undefined) {
+	return typeof value === "string" ? value : undefined;
+}
+
 export function entryStepPath(step: EntryStep, isHomework: boolean) {
 	switch (step) {
 		case "examType":
@@ -48,11 +56,25 @@ export const EXAM_RESUME_ROUTES = [
 	"availability",
 ] as const;
 
-export function resolveEntryStartParams(params: EntryParams) {
+export function resolveEntryStartParams(searchParams: EntrySearchParams) {
+	const params: EntryParams = {
+		type: singleValue(searchParams.type),
+		dayKey: singleValue(searchParams.dayKey),
+		step: singleValue(searchParams.step),
+		subject: singleValue(searchParams.subject),
+		examTypeLabel: singleValue(searchParams.examTypeLabel),
+		examDayEntryId: singleValue(searchParams.examDayEntryId),
+		durationMinutes: singleValue(searchParams.durationMinutes),
+		topicDescription: singleValue(searchParams.topicDescription),
+	};
 	const examResumeRequested =
 		params.type === "exam" &&
-		(params.step === "learningAvailability" || Boolean(params.examDayEntryId));
+		(params.step === "learningAvailability" ||
+			Boolean(searchParams.examDayEntryId));
 	if (!examResumeRequested) return { params, restoreExamHistory: false };
+	if (Object.values(searchParams).some(Array.isArray)) {
+		return { params: { type: "exam" }, restoreExamHistory: false };
+	}
 
 	const parsedDay = parseDayKey(params.dayKey);
 	const durationMinutes = Number(params.durationMinutes);
