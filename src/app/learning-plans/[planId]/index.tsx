@@ -1,4 +1,3 @@
-import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import {
 	Stack,
@@ -21,6 +20,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import { canOfferPodcast } from "#convex/podcastContent";
 import { ScreenHeader } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
 import {
@@ -54,7 +54,10 @@ import {
 	isDiagnosticLearningPlanSession,
 	isLearningPlanSessionHistory,
 } from "~/features/learning-plans/rolling-learning-window";
-import type { PlanSession } from "~/features/learning-plans/types";
+import type {
+	LearningPlanSnapshot,
+	PlanSession,
+} from "~/features/learning-plans/types";
 import { parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
@@ -134,12 +137,14 @@ export function SessionPreviewCard({
 	preparationState,
 	session,
 	onOpen,
+	onListen,
 }: {
 	canOpen: boolean;
 	onRetryPreparation?: () => void;
 	preparationState?: "preparing" | "failed";
 	session: PlanSession;
 	onOpen: () => void;
+	onListen?: () => void;
 }) {
 	const { colors } = useDayovaTheme();
 	const reduceMotion = useReducedMotion();
@@ -290,6 +295,16 @@ export function SessionPreviewCard({
 			style={{ borderCurve: "continuous" }}
 		>
 			{content}
+			{canOpen && !preparationState && onListen ? (
+				<Button
+					className="mt-3"
+					variant="neutral"
+					onPress={onListen}
+					accessibilityLabel="Theorie als Podcast anhören"
+				>
+					<Text>Als Podcast anhören</Text>
+				</Button>
+			) : null}
 		</Animated.View>
 	);
 }
@@ -511,6 +526,16 @@ export default function LearningPlanSessionsScreen() {
 						canOpen={canOpenSelectedSession}
 						preparationState={preparationState}
 						session={selectedSession}
+						onListen={
+							selectedSession.phase === "theory" &&
+							!isDiagnosticLearningPlanSession(selectedSession) &&
+							canOfferPodcast(snapshot.plan.subject)
+								? () =>
+										router.push(
+											`/learning-plans/${snapshot.plan.id}/sessions/${selectedSession.id}/podcast`,
+										)
+								: undefined
+						}
 						onRetryPreparation={() => prepareSession(selectedSession.id)}
 						onOpen={() => {
 							if (!canOpenSelectedSession) return;

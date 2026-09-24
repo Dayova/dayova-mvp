@@ -4,6 +4,7 @@ import {
 	learningEvidenceDimensionValidator,
 	learningTopicValidator,
 } from "./learningTopicMap";
+import { podcastFields } from "./podcastContent";
 import { theoryContentValidator } from "./theoryContent";
 
 const planQuestionValidator = v.object({
@@ -180,6 +181,9 @@ export default defineSchema({
 		completedAt: v.optional(v.number()),
 	})
 		.index("by_requestId", ["requestId"])
+		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
+	learningPodcasts: defineTable(podcastFields)
+		.index("by_sessionId", ["sessionId"])
 		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
 	users: defineTable({
 		tokenIdentifier: v.string(),
@@ -477,6 +481,7 @@ export default defineSchema({
 			"personalSubjectId",
 		]),
 	learningPlans: defineTable({
+		podcastLanguageSubject: v.optional(v.boolean()),
 		ownerTokenIdentifier: v.string(),
 		subject: v.string(),
 		personalSubjectId: v.optional(v.id("personalSubjects")),

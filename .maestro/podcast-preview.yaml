@@ -1,0 +1,40 @@
+appId: ${APP_ID}
+---
+- extendedWaitUntil:
+    visible: "Metaphern verstehen"
+    timeout: 60000
+- assertNotVisible: "Was macht eine Metapher aus?"
+- assertNotVisible: "Weiter zu den 3 Fragen"
+- takeScreenshot: podcast-listening
+- tapOn: "Podcast abspielen"
+- assertVisible: "Podcast pausieren"
+- tapOn: "Geschwindigkeit: 1-fach. Ändern"
+- tapOn: "Geschwindigkeit: 1.25-fach. Ändern"
+- extendedWaitUntil:
+    visible: "Weiter zu den 3 Fragen"
+    timeout: 60000
+- assertNotVisible: "Was macht eine Metapher aus?"
+- tapOn: "Weiter zu den 3 Fragen"
+- assertVisible: "FRAGE 1 VON 3"
+- assertNotVisible: "Podcast abspielen"
+- takeScreenshot: podcast-question
+- tapOn: "Sie überträgt Bedeutung zwischen zwei Bereichen."
+- assertNotVisible: "Richtig!"
+- tapOn: "Antwort prüfen"
+- assertVisible: "Richtig!"
+- tapOn: "Nächste Frage"
+- assertVisible: "FRAGE 2 VON 3"
+- tapOn: "Eine sehr große, kaum überschaubare Menschenmenge"
+- tapOn: "Antwort prüfen"
+- tapOn: "Nächste Frage"
+- assertVisible: "FRAGE 3 VON 3"
+- tapOn: "Die Menge wogte wie ein Meer."
+- tapOn: "Antwort prüfen"
+- tapOn: "Zusammenfassung ansehen"
+- assertVisible: "Das nimmst du mit"
+- takeScreenshot: podcast-summary
+- scrollUntilVisible:
+    element: "Zurück zum Lernplan"
+    direction: DOWN
+- tapOn: "Zurück zum Lernplan"
+- assertVisible: "Metaphern verstehen"

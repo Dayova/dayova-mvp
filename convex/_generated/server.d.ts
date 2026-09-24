@@ -27,6 +27,11 @@ import type { DataModel } from "./dataModel.js";
 type Env = {
   readonly CLERK_SECRET_KEY: string | undefined;
   readonly DAYOVA_DEPLOYMENT_ENVIRONMENT: string | undefined;
+  readonly GOOGLE_VERTEX_API_KEY: string | undefined;
+  readonly GOOGLE_VERTEX_FLASH_MODEL: string | undefined;
+  readonly GOOGLE_VERTEX_LOCATION: string | undefined;
+  readonly GOOGLE_VERTEX_PROJECT: string | undefined;
+  readonly GOOGLE_VERTEX_TTS_MODEL: string | undefined;
   readonly POSTHOG_API_HOST: string | undefined;
   readonly POSTHOG_PERSONAL_API_KEY: string | undefined;
   readonly POSTHOG_PROJECT_ID: string | undefined;
