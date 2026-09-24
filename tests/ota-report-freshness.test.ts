@@ -100,6 +100,28 @@ describe("OTA report freshness status", () => {
 		);
 	});
 
+	it("marks a deleted Expo report pending even when a maintainer deletes it and the listing lags", async () => {
+		expect(workflow.on.issue_comment.types).toContain("deleted");
+		const f = fixture(report(headSha));
+		f.context.eventName = "issue_comment";
+		Object.assign(f.context.payload, { action: "deleted" });
+		f.context.payload.sender.login = "maintainer";
+		await reconcile(f.github, f.context);
+		expect(f.github.rest.issues.getComment).not.toHaveBeenCalled();
+		expect(f.createCommitStatus).toHaveBeenCalledWith(
+			expect.objectContaining({ sha: headSha, state: "pending" }),
+		);
+	});
+
+	it("ignores a report removed between listing and fetching comments", async () => {
+		const f = fixture(report(headSha));
+		f.github.rest.issues.getComment.mockRejectedValue({ status: 404 });
+		await reconcile(f.github, f.context);
+		expect(f.createCommitStatus).toHaveBeenCalledWith(
+			expect.objectContaining({ sha: headSha, state: "pending" }),
+		);
+	});
+
 	it("does not trust a report payload from another sender", async () => {
 		const f = fixture();
 		f.context.eventName = "issue_comment";

@@ -4,7 +4,7 @@ on:
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review, edited]
   issue_comment:
-    types: [created, edited]
+    types: [created, edited, deleted]
 
 permissions:
   issues: read
@@ -16,10 +16,11 @@ jobs:
     if: >-
       github.event_name == 'pull_request_target' ||
       (github.event.issue.pull_request &&
-       github.event.sender.login == 'expo[bot]' &&
        github.event.comment.user.login == 'expo[bot]' &&
-       (contains(github.event.comment.body, '<!-- dayova-ota-report -->') ||
-        startsWith(github.event.comment.body, '## 📱 OTA compatibility')))
+       (github.event.action == 'deleted' ||
+        (github.event.sender.login == 'expo[bot]' &&
+         (contains(github.event.comment.body, '<!-- dayova-ota-report -->') ||
+          startsWith(github.event.comment.body, '## 📱 OTA compatibility')))))
     concurrency:
       group: ota-report-freshness-${{ github.event.pull_request.number || github.event.issue.number }}
       cancel-in-progress: false
@@ -50,13 +51,22 @@ jobs:
             if (!eligible(latest)) return;
             const sha = latest.head.sha;
             const eventComment = context.payload.comment;
+            const deletedId = context.payload.action === 'deleted' ? eventComment?.id : undefined;
             let current = context.eventName === 'issue_comment' &&
+              context.payload.action !== 'deleted' &&
               context.payload.sender?.login === 'expo[bot]' &&
               isReport(eventComment) && checkedSha(eventComment.body) === sha;
             for (const candidate of comments.filter(isReport)) {
-              const { data: comment } = await github.rest.issues.getComment({
-                ...repo, comment_id: candidate.id,
-              });
+              if (candidate.id === deletedId) continue;
+              let comment;
+              try {
+                ({ data: comment } = await github.rest.issues.getComment({
+                  ...repo, comment_id: candidate.id,
+                }));
+              } catch (error) {
+                if (error.status === 404) continue;
+                throw error;
+              }
               if (isReport(comment) && checkedSha(comment.body) === sha) current = true;
             }
 
