@@ -24,6 +24,7 @@ const FLAT_INTERFACE_PATHS = [
 	"/src/components/ui/button.tsx",
 	"/src/components/ui/close-button.tsx",
 	"/src/components/ui/field.tsx",
+	"/src/components/ui/notched-action-card.tsx",
 	"/src/components/ui/surface.tsx",
 	"/src/components/ui/warning-banner.tsx",
 	"/src/features/analytics/analytics-screen.tsx",
