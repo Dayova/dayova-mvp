@@ -47,9 +47,14 @@ restarted flow cannot update the old exam. A complete cold resume still restores
 all predecessors. CodeRabbit subsequently identified that three malformed-link
 cases omitted duration as well as their named field. Each case now starts from a
 fully valid resume and changes only one field, so it exercises its own guard.
+The later repeated-query follow-up initially missed `type=exam&type=exam`:
+normalization dropped the repeated type and initialized a homework draft.
+The real Expo parser-to-screen regression failed on that behavior. Repeating
+the exam type now starts a clean exam without retaining a saved exam or its
+fields; the regression passes.
 
 After refreshing the stack against the 2026-09-24 `main`, the combined branch
-passed 67 Jest suites / 301 tests, 121 Vitest files / 826 tests with two
+passed 68 Jest suites / 311 tests, 121 Vitest files / 826 tests with two
 workers, TypeScript, Biome, ESLint, and whitespace checks. The Jest suites ran
 in seven bounded batches after the single-process run crashed in the local
 native test runtime. The smaller Vitest worker count avoids local timeouts
@@ -168,10 +173,27 @@ individual transition frame. The focused sampler repeats end-boundary frames;
 these do not establish additional timing. Emulator/software-rendering timings
 are not a performance benchmark.
 
-The separate cancellation clip shows the Back indicator at approximately one
-second, followed by unchanged Subject/selected Chemie from 1.5–10.5 seconds. It
-ends as the next completed swipe starts; the Maestro log covers that destination.
-Both sheets and individual before/after frames were inspected.
+The short [completed-Back excerpt](https://github.com/user-attachments/assets/e7b93856-fbe3-4696-9226-75ef4b707c9f)
+is trimmed from the already attached continuous Android recording; it does not
+combine different runs. It shows Subject with Chemie selected at 0.5 seconds,
+the Android Back indicator around 1.5–2.5 seconds, and Exam type with Klausur
+retained by 3 seconds and through the final decoded frame. The excerpt was
+trimmed and re-encoded at a constant 30 fps without changing the frame order
+or playback speed. Its full
+timeline contact sheet and final decoded frame were inspected.
+
+Coverage: 6.00-second video; 12 full-timeline frames sampled at 2 fps (0.5-second interval); 1 contact sheet(s); no audio stream.
+
+The separate [cancellation-only clip](https://github.com/user-attachments/assets/3524dc96-6261-41d4-acf1-445dbf43ff88)
+shows the Back indicator at approximately one second, followed by unchanged
+Subject/selected Chemie from 1.5–10.5 seconds. A second Back swipe begins
+around 11.4 seconds, but the final decoded frame at 11.755 seconds still shows
+Subject with its Back indicator; the recording stops before its result. The
+Maestro log covers that later completed swipe, but this clip alone is evidence
+only for the cancellation. It was removed from the top-level PR description
+because an unlabeled viewer could reasonably read it as a failed Back gesture.
+Both full-timeline sheets, focused transition sheets, and the final frame were
+inspected.
 
 Coverage: 11.79-second video; 24 full-timeline frames sampled at 2 fps (0.5-second interval); 2 contact sheet(s); no audio stream.
 

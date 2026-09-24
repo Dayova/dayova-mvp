@@ -614,6 +614,19 @@ test.each([
 	expect(mockUpdateEntry).not.toHaveBeenCalled();
 });
 
+test("starts a clean exam when a cold resume URL repeats its type", async () => {
+	const params = parseEntryUrl(
+		"/entry/new?type=exam&type=exam&step=learningAvailability&subject=Chemie&examTypeLabel=Klausur&examDayEntryId=exam-1&dayKey=2026-10-01&durationMinutes=90",
+	);
+	expect(params.type).toEqual(["exam", "exam"]);
+	mockParams = params;
+	const screen = await render(<NewEntryScreen />);
+	expect(screen.getByTestId("entry-history").props.children).toBe("index");
+	expect(screen.getByText("Welche Art von Prüfung ist es?")).toBeOnTheScreen();
+	expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+	expect(mockUpdateEntry).not.toHaveBeenCalled();
+});
+
 test("starts cleanly when repeated exam IDs imply a resume without a step", async () => {
 	const params = parseEntryUrl(
 		"/entry/new?type=exam&subject=Chemie&examTypeLabel=Klausur&examDayEntryId=exam-1&examDayEntryId=exam-2&dayKey=2026-10-01&durationMinutes=90",

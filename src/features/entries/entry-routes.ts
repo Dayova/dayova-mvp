@@ -57,6 +57,15 @@ export const EXAM_RESUME_ROUTES = [
 ] as const;
 
 export function resolveEntryStartParams(searchParams: EntrySearchParams) {
+	if (Array.isArray(searchParams.type)) {
+		return {
+			params: {
+				type: searchParams.type.includes("exam") ? "exam" : "homework",
+			},
+			restoreExamHistory: false,
+		};
+	}
+
 	const params: EntryParams = {
 		type: singleValue(searchParams.type),
 		dayKey: singleValue(searchParams.dayKey),
