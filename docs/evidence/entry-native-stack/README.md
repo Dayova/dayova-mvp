@@ -35,23 +35,23 @@ real native route replacement is checked below.
 ### 2026-09-24 resume-link review follow-up
 
 The review found that a partial availability URL could restore the full stack
-without a saved exam ID or valid date. The first-step initializer now accepts a
-resume only when its exam ID, subject, exam type, and canonical day key are all
-present and valid. An incomplete link starts a fresh exam at Exam type and does
-not retain the old exam ID or prefills. This prevents saving a partial link from
-silently changing the referenced exam's date. The rendered navigation regression
-failed on the original code for missing ID, missing date, and invalid date; it
-passes after the fix. A save-path test also confirms that a restarted flow cannot
-update the old exam. A complete cold resume still restores all predecessors.
+without a saved exam ID or valid date. A final integrity review also found that
+an omitted duration could overwrite the existing exam with a default. The
+first-step initializer now accepts a resume only when its exam ID, subject,
+exam type, canonical day key, and bounded integer duration are all present and
+valid. An incomplete link starts a fresh exam at Exam type and does not retain
+the old exam ID or prefills. The rendered navigation regression failed on the
+previous code for missing ID, missing date, invalid date, missing duration, and
+invalid duration; it passes after the fix. A save-path test confirms that a
+restarted flow cannot update the old exam. A complete cold resume still restores
+all predecessors.
 
-After this follow-up, local validation passed: 67 Jest suites / 292 tests,
-118 Vitest files / 764 tests, TypeScript, Biome, ESLint, and whitespace checks.
-The native recordings below predate this URL-validation change; they remain
-evidence for the unchanged gesture mechanics and the complete resume path.
-After refreshing the stack against the 2026-09-24 `main`, the combined branch
-passed 67 Jest suites / 298 tests, 119 Vitest files / 778 tests with two workers,
-TypeScript, Biome, ESLint, and whitespace checks. The smaller worker count avoids
-local timeouts caused by concurrent Expo config subprocesses.
+After refreshing the stack against the 2026-09-24 `main`, the final combined
+branch passed 67 Jest suites / 300 tests, 119 Vitest files / 778 tests with two
+workers, TypeScript, Biome, ESLint, and whitespace checks. The smaller worker
+count avoids local timeouts caused by concurrent Expo config subprocesses. The
+native recordings below predate this URL-validation change; they remain evidence
+for the unchanged gesture mechanics and the complete resume path.
 
 ## Native test scope
 

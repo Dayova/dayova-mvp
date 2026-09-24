@@ -37,8 +37,11 @@ parent navigator as well as internal gestures and gesture cancellation.
   may not receive query parameters.
 - A valid exam availability resume reconstructs Exam type, Subject, Date, and
   Availability in native history, retaining the existing exam ID and answers.
-  Incomplete resumes start at Exam type. Internal step URLs without an initialized
-  draft exit safely to Home rather than showing an invalid form.
+  It requires a saved exam ID, subject, exam type, canonical day key, and bounded
+  integer duration. Incomplete resumes start a clean flow at Exam type without
+  retaining the saved ID, so a fallback value cannot overwrite that exam.
+  Internal step URLs without an initialized draft exit safely to Home rather
+  than showing an invalid form.
 - Learning-time settings are pushed outside the entry stack. Their visible Back
   dismisses to the existing availability route, just as native Back does. The
   retained provider preserves answers and predecessor history.

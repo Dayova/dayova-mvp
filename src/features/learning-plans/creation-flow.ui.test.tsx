@@ -211,6 +211,7 @@ beforeEach(() => {
 		subject: "Biologie",
 		examTypeLabel: "Klassenarbeit",
 		dayKey: "2026-09-30",
+		durationMinutes: "90",
 	};
 });
 
@@ -388,6 +389,15 @@ describe("entry native history and shared answers", () => {
 		["missing exam ID", { dayKey: "2026-09-30" }],
 		["missing date", { examDayEntryId: "exam-1" }],
 		["invalid date", { examDayEntryId: "exam-1", dayKey: "2026-02-30" }],
+		["missing duration", { examDayEntryId: "exam-1", dayKey: "2026-09-30" }],
+		[
+			"invalid duration",
+			{
+				examDayEntryId: "exam-1",
+				dayKey: "2026-09-30",
+				durationMinutes: "0",
+			},
+		],
 	])("starts a clean flow for a resume with %s", async (_reason, fields) => {
 		mockParams = {
 			type: "exam",

@@ -1,4 +1,8 @@
 import { getDayKey, parseDayKey } from "~/lib/day-key";
+import {
+	MAX_EXAM_DURATION_MINUTES,
+	MIN_EXAM_DURATION_MINUTES,
+} from "~/lib/entry-time";
 
 export const ENTRY_AVAILABILITY_PATH = "/entry/new/availability";
 
@@ -51,13 +55,17 @@ export function resolveEntryStartParams(params: EntryParams) {
 	if (!examResumeRequested) return { params, restoreExamHistory: false };
 
 	const parsedDay = parseDayKey(params.dayKey);
+	const durationMinutes = Number(params.durationMinutes);
 	const restoreExamHistory = Boolean(
 		params.step === "learningAvailability" &&
 			params.examDayEntryId?.trim() &&
 			params.subject?.trim() &&
 			params.examTypeLabel?.trim() &&
 			parsedDay &&
-			getDayKey(parsedDay) === params.dayKey,
+			getDayKey(parsedDay) === params.dayKey &&
+			Number.isInteger(durationMinutes) &&
+			durationMinutes >= MIN_EXAM_DURATION_MINUTES &&
+			durationMinutes <= MAX_EXAM_DURATION_MINUTES,
 	);
 
 	return restoreExamHistory
