@@ -52,7 +52,7 @@ function UploadActivity({
 				{openingUploadAction === "files"
 					? "Dateiauswahl wird geöffnet …"
 					: openingUploadAction === "library"
-						? "Mediathek wird geöffnet …"
+						? "Galerie wird geöffnet …"
 						: openingUploadAction === "camera"
 							? "Kamera wird geöffnet …"
 							: "Material wird hochgeladen …"}
