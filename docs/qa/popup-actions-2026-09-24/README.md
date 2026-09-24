@@ -15,6 +15,19 @@ User-supplied original PNGs. Current iPhone captures show popup spacing in QA #7
 
 ## Original PNGs
 
+Final automated run: **84 suites / 393 UI tests passed**.
+
+iPhone Light native walkthrough passed: opened/cancelled Add subject, exposed
+swipe delete, opened/cancelled the confirmation. No subject was deleted.
+The captures below prove button shape, no trash icon, and outlined cancellation;
+the server was subsequently cold-restarted to ensure refreshed CSS color tokens.
+They are not an independent color-value measurement. Android, Dark and enlarged
+text were not freshly visually revalidated for this follow-up.
+
+![Verified cancel](verified-cancel-ios.png)
+![Verified swipe](verified-swipe-ios.png)
+![Verified confirmation](verified-confirmation-ios.png)
+
 ### review-20260924-16.25.44.png
 
 ![review-20260924-16.25.44.png](review-20260924-16.25.44.png)
@@ -62,4 +75,3 @@ User-supplied original PNGs. Current iPhone captures show popup spacing in QA #7
 ### review-20260924-16.23.36.png
 
 ![review-20260924-16.23.36.png](review-20260924-16.23.36.png)
-
