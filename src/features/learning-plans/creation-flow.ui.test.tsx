@@ -385,27 +385,28 @@ describe("entry native history and shared answers", () => {
 		).toBeOnTheScreen();
 	});
 
-	test.each([
-		["missing exam ID", { dayKey: "2026-09-30" }],
-		["missing date", { examDayEntryId: "exam-1" }],
-		["invalid date", { examDayEntryId: "exam-1", dayKey: "2026-02-30" }],
-		["missing duration", { examDayEntryId: "exam-1", dayKey: "2026-09-30" }],
-		[
-			"invalid duration",
-			{
-				examDayEntryId: "exam-1",
-				dayKey: "2026-09-30",
-				durationMinutes: "0",
-			},
-		],
-	])("starts a clean flow for a resume with %s", async (_reason, fields) => {
-		mockParams = {
+	const invalidResumeCases: [string, Record<string, string>, string[]][] = [
+		["missing exam ID", {}, ["examDayEntryId"]],
+		["missing date", {}, ["dayKey"]],
+		["invalid date", { dayKey: "2026-02-30" }, []],
+		["missing duration", {}, ["durationMinutes"]],
+		["invalid duration", { durationMinutes: "0" }, []],
+	];
+	test.each(
+		invalidResumeCases,
+	)("starts a clean flow for a resume with %s", async (_reason, overrides, omitted) => {
+		const params: Record<string, string> = {
 			type: "exam",
 			step: "learningAvailability",
+			examDayEntryId: "exam-1",
 			subject: "Biologie",
 			examTypeLabel: "Klassenarbeit",
-			...fields,
+			dayKey: "2026-09-30",
+			durationMinutes: "90",
+			...overrides,
 		};
+		for (const key of omitted) delete params[key];
+		mockParams = params;
 		const screen = await render(<NewEntryScreen />);
 		expect(screen.getByTestId("entry-history").props.children).toBe("index");
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();

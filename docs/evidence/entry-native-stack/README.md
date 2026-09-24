@@ -44,7 +44,9 @@ the old exam ID or prefills. The rendered navigation regression failed on the
 previous code for missing ID, missing date, invalid date, missing duration, and
 invalid duration; it passes after the fix. A save-path test confirms that a
 restarted flow cannot update the old exam. A complete cold resume still restores
-all predecessors.
+all predecessors. CodeRabbit subsequently identified that three malformed-link
+cases omitted duration as well as their named field. Each case now starts from a
+fully valid resume and changes only one field, so it exercises its own guard.
 
 After refreshing the stack against the 2026-09-24 `main`, the final combined
 branch passed 67 Jest suites / 300 tests, 121 Vitest files / 825 tests with two
