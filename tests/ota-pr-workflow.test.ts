@@ -247,9 +247,11 @@ describe("PR OTA workflow routing", () => {
 		expect(Boolean(evaluate(workflow.jobs.deploy_convex.if, context))).toBe(
 			isMainPush,
 		);
+		expect(Boolean(evaluate(workflow.jobs.pr_ota_report.if, context))).toBe(
+			github.event_name === "pull_request",
+		);
 		expect(Boolean(evaluate(workflow.jobs.pr_ota_comment.if, context))).toBe(
-			github.event_name === "pull_request" &&
-				(github.event.pull_request.base.ref === "main" || rooted),
+			github.event_name === "pull_request",
 		);
 	});
 
@@ -315,5 +317,34 @@ describe("PR OTA workflow routing", () => {
 			(expression: string) => String(evaluate(expression, context)),
 		);
 		expect(commentBody).toBe(rendered);
+	});
+
+	it.each([
+		["unrooted stack", "success", "false"],
+		["failed parent lookup", "failure", undefined],
+	])("replaces a compatible comment after %s", (_case, gateStatus, rootMain) => {
+		const github = event("pull_request", "MEMBER", false, "codex/orphan");
+		const context = {
+			github,
+			workflow: { url: "https://expo.dev/accounts/dayova/projects/dayova/workflows/unrooted" },
+			after: {
+				stack_root_gate: { status: gateStatus, outputs: { root_main: rootMain } },
+				production_fingerprint: { status: "skipped", outputs: {} },
+				ota_checks: { status: "skipped", outputs: {} },
+			},
+		};
+		const report = workflow.jobs.pr_ota_report;
+		const comment = workflow.jobs.pr_ota_comment;
+		expect(evaluate(workflow.jobs.checks.if, context)).toBe(false);
+		expect(evaluate(report.if, context)).toBe(true);
+		expect(evaluate(comment.if, context)).toBe(true);
+		const rendered = comment.params.payload.replace(
+			/\$\{\{.*?\}\}/g,
+			(expression: string) => String(evaluate(expression, context)),
+		);
+		expect(rendered).toContain("### ❓ Compatibility not confirmed");
+		expect(rendered).toContain("open base chain to main");
+		expect(rendered).toContain(`**Checked commit:** \`${github.sha}\``);
+		expect(rendered).not.toContain("### ✅ OTA-compatible");
 	});
 });

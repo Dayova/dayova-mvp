@@ -161,7 +161,8 @@ jobs:
       - stack_root_gate
       - production_fingerprint
       - ota_checks
-    if: ${{ github.event_name == 'pull_request' && (github.event.pull_request.base.ref == 'main' || after.stack_root_gate.outputs.root_main == 'true') }}
+    # A failed stack gate must replace any earlier compatible PR comment.
+    if: ${{ github.event_name == 'pull_request' }}
     params:
       md: &pr_ota_report_markdown |
         <!-- dayova-ota-report -->
@@ -183,7 +184,7 @@ jobs:
         <details>
         <summary>🛠️ Technical details — reason, builds & fingerprints</summary>
 
-        **Reason:** ${{ after.ota_checks.outputs.ota_reason || 'Assessment did not complete. Production checks run only for trusted, same-repository PRs after quality checks pass.' }}
+        **Reason:** ${{ after.ota_checks.outputs.ota_reason || 'Assessment did not complete. Production checks require a trusted, same-repository PR with an open base chain to main and passing quality checks.' }}
 
         **📦 Distributed builds:** `${{ after.ota_checks.outputs.ota_baseline || 'Not assessed' }}`
 
@@ -206,7 +207,7 @@ jobs:
     name: Post OTA report to GitHub PR
     type: github-comment
     after: *pr_ota_report_dependencies
-    if: ${{ github.event_name == 'pull_request' && (github.event.pull_request.base.ref == 'main' || after.stack_root_gate.outputs.root_main == 'true') }}
+    if: ${{ github.event_name == 'pull_request' }}
     params:
       payload: *pr_ota_report_markdown
 
