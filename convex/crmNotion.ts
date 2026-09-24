@@ -271,6 +271,11 @@ export function createNotionClient(token: string, dataSourceId: string) {
 				throw new CrmFailure("schema");
 			if (result.has_more && typeof result.next_cursor !== "string")
 				throw new CrmFailure("schema");
+			if (result.request_status !== undefined) {
+				const status = object(result.request_status);
+				if (status.type === "incomplete") throw new CrmFailure("capacity");
+				if (status.type !== "complete") throw new CrmFailure("schema");
+			}
 			return {
 				rows: result.results.map((row) => parseStudent(row, dataSourceId)),
 				nextCursor: result.has_more

@@ -187,8 +187,12 @@ checks linked pages in batches of 25 and paid users in batches of 100. Notion
 pages are scanned in creation-time order so changing a contact does not reorder
 the cursor. Each batch uses the same eleven-minute worker lease and schedules
 the next batch, yielding to due per-user updates before continuing. A failed
-batch retains its cursor for the next run. There is no fixed contact or paid-user
-cap. Unchanged contacts skip PATCH when the stored projection hash and Notion
+batch retains its cursor for the next run. There is no app-imposed 200-contact
+or 20,000-user cap. Notion can stop a query after 10,000 results with
+`request_status.type = incomplete` even when `has_more` is false. The worker
+reports `capacity`, never a complete audit or collision inventory; creation-time
+windowing is required before auditing a CRM of that size. Unchanged contacts
+skip PATCH when the stored projection hash and Notion
 edit timestamp still match. A manual Notion edit changes that timestamp and
 causes the next audit to reapply app-owned fields. Signup creation still needs a
 complete Notion inventory to detect case-insensitive email collisions; very
@@ -306,6 +310,7 @@ approved DAY-357/DAY-358 processor policy before live rollout; deleting the app
 account alone is not proof the independent CRM contact was deleted.
 
 API references: [query data source](https://developers.notion.com/reference/query-a-data-source),
+[query large data sources](https://github.com/makenotion/notion-cookbook/blob/main/examples/query-large-data-sources/README.md),
 [create page](https://developers.notion.com/reference/post-page),
 [update page](https://developers.notion.com/reference/patch-page),
 [request limits](https://developers.notion.com/reference/request-limits).

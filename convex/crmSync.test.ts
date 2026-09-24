@@ -45,6 +45,23 @@ test("Notion pagination includes duplicates and inventories beyond 200 contacts"
 		}),
 	);
 	expect(await createNotionClient("test", source).students()).toHaveLength(201);
+	vi.stubGlobal(
+		"fetch",
+		vi.fn(async () =>
+			Response.json({
+				results: [],
+				has_more: false,
+				next_cursor: null,
+				request_status: {
+					type: "incomplete",
+					incomplete_reason: "query_result_limit_reached",
+				},
+			}),
+		),
+	);
+	await expect(createNotionClient("test", source).students()).rejects.toMatchObject({
+		category: "capacity",
+	});
 });
 
 test("live audit checkpoints and completes an inventory larger than 200", async () => {
