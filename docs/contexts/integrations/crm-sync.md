@@ -150,10 +150,11 @@ status until the next verified subscriber refresh; CRM reconciliation does not
 fetch RevenueCat itself. Store trial access remains unchanged in the app.
 See [RevenueCat Customer Info model](https://www.revenuecat.com/docs/api-v1/customer-info-model).
 
-Trial activation and changed verified subscription snapshots schedule an immediate
-reconciliation in live mode. Identical subscription snapshots do not schedule
-extra work just because their verification timestamp changes. The hourly sweep
-repairs failed/busy runs and handles expiry without an incoming event.
+Trial activation and changed verified subscription snapshots enqueue a per-user
+update in live mode. Identical subscription snapshots do not enqueue extra work
+just because their verification timestamp changes. The hourly audit handles
+expiry without an incoming event; a five-minute delivery cron recovers missed
+update wakeups.
 
 Manually owned status/registration date and tags after creation, phone, notes,
 research and relationship fields remain separate. `Entitlement State` remains the effective
@@ -162,7 +163,8 @@ payment IDs, management URLs or raw provider payloads are projected.
 
 ## Runtime and limits
 
-An hourly cron runs `crmSync:reconcile`. Modes default to `off`; dry-run performs
+An hourly cron runs the paged audit; a five-minute cron delivers pending user
+updates. Modes default to `off`; dry-run performs
 no Notion writes and creates no user mappings, but persists aggregate operational
 status in Convex. Live reads fresh Notion identity/uniqueness and Convex state
 before each PATCH. Notion has no transaction spanning these systems: concurrent
@@ -173,18 +175,25 @@ controls app access.
 Notion requests use API version `2025-09-03`, at most 2.5 requests/second, a
 15-second request timeout and four attempts for network errors, HTTP 429 and
 5xx, honoring Retry-After. Retries reuse the exact PATCH payload. Deterministic
-field updates are idempotent; successful reconciliation advances Last Synced At.
+field updates are idempotent; a successful PATCH advances the contact's Last
+Synced At. A no-change audit leaves it untouched; use `crmSyncState.lastSuccessAt`
+to assess when the full audit last completed successfully.
 Null source fields clear stale CRM values. Terminal failures stop the run, retain
 aggregate partial counts and a controlled category, and retry on the next hour.
 Identity conflicts skip only the affected row.
 
-The initial cohort implementation loads a paginated inventory of at most **200
-CRM rows** before any writes. Overflow fails closed with `capacity`, never a
-truncated successful report. The paid-user audit paginates at 100 users per query
-with a 20,000-user cap. Requests have an eight-minute budget; a single-run lease
-lasts eleven minutes (longer than Convex's ten-minute action lifetime). Before
-expanding beyond these limits, replace the bounded cohort sweep with a durable
-batched workflow. Never just remove the limits.
+The live audit checkpoints its Notion cursor after each 25-contact batch, then
+checks linked pages in batches of 25 and paid users in batches of 100. Notion
+pages are scanned in creation-time order so changing a contact does not reorder
+the cursor. Each batch uses the same eleven-minute worker lease and schedules
+the next batch, yielding to due per-user updates before continuing. A failed
+batch retains its cursor for the next run. There is no fixed contact or paid-user
+cap. Unchanged contacts skip PATCH when the stored projection hash and Notion
+edit timestamp still match. A manual Notion edit changes that timestamp and
+causes the next audit to reapply app-owned fields. Signup creation still needs a
+complete Notion inventory to detect case-insensitive email collisions; very
+large destinations may need a dedicated indexed identity registry before signup
+delivery can be fully bounded.
 
 ## Setup and rollout
 
@@ -241,6 +250,16 @@ inspect its `by_status` index for backlog/review work. Aggregate reports include
 These are batch counts, not total backlog counts. `total` remains the inventory
 size before creation. Dry-run never creates pages or consumes queued signups.
 
+`crmStudentUpdates` holds one coalesced row per user with a revision, next attempt
+time and controlled error. Profile and billing changes enqueue the user; delivery
+reads their current Convex state and verifies their Notion identity before PATCH.
+It never stores an old profile or entitlement snapshot. Transient failures back
+off and retry; identity conflicts move the row to `review` until corrected or a
+new source change requeues it. A revision check prevents an in-flight delivery
+from deleting a newer update. Inspect `by_status_and_nextAttemptAt` for pending
+backlog and review rows. The five-minute cron is a fallback if an immediate
+scheduled delivery is busy or lost.
+
 Before `POST /pages`, persist the attempt and destination. Unlike deterministic
 PATCH requests, creates are never retried blindly, including on network errors,
 429/5xx responses or worker crashes. The next run searches for the Clerk ID and
@@ -251,13 +270,15 @@ to reuse the reviewed Clerk match. Only clear an attempt marker after explicitly
 verifying in Notion that no page was created; this permits a new create request.
 Do not reset the destination marker to redirect an uncertain create.
 
-Account deletion removes queued signups as well as mappings. The worker checks
+Account deletion removes queued signups, updates and mappings. The worker checks
 that the user and queue entry still exist immediately before creation. A deletion
 or external CRM edit racing an in-flight Notion request cannot be rolled back
 across systems; resolve any orphaned contact through the CRM deletion process.
 
 `crmSyncState:status` is internal/admin-only. Inspect counts, error, running,
-startedAt, finishedAt and lastSuccessAt. Alert via the deployment's existing
+startedAt, finishedAt, lastSuccessAt, auditPhase, auditCursor and auditFailed.
+Counts refer to the latest batch, while lastSuccessAt advances only after a
+complete successful audit. Alert via the deployment's existing
 operations monitoring on a failed cron, nonzero failed/conflict/creationReview/
 missingLinkedPages counts, or a live
 lastSuccessAt older than two hours. If running exceeds eleven minutes, the worker
@@ -274,9 +295,9 @@ Never fix a CRM mismatch by changing app entitlements. Set mode `off` to pause
 future runs; an already running action may finish its current sweep.
 
 Per-user operational storage is one link row with opaque IDs, last attempt,
-last success and a controlled error, plus one pending/review signup row until
-delivery completes. The existing account-deletion flow removes both kinds of
-rows. Global status stores only the latest aggregate run and success
+last success, projection hash, Notion edit timestamp and a controlled error,
+plus at most one pending/review signup row and one pending/review update row.
+The existing account-deletion flow removes all three kinds of rows. Global status stores only the latest batch and success
 timestamps, not an unbounded audit history. The integration does not recreate
 deleted users or silently bind a re-registration by email. Unmatched CRM rows
 retain their previous projection/timestamp and require review; they must not be

@@ -209,7 +209,7 @@ test("trial and verified purchase changes schedule CRM updates; identical snapsh
 		...snapshot,
 		verifiedAt: now + 1,
 	});
-	expect(await scheduledCrm()).toHaveLength(2);
+	expect(await scheduledCrm()).toHaveLength(1);
 	await t.mutation(internal.entitlements.applyRevenueCatSnapshot, {
 		...snapshot,
 		productId: annual,
@@ -219,7 +219,10 @@ test("trial and verified purchase changes schedule CRM updates; identical snapsh
 		productId: annual,
 		willRenew: false,
 	});
-	expect(await scheduledCrm()).toHaveLength(4);
+	expect(await scheduledCrm()).toHaveLength(1);
+	expect(
+		await t.run((ctx) => ctx.db.query("crmStudentUpdates").take(5)),
+	).toMatchObject([{ revision: 4, status: "pending" }]);
 	vi.stubEnv("NOTION_CRM_MODE", "off");
 	await t.finishAllScheduledFunctions(vi.runAllTimers);
 });

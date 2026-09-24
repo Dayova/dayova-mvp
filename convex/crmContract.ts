@@ -87,7 +87,13 @@ export const crmProjection = v.object({
 });
 export type CrmProjection = Infer<typeof crmProjection>;
 export const crmMatch = v.union(
-	v.object({ status: v.literal("matched"), projection: crmProjection }),
+	v.object({
+		status: v.literal("matched"),
+		projection: crmProjection,
+		lastProjectionHash: v.optional(v.string()),
+		lastNotionEditedAt: v.optional(v.string()),
+		linkError: v.optional(crmError),
+	}),
 	v.object({
 		status: v.union(
 			v.literal("unmatched"),

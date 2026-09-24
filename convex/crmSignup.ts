@@ -2,7 +2,6 @@ import { internal } from "./_generated/api";
 import type { ActionCtx } from "./_generated/server";
 import type { CrmCounts, CrmMatch } from "./crmContract";
 import {
-	CRM_MAX_STUDENTS,
 	CrmFailure,
 	type createNotionClient,
 	type StudentRow,
@@ -29,7 +28,6 @@ export async function provisionSignups(
 	counts.created = 0;
 	counts.wouldCreate = 0;
 	counts.creationReview = 0;
-	let size = options.students.length;
 	const reservedEmails = new Set(
 		options.students.map((row) => row.email?.toLowerCase()),
 	);
@@ -119,10 +117,8 @@ export async function provisionSignups(
 			await review();
 			continue;
 		}
-		if (size >= CRM_MAX_STUDENTS) throw new CrmFailure("capacity");
 		if (options.dryRun) {
 			counts.wouldCreate++;
-			size++;
 			reservedEmails.add(email);
 			continue;
 		}
@@ -148,7 +144,6 @@ export async function provisionSignups(
 		);
 		if (created.clerkId !== user.clerkId)
 			throw new CrmFailure("identity_changed");
-		size++;
 		options.students.push(created);
 		reservedEmails.add(email);
 		counts.created++;

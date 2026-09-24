@@ -14,6 +14,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { env, mutation, query } from "./_generated/server";
 import { operatingSystem } from "./crmContract";
+import { enqueueCrmUpdate } from "./crmUpdates";
 import { throwUserFacingError } from "./errors";
 import {
 	deriveOnboardingLearningTimes,
@@ -392,7 +393,6 @@ async function scheduleCrmProfileSync(
 	patch: Partial<Doc<"users">>,
 ) {
 	if (
-		env.NOTION_CRM_MODE === "live" &&
 		(
 			[
 				"email",
@@ -404,7 +404,7 @@ async function scheduleCrmProfileSync(
 			] as const
 		).some((key) => Object.hasOwn(patch, key) && patch[key] !== previous[key])
 	)
-		await ctx.scheduler.runAfter(0, internal.crmSync.reconcile, {});
+		await enqueueCrmUpdate(ctx, previous._id);
 }
 
 export const syncCurrentUser = mutation({
