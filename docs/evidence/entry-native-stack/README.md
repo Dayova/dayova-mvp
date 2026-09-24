@@ -48,12 +48,15 @@ all predecessors. CodeRabbit subsequently identified that three malformed-link
 cases omitted duration as well as their named field. Each case now starts from a
 fully valid resume and changes only one field, so it exercises its own guard.
 
-After refreshing the stack against the 2026-09-24 `main`, the final combined
-branch passed 67 Jest suites / 300 tests, 121 Vitest files / 825 tests with two
-workers, TypeScript, Biome, ESLint, and whitespace checks. The smaller worker
-count avoids local timeouts caused by concurrent Expo config subprocesses. The
-native recordings below predate this URL-validation change; they remain evidence
-for the unchanged gesture mechanics and the complete resume path.
+After refreshing the stack against the 2026-09-24 `main`, the combined branch
+passed 67 Jest suites / 301 tests, 121 Vitest files / 826 tests with two
+workers, TypeScript, Biome, ESLint, and whitespace checks. The Jest suites ran
+in seven bounded batches after the single-process run crashed in the local
+native test runtime. The smaller Vitest worker count avoids local timeouts
+caused by concurrent Expo config subprocesses. CodeRabbit CLI reviewed the
+saved-plan follow-up with zero findings. The native recordings below predate
+the URL-validation and saved-plan changes; they remain evidence for the
+unchanged entry gesture mechanics and the complete resume path.
 
 ## Native test scope
 
@@ -177,19 +180,50 @@ Coverage: 11.79-second video; 24 full-timeline frames sampled at 2 fps (0.5-seco
 An [iOS simulator release build](https://expo.dev/accounts/dayova/projects/dayova/builds/210ca4b3-ca1a-41d5-a52b-e5e2e3d0e945)
 from `bf6e0fec` finished successfully using the current lockfile, production
 environment, `ota-staging` channel, and `de.dayova.app` bundle ID. It was
-installed and cold-launched on the iPhone 16 / iOS 26.5 simulator. The app
-reached its welcome and login screens without a crash. Later stack-refresh
-commits changed workflow, release-documentation, and test files only; the
-release build has the same app source and native dependencies as the PR head.
+installed and cold-launched on the iPhone 16 / iOS 26.5 simulator. After the
+user signed in, the authenticated release app could be exercised without
+creating or modifying records:
 
-This fresh install has no authenticated session. The login screen has only
-email/password sign-in and registration, and the repository supplies no reusable
-test account. Therefore the release binary has **not** exercised the exam flow,
-OS-killed cold entry/resume URLs, or gestures through authenticated screens.
-The development-client native recordings above cover those gestures with an
-isolated fixture. The real Expo parser regression covers the leaf-only cold URL
-shape, retained exam ID, date, duration, and reconstructed predecessors.
-Repeat OS-killed entry and saved-exam resume URLs in an authenticated
-preview/release build before release. Expo development builds do not support
-custom-scheme cold launch testing in the same way as release builds
+- Exam creation: header Back moved Availability → Date → Subject → Exam type →
+  Home, preserving selections on each preceding step.
+- Homework creation: header Back moved Planning → its first step → Home,
+  preserving the subject selection.
+- An existing unfinished plan opened from Plans at Material. Header Back went
+  to Topics instead of the Plans list. This reproduced the reported caller
+  history bug. On Topics, the pause confirmation appeared, but choosing
+  “Später fortsetzen” left Topics visible. The native removal guard was still
+  active when the destination action ran.
+
+The final app-source follow-up marks a Material route opened from Plans with
+`origin=learningPlans`, so Back targets Plans; Material reached from the
+creation flow still returns to Topics. Exits now disable the native removal
+guard before dispatching the destination action. The tests exercise both
+routes and assert the guard is disabled at dispatch. The new exact-source
+[iOS simulator release build](https://expo.dev/accounts/dayova/projects/dayova/builds/269a12c8-c26d-46a2-a0b1-5f7d358b2b89)
+uses commit `a9f23cfd`, production configuration, `ota-staging` channel, and
+the current lockfile. It finished and installed over the signed-in app on the
+same iPhone 16 simulator. Auth persisted. In this release build:
+
+- Opening Material from the unfinished plan card and pressing header Back
+  returned to the Plans list, not Topics.
+- Opening a saved plan at Review, then pressing Back to Material and Back again
+  reached Topics; this in-flow Material route still moves one setup step back.
+- Pressing Back on Topics showed the pause confirmation. Choosing “Später
+  fortsetzen” returned to the Plans list, fixing the earlier stuck exit.
+- Force-closing and reopening the release app preserved the signed-in Home.
+
+The Simulator UI drag input did not trigger a native edge swipe in this
+release binary, so these authenticated release checks establish button Back
+and destination handling, not a release-binary gesture pass. The separate
+native iOS development-client recordings above cover completed and cancelled
+edge swipes through the entry flow.
+
+The simulator also has a development client registered for the `dayova` URL
+scheme. Safari dispatched a `dayova:///entry/new?type=exam` cold link to that
+development client, even after the release app was reinstalled and force-closed,
+so this did not verify release-app cold-link handling. The real Expo parser
+regression covers the leaf-only cold URL shape, retained exam ID, date,
+duration, and reconstructed
+predecessors. Expo development builds do not support custom-scheme cold launch
+testing in the same way as release builds
 ([Expo documentation](https://docs.expo.dev/develop/development-builds/development-workflows/)).
