@@ -23,22 +23,18 @@ import {
 	ArrowUpRight,
 	ClipboardEdit,
 	Clock3,
-	GraduationCap,
 	Plus,
 	PropertyEdit,
 	Route2,
 	Trash2,
 } from "~/components/ui/icon";
-import {
-	CompactNotchedActionCard,
-	NotchedActionCard,
-} from "~/components/ui/notched-action-card";
+import { CompactNotchedActionCard } from "~/components/ui/notched-action-card";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
 import { getLearningPlanCreationOverview } from "~/features/learning-plans/creation-overview";
 import { learningPlanResumePath } from "~/features/learning-plans/creation-routes";
-import { LearningPlanCardFooter } from "~/features/learning-plans/learning-plan-card-footer";
+import { LearningPlanCardVisual } from "~/features/learning-plans/learning-plan-card-visual";
 import { MaterialRequiredSheet } from "~/features/learning-plans/material-required-sheet";
 import { getRollingLearningWindowLabel } from "~/features/learning-plans/rolling-learning-window";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
@@ -425,7 +421,6 @@ function LearningPlanCard({
 	onDelete: () => void;
 	onPress: () => void;
 }) {
-	const { colors } = useDayovaTheme();
 	const needsSchoolMaterial = plan.needsSchoolMaterial;
 	const creationOverview = getLearningPlanCreationOverview(plan);
 	const progress = Number.isFinite(plan.progressPercent)
@@ -542,94 +537,44 @@ function LearningPlanCard({
 			) : null}
 			<GestureDetector gesture={panGesture}>
 				<Animated.View style={cardAnimatedStyle}>
-					<NotchedActionCard
-						cardAccessibilityHint={
+					<LearningPlanCardVisual
+						accessibilityHint={
 							creationOverview
 								? "Setzt die gespeicherte Lernplan-Erstellung am nächsten offenen Schritt fort."
 								: needsSchoolMaterial
 									? "Öffnet einen Hinweis und bietet an, Schulmaterial hochzuladen."
 									: "Öffnet diesen Lernplan und zeigt die zugehörigen Lernsessions an."
 						}
-						cardAccessibilityLabel={
+						accessibilityLabel={
 							creationOverview
 								? `${formatGermanUiText(plan.subject)}, ${creationOverview.badgeLabel}, ${plan.examDateLabel ?? "Termin wird geladen"}, ${creationOverview.progressLabel}`
 								: needsSchoolMaterial
 									? `${formatGermanUiText(plan.subject)}, Material fehlt, ${plan.examDateLabel ?? "Termin wird geladen"}, Lernmaterial hochladen`
 									: `${formatGermanUiText(plan.subject)}, ${status.label}, ${plan.examDateLabel ?? "Termin wird geladen"}, ${formatGermanUiText(currentTitle)}, ${rollingWindowLabel}, ${remainingDays === 1 ? "noch 1 Tag" : `noch ${remainingDays} Tage`}`
 						}
-						actionIcon={
-							<ArrowUpRight
-								size={24}
-								color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-								strokeWidth={1.9}
-							/>
-						}
+						model={{
+							subject: formatGermanUiText(plan.subject),
+							status,
+							examDateLabel: plan.examDateLabel ?? "Termin wird geladen",
+							currentTitle: formatGermanUiText(currentTitle),
+							state: creationOverview
+								? {
+										kind: "creation",
+										progressLabel: creationOverview.progressLabel,
+									}
+								: needsSchoolMaterial
+									? { kind: "materialRequired" }
+									: {
+											kind: "ready",
+											durationMinutes:
+												plan.currentSession?.durationMinutes ?? null,
+											progress,
+											remainingDays,
+											rollingWindowLabel,
+										},
+						}}
 						onPress={onPress}
-						pressType="card"
-					>
-						<View className="gap-2">
-							<View className="flex-row items-start justify-between gap-3">
-								<Text
-									className="min-w-0 flex-1 pr-2 font-poppins font-semibold text-body-1 text-text"
-									numberOfLines={2}
-								>
-									{formatGermanUiText(plan.subject)}
-								</Text>
-								<View className="shrink-0 flex-row gap-2">
-									<Badge {...status} />
-									{creationOverview || needsSchoolMaterial ? null : (
-										<Badge
-											label={`${plan.currentSession?.durationMinutes ?? "–"} min`}
-											background={STATUS_NEUTRAL_BACKGROUND}
-											foreground={DAYOVA_DESIGN_SYSTEM.colors.primary}
-										/>
-									)}
-								</View>
-							</View>
-
-							<View className="flex-row items-center gap-1">
-								<GraduationCap
-									size={14}
-									color={colors.secondaryText}
-									strokeWidth={2}
-								/>
-								<Text className="font-poppins text-body-4 text-secondary-text">
-									{plan.examDateLabel ?? "Termin wird geladen"}
-								</Text>
-							</View>
-
-							<Text
-								className="max-w-[282px] font-poppins font-semibold text-body-2 text-text"
-								numberOfLines={2}
-							>
-								{formatGermanUiText(currentTitle)}
-							</Text>
-						</View>
-
-						{creationOverview ? (
-							<View className="mt-4 flex-row items-center gap-1.5">
-								<ClipboardEdit
-									size={14}
-									color={colors.secondaryText}
-									strokeWidth={2}
-								/>
-								<Text className="font-poppins text-body-4 text-secondary-text">
-									{creationOverview.progressLabel}
-								</Text>
-							</View>
-						) : needsSchoolMaterial ? (
-							<Text className="mt-4 max-w-[282px] font-poppins text-body-4 text-secondary-text">
-								Lade Schulmaterial hoch, damit Dayova deinen Lernplan erstellen
-								kann.
-							</Text>
-						) : (
-							<LearningPlanCardFooter
-								progress={progress}
-								remainingDays={remainingDays}
-								rollingWindowLabel={rollingWindowLabel}
-							/>
-						)}
-					</NotchedActionCard>
+					/>
 				</Animated.View>
 			</GestureDetector>
 		</View>

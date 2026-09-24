@@ -10,10 +10,12 @@ import { useDayovaTheme } from "~/lib/theme";
 const FOOTER_ACTION_INSET = 32;
 
 export function LearningPlanCardFooter({
+	fixedTextScale = false,
 	progress,
 	remainingDays,
 	rollingWindowLabel,
 }: {
+	fixedTextScale?: boolean;
 	progress: number;
 	remainingDays: number;
 	rollingWindowLabel: string;
@@ -28,6 +30,7 @@ export function LearningPlanCardFooter({
 		>
 			<View className="flex-row items-start">
 				<Text
+					allowFontScaling={!fixedTextScale}
 					className="font-poppins text-body-5 text-secondary-text"
 					style={{ flexGrow: 1, flexShrink: 1, minWidth: 0, paddingRight: 8 }}
 				>
@@ -40,6 +43,7 @@ export function LearningPlanCardFooter({
 						strokeWidth={2}
 					/>
 					<Text
+						allowFontScaling={!fixedTextScale}
 						className="font-poppins text-body-4 text-secondary-text"
 						numberOfLines={1}
 					>

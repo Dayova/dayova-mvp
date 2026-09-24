@@ -32,6 +32,7 @@ function SuccessConfirmationScreen({
 	const successMarkTop = Math.max(152, Math.min(224, height * 0.235));
 	const headlineTopMargin = Math.max(72, Math.min(80, height * 0.085));
 	const buttonBottomPadding = Math.max(insets.bottom + 28, 64);
+	const portraitContentBottomClearance = buttonBottomPadding + 56 + 40;
 
 	if (contentSizeLayout.shouldStackInlineContent) {
 		return (
@@ -95,45 +96,64 @@ function SuccessConfirmationScreen({
 	return (
 		<View className="flex-1 bg-background">
 			<PortraitContent className="flex-1 px-7">
-				<View className="items-center" style={{ paddingTop: successMarkTop }}>
-					<View className="h-36 w-36 items-center justify-center rounded-full bg-success-subtle">
-						<Check
-							size={64}
-							color={DAYOVA_DESIGN_SYSTEM.colors.success}
-							strokeWidth={2.2}
-						/>
-					</View>
-
-					<Text
-						accessibilityRole="header"
-						className="text-center font-poppins font-semibold text-heading-1 text-text"
-						style={{ marginTop: headlineTopMargin }}
+				<ScrollView
+					testID="success-confirmation-scroll"
+					bounces={false}
+					className="flex-1"
+					contentInsetAdjustmentBehavior="never"
+					showsVerticalScrollIndicator={false}
+					// Runtime safe-area and fixed-action geometry keep the final content
+					// scrollable completely above the overlaid 56 px finish button.
+					contentContainerStyle={{
+						paddingBottom: portraitContentBottomClearance,
+					}}
+				>
+					<View
+						className="items-center"
+						// Responsive viewport height positions the success mark on roomy screens.
+						style={{ paddingTop: successMarkTop }}
 					>
-						{title}
-					</Text>
+						<View className="h-36 w-36 items-center justify-center rounded-full bg-success-subtle">
+							<Check
+								size={64}
+								color={DAYOVA_DESIGN_SYSTEM.colors.success}
+								strokeWidth={2.2}
+							/>
+						</View>
 
-					<View className="mt-6 items-center">
-						<Text className="text-center font-poppins text-body-2 text-text">
-							{detailLabel}
+						<Text
+							accessibilityRole="header"
+							className="text-center font-poppins font-semibold text-heading-1 text-text"
+							// Responsive viewport height preserves the approved roomy-screen spacing.
+							style={{ marginTop: headlineTopMargin }}
+						>
+							{title}
 						</Text>
-						{detailValue ? (
-							<Text
-								selectable
-								className="text-center font-poppins text-body-2 text-secondary-text"
-							>
-								{detailValue}
+
+						<View className="mt-6 items-center">
+							<Text className="text-center font-poppins text-body-2 text-text">
+								{detailLabel}
+							</Text>
+							{detailValue ? (
+								<Text
+									selectable
+									className="text-center font-poppins text-body-2 text-secondary-text"
+								>
+									{detailValue}
+								</Text>
+							) : null}
+						</View>
+						{description ? (
+							<Text className="mt-5 max-w-[320px] text-center font-poppins text-body-3 text-secondary-text">
+								{description}
 							</Text>
 						) : null}
 					</View>
-					{description ? (
-						<Text className="mt-5 max-w-[320px] text-center font-poppins text-body-3 text-secondary-text">
-							{description}
-						</Text>
-					) : null}
-				</View>
+				</ScrollView>
 
 				<View
 					className="absolute right-0 bottom-0 left-0 px-7"
+					// Runtime safe-area inset keeps the fixed finish action reachable.
 					style={{ paddingBottom: buttonBottomPadding }}
 				>
 					<Button

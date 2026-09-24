@@ -9,6 +9,8 @@ import {
 	getDashboardRelevantDayKeys,
 	getDashboardWeekDayKeys,
 	getDashboardWeekProgress,
+	getNextLearningStepAccessibilityLabel,
+	getVisibleDashboardEntries,
 	isDashboardAgendaItemPast,
 	sortDashboardAgendaItems,
 	toDashboardAgendaItem,
@@ -22,6 +24,25 @@ const entry = (overrides: Partial<DayEntry>): DayEntry =>
 	}) as DayEntry;
 
 describe("dashboard agenda", () => {
+	it("omits unavailable date and time details from the next-step announcement", () => {
+		expect(
+			getNextLearningStepAccessibilityLabel({
+				isStarted: false,
+				title: "Lineare Funktionen",
+				dateLabel: null,
+				timeLabel: null,
+			}),
+		).toBe("Nächsten Lernschritt öffnen: Lineare Funktionen");
+		expect(
+			getNextLearningStepAccessibilityLabel({
+				isStarted: true,
+				title: "Lineare Funktionen",
+				dateLabel: "Heute",
+				timeLabel: "16:00 Uhr",
+			}),
+		).toBe("Weiterlernen: Lineare Funktionen. Heute, 16:00 Uhr");
+	});
+
 	it("moves to the adjacent day in the direction of the user's swipe", () => {
 		expect(
 			getAdjacentDashboardDayKey({
@@ -286,5 +307,21 @@ describe("dashboard agenda", () => {
 				currentMinutes: 12 * 60,
 			})?.entry.id,
 		).toBe("earlier");
+	});
+});
+
+describe("focused learning agenda", () => {
+	it("hides imported lessons while preserving homework, exams and learning sessions", () => {
+		const lesson = entry({ source: "timetable", title: "Mathe" });
+		const homework = entry({
+			title: "Hausaufgaben zur Unterrichtsstunde",
+			kind: "homework",
+		});
+		const exam = entry({ title: "Mathe", examTypeLabel: "Klausur" });
+		const learning = entry({ title: "Mathe üben", kind: "practice" });
+		expect(
+			getVisibleDashboardEntries([lesson, homework, exam, learning]),
+		).toEqual([homework, exam, learning]);
+		expect(getVisibleDashboardEntries([lesson])).toEqual([]);
 	});
 });
