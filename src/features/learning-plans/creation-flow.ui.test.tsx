@@ -78,16 +78,9 @@ jest.mock("react-native-keyboard-controller", () => ({
 	KeyboardStickyView:
 		jest.requireActual<typeof import("react-native")>("react-native").View,
 }));
-jest.mock("react-native-reanimated", () => ({
-	__esModule: true,
-	default: {
-		View: jest.requireActual<typeof import("react-native")>("react-native")
-			.View,
-	},
-	FadeIn: { duration: () => undefined },
-	FadeInDown: { duration: () => undefined },
-	LinearTransition: { duration: () => undefined },
-}));
+jest.mock("react-native-reanimated", () =>
+	require("../../../tests/mocks/selection-reanimated.cjs"),
+);
 jest.mock("~/components/ui/keyboard-safe-scroll-view", () => ({
 	KeyboardSafeScrollView:
 		jest.requireActual<typeof import("react-native")>("react-native")

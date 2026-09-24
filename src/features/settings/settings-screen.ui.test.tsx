@@ -235,10 +235,14 @@ describe("SettingsScreen", () => {
 		const dark = screen.getByRole("radio", {
 			name: "Dunkles Design verwenden",
 		});
-		expect(light.props.accessibilityState).toEqual({ checked: false });
-		expect(system.props.accessibilityState).toEqual({ checked: true });
-		expect(dark.props.accessibilityState).toEqual({ checked: false });
+		expect(light).not.toBeChecked();
+		expect(system).toBeChecked();
+		expect(dark).not.toBeChecked();
 		await fireEvent.press(light);
 		expect(mockSetPreference).toHaveBeenCalledWith("light");
 	});
 });
+
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+);
