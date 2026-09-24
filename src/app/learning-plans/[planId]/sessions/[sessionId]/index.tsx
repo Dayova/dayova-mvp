@@ -7,7 +7,6 @@ import {
 	KeyboardAvoidingView,
 	Platform,
 	ScrollView,
-	TouchableOpacity,
 	View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -17,15 +16,16 @@ import { QuestionProgressBar } from "~/components/question-progress-bar";
 import { ScreenHeader } from "~/components/screen-header";
 import { BackButton, Button } from "~/components/ui/button";
 import { ErrorMessage } from "~/components/ui/error-message";
-import { Check, Timer } from "~/components/ui/icon";
+import { Timer } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
+import { ChoiceList } from "~/features/learning-plans/choice-list";
 import { LearningSessionCompletion } from "~/features/learning-plans/learning-session-completion";
-import { getLearningSessionAnalysisDestination } from "~/features/learning-plans/session-analysis-navigation";
 import { learningSessionAnalyticsProperties } from "~/features/learning-plans/session-analytics";
+import { getLearningSessionCompletionDestination } from "~/features/learning-plans/session-completion-navigation";
 import { FeedbackView } from "~/features/learning-plans/session-feedback";
 import { getLearningSessionBackTarget } from "~/features/learning-plans/session-navigation";
 import {
@@ -41,7 +41,6 @@ import { TheoryTopicPage } from "~/features/learning-plans/theory-topic-page";
 import type {
 	LearningSessionContentSnapshot,
 	SessionAnswerAttempt,
-	SessionContentItem,
 } from "~/features/learning-plans/types";
 import { usePrepareSessionContent } from "~/features/learning-plans/use-prepare-session-content";
 import { getErrorMessage } from "~/features/learning-plans/utils";
@@ -111,79 +110,6 @@ function ActionRow({
 					<Text>{primaryLabel}</Text>
 				)}
 			</Button>
-		</View>
-	);
-}
-
-function ChoiceList({
-	item,
-	selectedChoiceId,
-	onSelect,
-	disabled,
-}: {
-	item: SessionContentItem;
-	selectedChoiceId: string | null;
-	onSelect: (choiceId: string) => void;
-	disabled: boolean;
-}) {
-	return (
-		<View className="mt-5 gap-2">
-			{item.choices.map((choice, index) => {
-				const selected = selectedChoiceId === choice.id;
-				const choiceLabel = String.fromCharCode(65 + index);
-				return (
-					<TouchableOpacity
-						key={choice.id}
-						accessibilityRole="radio"
-						accessibilityState={{ selected, disabled }}
-						activeOpacity={0.86}
-						disabled={disabled}
-						onPress={() => onSelect(choice.id)}
-						className={cn(
-							"min-h-14 flex-row items-center gap-3 rounded-[24px] border-border border-hairline bg-card px-4 py-3 shadow-black/5 shadow-sm",
-							selected && "border-primary bg-system-subtle",
-						)}
-					>
-						<View
-							className={cn(
-								"h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-light-2",
-								selected && "bg-primary",
-							)}
-						>
-							<Text
-								className={cn(
-									"font-poppins font-semibold text-body-4 text-secondary-text",
-									selected && "text-white",
-								)}
-							>
-								{choiceLabel}
-							</Text>
-						</View>
-						<Text
-							className={cn(
-								"flex-1 font-poppins text-body-3 text-text",
-								selected && "text-primary",
-							)}
-						>
-							{choice.text}
-						</Text>
-						<View
-							className={cn(
-								"h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-secondary-text/50",
-								selected && "border-primary bg-primary",
-							)}
-						>
-							{selected ? (
-								<Check
-									size={14}
-									color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-									strokeWidth={2.8}
-								/>
-							) : null}
-						</View>
-					</TouchableOpacity>
-				);
-			})}
 		</View>
 	);
 }
@@ -647,7 +573,7 @@ export default function LearningSessionContentScreen() {
 		}
 	};
 
-	const completeAndOpenAnalysis = async () => {
+	const completeAndOpenLearningPlan = async () => {
 		if (!sessionId || isBusy) return;
 
 		setIsBusy(true);
@@ -669,10 +595,10 @@ export default function LearningSessionContentScreen() {
 					},
 				);
 			}
-			router.dismissTo(getLearningSessionAnalysisDestination(planId));
+			router.dismissTo(getLearningSessionCompletionDestination(planId));
 		} catch (error) {
 			setErrorMessage(
-				getErrorMessage(error, "Die Analyse konnte nicht geöffnet werden."),
+				getErrorMessage(error, "Der Lernplan konnte nicht geöffnet werden."),
 			);
 		} finally {
 			setIsBusy(false);
@@ -940,7 +866,7 @@ export default function LearningSessionContentScreen() {
 								<View
 									accessible
 									accessibilityLabel={`Verbleibende Zeit: ${formatRemainingTime(displayedRemainingSeconds)}`}
-									className="min-h-12 min-w-[92px] flex-row items-center justify-center gap-2 rounded-full border-hairline border-praxis/20 bg-praxis-subtle px-4 shadow-black/5 shadow-sm"
+									className="min-h-12 min-w-[92px] flex-row items-center justify-center gap-2 rounded-full border-hairline border-praxis/20 bg-praxis-subtle px-4"
 								>
 									<Timer
 										size={18}
@@ -1047,7 +973,7 @@ export default function LearningSessionContentScreen() {
 						onPrimary={
 							completionPhase === "theory"
 								? completeAndLeave
-								: completeAndOpenAnalysis
+								: completeAndOpenLearningPlan
 						}
 						isBusy={isBusy}
 					/>

@@ -24,37 +24,38 @@ defaults:
     pnpm: "11.15.1"
 
 jobs:
+  source_gate:
+    name: CI source eligibility
+    type: doc
+    # Keep the repository boundary separate to fit EAS's 250-character conditions.
+    if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.id && github.event.pull_request.head.repo.id == github.event.pull_request.base.repo.id) }}
+    params:
+      md: "CI source is eligible: pull requests must originate from this repository."
+
   production_fingerprint:
     name: Production native fingerprints
     type: fingerprint
     environment: production
-    if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+    # checks supplies the contributor trust gate; production inputs stay off forks.
+    needs:
+      - checks
+    if: ${{ (github.event_name == 'push' && github.ref_name == 'main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.id && github.event.pull_request.head.repo.id == github.event.pull_request.base.repo.id) }}
 
   checks:
     name: Lint, typecheck, and test
     type: custom
     runs_on: linux-medium
-    if: ${{ github.event_name == 'workflow_dispatch' || contains('OWNER,MEMBER,COLLABORATOR', github.event.pull_request.author_association) }}
+    needs:
+      - source_gate
+    # This custom job uses production scope; fork code must not reach checkout.
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref_name == 'main') || (github.event_name == 'pull_request' && contains('OWNER,MEMBER,COLLABORATOR', github.event.pull_request.author_association)) }}
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules
-      - name: Run lint and typecheck
-        run: pnpm check
-      - name: Run tests
-        env:
-          EAS_BUILD: "false"
-        run: pnpm test
-
-  main_checks:
-    name: Main branch gates
-    type: custom
-    runs_on: linux-medium
-    if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
-    steps:
-      - uses: eas/checkout
-      - uses: eas/install_node_modules
-      - name: Run lint and typecheck
-        run: pnpm check
+      - name: Run lint
+        run: pnpm lint
+      - name: Run typecheck
+        run: pnpm typecheck
       - name: Run tests
         env:
           EAS_BUILD: "false"
@@ -65,9 +66,9 @@ jobs:
     type: custom
     runs_on: linux-medium
     needs:
-      - main_checks
+      - checks
       - production_fingerprint
-    if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+    if: ${{ (github.event_name == 'push' && github.ref_name == 'main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.id && github.event.pull_request.head.repo.id == github.event.pull_request.base.repo.id) }}
     environment: production
     env:
       APP_VARIANT: production
@@ -82,33 +83,116 @@ jobs:
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules
-      - name: Verify Expo export
-        run: pnpm exec expo export --platform ios --output-dir dist
+      - name: Verify iOS production export
+        run: pnpm exec expo export --platform ios --output-dir dist/ios
+      - name: Verify Android production export
+        env:
+          EAS_BUILD_PLATFORM: android
+        run: pnpm exec expo export --platform android --output-dir dist/android
       - id: ota_guard
         name: Check OTA safety against distributed binaries
         run: |
+          set -euo pipefail
+          ota_exit_code=0
           if ota_report="$(node scripts/ota-safety.mjs --json)"; then
             ota_safe=true
           else
+            ota_exit_code=$?
             ota_safe=false
           fi
 
+          # Validate the complete consumer contract before exposing any verdict.
+          OTA_REPORT="$ota_report" OTA_EXIT_CODE="$ota_exit_code" node -e '
+            const report = JSON.parse(process.env.OTA_REPORT);
+            if (!report || typeof report !== "object" ||
+                typeof report.safe !== "boolean" ||
+                ![null, "compatibility", "preflight"].includes(report.failureKind) ||
+                report.safe !== (report.failureKind === null) ||
+                Number(process.env.OTA_EXIT_CODE) !== (report.safe ? 0 : 1) ||
+                ["reason", "baseline", "currentFingerprints"].some(key =>
+                  typeof report[key] !== "string" || report[key].trim() === "")) {
+              throw new Error("Invalid or incomplete OTA safety report");
+            }
+          '
+
           printf '%s\n' "$ota_report"
-          ota_reason="$(OTA_REPORT="$ota_report" node -p 'JSON.parse(process.env.OTA_REPORT).reason')"
+          ota_reason="$(OTA_REPORT="$ota_report" node -p 'JSON.parse(process.env.OTA_REPORT).reason.replace(/\b[a-f0-9]{40}\b/g, hash => "`" + hash + "`")')"
           ota_baseline="$(OTA_REPORT="$ota_report" node -p 'JSON.parse(process.env.OTA_REPORT).baseline')"
           ota_current_fingerprints="$(OTA_REPORT="$ota_report" node -p 'JSON.parse(process.env.OTA_REPORT).currentFingerprints')"
+          ota_failure_kind="$(OTA_REPORT="$ota_report" node -p 'JSON.parse(process.env.OTA_REPORT).failureKind')"
 
           set-output ota_safe "$ota_safe"
           set-output ota_reason "$ota_reason"
           set-output ota_baseline "$ota_baseline"
           set-output ota_current_fingerprints "$ota_current_fingerprints"
 
+          # Native incompatibility is advisory on PRs; an incomplete check is not.
+          set-output ota_failure_kind "$ota_failure_kind"
+      - name: Require a completed PR OTA assessment
+        if: ${{ github.event_name == 'pull_request' }}
+        run: test "${{ steps.ota_guard.outputs.ota_failure_kind }}" != "preflight"
+
+  pr_ota_report:
+    name: PR OTA compatibility report
+    type: doc
+    after: &pr_ota_report_dependencies
+      - production_fingerprint
+      - ota_checks
+    if: ${{ github.event_name == 'pull_request' }}
+    params:
+      md: &pr_ota_report_markdown |
+        <!-- dayova-ota-report -->
+        ## 📱 OTA compatibility
+
+        ### ${{ after.ota_checks.status == 'success' && (after.ota_checks.outputs.ota_safe == 'true' && '✅ OTA-compatible' || after.ota_checks.outputs.ota_safe == 'false' && '⚠️ Not OTA-compatible') || '❓ Compatibility not confirmed' }}
+
+        ${{ after.ota_checks.status == 'success' && (after.ota_checks.outputs.ota_safe == 'true' && 'This commit is compatible with the recorded app builds.' || after.ota_checks.outputs.ota_safe == 'false' && 'This commit cannot ship via OTA to the recorded app builds. A verified native release or compatibility review is needed.') || 'The assessment failed or was skipped. Open the EAS run to see what needs attention.' }}
+
+        | Check | Status |
+        | --- | --- |
+        | 🧬 Native fingerprints | ${{ after.production_fingerprint.status == 'success' && '✅ Completed' || after.production_fingerprint.status == 'failure' && '❌ Failed' || '⏭️ Not completed' }} |
+        | 📦 iOS & Android exports + OTA assessment | ${{ after.ota_checks.status == 'success' && '✅ Completed' || after.ota_checks.status == 'failure' && '❌ Failed' || '⏭️ Not completed' }} |
+
+        🔎 [View EAS run](${{ workflow.url }}) · **Checked commit:** `${{ github.sha }}`
+
+        💡 **Advisory for merging.** Native changes can still merge. Nothing is published by this PR check; main rechecks the merged commit before publishing.
+
+        <details>
+        <summary>🛠️ Technical details — reason, builds & fingerprints</summary>
+
+        **Reason:** ${{ after.ota_checks.outputs.ota_reason || 'Assessment did not complete. Production checks run only for trusted, same-repository PRs after quality checks pass.' }}
+
+        **📦 Distributed builds:** `${{ after.ota_checks.outputs.ota_baseline || 'Not assessed' }}`
+
+        **🧬 Current fingerprints**
+
+        | Platform | Fingerprint |
+        | --- | --- |
+        | iOS | `${{ after.production_fingerprint.outputs.ios_fingerprint_hash || 'Not assessed' }}` |
+        | Android | `${{ after.production_fingerprint.outputs.android_fingerprint_hash || 'Not assessed' }}` |
+
+        **📂 Repositories**
+
+        | Source | Target |
+        | --- | --- |
+        | `${{ github.event.pull_request.head.repo.full_name || 'Unavailable' }}` | `${{ github.event.pull_request.base.repo.full_name || 'Unavailable' }}` |
+
+        </details>
+
+  pr_ota_comment:
+    name: Post OTA report to GitHub PR
+    type: github-comment
+    after: *pr_ota_report_dependencies
+    if: ${{ github.event_name == 'pull_request' }}
+    params:
+      payload: *pr_ota_report_markdown
+
   deploy_convex:
     name: Deploy Convex
     type: custom
     runs_on: linux-medium
     needs:
-      - main_checks
+      - checks
     if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
     steps:
       - uses: eas/checkout
@@ -128,7 +212,7 @@ jobs:
     environment: production
     env:
       APP_VARIANT: production
-      EAS_BUILD_PLATFORM: ios
+      OTA_SOURCE_SHA: ${{ github.sha }}
       OTA_ANDROID_FINGERPRINT: ${{ needs.production_fingerprint.outputs.android_fingerprint_hash }}
       OTA_IOS_FINGERPRINT: ${{ needs.production_fingerprint.outputs.ios_fingerprint_hash }}
     steps:
@@ -136,14 +220,8 @@ jobs:
       - uses: eas/install_node_modules
       - name: Verify production manifest and distributed-binary compatibility
         run: node scripts/ota-safety.mjs
-      - name: Send production OTA rollout
-        run: |
-          pnpm dlx eas-cli@18.11.0 update \
-            --branch production \
-            --environment production \
-            --platform ios \
-            --message "Production OTA from ${{ github.sha }}" \
-            --non-interactive
+      - name: Export and publish both production platforms
+        run: node scripts/publish-production-ota.mjs
 
   ota_skipped:
     name: OTA update skipped
