@@ -16,12 +16,11 @@ import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { useAuthSession } from "~/context/AuthContext";
-import { LearningTimeSuggestionCard } from "~/features/learning-plans/learning-time-suggestion-card";
 import { isDiagnosticLearningPlanSession } from "~/features/learning-plans/rolling-learning-window";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { useBackIntent } from "~/lib/navigation";
-import { ROUTES, withReturnTo } from "~/lib/routes";
+import { ROUTES } from "~/lib/routes";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
@@ -33,9 +32,6 @@ export default function LearningPlanReviewScreen() {
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const acceptPlan = useMutation(api.learningPlans.acceptPlan);
-	const confirmProposedDefaults = useMutation(
-		api.learningTimes.confirmProposedDefaults,
-	);
 	const [isBusy, setIsBusy] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -52,7 +48,6 @@ export default function LearningPlanReviewScreen() {
 		snapshot?.plan.status === "generated" &&
 			snapshot.plan.diagnosticPlacement !== "firstSession",
 	);
-	const learningTimeSuggestion = snapshot?.plan.learningTimeSuggestion;
 	const goBack = () => {
 		router.replace(ROUTES.learningPlans);
 		return true;
@@ -97,29 +92,6 @@ export default function LearningPlanReviewScreen() {
 		} finally {
 			setIsBusy(false);
 		}
-	};
-
-	const confirmLearningTimes = async () => {
-		if (!planId || isBusy) return;
-		setIsBusy(true);
-		setErrorMessage(null);
-		try {
-			await confirmProposedDefaults({ learningPlanId: planId });
-		} catch (error) {
-			setErrorMessage(
-				getErrorMessage(
-					error,
-					"Die vorgeschlagenen Lernzeiten konnten nicht übernommen werden.",
-				),
-			);
-		} finally {
-			setIsBusy(false);
-		}
-	};
-
-	const adjustLearningTimes = () => {
-		if (!planId || isBusy) return;
-		router.push(withReturnTo(ROUTES.learningTimes, planPath(planId, "review")));
 	};
 
 	if (needsDiagnosticRegeneration) {
@@ -170,20 +142,6 @@ export default function LearningPlanReviewScreen() {
 							Ergebnisse, um den darauffolgenden Lerninhalt neu festzulegen.
 						</Text>
 					</Surface>
-
-					{learningTimeSuggestion &&
-					!learningTimeSuggestion.initialPromptDismissed ? (
-						<View className="mt-5">
-							<LearningTimeSuggestionCard
-								entries={learningTimeSuggestion.entries}
-								variant="initial"
-								isBusy={isBusy}
-								onConfirm={() => void confirmLearningTimes()}
-								onAdjust={adjustLearningTimes}
-								onContinue={() => void acceptRecommendedPath()}
-							/>
-						</View>
-					) : null}
 
 					{nextSession ? (
 						<Surface className="mt-5 rounded-[32px] px-5 py-6">

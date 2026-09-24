@@ -12,6 +12,7 @@ import {
 } from "./_generated/server";
 import {
 	advanceRollingLearningPlan,
+	computeLearningTimeImpact,
 	rescheduleFutureLearningPlanSessions,
 } from "./adaptiveLearningPlan";
 import {
@@ -29,7 +30,6 @@ import {
 } from "./fileStorage";
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
 import { calculateAvailableStudyMinutes } from "./learningPlanAvailability";
-import { deriveBehavioralLearningTimeSuggestion } from "./learningTimeBehavior";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 import {
 	getDefaultPreparationDepth,
@@ -38,6 +38,11 @@ import {
 import { isLearningSessionCompositionEligible } from "./learningSessionComposition";
 import { deleteSessionLearningDataForSession } from "./learningSessionContent";
 import { alignSessionDurationReferences } from "./learningSessionDurationText";
+import {
+	BEHAVIOR_OBSERVATION_WINDOW_MS,
+	deriveBehavioralLearningTimeSuggestion,
+	isBehavioralSuggestionSnoozed,
+} from "./learningTimeBehavior";
 import {
 	learningEvidenceDimensionValidator,
 	learningTopicValidator,
@@ -56,7 +61,6 @@ const MAX_SCHEDULING_DAY_ENTRIES = 500;
 const MAX_SCHEDULING_LOOKAHEAD_DAYS = 366;
 const MIN_ROLLING_HORIZON_MINUTES = 20;
 const MAX_BEHAVIOR_SESSIONS = 30;
-const BEHAVIOR_SUGGESTION_SNOOZE_MS = 14 * 24 * 60 * 60 * 1_000;
 const MIN_DIAGNOSTIC_QUESTION_COUNT = 5;
 const MAX_DIAGNOSTIC_QUESTION_COUNT = 10;
 // Convex Node actions have a 10-minute platform ceiling. Allow one extra minute
@@ -1204,8 +1208,15 @@ export const getSnapshot = query({
 			getOwnerUser(ctx, ownerTokenIdentifier),
 			ctx.db
 				.query("learningPlanSessions")
-				.withIndex("by_ownerTokenIdentifier", (q) =>
-					q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+				.withIndex("by_ownerTokenIdentifier_and_startedAt", (q) =>
+					q
+						.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+						.gte(
+							"startedAt",
+							(args.behaviorSuggestionReferenceTime ?? 0) -
+								BEHAVIOR_OBSERVATION_WINDOW_MS,
+						)
+						.lte("startedAt", args.behaviorSuggestionReferenceTime ?? 0),
 				)
 				.order("desc")
 				.take(MAX_BEHAVIOR_SESSIONS),
@@ -1225,21 +1236,17 @@ export const getSnapshot = query({
 				})),
 				learningTimes,
 				grade: user?.grade,
+				referenceTime: args.behaviorSuggestionReferenceTime ?? 0,
+				observationStartedAt: user?.behavioralLearningTimeObservationStartedAt,
 			}) ?? undefined;
 		const behavioralSuggestionIsDismissed = Boolean(
 			behavioralLearningTimeSuggestion &&
 				user?.behavioralLearningTimeSuggestionDismissedFingerprint ===
 					behavioralLearningTimeSuggestion.fingerprint,
 		);
-		const behavioralSuggestionIsSnoozed = Boolean(
-			behavioralLearningTimeSuggestion &&
-				user?.behavioralLearningTimeSuggestionSnoozedFingerprint ===
-					behavioralLearningTimeSuggestion.fingerprint &&
-				user.behavioralLearningTimeSuggestionSnoozedAt !== undefined &&
-				(args.behaviorSuggestionReferenceTime === undefined ||
-					args.behaviorSuggestionReferenceTime -
-						user.behavioralLearningTimeSuggestionSnoozedAt <
-						BEHAVIOR_SUGGESTION_SNOOZE_MS),
+		const behavioralSuggestionIsSnoozed = isBehavioralSuggestionSnoozed(
+			user?.behavioralLearningTimeSuggestionSnoozedAt,
+			args.behaviorSuggestionReferenceTime ?? 0,
 		);
 		const readySessionCount = sessions.filter(
 			(session) =>
@@ -2743,6 +2750,173 @@ export const rescheduleAfterLearningTimesChanged = internalMutation({
 		return { rescheduledCount, unscheduledCount };
 	},
 });
+export const applyLearningTimeImpact = internalMutation({
+	args: { expectedRevision: v.optional(v.string()) },
+	returns: v.object({
+		rescheduledCount: v.number(),
+		unscheduledCount: v.number(),
+	}),
+	handler: async (ctx, args) => {
+		const owner = await requireOwnerTokenIdentifierForMutation(ctx);
+		const times = await ctx.db
+			.query("userLearningTimes")
+			.withIndex("by_ownerTokenIdentifier", (q) =>
+				q.eq("ownerTokenIdentifier", owner),
+			)
+			.take(50);
+		const impact = await computeLearningTimeImpact(
+			ctx,
+			owner,
+			times.map(({ dayOfWeek, startTime, endTime }) => ({
+				dayOfWeek,
+				startTime,
+				endTime,
+			})),
+			Date.now(),
+		);
+		if (impact.conflicts.length)
+			throwUserFacingError(
+				"Mit diesen Zeiten passen nicht alle Lernschritte vor deine Prüfungen. Deine bisherigen Zeiten bleiben unverändert.",
+			);
+		if (args.expectedRevision && args.expectedRevision !== impact.revision)
+			throwUserFacingError(
+				"Dein Plan hat sich geändert. Bitte prüfe die neue Vorschau.",
+			);
+		for (const change of impact.changes) {
+			const session = await ctx.db.get(
+				"learningPlanSessions",
+				change.sessionId,
+			);
+			if (session) await clearSessionDayEntry(ctx, session);
+		}
+		for (const change of impact.changes) {
+			await ctx.db.patch("learningPlanSessions", change.sessionId, {
+				dateKey: change.dateKey,
+				dateLabel: change.dateLabel,
+				startTime: change.startTime,
+				updatedAt: Date.now(),
+			});
+			const session = await ctx.db.get(
+				"learningPlanSessions",
+				change.sessionId,
+			);
+			const plan = await ctx.db.get("learningPlans", change.planId);
+			if (
+				session &&
+				plan?.status === "accepted" &&
+				session.planningStatus !== "provisional"
+			)
+				await syncSessionDayEntry(ctx, plan, session);
+		}
+		return { rescheduledCount: impact.changes.length, unscheduledCount: 0 };
+	},
+});
+
+export const moveSessionToday = mutation({
+	args: {
+		sessionId: v.id("learningPlanSessions"),
+		startTime: v.string(),
+		expectedUpdatedAt: v.number(),
+	},
+	returns: v.null(),
+	handler: async (ctx, args) => {
+		const owner = await requireOwnerTokenIdentifierForMutation(ctx);
+		const session = await ctx.db.get("learningPlanSessions", args.sessionId);
+		const today = getBerlinDayKey(new Date().toISOString());
+		if (!today)
+			throwUserFacingError("Das heutige Datum konnte nicht bestimmt werden.");
+		if (
+			!session ||
+			session.ownerTokenIdentifier !== owner ||
+			session.dateKey !== today ||
+			getSessionExecutionStatus(session) !== "notStarted" ||
+			session.planningStatus === "provisional" ||
+			session.updatedAt !== args.expectedUpdatedAt
+		)
+			throwUserFacingError(
+				"Dieser Lernschritt hat sich geändert. Bitte öffne die Auswahl erneut.",
+			);
+		const plan = await ctx.db.get("learningPlans", session.learningPlanId);
+		if (
+			!plan ||
+			plan.ownerTokenIdentifier !== owner ||
+			plan.status !== "accepted" ||
+			plan.examDateKey <= today
+		)
+			throwUserFacingError(
+				"Dieser Lernplan kann heute nicht mehr verschoben werden.",
+			);
+		const match = /^(\d{2}):(\d{2})$/.exec(args.startTime);
+		const hour = Number(match?.[1]);
+		const minute = Number(match?.[2]);
+		const nowTime = new Intl.DateTimeFormat("en-GB", {
+			timeZone: "Europe/Berlin",
+			hour: "2-digit",
+			minute: "2-digit",
+			hourCycle: "h23",
+		}).format(new Date());
+		if (
+			!match ||
+			hour > 23 ||
+			minute > 59 ||
+			args.startTime <= nowTime ||
+			hour * 60 + minute + session.durationMinutes > 1440
+		)
+			throwUserFacingError(
+				"Bitte wähle eine spätere Uhrzeit, zu der die ganze Einheit noch heute passt.",
+			);
+		// A provisional next step is not yet a calendar entry, but its ordering
+		// must still survive a one-off move of the committed step.
+		const siblings = await ctx.db
+			.query("learningPlanSessions")
+			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+				q.eq("learningPlanId", plan._id),
+			)
+			.take(51);
+		if (
+			siblings.length > 50 ||
+			siblings.some(
+				(next) =>
+					next.sortOrder > session.sortOrder &&
+					getSessionExecutionStatus(next) === "notStarted" &&
+					(next.dateKey < today ||
+						(next.dateKey === today &&
+							Number(next.startTime.slice(0, 2)) * 60 +
+								Number(next.startTime.slice(3)) <
+								hour * 60 + minute + session.durationMinutes)),
+			)
+		)
+			throwUserFacingError(
+				"Diese Zeit würde den nächsten Lernschritt überholen. Bitte wähle eine frühere Uhrzeit oder passe den Lernplan an.",
+			);
+		await assertNoScheduleConflict(ctx, {
+			ownerTokenIdentifier: owner,
+			dayKey: today,
+			time: args.startTime,
+			durationMinutes: session.durationMinutes,
+			excludeDayEntryId: session.dayEntryId,
+			excludeLearningPlanSessionId: session._id,
+		});
+		await ctx.db.patch("learningPlanSessions", session._id, {
+			startTime: args.startTime,
+			updatedAt: Date.now(),
+		});
+		await syncSessionDayEntry(ctx, plan, {
+			...session,
+			startTime: args.startTime,
+		});
+		const profile = await ctx.db
+			.query("users")
+			.withIndex("by_tokenIdentifier", (q) => q.eq("tokenIdentifier", owner))
+			.unique();
+		if (profile)
+			await ctx.db.patch("users", profile._id, {
+				learningRoutineDismissedDateKey: today,
+			});
+		return null;
+	},
+});
+
 export const startSession = mutation({
 	args: {
 		sessionId: v.id("learningPlanSessions"),

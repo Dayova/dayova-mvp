@@ -9,6 +9,11 @@ import { LearningPathVisual } from "~/features/learning-plans/learning-path-visu
 import type { PlanSession } from "~/features/learning-plans/types";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 
+// This suite tests path cards, not the separately covered consent sheet.
+jest.mock("~/features/learning-plans/learning-time-impact-sheet", () => ({
+	LearningTimeImpactSheet: () => null,
+}));
+
 jest.mock("expo-router", () => ({
 	Stack: { Screen: () => null },
 	useLocalSearchParams: () => ({ planId: "plan_1" }),

@@ -1,15 +1,52 @@
 /// <reference types="vite/client" />
 
 import { convexTest } from "convex-test";
-import { expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
+afterEach(() => vi.useRealTimers());
 
 const user = {
 	tokenIdentifier: "test:user",
 };
+
+test("editing one proposed time leaves other defaults unconfirmed", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const rows = await t.run(async (ctx) => {
+		const ids = [];
+		for (const dayOfWeek of [1, 2])
+			ids.push(
+				await ctx.db.insert("userLearningTimes", {
+					ownerTokenIdentifier: user.tokenIdentifier,
+					dayOfWeek,
+					startTime: "16:00",
+					endTime: "20:00",
+					preferenceStatus: "systemDefault",
+					createdAt: 1,
+					updatedAt: 1,
+				}),
+			);
+		return ids;
+	});
+	await t.mutation(api.learningTimes.upsertMine, {
+		id: rows[0],
+		dayOfWeek: 1,
+		startTime: "17:00",
+		endTime: "18:00",
+	});
+	expect(await t.query(api.learningTimes.listMine, {})).toEqual([
+		{ id: rows[0], dayOfWeek: 1, startTime: "17:00", endTime: "18:00" },
+		{
+			id: rows[1],
+			dayOfWeek: 2,
+			startTime: "16:00",
+			endTime: "20:00",
+			preferenceStatus: "systemDefault",
+		},
+	]);
+});
 
 test("allows multiple learning times on the same weekday", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
@@ -275,7 +312,10 @@ test("reschedules only future sessions after a learning-time change", async () =
 });
 
 test("offers and applies a consent-based behavioral learning-time suggestion", async () => {
-	const t = convexTest(schema, modules).withIdentity(user);
+	vi.useFakeTimers();
+	vi.setSystemTime(new Date("2026-06-16T12:00:00Z"));
+	const fixture = convexTest(schema, modules);
+	const t = fixture.withIdentity(user);
 	const learningPlanId = await t.run(async (ctx) => {
 		const now = Date.now();
 		await ctx.db.insert("users", {
@@ -344,6 +384,7 @@ test("offers and applies a consent-based behavioral learning-time suggestion", a
 
 	const before = await t.query(api.learningPlans.getSnapshot, {
 		id: learningPlanId,
+		behaviorSuggestionReferenceTime: Date.now(),
 	});
 	const suggestion = before?.plan.behavioralLearningTimeSuggestion;
 	expect(suggestion).toMatchObject({
@@ -351,9 +392,109 @@ test("offers and applies a consent-based behavioral learning-time suggestion", a
 		observedStartTime: "20:00",
 	});
 	if (!suggestion) throw new Error("Expected a behavioral suggestion.");
+	const originalTimes = await t.query(api.learningTimes.listMine, {});
+	await t.mutation(api.learningTimes.respondToBehavioralSuggestion, {
+		fingerprint: suggestion.fingerprint,
+		response: "later",
+	});
+	// A different fingerprint must not bypass the user-wide snooze.
+	await t.run(async (ctx) => {
+		const profile = await ctx.db
+			.query("users")
+			.withIndex("by_tokenIdentifier", (q) =>
+				q.eq("tokenIdentifier", user.tokenIdentifier),
+			)
+			.unique();
+		if (!profile) throw new Error("Missing profile");
+		await ctx.db.patch("users", profile._id, {
+			behavioralLearningTimeSuggestionSnoozedFingerprint: "previous-proposal",
+		});
+	});
+	expect(
+		(
+			await t.query(api.learningPlans.getSnapshot, {
+				id: learningPlanId,
+				behaviorSuggestionReferenceTime: Date.now(),
+			})
+		)?.plan.behavioralLearningTimeSuggestion,
+	).toBeUndefined();
+	await expect(
+		t.mutation(api.learningTimes.applyBehavioralSuggestion, {
+			fingerprint: suggestion.fingerprint,
+			expectedImpactRevision: "stale",
+		}),
+	).rejects.toThrow();
+	expect(await t.query(api.learningTimes.listMine, {})).toEqual(originalTimes);
+	await t.run(async (ctx) => {
+		const profile = await ctx.db
+			.query("users")
+			.withIndex("by_tokenIdentifier", (q) =>
+				q.eq("tokenIdentifier", user.tokenIdentifier),
+			)
+			.unique();
+		if (!profile) throw new Error("Missing profile");
+		await ctx.db.patch("users", profile._id, {
+			behavioralLearningTimeSuggestionSnoozedAt: undefined,
+		});
+	});
 
+	const blockedFutureId = await t.run(async (ctx) => {
+		await ctx.db.patch("learningPlans", learningPlanId, {
+			examDateKey: "2026-06-15",
+		});
+		return await ctx.db.insert("learningPlanSessions", {
+			ownerTokenIdentifier: user.tokenIdentifier,
+			learningPlanId,
+			phase: "practice",
+			title: "Future session",
+			dateKey: "2026-06-16",
+			dateLabel: "16. Juni",
+			startTime: "17:00",
+			durationMinutes: 60,
+			goal: "Keep progress",
+			tasks: [],
+			expectedOutcome: "Learning",
+			executionStatus: "notStarted",
+			planningStatus: "committed",
+			sortOrder: 99,
+			createdAt: Date.now(),
+			updatedAt: Date.now(),
+		});
+	});
+	const blockedImpact = await t.query(
+		api.learningTimes.previewBehavioralSuggestion,
+		{ fingerprint: suggestion.fingerprint, referenceTime: Date.now() },
+	);
+	expect(blockedImpact?.conflicts).toHaveLength(1);
+	await expect(
+		t.mutation(api.learningTimes.applyBehavioralSuggestion, {
+			fingerprint: suggestion.fingerprint,
+			expectedImpactRevision: blockedImpact?.revision ?? "missing",
+		}),
+	).rejects.toThrow();
+	expect(await t.query(api.learningTimes.listMine, {})).toEqual(originalTimes);
+	expect(await t.query(api.learningTimes.canUndoBehavioralSuggestion, {})).toBe(
+		false,
+	);
+	await t.run(async (ctx) => {
+		expect(
+			(await ctx.db.get("learningPlanSessions", blockedFutureId))?.startTime,
+		).toBe("17:00");
+		await ctx.db.delete("learningPlanSessions", blockedFutureId);
+		await ctx.db.patch("learningPlans", learningPlanId, {
+			examDateKey: "2099-01-30",
+		});
+	});
+	const impact = await t.query(api.learningTimes.previewBehavioralSuggestion, {
+		fingerprint: suggestion.fingerprint,
+		referenceTime: Date.now(),
+	});
+	expect(impact?.conflicts).toEqual([]);
+	expect(await t.query(api.learningTimes.listMine, {})).toEqual(originalTimes);
+	if (!impact) throw new Error("Expected impact preview");
 	await t.mutation(api.learningTimes.applyBehavioralSuggestion, {
 		fingerprint: suggestion.fingerprint,
+		expectedImpactRevision: impact.revision,
 	});
 	expect(await t.query(api.learningTimes.listMine, {})).toEqual([
 		expect.objectContaining({
@@ -363,15 +504,77 @@ test("offers and applies a consent-based behavioral learning-time suggestion", a
 		}),
 		expect.objectContaining({
 			dayOfWeek: 2,
-			startTime: "20:00",
-			endTime: "21:00",
+			startTime: "17:00",
+			endTime: "18:00",
 		}),
 	]);
 	const after = await t.query(api.learningPlans.getSnapshot, {
 		id: learningPlanId,
+		behaviorSuggestionReferenceTime: Date.now(),
 	});
+	expect(
+		(await t.query(api.learningTimes.listMine, {})).map((time) => time.id),
+	).toEqual(originalTimes.map((time) => time.id));
+	await expect(
+		t.mutation(api.learningTimes.applyBehavioralSuggestion, {
+			fingerprint: suggestion.fingerprint,
+			expectedImpactRevision: impact.revision,
+		}),
+	).rejects.toThrow();
 	expect(after?.plan.behavioralLearningTimeSuggestion).toBeUndefined();
 	expect(
 		after?.sessions.every((session) => session.executionStatus === "completed"),
 	).toBe(true);
+	expect(await t.query(api.learningTimes.canUndoBehavioralSuggestion, {})).toBe(
+		true,
+	);
+	const other = fixture.withIdentity({ tokenIdentifier: "test:other" });
+	expect(
+		await other.query(api.learningTimes.canUndoBehavioralSuggestion, {}),
+	).toBe(false);
+	await expect(
+		other.mutation(api.learningTimes.undoBehavioralSuggestion, {}),
+	).rejects.toThrow();
+	const undoSnapshot = await t.run(
+		async (ctx) =>
+			(
+				await ctx.db
+					.query("users")
+					.withIndex("by_tokenIdentifier", (q) =>
+						q.eq("tokenIdentifier", user.tokenIdentifier),
+					)
+					.unique()
+			)?.behavioralLearningTimeUndo,
+	);
+	await t.mutation(api.learningTimes.undoBehavioralSuggestion, {});
+	expect(await t.query(api.learningTimes.listMine, {})).toEqual(originalTimes);
+	expect(await t.query(api.learningTimes.canUndoBehavioralSuggestion, {})).toBe(
+		false,
+	);
+	await expect(
+		t.mutation(api.learningTimes.undoBehavioralSuggestion, {}),
+	).rejects.toThrow();
+	// Even a retained undo record cannot overwrite a later manual edit.
+	await t.run(async (ctx) => {
+		const profile = await ctx.db
+			.query("users")
+			.withIndex("by_tokenIdentifier", (q) =>
+				q.eq("tokenIdentifier", user.tokenIdentifier),
+			)
+			.unique();
+		if (!profile) throw new Error("Missing profile");
+		await ctx.db.patch("users", profile._id, {
+			behavioralLearningTimeUndo: undoSnapshot,
+		});
+		await ctx.db.patch("userLearningTimes", originalTimes[0].id, {
+			startTime: "18:30",
+			updatedAt: Date.now() + 1,
+		});
+	});
+	await expect(
+		t.mutation(api.learningTimes.undoBehavioralSuggestion, {}),
+	).rejects.toThrow();
+	expect((await t.query(api.learningTimes.listMine, {}))[0].startTime).toBe(
+		"18:30",
+	);
 });
