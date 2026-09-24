@@ -47,6 +47,7 @@ async function project(
 			: (access?.state ?? "none");
 	return {
 		userId: user._id,
+		registeredAt: user._creationTime,
 		profile: {
 			name: user.name,
 			grade: user.grade,

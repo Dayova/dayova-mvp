@@ -35,6 +35,14 @@ are not retroactively tagged: a match does not prove the integration created the
 PATCH requests never include `Tags`, preserving later manual additions/removals.
 Creation schema validation requires `Tags` to be a multi-select.
 
+New contacts also start with `Status = Registered` and `Registration Date` set
+to the Convex account's `_creationTime`, not the time of the Notion sync. Status
+must contain a `Registered` option and Registration Date must be a date property;
+creation validates these before attempting a POST. Both values are initialized
+only on creation. Subsequent syncs preserve manual lifecycle/status changes and
+registration-date corrections, including for existing contacts reused at signup.
+Previously created contacts are not automatically backfilled by this change.
+
 ### Student profile projection
 
 The app profile in Convex owns `Student`, `First Name`, `Last Name`, `Grade`,
@@ -133,7 +141,7 @@ reconciliation in live mode. Identical subscription snapshots do not schedule
 extra work just because their verification timestamp changes. The hourly sweep
 repairs failed/busy runs and handles expiry without an incoming event.
 
-Manually owned `Status`, tags after creation, email/phone, notes, research and
+Manually owned status/registration date and tags after creation, email/phone, notes, research and
 relationship fields remain separate. `Entitlement State` remains the effective
 app-access projection, distinct from payment-period evidence. No tokens, receipts,
 payment IDs, management URLs or raw provider payloads are projected.
