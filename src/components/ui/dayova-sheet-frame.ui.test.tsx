@@ -9,6 +9,7 @@ import {
 import { act, fireEvent, render } from "@testing-library/react-native";
 import type { ReactElement, ReactNode } from "react";
 import { AccessibilityInfo, BackHandler, Platform, View } from "react-native";
+import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 import { DayovaSheetFrame } from "./dayova-sheet-frame";
 import {
 	SheetAccessibilityProvider,
@@ -44,9 +45,15 @@ jest.mock("react-native", () => {
 	});
 });
 
-jest.mock("react-native-safe-area-context", () => ({
-	useSafeAreaInsets: () => mockSafeAreaInsets,
-}));
+jest.mock("react-native-safe-area-context", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	const SafeAreaInsetsContext = React.createContext(null);
+	return {
+		SafeAreaInsetsContext,
+		useSafeAreaInsets: () =>
+			React.useContext(SafeAreaInsetsContext) ?? mockSafeAreaInsets,
+	};
+});
 
 jest.mock("~/lib/theme", () => ({
 	useDayovaTheme: () => ({
@@ -177,6 +184,32 @@ describe("DayovaSheetFrame", () => {
 		const callbacks = animationFrames.splice(0);
 		for (const callback of callbacks) callback(performance.now());
 	};
+
+	test("uses screen safe area instead of reserving space for the tab bar", async () => {
+		const screenInsets = { bottom: 34, left: 0, right: 0, top: 59 };
+		const tree = (bottom: number) => (
+			<SafeAreaInsetsContext.Provider value={{ ...screenInsets, bottom }}>
+				<SheetAccessibilityProvider>
+					<SafeAreaInsetsContext.Provider
+						value={{ ...screenInsets, bottom: 83 }}
+					>
+						<DayovaSheetFrame
+							visible
+							onClose={jest.fn()}
+							title="Lernplan löschen"
+						>
+							<View testID="delete-actions" />
+						</DayovaSheetFrame>
+					</SafeAreaInsetsContext.Provider>
+				</SheetAccessibilityProvider>
+			</SafeAreaInsetsContext.Provider>
+		);
+		const view = await render(tree(34));
+		const content = () => view.getByTestId("delete-actions").parent?.parent;
+		expect(content()?.props.style).toEqual({ paddingBottom: 54 });
+		await view.rerender(tree(0));
+		expect(content()?.props.style).toEqual({ paddingBottom: 32 });
+	});
 
 	test("reopens after an in-flight controlled dismissal without closing the new sheet", async () => {
 		const onClose = jest.fn();

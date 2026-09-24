@@ -24,9 +24,9 @@ import {
 	useWindowDimensions,
 	View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CloseButton } from "~/components/ui/close-button";
 import { useSheetAccessibility } from "~/components/ui/sheet-accessibility";
+import { useSheetSafeAreaInsets } from "~/components/ui/sheet-safe-area";
 import { Text } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
@@ -85,7 +85,7 @@ function DayovaSheetFrame({
 	const phaseRef = useRef<DayovaSheetPhase>("closed");
 	const [isNativeSheetActive, setIsNativeSheetActive] = useState(false);
 	const capturesAndroidBack = visible || isNativeSheetActive;
-	const insets = useSafeAreaInsets();
+	const insets = useSheetSafeAreaInsets();
 	const { colors, isDark } = useDayovaTheme();
 	const {
 		fontScale,
@@ -292,7 +292,11 @@ function DayovaSheetFrame({
 			style={
 				scrollable
 					? { flex: 1 }
-					: { paddingBottom: Math.max(insets.bottom + 20, 32) }
+					: {
+							paddingBottom: hasFixedFooter
+								? 12
+								: Math.max(insets.bottom + 20, 32),
+						}
 			}
 		>
 			{!title ? (
