@@ -49,6 +49,8 @@ const config = {
 					30: "hsl(var(--secondary-30))",
 				},
 				destructive: "hsl(var(--destructive))",
+				"danger-action": "hsl(var(--danger-action))",
+				"danger-subtle": "hsl(var(--danger-subtle))",
 				success: {
 					DEFAULT: "hsl(var(--success))",
 					subtle: "hsl(var(--success-subtle))",

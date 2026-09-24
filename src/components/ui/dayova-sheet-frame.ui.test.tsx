@@ -444,6 +444,30 @@ describe("DayovaSheetFrame", () => {
 		expect(scrollContent).not.toContainElement(footer);
 	});
 
+	test.each([
+		1, 2,
+	])("keeps close chrome above full-width copy at font scale %s", async (fontScale) => {
+		mockWindowDimensions.fontScale = fontScale;
+		const view = await render(
+			<DayovaSheetFrame
+				visible
+				onClose={jest.fn()}
+				title="Was möchtest du planen?"
+				description="Wähle deine nächste Aufgabe aus."
+			/>,
+		);
+		const closeRow = view.getByTestId("dayova-sheet-close-row");
+		const titleRow = view.getByTestId("dayova-sheet-title-row");
+		expect(closeRow).not.toContainElement(
+			view.getByRole("header", { name: "Was möchtest du planen?" }),
+		);
+		expect(titleRow).toContainElement(
+			view.getByRole("header", { name: "Was möchtest du planen?" }),
+		);
+		expect(titleRow.props.className).toBe("w-full");
+		expect(closeRow.props.className).toContain("mb-2");
+	});
+
 	test("respects landscape safe areas and uses the available scroll height", async () => {
 		Object.assign(mockWindowDimensions, { height: 390, width: 844 });
 		Object.assign(mockSafeAreaInsets, { left: 47, right: 21 });

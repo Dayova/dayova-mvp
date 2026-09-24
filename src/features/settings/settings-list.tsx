@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
+import { Button } from "~/components/ui/button";
 import { ArrowRight } from "~/components/ui/icon";
 import { ListRow } from "~/components/ui/list-row";
 import { Surface } from "~/components/ui/surface";
@@ -37,6 +38,25 @@ function SettingsRow({
 }) {
 	const Icon = icon;
 	const { colors } = useDayovaTheme();
+	if (destructive) {
+		return (
+			<Button
+				ref={buttonRef}
+				variant="destructive"
+				className="m-3"
+				accessibilityLabel={accessibilityLabel ?? label}
+				accessibilityState={{ busy, disabled }}
+				disabled={disabled}
+				onPress={onPress}
+			>
+				{busy ? (
+					<ActivityIndicator color={colors.dangerAction} />
+				) : (
+					<Text className="shrink text-center">{label}</Text>
+				)}
+			</Button>
+		);
+	}
 	return (
 		<ListRow
 			ref={buttonRef}

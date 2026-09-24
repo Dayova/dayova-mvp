@@ -26,7 +26,6 @@ import {
 	Plus,
 	PropertyEdit,
 	Route2,
-	Trash2,
 } from "~/components/ui/icon";
 import { CompactNotchedActionCard } from "~/components/ui/notched-action-card";
 import { Text } from "~/components/ui/text";
@@ -44,7 +43,7 @@ import { formatGermanUiText } from "~/lib/german-ui-text";
 import { ROUTES } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
 
-const PLAN_ACTION_RAIL_WIDTH = 104;
+const PLAN_ACTION_RAIL_WIDTH = 160;
 const PLAN_SWIPE_OPEN_THRESHOLD = 44;
 const PLAN_ACTION_RAIL_COLOR = DAYOVA_DESIGN_SYSTEM.colors.buttonNeutral;
 const STATUS_NEUTRAL_BACKGROUND = DAYOVA_DESIGN_SYSTEM.colors.systemSubtle;
@@ -392,19 +391,16 @@ function LearningPlanActionRail({
 					/>
 				</TouchableOpacity>
 				<View className="h-0.5 w-8 rounded-full bg-light-1" />
-				<TouchableOpacity
+				<Button
 					accessibilityLabel="Lernplan löschen"
 					accessibilityRole="button"
-					activeOpacity={0.78}
 					onPress={onDelete}
-					className="h-10 w-10 items-center justify-center rounded-full"
+					variant="destructive"
+					size="sm"
+					className="w-32 px-2"
 				>
-					<Trash2
-						size={26}
-						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-						strokeWidth={2.1}
-					/>
-				</TouchableOpacity>
+					<Text className="shrink text-center">Löschen</Text>
+				</Button>
 			</View>
 		</Animated.View>
 	);
