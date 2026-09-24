@@ -104,6 +104,10 @@ Use `onPrimary` for solid selected pills, tabs, their checkmarks, and equivalent
 compact controls. Do not reuse `surface` or theme-dependent primary text as an
 implicit foreground token.
 
+Answer selection follows this same pairing and retains normal theme text for
+the answer content. See the [code-facing decision](adr/answer-selection-colors.md)
+and its linked native comparison and canonical Notion rationale.
+
 Typography uses Poppins only. Body text is Regular; headings, buttons, selected
 tabs, labels that need emphasis, and other highlighted text use SemiBold.
 Large numeric counters use `display-counter` 60/68. The supported content
@@ -127,6 +131,15 @@ Production screens use the shared `Button` and `BackButton` components for
 these actions. A screen-local clone is not an allowed visual variant; add a
 shared variant and update this context if a new interaction contract is truly
 needed.
+
+The empty timetable uses one full-width gradient import button and a full-width
+neutral manual-entry button. File and camera are equal sources inside the shared
+`ActionSheet`, following the school-material upload pattern. Use source rows
+instead of tiles when content-size layout requires stacking. Native pickers open
+after the sheet's `onDismiss`, and the pending selection disables competing
+entry actions. The editor keeps reimport subordinate to its existing save action.
+This decision introduces no new button appearance; see
+[DAY-378](https://linear.app/dayova/issue/DAY-378/clarify-timetable-entry-with-one-import-action-and-a-secondary-manual).
 
 The trial-activation and expired-trial payment flow are deliberate full-bleed
 branded exceptions. The expired-trial route presents one Store-only path into
@@ -187,6 +200,14 @@ component: path 2 background (`#D7DCE3`) with path 3 icon (`#8A8D92`).
 
 ## Notes
 
+- Use `SupportContact` for contacting the team from Settings, access screens,
+  and blocking operational errors. Put the action beside the failure and keep
+  existing recovery actions available. Pass a static, user-facing screen name
+  as `context`; never pass raw errors, account identifiers, or learning content.
+  It opens an editable email draft and provides the address, a native copy/share
+  action, and a website fallback in `DayovaSheetFrame`. Keep explicit accessible
+  labels on launch controls so returning from another app preserves their names.
+  See [DAY-381](https://linear.app/dayova/issue/DAY-381/make-support-easy-to-contact-from-app-failures).
 - Capture reusable component and styling decisions here.
 - Put design-system ADRs in `docs/contexts/design-system/adr/`.
 - Use NativeWind for static app UI. Follow the rendering-choice matrix in

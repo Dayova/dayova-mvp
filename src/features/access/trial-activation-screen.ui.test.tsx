@@ -97,6 +97,23 @@ describe("TrialActivationScreen", () => {
 		);
 	});
 
+	test("centers the complete trial explanation in one bounded block", async () => {
+		const screen = await render(<TrialActivationScreen />);
+		const scroll = screen.getByTestId("trial-scroll-view");
+
+		expect(scroll.props.contentContainerStyle).toMatchObject({
+			alignItems: "center",
+			justifyContent: "center",
+			paddingHorizontal: 24,
+		});
+		expect(screen.getByTestId("trial-content-block").props.className).toContain(
+			"max-w-[560px]",
+		);
+		expect(
+			screen.getByText("So läuft deine Testphase").props.className,
+		).toContain("text-center");
+	});
+
 	test("announces an activation failure through the shared error contract", async () => {
 		mockActivateTrial.mockRejectedValueOnce(new Error("offline"));
 		const screen = await render(<TrialActivationScreen />);

@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import { isMeaningfulTopicDescription } from "#convex/topicDescriptionValidation";
 import {
 	getLearningPlanUploadCapacity,
 	getLearningPlanUploadRejectionMessage,
@@ -29,6 +30,7 @@ import {
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import {
+	examEntryResumePath,
 	examEntrySuccessPath,
 	learningPlanStepPath,
 } from "~/features/learning-plans/creation-routes";
@@ -90,6 +92,7 @@ export default function NewLearningPlanScreen() {
 		durationMinutes?: string;
 		topicDescription?: string;
 		teacherGuidance?: string;
+		fromExamEntry?: string;
 		errorMessage?: string;
 	}>();
 	const { user } = useAuthSession();
@@ -610,6 +613,19 @@ export default function NewLearningPlanScreen() {
 	};
 
 	const exitCreation = () => {
+		if (!learningPlanId && examDayEntryId && params.fromExamEntry === "true") {
+			router.replace(
+				examEntryResumePath({
+					examDayEntryId,
+					subject,
+					examTypeLabel,
+					examDateKey,
+					durationMinutes,
+					topicDescription: topics,
+				}),
+			);
+			return true;
+		}
 		if (learningPlanId) {
 			dismissToOrReplace(router, ROUTES.learningPlans);
 			return true;

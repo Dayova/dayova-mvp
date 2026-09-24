@@ -143,9 +143,8 @@ function AiConsentSheet({
 						Wofür werden die Daten verwendet?
 					</Text>
 					<Text className="font-poppins text-body-3 text-secondary-text">
-						Nur um deinen Lernplan, Diagnosefragen, Lerninhalte und die
-						Stundenplan-Erkennung bereitzustellen. KI-generierte Ergebnisse
-						können Fehler enthalten.
+						Nur um deinen Lernplan, Diagnosefragen und Lerninhalte
+						bereitzustellen. KI-generierte Ergebnisse können Fehler enthalten.
 					</Text>
 				</View>
 

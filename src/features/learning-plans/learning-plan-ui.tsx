@@ -343,9 +343,6 @@ function SessionEditPill({
 			activeOpacity={0.86}
 			onPress={onPress}
 			className={cn("min-h-[64px] rounded-[28px] px-5", className)}
-			style={{
-				boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
-			}}
 		>
 			<Text
 				className="flex-1 font-poppins text-body-2 text-text"
