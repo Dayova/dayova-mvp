@@ -1,0 +1,10 @@
+appId: de.dayova.app-dev
+name: DAY-187 exam dialog remains reachable with keyboard
+---
+- tapOn: Prüfungsart hinzufügen
+- assertVisible: Name der Prüfungsart
+- tapOn: Name der Prüfungsart
+- inputText: QA Keyboard
+- takeScreenshot: keyboard-repro
+- assertVisible: Name der Prüfungsart
+- assertVisible: Prüfungsart hinzufügen schließen

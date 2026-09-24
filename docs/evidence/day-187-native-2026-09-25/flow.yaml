@@ -1,0 +1,45 @@
+appId: de.dayova.app-dev
+name: DAY-187 native exam type and subject dialog comparison
+---
+- tapOn:
+    text: Prüfungsart hinzufügen schließen
+    optional: true
+- assertVisible: Prüfungsart hinzufügen
+- tapOn: Test
+- tapOn: Prüfungsart hinzufügen
+- assertVisible: Name der Prüfungsart
+- takeScreenshot: exam-dialog
+- tapOn: Name der Prüfungsart
+- inputText: QA Vokabeltest
+- takeScreenshot: exam-keyboard
+- hideKeyboard
+- scrollUntilVisible:
+    element: Abbrechen
+    direction: DOWN
+- tapOn: Abbrechen
+- assertNotVisible: Name der Prüfungsart
+- assertVisible:
+    text: Weiter
+    enabled: true
+- tapOn: Weiter
+- assertVisible: Welches Fach ist es?
+- tapOn: Mathematik
+- scrollUntilVisible:
+    element: Fach hinzufügen
+    direction: DOWN
+- tapOn: Fach hinzufügen
+- assertVisible: Name des Fachs
+- takeScreenshot: subject-dialog
+- tapOn: Name des Fachs
+- inputText: QA Dialogvergleich
+- takeScreenshot: subject-keyboard
+- hideKeyboard
+- scrollUntilVisible:
+    element: Abbrechen
+    direction: DOWN
+- tapOn: Abbrechen
+- assertNotVisible: Name des Fachs
+- assertVisible:
+    text: Weiter
+    enabled: true
+- takeScreenshot: subject-cancelled
