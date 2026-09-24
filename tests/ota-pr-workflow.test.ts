@@ -153,9 +153,12 @@ const event = (
 });
 
 describe("PR OTA workflow routing", () => {
-	it("starts for PRs targeting stack branches as well as main", () => {
+	it("starts for stack branches and rechecks direct base changes", () => {
 		expect(workflow.on.pull_request.branches).toBeUndefined();
 		expect(workflow.on.pull_request.types).toContain("synchronize");
+		expect(workflow.on.pull_request.types).toContain("base_ref_changed");
+		expect(workflow.jobs.stack_root_gate.needs).toContain("source_gate");
+		expect(workflow.jobs.checks.after).toContain("stack_root_gate");
 	});
 
 	it.each([undefined, null])("rejects missing repository IDs (%s)", (id) => {
@@ -188,6 +191,12 @@ describe("PR OTA workflow routing", () => {
 			event("pull_request", "MEMBER", false, "codex/parent"),
 			true,
 		],
+		[
+			"unrelated stacked PR",
+			event("pull_request", "MEMBER", false, "codex/orphan"),
+			false,
+			false,
+		],
 		["untrusted PR", event("pull_request", "CONTRIBUTOR"), false],
 		["owner fork PR", event("pull_request", "OWNER", true), false],
 		["member fork PR", event("pull_request", "MEMBER", true), false],
@@ -197,10 +206,14 @@ describe("PR OTA workflow routing", () => {
 			false,
 		],
 		["main push", event("push"), true],
-		["other push", { ...event("push"), ref_name: "feature" }, false],
 		["manual CI", event("workflow_dispatch"), false],
-	])("routes %s to production compatibility checks", (_label, github, expected) => {
-		const context = { github };
+	])("routes %s to production compatibility checks", (_label, github, expected, rooted = true) => {
+		const context = {
+			github,
+			after: {
+				stack_root_gate: { outputs: { root_main: rooted ? "true" : "false" } },
+			},
+		};
 		const canRun = (id: string): boolean => {
 			const job = workflow.jobs[id];
 			return (
@@ -208,6 +221,15 @@ describe("PR OTA workflow routing", () => {
 				(job.needs ?? []).every(canRun)
 			);
 		};
+		expect(canRun("stack_root_gate")).toBe(
+			github.event_name === "pull_request" &&
+				github.event.pull_request.base.ref !== "main" &&
+				github.event.pull_request.head.repo.id ===
+					github.event.pull_request.base.repo.id &&
+				["OWNER", "MEMBER", "COLLABORATOR"].includes(
+					github.event.pull_request.author_association,
+				),
+		);
 		expect(canRun("checks")).toBe(
 			expected || github.event_name === "workflow_dispatch",
 		);
@@ -226,7 +248,8 @@ describe("PR OTA workflow routing", () => {
 			isMainPush,
 		);
 		expect(Boolean(evaluate(workflow.jobs.pr_ota_comment.if, context))).toBe(
-			github.event_name === "pull_request",
+			github.event_name === "pull_request" &&
+				(github.event.pull_request.base.ref === "main" || rooted),
 		);
 	});
 
@@ -261,7 +284,7 @@ describe("PR OTA workflow routing", () => {
 		const report = workflow.jobs.pr_ota_report;
 		expect(report.needs).toBeUndefined();
 		expect(report.after).toEqual(
-			expect.arrayContaining(["production_fingerprint", "ota_checks"]),
+			expect.arrayContaining(["stack_root_gate", "production_fingerprint", "ota_checks"]),
 		);
 		const context = {
 			github: event("pull_request"),
@@ -269,6 +292,7 @@ describe("PR OTA workflow routing", () => {
 				url: "https://expo.dev/accounts/dayova/projects/dayova/workflows/test-run",
 			},
 			after: {
+				stack_root_gate: { status: "success", outputs: { root_main: "true" } },
 				production_fingerprint: { status, outputs: {} },
 				ota_checks: { status, outputs: { ota_safe: safe } },
 			},
