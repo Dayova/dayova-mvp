@@ -1,17 +1,19 @@
-import { execFileSync } from "node:child_process";
+import * as childProcess from "node:child_process";
 import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
-import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
 	createReport,
 	evaluateProductionOta,
 	validateProductionManifest,
 } from "../scripts/ota-safety.mjs";
+import {
+	readExpoConfigSnapshot,
+	readMetroWatchmanOptIn,
+} from "./helpers/expo-config-contract";
 
-const require = createRequire(import.meta.url);
-const projectRoot = fileURLToPath(new URL("..", import.meta.url));
+vi.mock("node:child_process", { spy: true });
+
 const iosFingerprint = "1111111111111111111111111111111111111111";
 const androidFingerprint = "2222222222222222222222222222222222222222";
 
@@ -430,46 +432,48 @@ describe("production OTA safety", () => {
 });
 
 describe("production release configuration", () => {
-	it("classifies missing EAS fingerprint outputs as a preflight failure", () => {
-		const previousAppVariant = process.env.APP_VARIANT;
-		const previousIosFingerprint = process.env.OTA_IOS_FINGERPRINT;
-		const previousAndroidFingerprint = process.env.OTA_ANDROID_FINGERPRINT;
+	it.each(["OTA_IOS_FINGERPRINT", "OTA_ANDROID_FINGERPRINT"])(
+		"classifies missing %s as a preflight failure before starting child processes",
+		(missingVariable) => {
+			const childProcessSpy = vi
+				.spyOn(childProcess, "execFileSync")
+				.mockImplementation(() => {
+					throw new Error(
+						"Preflight must reject missing fingerprints before starting a child process",
+					);
+				});
+			const previousAppVariant = process.env.APP_VARIANT;
+			const previousIosFingerprint = process.env.OTA_IOS_FINGERPRINT;
+			const previousAndroidFingerprint = process.env.OTA_ANDROID_FINGERPRINT;
 
-		try {
-			process.env.APP_VARIANT = "production";
-			delete process.env.OTA_IOS_FINGERPRINT;
-			delete process.env.OTA_ANDROID_FINGERPRINT;
+			try {
+				process.env.APP_VARIANT = "production";
+				process.env.OTA_IOS_FINGERPRINT = iosFingerprint;
+				process.env.OTA_ANDROID_FINGERPRINT = androidFingerprint;
+				delete process.env[missingVariable];
 
-			expect(createReport()).toMatchObject({
-				safe: false,
-				failureKind: "preflight",
-				reason: expect.stringContaining("OTA_IOS_FINGERPRINT is missing"),
-			});
-		} finally {
-			if (previousAppVariant === undefined) delete process.env.APP_VARIANT;
-			else process.env.APP_VARIANT = previousAppVariant;
-			if (previousIosFingerprint === undefined)
-				delete process.env.OTA_IOS_FINGERPRINT;
-			else process.env.OTA_IOS_FINGERPRINT = previousIosFingerprint;
-			if (previousAndroidFingerprint === undefined)
-				delete process.env.OTA_ANDROID_FINGERPRINT;
-			else process.env.OTA_ANDROID_FINGERPRINT = previousAndroidFingerprint;
-		}
-	});
+				expect(createReport()).toMatchObject({
+					safe: false,
+					failureKind: "preflight",
+					reason: expect.stringContaining(`${missingVariable} is missing`),
+				});
+				expect(childProcessSpy).not.toHaveBeenCalled();
+			} finally {
+				childProcessSpy.mockRestore();
+				if (previousAppVariant === undefined) delete process.env.APP_VARIANT;
+				else process.env.APP_VARIANT = previousAppVariant;
+				if (previousIosFingerprint === undefined)
+					delete process.env.OTA_IOS_FINGERPRINT;
+				else process.env.OTA_IOS_FINGERPRINT = previousIosFingerprint;
+				if (previousAndroidFingerprint === undefined)
+					delete process.env.OTA_ANDROID_FINGERPRINT;
+				else process.env.OTA_ANDROID_FINGERPRINT = previousAndroidFingerprint;
+			}
+		},
+	);
 
 	it("resolves the patched SDK 57 production binary behind runtime 1.0.5", () => {
-		const expoCliPath = require.resolve("expo/bin/cli");
-		const resolvedConfig = JSON.parse(
-			execFileSync(
-				process.execPath,
-				[expoCliPath, "config", "--type", "public", "--json"],
-				{
-					cwd: projectRoot,
-					encoding: "utf8",
-					env: { ...process.env, APP_VARIANT: "production" },
-				},
-			),
-		);
+		const resolvedConfig = readExpoConfigSnapshot("production", "public");
 		const packageJson = JSON.parse(
 			readFileSync(new URL("../package.json", import.meta.url), "utf8"),
 		);
@@ -568,27 +572,6 @@ describe("production release configuration", () => {
 	});
 
 	it("honors the explicit Watchman opt-in for local release exports", () => {
-		const metroConfigPath = fileURLToPath(
-			new URL("../metro.config.js", import.meta.url),
-		);
-		const useWatchman = execFileSync(
-			process.execPath,
-			[
-				"-e",
-				`const config = require(${JSON.stringify(metroConfigPath)}); process.stdout.write(String(config.resolver.useWatchman));`,
-			],
-			{
-				cwd: projectRoot,
-				encoding: "utf8",
-				env: {
-					...process.env,
-					APP_VARIANT: "development",
-					DAYOVA_METRO_USE_WATCHMAN: "true",
-					NODE_ENV: "test",
-				},
-			},
-		).trim();
-
-		expect(useWatchman.split(/\r?\n/).at(-1)).toBe("true");
+		expect(readMetroWatchmanOptIn()).toBe(true);
 	});
 });

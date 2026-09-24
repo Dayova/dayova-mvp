@@ -14,7 +14,6 @@ import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
 import { SessionEditForm } from "~/features/learning-plans/learning-plan-ui";
 import type {
-	LearningPlanSnapshot,
 	PickerTarget,
 	PlanSession,
 	SessionPhase,
@@ -31,6 +30,7 @@ import {
 } from "~/features/learning-plans/utils";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 const reviewPath = (id: Id<"learningPlans">) =>
 	`/learning-plans/${id}/review` as const;
@@ -43,6 +43,7 @@ function LoadedSessionEditScreen({
 	session: PlanSession;
 }) {
 	const router = useRouter();
+	const trackFeature = useFeatureAnalytics();
 	const updateSession = useMutation(api.learningPlans.updateSession);
 	const regenerateSessionContent = useAction(
 		api.learningPlanAi.ensureSessionContent,
@@ -99,8 +100,10 @@ function LoadedSessionEditScreen({
 		});
 	};
 
+	const hasValidTimeRange =
+		minutesFromTime(editEnd) > minutesFromTime(editStart);
 	const saveEdit = async () => {
-		if (isBusy) return;
+		if (isBusy || !hasValidTimeRange) return;
 
 		await runWithErrorHandling(
 			"Der Lerntag konnte nicht gespeichert werden.",
@@ -120,6 +123,7 @@ function LoadedSessionEditScreen({
 					startTime: editStart,
 					durationMinutes: duration,
 				});
+				trackFeature("learning_session.reschedule", "succeeded", session.id);
 				if (result.contentInvalidated) {
 					if (!(await requestAiConsent())) {
 						router.replace(reviewPath(planId));
@@ -139,6 +143,7 @@ function LoadedSessionEditScreen({
 			"Der Lerntag konnte nicht entfernt werden.",
 			async () => {
 				await removeSession({ id: session.id });
+				trackFeature("learning_session.remove", "succeeded", session.id);
 				router.replace(reviewPath(planId));
 			},
 		);
@@ -201,6 +206,7 @@ function LoadedSessionEditScreen({
 					editEnd={editEnd}
 					editPhase={editPhase}
 					isSaving={isBusy}
+					canSave={hasValidTimeRange}
 					onChangeDate={() => setPickerTarget("editDate")}
 					onChangeStart={() => setPickerTarget("editStart")}
 					onChangeEnd={() => setPickerTarget("editEnd")}
@@ -247,12 +253,14 @@ export default function LearningPlanSessionEditScreen() {
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 
-	const snapshot = (useQuery(
-		api.learningPlans.getSnapshot,
-		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
-	) ?? null) as LearningPlanSnapshot | null;
+	const sessions = useQuery(
+		api.learningPlans.listSessions,
+		user && isConvexAuthenticated && planId
+			? { learningPlanId: planId }
+			: "skip",
+	);
 
-	const session = snapshot?.sessions.find((item) => item.id === sessionId) as
+	const session = sessions?.find((item) => item.id === sessionId) as
 		| PlanSession
 		| undefined;
 

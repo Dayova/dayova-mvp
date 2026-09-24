@@ -1,6 +1,7 @@
 import {
 	isClerkAPIResponseError,
 	useClerk,
+	useReverification,
 	useSignIn,
 	useUser,
 } from "@clerk/expo";
@@ -440,8 +441,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		api.validationAnalytics.markActivity,
 	);
 	const updateConvexProfile = useMutation(api.users.updateProfile);
-	const deleteCurrentUserDataBatch = useMutation(
-		api.accountDeletion.deleteCurrentUserDataBatch,
+	const requestCurrentUserDeletion = useMutation(
+		api.accountDeletion.requestCurrentUserDeletion,
+	);
+	const requestDeletionWithReverification = useReverification(
+		requestCurrentUserDeletion,
 	);
 	const { clearAnswers } = useOnboarding();
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1640,17 +1644,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	};
 
 	const deleteAccount = async () => {
-		if (!clerkUser) {
-			throw new Error("Das Konto ist nicht mehr verfügbar.");
-		}
-
-		while (true) {
-			const deletion = await deleteCurrentUserDataBatch({});
-			if (deletion.done) break;
-		}
-
 		try {
-			await clerkUser.delete();
+			await requestDeletionWithReverification({});
 			await logout();
 		} catch (error) {
 			throw new Error(

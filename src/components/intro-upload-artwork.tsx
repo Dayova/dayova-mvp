@@ -29,7 +29,7 @@ export function IntroUploadArtwork({
 			testID="intro-upload-artwork"
 		>
 			<View
-				className="h-[313px] w-[345px] justify-center rounded-[32px] bg-background px-5 py-6 shadow-black/10 shadow-sm"
+				className="h-[313px] w-[345px] justify-center rounded-[32px] bg-background px-5 py-6"
 				// The fixed artboard scales to the runtime frame while preserving its geometry.
 				style={{ transform: [{ scale }] }}
 			>

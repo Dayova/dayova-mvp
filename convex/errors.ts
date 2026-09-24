@@ -1,10 +1,12 @@
 import { ConvexError } from "convex/values";
+import { USER_FACING_ERROR_KIND } from "../src/lib/user-facing-error-contract";
 
-export const USER_FACING_ERROR_KIND = "userFacing";
+export { USER_FACING_ERROR_KIND } from "../src/lib/user-facing-error-contract";
 
 type UserFacingBackendErrorData = {
 	kind: typeof USER_FACING_ERROR_KIND;
 	message: string;
+	code?: string;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -21,19 +23,20 @@ const serializeError = (error: unknown) => {
 	};
 };
 
-export const userFacingError = (message: string) => {
+export const userFacingError = (message: string, code?: string) => {
 	const error = new ConvexError(
 		message,
 	) as unknown as ConvexError<UserFacingBackendErrorData>;
 	error.data = {
 		kind: USER_FACING_ERROR_KIND,
 		message,
+		...(code ? { code } : {}),
 	};
 	return error;
 };
 
-export function throwUserFacingError(message: string): never {
-	throw userFacingError(message);
+export function throwUserFacingError(message: string, code?: string): never {
+	throw userFacingError(message, code);
 }
 
 export const getUserFacingBackendErrorMessage = (error: unknown) => {
@@ -44,6 +47,17 @@ export const getUserFacingBackendErrorMessage = (error: unknown) => {
 	return error.data.kind === USER_FACING_ERROR_KIND &&
 		typeof error.data.message === "string"
 		? error.data.message
+		: null;
+};
+
+export const getUserFacingBackendErrorCode = (error: unknown) => {
+	if (!isRecord(error) || !("data" in error) || !isRecord(error.data)) {
+		return null;
+	}
+
+	return error.data.kind === USER_FACING_ERROR_KIND &&
+		typeof error.data.code === "string"
+		? error.data.code
 		: null;
 };
 

@@ -38,6 +38,7 @@ jest.mock("@clerk/expo", () => ({
 	useClerk: () => mockClerk,
 	useUser: () => ({ user: mockClerkUser, isLoaded: true }),
 	useSignIn: () => ({}),
+	useReverification: (callback: unknown) => callback,
 	isClerkAPIResponseError: () => false,
 }));
 jest.mock("convex/react", () => ({

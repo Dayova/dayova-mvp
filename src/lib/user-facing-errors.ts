@@ -1,6 +1,7 @@
 import { logDiagnosticError } from "./diagnostics";
+import { USER_FACING_ERROR_KIND } from "./user-facing-error-contract";
 
-export const USER_FACING_ERROR_KIND = "userFacing";
+export { USER_FACING_ERROR_KIND } from "./user-facing-error-contract";
 
 const CONVEX_WRAPPER_PATTERN = /^\[CONVEX[^\n]*\]\s*/i;
 const PRODUCTION_CONVEX_NOISE = new Set([
@@ -71,6 +72,19 @@ export const extractUserFacingErrorMessage = (error: unknown) => {
 		getDevelopmentConvexMessage(error.message) ??
 		cleanPlainMessage(error.message)
 	);
+};
+
+export const extractUserFacingErrorCode = (error: unknown) => {
+	const data = getErrorData(error);
+	if (
+		isRecord(data) &&
+		data.kind === USER_FACING_ERROR_KIND &&
+		typeof data.code === "string"
+	) {
+		return data.code;
+	}
+
+	return null;
 };
 
 export const getUserFacingErrorMessage = (

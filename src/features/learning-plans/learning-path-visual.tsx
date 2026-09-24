@@ -18,6 +18,7 @@ import {
 	Repeat,
 	Sparkles,
 } from "~/components/ui/icon";
+import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import {
 	getLearningPathNodePresentation,
@@ -529,9 +530,11 @@ function ScreenPathNode({
 			accessibilityHint={
 				isLocked
 					? "Zeigt den voraussichtlich folgenden Lernblock. Er kann sich nach der nächsten Session noch ändern."
-					: selected
-						? "Öffnet diesen Lernblock."
-						: "Wählt diesen Lernblock aus. Ein weiterer Tipp öffnet ihn."
+					: state === "completed"
+						? "Öffnet diesen abgeschlossenen Lernblock erneut."
+						: selected
+							? "Öffnet diesen Lernblock."
+							: "Wählt diesen Lernblock aus. Ein weiterer Tipp öffnet ihn."
 			}
 			accessibilityRole="button"
 			accessibilityState={{ selected }}
@@ -553,6 +556,7 @@ function ScreenPathNode({
 
 type ScreenLearningPathVisualProps = {
 	mode: "screen";
+	onAddLearningTime?: () => void;
 	examCountdownLabel: string | null;
 	examDateLabel: string;
 	onOpenSession: (session: PlanSession) => void;
@@ -590,13 +594,20 @@ function LearningPathSurface({ props }: { props: LearningPathVisualProps }) {
 	const activeSegmentLimit = getActiveSegmentLimit(nodes);
 	const showsAdaptiveContinuation =
 		screenProps?.showsAdaptiveContinuation === true;
+	const needsLearningTime =
+		showsAdaptiveContinuation &&
+		!!screenProps &&
+		screenProps.sessions.every(isLearningPlanSessionHistory);
 	const continuationSegmentIndex = Math.max(nodes.length - 1, 0);
 	const continuationPath = getSegmentPath(continuationSegmentIndex);
 	const continuationEndpoint = getSegmentEndPoint(continuationSegmentIndex);
 	const continuationTop = continuationEndpoint.y + 16;
 	const basePathHeight = getPathHeight(nodes.length, mode);
 	const pathHeight = showsAdaptiveContinuation
-		? Math.max(basePathHeight, continuationTop + 220)
+		? Math.max(
+				basePathHeight,
+				continuationTop + (needsLearningTime ? 310 : 220),
+			)
 		: basePathHeight;
 	const segments = nodes.slice(1).map((_, index) => ({
 		d: getSegmentPath(index),
@@ -682,7 +693,10 @@ function LearningPathSurface({ props }: { props: LearningPathVisualProps }) {
 								session={session}
 								state={state}
 								onPress={() => {
-									if (selected && state !== "locked") {
+									if (
+										state === "completed" ||
+										(selected && state !== "locked")
+									) {
 										props.onOpenSession(session);
 										return;
 									}
@@ -701,14 +715,18 @@ function LearningPathSurface({ props }: { props: LearningPathVisualProps }) {
 
 			{showsAdaptiveContinuation && screenProps ? (
 				<View
-					accessible
-					accessibilityLabel={`Dayova plant mit dir weiter. Nach deinem Abschluss passt Dayova die Vorschau an und plant den nächsten Termin. Prüfung am ${
-						screenProps.examDateLabel
-					}${
-						screenProps.examCountdownLabel
-							? `, ${screenProps.examCountdownLabel}`
-							: ""
-					}.`}
+					accessible={!needsLearningTime}
+					accessibilityLabel={
+						needsLearningTime
+							? undefined
+							: `Dayova plant mit dir weiter. Nach deinem Abschluss passt Dayova die Vorschau an und plant den nächsten Termin. Prüfung am ${
+									screenProps.examDateLabel
+								}${
+									screenProps.examCountdownLabel
+										? `, ${screenProps.examCountdownLabel}`
+										: ""
+								}.`
+					}
 					className="absolute right-2 left-2 gap-4 overflow-hidden rounded-card border border-primary/20 bg-system-subtle px-4 py-4"
 					// The top follows generated path geometry; borderCurve is a native API.
 					style={{ top: continuationTop, borderCurve: "continuous" }}
@@ -724,12 +742,25 @@ function LearningPathSurface({ props }: { props: LearningPathVisualProps }) {
 						</View>
 						<View className="min-w-0 flex-1">
 							<Text className="font-poppins font-semibold text-body-3 text-text">
-								Dayova plant mit dir weiter
+								{needsLearningTime
+									? "Wiederholung offen"
+									: "Dayova plant mit dir weiter"}
 							</Text>
 							<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
-								Nach deinem Abschluss passt Dayova die Vorschau an und plant den
-								nächsten Termin.
+								{needsLearningTime
+									? "Dein Wissen ist noch nicht sicher. Ergänze eine Lernzeit vor der Prüfung, damit Dayova die nächste Wiederholung planen kann."
+									: "Nach deinem Abschluss passt Dayova die Vorschau an und plant den nächsten Termin."}
 							</Text>
+							{needsLearningTime && screenProps.onAddLearningTime ? (
+								<Button
+									accessibilityLabel="Lernzeit für die nächste Wiederholung ergänzen"
+									className="mt-3 self-start"
+									size="sm"
+									onPress={screenProps.onAddLearningTime}
+								>
+									<Text>Lernzeit ergänzen</Text>
+								</Button>
+							) : null}
 						</View>
 					</View>
 

@@ -30,8 +30,8 @@ import {
 } from "./dashboard-agenda";
 import type { DashboardNextStepFallbackAction } from "./dashboard-empty-state";
 import {
-	getDashboardSummaryCardLayoutClass,
 	type DashboardSummaryCardLayout,
+	getDashboardSummaryCardLayoutClass,
 } from "./dashboard-layout";
 
 type DashboardNextStepCardProps =
@@ -89,6 +89,7 @@ const continuousBorderStyle = {
 const tabularNumberStyle = {
 	fontVariant: ["tabular-nums"],
 } satisfies TextStyle;
+const LONG_NEXT_STEP_TITLE_WORD_LENGTH = 12;
 
 const formatMinutes = (minutes: number) => {
 	const hours = Math.floor(minutes / 60)
@@ -145,6 +146,9 @@ function DashboardNextStepCard(props: DashboardNextStepCardProps) {
 		: item
 			? formatGermanUiText(getAgendaEntryTitle(item.entry))
 			: "Noch nichts geplant";
+	const hasLongTitleWord = title
+		.split(/\s+/u)
+		.some((word) => [...word].length >= LONG_NEXT_STEP_TITLE_WORD_LENGTH);
 	const dateLabel = item ? getNextStepDateLabel(item, props.todayKey) : null;
 	const timeLabel = item ? getNextStepTimeLabel(item) : null;
 	const footer = isLoading
@@ -156,7 +160,9 @@ function DashboardNextStepCard(props: DashboardNextStepCardProps) {
 				: "Lernplan öffnen";
 	const content = (
 		<>
-			<View className="flex-row items-start gap-1">
+			<View
+				className={cn("flex-row items-start", isArtwork ? "gap-2" : "gap-1")}
+			>
 				<Dumbbell
 					size={isArtwork ? 13 : 14}
 					color={colors.primaryStrong}
@@ -173,17 +179,25 @@ function DashboardNextStepCard(props: DashboardNextStepCardProps) {
 			</View>
 			<Text
 				allowFontScaling={!isArtwork}
+				adjustsFontSizeToFit={!isArtwork}
+				android_hyphenationFrequency="none"
+				lineBreakStrategyIOS="standard"
 				maxFontSizeMultiplier={isArtwork ? 1 : undefined}
+				minimumFontScale={isArtwork ? 1 : 0.82}
 				className={cn(
 					"font-poppins font-semibold text-text",
-					isArtwork ? "mt-1 text-body-3" : "mt-4 text-body-1",
+					isArtwork
+						? "mt-2 text-body-3"
+						: hasLongTitleWord
+							? "mt-4 text-body-2"
+							: "mt-4 text-body-1",
 				)}
-				numberOfLines={isArtwork ? 2 : undefined}
+				numberOfLines={2}
 			>
 				{title}
 			</Text>
 			{isArtwork ? (
-				<View className="mt-auto flex-row items-end justify-between gap-2 pt-1">
+				<View className="mt-auto flex-row items-end justify-between gap-3 pt-2">
 					<View className="flex-1 gap-1">
 						{dateLabel ? (
 							<View className="flex-row items-center gap-2">
@@ -281,7 +295,7 @@ function DashboardNextStepCard(props: DashboardNextStepCardProps) {
 				accessibilityElementsHidden
 				importantForAccessibility="no-hide-descendants"
 				testID={props.testID}
-				className="h-full w-full overflow-hidden rounded-card border border-border bg-system-subtle px-4 py-2"
+				className="h-full w-full overflow-hidden rounded-2xl border border-border bg-system-subtle px-4 pt-3 pb-4"
 				style={continuousBorderStyle}
 			>
 				{content}
@@ -361,11 +375,15 @@ function DashboardWeeklyProgressCard(props: DashboardWeeklyProgressCardProps) {
 	const footer = isLoading
 		? "Diese Woche"
 		: hasPlannedSessions
-			? `${props.progress.completedMinutesToday} Min. heute`
+			? isArtwork
+				? `${props.progress.completedMinutesToday} Min.`
+				: `${props.progress.completedMinutesToday} Min. heute`
 			: "Lernplan öffnen";
 	const content = (
 		<>
-			<View className="flex-row items-start gap-1">
+			<View
+				className={cn("flex-row items-start", isArtwork ? "gap-2" : "gap-1")}
+			>
 				<TimeManagement
 					size={isArtwork ? 13 : 14}
 					color={colors.ueben}
@@ -385,7 +403,7 @@ function DashboardWeeklyProgressCard(props: DashboardWeeklyProgressCardProps) {
 			<View
 				className={cn(
 					"flex-1 items-center justify-center",
-					isArtwork ? "py-1" : "py-2",
+					isArtwork ? "mt-2 pb-1" : "py-2",
 				)}
 			>
 				<View
@@ -505,7 +523,7 @@ function DashboardWeeklyProgressCard(props: DashboardWeeklyProgressCardProps) {
 				accessibilityElementsHidden
 				importantForAccessibility="no-hide-descendants"
 				testID={props.testID}
-				className="h-full w-full overflow-hidden rounded-card border border-border bg-ueben-subtle px-3 py-3"
+				className="h-full w-full overflow-hidden rounded-2xl border border-border bg-ueben-subtle px-3 py-3"
 				style={continuousBorderStyle}
 			>
 				{content}
@@ -557,7 +575,7 @@ function DashboardAgendaEntryCard(props: DashboardAgendaEntryCardProps) {
 			>
 				<Icon size={19} color={accentColor} strokeWidth={2} />
 			</View>
-			<View className="ml-3 flex-1">
+			<View className={cn("flex-1", isArtwork ? "ml-4" : "ml-3")}>
 				<Text
 					allowFontScaling={!isArtwork}
 					maxFontSizeMultiplier={isArtwork ? 1 : undefined}
@@ -571,7 +589,10 @@ function DashboardAgendaEntryCard(props: DashboardAgendaEntryCardProps) {
 				<Text
 					allowFontScaling={!isArtwork}
 					maxFontSizeMultiplier={isArtwork ? 1 : undefined}
-					className="font-poppins font-semibold text-body-3 text-text"
+					className={cn(
+						"font-poppins font-semibold text-body-3 text-text",
+						isArtwork && "mt-1",
+					)}
 					numberOfLines={1}
 				>
 					{formatGermanUiText(getAgendaEntryTitle(props.item.entry))}
@@ -579,7 +600,10 @@ function DashboardAgendaEntryCard(props: DashboardAgendaEntryCardProps) {
 				<Text
 					allowFontScaling={!isArtwork}
 					maxFontSizeMultiplier={isArtwork ? 1 : undefined}
-					className="font-poppins text-body-4 text-secondary-text"
+					className={cn(
+						"font-poppins text-body-4 text-secondary-text",
+						isArtwork && "mt-0.5",
+					)}
 					numberOfLines={1}
 				>
 					{getEntrySummary(props.item.entry)}
@@ -596,7 +620,7 @@ function DashboardAgendaEntryCard(props: DashboardAgendaEntryCardProps) {
 				accessibilityElementsHidden
 				importantForAccessibility="no-hide-descendants"
 				testID={props.testID}
-				className="h-full w-full flex-row items-center rounded-3xl border border-border bg-card px-4 py-4"
+				className="h-full w-full flex-row items-center rounded-2xl border border-border bg-card px-4 py-4"
 				style={continuousBorderStyle}
 			>
 				{content}

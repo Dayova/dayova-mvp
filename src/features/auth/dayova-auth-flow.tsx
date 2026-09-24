@@ -16,11 +16,14 @@ import {
 	KeyboardAvoidingView,
 	type NativeScrollEvent,
 	type NativeSyntheticEvent,
+	Text as NativeText,
 	Platform,
 	Pressable,
 	ScrollView,
+	type StyleProp,
 	TextInput,
 	type TextInputProps,
+	type TextStyle,
 	useWindowDimensions,
 	View,
 } from "react-native";
@@ -84,7 +87,6 @@ import {
 	GreekHelmet,
 	Palette,
 	Plant,
-	Route2,
 	SquareRootSquare,
 	Telescope,
 } from "~/components/ui/icon";
@@ -124,7 +126,9 @@ import { GERMAN_FEDERAL_STATES } from "~/lib/federal-states";
 import { GRADE_OPTIONS } from "~/lib/grades";
 import { useBackIntent } from "~/lib/navigation";
 import { goBackOrReplace } from "~/lib/navigation-actions";
+import { openExternalUrl } from "~/lib/open-external-url";
 import { meetsPasswordRequirements } from "~/lib/password-validation";
+import { env } from "~/lib/runtime-config";
 import { SCHOOL_TYPE_OPTIONS, SCHOOL_TYPE_VALUES } from "~/lib/school-types";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
@@ -225,6 +229,46 @@ const AUTH_BACKGROUND_TILE = {
 		"rgba(255,255,255,0)",
 	],
 } as const;
+
+function AuthChoiceLegalNotice({
+	allowFontScaling,
+	className,
+	style,
+}: {
+	allowFontScaling?: boolean;
+	className: string;
+	style: StyleProp<TextStyle>;
+}) {
+	return (
+		<Text
+			allowFontScaling={allowFontScaling}
+			className={className}
+			style={style}
+		>
+			Informationen findest du in unserer{"\n"}
+			<NativeText
+				allowFontScaling={allowFontScaling}
+				accessibilityRole="link"
+				accessibilityHint="Öffnet die Dayova-Datenschutzerklärung im Browser."
+				className="underline"
+				onPress={() => void openExternalUrl(env.EXPO_PUBLIC_PRIVACY_URL)}
+			>
+				Datenschutzerklärung
+			</NativeText>{" "}
+			und den{" "}
+			<NativeText
+				allowFontScaling={allowFontScaling}
+				accessibilityRole="link"
+				accessibilityHint="Öffnet die Nutzungsbedingungen im Browser."
+				className="underline"
+				onPress={() => void openExternalUrl(env.EXPO_PUBLIC_TERMS_URL)}
+			>
+				Nutzungsbedingungen
+			</NativeText>
+			.
+		</Text>
+	);
+}
 
 export function AuthChoiceScreen() {
 	const [showReleaseInformation, setShowReleaseInformation] = useState(false);
@@ -347,17 +391,14 @@ export function AuthChoiceScreen() {
 						/>
 					</View>
 
-					<Text
+					<AuthChoiceLegalNotice
 						allowFontScaling={false}
 						className="mt-7 w-full text-center font-poppins text-body-4 text-secondary-text"
 						style={{
 							fontSize: responsiveLayout.termsFontSize,
 							lineHeight: responsiveLayout.termsLineHeight,
 						}}
-					>
-						Mit dem Start akzeptierst du Daten­schutz­bestimmungen und
-						Nutzungs­bedingungen.
-					</Text>
+					/>
 				</ScrollView>
 			</View>
 		);
@@ -512,7 +553,7 @@ export function AuthChoiceScreen() {
 						/>
 					</Animated.View>
 
-					<Text
+					<AuthChoiceLegalNotice
 						className="absolute text-center font-poppins text-black-30"
 						style={{
 							top: scaled(AUTH_CHOICE_FRAME.terms.top),
@@ -522,10 +563,7 @@ export function AuthChoiceScreen() {
 							lineHeight: scaled(AUTH_CHOICE_FRAME.terms.lineHeight),
 							includeFontPadding: false,
 						}}
-					>
-						Mit dem Start akzeptierst du{"\n"}Datenschutzbestimmungen und
-						{"\n"}Nutzungsbedingungen.
-					</Text>
+					/>
 				</View>
 			</ScrollView>
 		</View>
@@ -549,7 +587,10 @@ export function OnboardingScreen() {
 	);
 
 	const handleIntroBack = useCallback(() => {
-		if (activeIntroIndex === 0) return false;
+		if (activeIntroIndex === 0) {
+			goBackOrReplace(router, "/");
+			return true;
+		}
 		updateIntroIndex(Math.max(activeIntroIndex - 1, 0));
 		return true;
 	}, [activeIntroIndex, updateIntroIndex]);
@@ -575,6 +616,7 @@ export function OnboardingScreen() {
 				topInset={insets.top}
 				bottomInset={insets.bottom}
 				onActiveIndexChange={updateIntroIndex}
+				onBack={handleIntroBack}
 				onNext={continueFromIntro}
 			/>
 		</View>
@@ -967,12 +1009,14 @@ function IntroStepView({
 	topInset,
 	bottomInset,
 	onActiveIndexChange,
+	onBack,
 	onNext,
 }: {
 	activeIndex: number;
 	topInset: number;
 	bottomInset: number;
 	onActiveIndexChange: (index: number) => void;
+	onBack: () => boolean;
 	onNext: () => void;
 }) {
 	const { colors: COLORS } = useDayovaTheme();
@@ -1047,6 +1091,16 @@ function IntroStepView({
 						paddingHorizontal: contentSizeLayout.horizontalPadding,
 					}}
 				>
+					<View className="w-full pb-4">
+						<BackButton
+							accessibilityHint={
+								introIndex === 0
+									? "Zurück zur Anmeldung"
+									: "Zur vorherigen Einführungsseite"
+							}
+							onPress={() => onBack()}
+						/>
+					</View>
 					<View className="w-full">
 						<IntroArtwork accessibleLayout item={item} />
 					</View>
@@ -1098,13 +1152,15 @@ function IntroStepView({
 				paddingBottom: Math.max(bottomInset + 20, 28),
 			}}
 		>
-			<View className="items-center px-6">
-				<View className="flex-row items-center gap-2 rounded-full bg-primary/10 px-4 py-2">
-					<Route2 size={16} color={COLORS.primary} strokeWidth={2.2} />
-					<Text className="font-poppins font-semibold text-body-5 text-primary">
-						SO FUNKTIONIERT DAYOVA
-					</Text>
-				</View>
+			<View className="px-6">
+				<BackButton
+					accessibilityHint={
+						introIndex === 0
+							? "Zurück zur Anmeldung"
+							: "Zur vorherigen Einführungsseite"
+					}
+					onPress={() => onBack()}
+				/>
 			</View>
 
 			<Animated.FlatList
@@ -1192,7 +1248,7 @@ function IntroArtwork({
 
 	return (
 		<View
-			className="w-full items-center justify-center overflow-hidden rounded-[32px] bg-system-subtle"
+			className="w-full items-center justify-center overflow-hidden rounded-[32px]"
 			// Runtime content-size mode chooses the bounded decorative-artwork height.
 			style={{ height: containerHeight }}
 		>
@@ -1867,7 +1923,12 @@ export function LoginScreen() {
 									isLoading || isSubmittingLogin ? "LOGIN..." : "LOGIN"
 								}
 								onPress={submitLogin}
-								disabled={isLoading || isSubmittingLogin}
+								disabled={
+									isLoading ||
+									isSubmittingLogin ||
+									!isValidEmail(email.trim().toLowerCase()) ||
+									!password.trim()
+								}
 							>
 								<Text>
 									{isLoading || isSubmittingLogin ? "LOGIN..." : "LOGIN"}
@@ -2127,6 +2188,13 @@ function PasswordResetScreen({
 					? "SICHERHEITSCODE PRÜFEN"
 					: "CODE PRÜFEN";
 
+	const isPrimaryInputReady =
+		stage === "email"
+			? isValidEmail(email.trim().toLowerCase())
+			: stage === "new_password"
+				? meetsPasswordRequirements(password) && password === confirmPassword
+				: code.length === CODE_LENGTH;
+
 	const runPrimaryAction = () => {
 		if (stage === "email") {
 			void sendResetCode();
@@ -2292,7 +2360,7 @@ function PasswordResetScreen({
 					<View className="mt-6 w-full">
 						<Button
 							accessibilityLabel={isLoading ? `${buttonLabel}...` : buttonLabel}
-							disabled={isLoading}
+							disabled={isLoading || !isPrimaryInputReady}
 							onPress={runPrimaryAction}
 						>
 							<Text>{isLoading ? `${buttonLabel}...` : buttonLabel}</Text>
@@ -2941,7 +3009,7 @@ function OtpCodeInput({
 	const { colors: COLORS } = useDayovaTheme();
 
 	return (
-		<View>
+		<View className="w-full max-w-[420px] self-center" testID="otp-code-input">
 			<View className="flex-row gap-2">
 				{OTP_CELL_KEYS.map((cellKey, index) => {
 					const symbol = value[index] ?? "";
@@ -2990,11 +3058,14 @@ function OtpCodeInput({
 				onChangeText={onChangeText}
 				editable={!disabled}
 				keyboardType="number-pad"
+				inputMode="numeric"
+				showSoftInputOnFocus
 				textContentType="oneTimeCode"
 				autoComplete={otpAutoComplete}
 				autoCorrect={false}
 				autoCapitalize="none"
 				caretHidden
+				contextMenuHidden
 				className="absolute inset-0 opacity-[0.01]"
 				maxLength={CODE_LENGTH}
 				selectionColor="transparent"

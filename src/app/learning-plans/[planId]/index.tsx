@@ -1,5 +1,11 @@
-import { useAction, useConvexAuth, useQuery } from "convex/react";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
+import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
+import {
+	Stack,
+	useFocusEffect,
+	useLocalSearchParams,
+	useRouter,
+} from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	ActivityIndicator,
@@ -40,21 +46,22 @@ import {
 	getLearningPathNodeState,
 	LearningPathVisual,
 } from "~/features/learning-plans/learning-path-visual";
+import { LearningTimeSuggestionCard } from "~/features/learning-plans/learning-time-suggestion-card";
+import { NextSessionRecovery } from "~/features/learning-plans/next-session-recovery";
 import {
 	getCommittedSessionIndex,
 	getDefaultLearningPlanSession,
 	isDiagnosticLearningPlanSession,
 	isLearningPlanSessionHistory,
 } from "~/features/learning-plans/rolling-learning-window";
-import type {
-	LearningPlanSnapshot,
-	PlanSession,
-} from "~/features/learning-plans/types";
+import type { PlanSession } from "~/features/learning-plans/types";
 import { parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { dismissToOrReplace } from "~/lib/navigation";
+import { ROUTES, withReturnTo } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 const PHASE_LABEL: Record<PlanSession["phase"], string> = {
 	theory: "Theorie",
@@ -108,7 +115,18 @@ export const getExamCountdownLabel = (examDateKey: string, today: Date) => {
 const getSessionRoute = (
 	planId: Id<"learningPlans">,
 	sessionId: Id<"learningPlanSessions">,
-) => `/learning-plans/${planId}/sessions/${sessionId}` as const;
+	options: { repeat?: boolean } = {},
+) =>
+	`/learning-plans/${planId}/sessions/${sessionId}${
+		options.repeat ? "?repeat=1" : ""
+	}` as const;
+
+const getRepeatActionLabel = (session: PlanSession) => {
+	if (isDiagnosticLearningPlanSession(session)) return "Lernsession ansehen";
+	if (session.phase === "theory") return "Nochmal lernen";
+	if (session.phase === "practice") return "Nochmal üben";
+	return "Nochmal testen";
+};
 
 export function SessionPreviewCard({
 	canOpen,
@@ -135,7 +153,7 @@ export function SessionPreviewCard({
 	const description = formatGermanUiText(session.goal);
 	const hasRecordedOutcome = isLearningPlanSessionHistory(session);
 	const actionLabel = hasRecordedOutcome
-		? "Lernsession ansehen"
+		? getRepeatActionLabel(session)
 		: session.executionStatus === "started"
 			? "Weiterlernen"
 			: "Lernsession starten";
@@ -277,6 +295,7 @@ export function SessionPreviewCard({
 }
 
 export default function LearningPlanSessionsScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const today = useCurrentLocalDay();
@@ -288,19 +307,61 @@ export default function LearningPlanSessionsScreen() {
 	const ensureSessionContent = useAction(
 		api.learningPlanAi.ensureSessionContent,
 	);
+	const confirmProposedDefaults = useMutation(
+		api.learningTimes.confirmProposedDefaults,
+	);
+	const applyBehavioralSuggestion = useMutation(
+		api.learningTimes.applyBehavioralSuggestion,
+	);
+	const respondToBehavioralSuggestion = useMutation(
+		api.learningTimes.respondToBehavioralSuggestion,
+	);
+	const dismissLearningTimePrompt = useMutation(
+		api.learningPlans.dismissLearningTimePrompt,
+	);
 	const preparingSessionIdRef = useRef<Id<"learningPlanSessions"> | null>(null);
+	const [isLearningTimeActionBusy, setIsLearningTimeActionBusy] =
+		useState(false);
+	const [learningTimeActionError, setLearningTimeActionError] = useState<
+		string | null
+	>(null);
+	const [behaviorSuggestionReferenceTime] = useState(() => Date.now());
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
-		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
+		user && isConvexAuthenticated && planId
+			? { id: planId, behaviorSuggestionReferenceTime }
+			: "skip",
 	) ?? null) as LearningPlanSnapshot | null;
 	const [selectedSessionId, setSelectedSessionId] =
 		useState<Id<"learningPlanSessions"> | null>(null);
 	const defaultSession = snapshot
 		? getDefaultLearningPlanSession(snapshot.sessions)
 		: null;
+	const needsNextSession = Boolean(
+		snapshot?.plan.status === "accepted" &&
+			snapshot.plan.rollingPlanEnabled &&
+			snapshot.plan.masteryStatus !== "mastered" &&
+			(parseDayKey(snapshot.plan.examDateKey)?.getTime() ?? 0) >
+				today.getTime() &&
+			snapshot.sessions.length > 0 &&
+			snapshot.sessions.every(isLearningPlanSessionHistory) &&
+			snapshot.sessions.at(-1)?.executionStatus === "completed",
+	);
 	const selectedSession =
 		snapshot?.sessions.find((session) => session.id === selectedSessionId) ??
 		defaultSession;
+	const visiblePlanId =
+		snapshot && snapshot.sessions.length > 0 ? snapshot.plan.id : undefined;
+	useFocusEffect(
+		useCallback(() => {
+			if (visiblePlanId)
+				trackFeature(
+					"learning_plan.content_viewed",
+					"performed",
+					visiblePlanId,
+				);
+		}, [visiblePlanId, trackFeature]),
+	);
 	const selectedSessionIndex =
 		snapshot && selectedSession
 			? snapshot.sessions.findIndex(
@@ -337,6 +398,24 @@ export default function LearningPlanSessionsScreen() {
 					selectedSession?.contentGenerationStatus === "generating"
 				? ("preparing" as const)
 				: undefined;
+	const hasCompletedDiagnostic = Boolean(
+		snapshot?.sessions.some(
+			(session) =>
+				isDiagnosticLearningPlanSession(session) &&
+				session.executionStatus === "completed",
+		),
+	);
+	const learningTimeSuggestion = snapshot?.plan.learningTimeSuggestion;
+	const behavioralLearningTimeSuggestion =
+		snapshot?.plan.behavioralLearningTimeSuggestion;
+	const showLearningTimeReminder = Boolean(
+		hasCompletedDiagnostic &&
+			learningTimeSuggestion &&
+			!learningTimeSuggestion.postDiagnosticReminderDismissed,
+	);
+	const showBehavioralLearningTimeSuggestion = Boolean(
+		behavioralLearningTimeSuggestion && !showLearningTimeReminder,
+	);
 
 	const prepareSession = useCallback(
 		(sessionId: Id<"learningPlanSessions">) => {
@@ -381,6 +460,21 @@ export default function LearningPlanSessionsScreen() {
 		dismissToOrReplace(router, "/learning-plans");
 	};
 
+	const runLearningTimeAction = async (task: () => Promise<unknown>) => {
+		if (isLearningTimeActionBusy) return;
+		setIsLearningTimeActionBusy(true);
+		setLearningTimeActionError(null);
+		try {
+			await task();
+		} catch {
+			setLearningTimeActionError(
+				"Die Lernzeiten konnten gerade nicht aktualisiert werden. Bitte versuche es erneut.",
+			);
+		} finally {
+			setIsLearningTimeActionBusy(false);
+		}
+	};
+
 	return (
 		<Screen>
 			<Stack.Screen options={{ gestureEnabled: true }} />
@@ -409,6 +503,8 @@ export default function LearningPlanSessionsScreen() {
 							size="small"
 						/>
 					</View>
+				) : needsNextSession && planId ? (
+					<NextSessionRecovery key={planId} planId={planId} />
 				) : selectedSession ? (
 					<SessionPreviewCard
 						key={selectedSession.id}
@@ -419,7 +515,11 @@ export default function LearningPlanSessionsScreen() {
 						onOpen={() => {
 							if (!canOpenSelectedSession) return;
 							router.push(
-								getSessionRoute(snapshot.plan.id, selectedSession.id),
+								getSessionRoute(snapshot.plan.id, selectedSession.id, {
+									repeat:
+										isLearningPlanSessionHistory(selectedSession) &&
+										!isDiagnosticLearningPlanSession(selectedSession),
+								}),
 							);
 						}}
 					/>
@@ -447,29 +547,167 @@ export default function LearningPlanSessionsScreen() {
 				{snapshot === null ? (
 					<View />
 				) : selectedSession ? (
-					<LearningPathVisual
-						mode="screen"
-						examCountdownLabel={getExamCountdownLabel(
-							snapshot.plan.examDateKey,
-							today,
-						)}
-						examDateLabel={snapshot.plan.examDateLabel}
-						selectedSessionId={selectedSession.id}
-						sessions={snapshot.sessions}
-						showsAdaptiveContinuation={
-							snapshot.plan.rollingPlanEnabled === true
-						}
-						onOpenSession={(session) => {
-							if (
-								!canOpenSelectedSession ||
-								session.id !== selectedSession.id
-							) {
-								return;
+					<>
+						{showLearningTimeReminder && learningTimeSuggestion ? (
+							<View className="gap-3">
+								<LearningTimeSuggestionCard
+									entries={learningTimeSuggestion.entries}
+									variant="postDiagnostic"
+									isBusy={isLearningTimeActionBusy}
+									onConfirm={() =>
+										void runLearningTimeAction(() =>
+											confirmProposedDefaults({
+												learningPlanId: snapshot.plan.id,
+											}),
+										)
+									}
+									onAdjust={() =>
+										router.push(
+											withReturnTo(
+												ROUTES.learningTimes,
+												`/learning-plans/${snapshot.plan.id}`,
+											),
+										)
+									}
+									onContinue={() =>
+										void runLearningTimeAction(() =>
+											dismissLearningTimePrompt({
+												learningPlanId: snapshot.plan.id,
+												kind: "postDiagnostic",
+											}),
+										)
+									}
+								/>
+								{learningTimeActionError ? (
+									<Text
+										selectable
+										accessibilityRole="alert"
+										className="text-center font-poppins text-body-4 text-destructive"
+									>
+										{learningTimeActionError}
+									</Text>
+								) : null}
+							</View>
+						) : null}
+						{showBehavioralLearningTimeSuggestion &&
+						behavioralLearningTimeSuggestion ? (
+							<View className="gap-3">
+								<LearningTimeSuggestionCard
+									entries={behavioralLearningTimeSuggestion.entries}
+									variant="behavioral"
+									isBusy={isLearningTimeActionBusy}
+									evidenceSessionCount={
+										behavioralLearningTimeSuggestion.evidenceSessionCount
+									}
+									plannedStartTime={
+										behavioralLearningTimeSuggestion.plannedStartTime
+									}
+									observedStartTime={
+										behavioralLearningTimeSuggestion.observedStartTime
+									}
+									onConfirm={() =>
+										void runLearningTimeAction(() =>
+											applyBehavioralSuggestion({
+												fingerprint:
+													behavioralLearningTimeSuggestion.fingerprint,
+											}),
+										)
+									}
+									onAdjust={() =>
+										router.push(
+											withReturnTo(
+												ROUTES.learningTimes,
+												`/learning-plans/${snapshot.plan.id}`,
+											),
+										)
+									}
+									onKeep={() =>
+										void runLearningTimeAction(() =>
+											respondToBehavioralSuggestion({
+												fingerprint:
+													behavioralLearningTimeSuggestion.fingerprint,
+												response: "keep",
+											}),
+										)
+									}
+									onContinue={() =>
+										void runLearningTimeAction(() =>
+											respondToBehavioralSuggestion({
+												fingerprint:
+													behavioralLearningTimeSuggestion.fingerprint,
+												response: "later",
+											}),
+										)
+									}
+								/>
+								{learningTimeActionError ? (
+									<Text
+										selectable
+										accessibilityRole="alert"
+										className="text-center font-poppins text-body-4 text-destructive"
+									>
+										{learningTimeActionError}
+									</Text>
+								) : null}
+							</View>
+						) : null}
+						<LearningPathVisual
+							mode="screen"
+							onAddLearningTime={() =>
+								router.push(
+									withReturnTo(
+										ROUTES.learningTimes,
+										`/learning-plans/${snapshot.plan.id}`,
+									),
+								)
 							}
-							router.push(getSessionRoute(snapshot.plan.id, session.id));
-						}}
-						onSelectSession={(session) => setSelectedSessionId(session.id)}
-					/>
+							examCountdownLabel={getExamCountdownLabel(
+								snapshot.plan.examDateKey,
+								today,
+							)}
+							examDateLabel={snapshot.plan.examDateLabel}
+							selectedSessionId={selectedSession.id}
+							sessions={snapshot.sessions}
+							showsAdaptiveContinuation={
+								snapshot.plan.rollingPlanEnabled === true &&
+								snapshot.plan.masteryStatus !== "mastered" &&
+								!needsNextSession
+							}
+							onOpenSession={(session) => {
+								const sessionIndex = snapshot.sessions.findIndex(
+									(candidate) => candidate.id === session.id,
+								);
+								const state = getLearningPathNodeState(
+									session,
+									sessionIndex,
+									getCommittedSessionIndex(snapshot.sessions),
+								);
+								const canOpen =
+									sessionIndex >= 0 &&
+									state !== "locked" &&
+									session.planningStatus !== "provisional" &&
+									(session.contentGenerationStatus === undefined ||
+										session.contentGenerationStatus === "ready");
+								if (!canOpen) return;
+
+								router.push(
+									getSessionRoute(snapshot.plan.id, session.id, {
+										repeat:
+											isLearningPlanSessionHistory(session) &&
+											!isDiagnosticLearningPlanSession(session),
+									}),
+								);
+							}}
+							onSelectSession={(session) => {
+								trackFeature(
+									"learning_plan.session_selected",
+									"performed",
+									session.id,
+								);
+								setSelectedSessionId(session.id);
+							}}
+						/>
+					</>
 				) : (
 					<View />
 				)}

@@ -6,14 +6,16 @@ import {
 	jest,
 	test,
 } from "@jest/globals";
-import { act, fireEvent, render } from "@testing-library/react-native";
+import { act, fireEvent, render, within } from "@testing-library/react-native";
 import type { ReactElement, ReactNode } from "react";
 import { AccessibilityInfo, BackHandler, Platform, View } from "react-native";
+import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 import { DayovaSheetFrame } from "./dayova-sheet-frame";
 import {
 	SheetAccessibilityProvider,
 	useSheetAccessibility,
 } from "./sheet-accessibility";
+import { SheetSafeAreaProvider } from "./sheet-safe-area";
 
 const mockSheetHarness = {
 	present: jest.fn(),
@@ -44,9 +46,17 @@ jest.mock("react-native", () => {
 	});
 });
 
-jest.mock("react-native-safe-area-context", () => ({
-	useSafeAreaInsets: () => mockSafeAreaInsets,
-}));
+jest.mock("react-native-safe-area-context", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	const SafeAreaInsetsContext = React.createContext<
+		typeof mockSafeAreaInsets | null
+	>(null);
+	return {
+		SafeAreaInsetsContext,
+		useSafeAreaInsets: () =>
+			React.useContext(SafeAreaInsetsContext) ?? mockSafeAreaInsets,
+	};
+});
 
 jest.mock("~/lib/theme", () => ({
 	useDayovaTheme: () => ({
@@ -190,6 +200,38 @@ describe("DayovaSheetFrame", () => {
 		const callbacks = animationFrames.splice(0);
 		for (const callback of callbacks) callback(performance.now());
 	};
+
+	test("uses screen safe area instead of reserving space for the tab bar", async () => {
+		const screenInsets = { bottom: 34, left: 0, right: 0, top: 59 };
+		const tree = (bottom: number) => (
+			<SafeAreaInsetsContext.Provider value={{ ...screenInsets, bottom }}>
+				<SheetSafeAreaProvider>
+					<SheetAccessibilityProvider>
+						<SafeAreaInsetsContext.Provider
+							value={{ ...screenInsets, bottom: 83 }}
+						>
+							<DayovaSheetFrame
+								visible
+								onClose={jest.fn()}
+								title="Lernplan löschen"
+							>
+								<View testID="delete-actions" />
+							</DayovaSheetFrame>
+						</SafeAreaInsetsContext.Provider>
+					</SheetAccessibilityProvider>
+				</SheetSafeAreaProvider>
+			</SafeAreaInsetsContext.Provider>
+		);
+		const view = await render(tree(34));
+		const content = () => view.getByTestId("dayova-sheet-scroll-content");
+		expect(content().props.contentContainerStyle).toEqual({
+			paddingBottom: 54,
+		});
+		await view.rerender(tree(0));
+		expect(content().props.contentContainerStyle).toEqual({
+			paddingBottom: 32,
+		});
+	});
 
 	test("reopens after an in-flight controlled dismissal without closing the new sheet", async () => {
 		const onClose = jest.fn();
@@ -526,5 +568,48 @@ describe("DayovaSheetFrame", () => {
 			view.getByTestId("background", { includeHiddenElements: true }).props
 				.accessibilityElementsHidden,
 		).toBe(false);
+	});
+	test("dynamic form sheets measure the title, description, fields and actions in one scrollable", async () => {
+		mockWindowDimensions.fontScale = 2;
+		const view = await render(
+			<DayovaSheetFrame
+				visible
+				onClose={jest.fn()}
+				title="Fach hinzufügen"
+				description="Beschreibung"
+				scrollable
+				footer={<View testID="save-action" />}
+			>
+				<View testID="subject-field" />
+			</DayovaSheetFrame>,
+		);
+		const modal = view.getByTestId("bottom-sheet-modal");
+		const scrollable = view.getByTestId("dayova-sheet-scroll-content");
+		expect(modal.props.enableDynamicSizing).toBe(true);
+		expect(scrollable.parent).toBe(modal);
+		expect(
+			within(scrollable).getByRole("header", { name: "Fach hinzufügen" }),
+		).toBeOnTheScreen();
+		expect(within(scrollable).getByTestId("subject-field")).toBeOnTheScreen();
+		expect(within(scrollable).getByTestId("save-action")).toBeOnTheScreen();
+		expect(scrollable.props.style?.flex).not.toBe(1);
+	});
+
+	test("allows input focus only after native presentation, once per opening", async () => {
+		const onPresented = jest.fn();
+		await render(
+			<DayovaSheetFrame
+				visible
+				onClose={jest.fn()}
+				onPresented={onPresented}
+				title="Fach hinzufügen"
+			/>,
+		);
+		await act(flushAnimationFrames);
+		expect(onPresented).not.toHaveBeenCalled();
+		await act(() => mockSheetHarness.onChange?.(0));
+		expect(onPresented).toHaveBeenCalledTimes(1);
+		await act(() => mockSheetHarness.onChange?.(1));
+		expect(onPresented).toHaveBeenCalledTimes(1);
 	});
 });

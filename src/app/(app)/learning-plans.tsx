@@ -17,13 +17,13 @@ import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { CreateTypePickerModal } from "~/components/create-type-picker-modal";
+import { AddIcon } from "~/components/ui/add-icon";
 import { Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import {
 	ArrowUpRight,
 	ClipboardEdit,
 	Clock3,
-	Plus,
 	PropertyEdit,
 	Route2,
 	Trash2,
@@ -35,6 +35,7 @@ import { useAuthSession } from "~/context/AuthContext";
 import { getLearningPlanCreationOverview } from "~/features/learning-plans/creation-overview";
 import { learningPlanResumePath } from "~/features/learning-plans/creation-routes";
 import { LearningPlanCardVisual } from "~/features/learning-plans/learning-plan-card-visual";
+import { getLearningPlanStatus } from "~/features/learning-plans/learning-plan-status";
 import { MaterialRequiredSheet } from "~/features/learning-plans/material-required-sheet";
 import { getRollingLearningWindowLabel } from "~/features/learning-plans/rolling-learning-window";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
@@ -71,6 +72,8 @@ type LearningPlanOverview = {
 	completedCount?: number;
 	sessionCount?: number;
 	upcomingSessionCount?: number;
+	rollingPlanEnabled?: boolean;
+	masteryStatus?: "learning" | "mastered";
 	examDateKey?: string;
 	examDateLabel?: string;
 	currentSession?: {
@@ -155,52 +158,6 @@ const getHomeworkStatus = (
 		};
 	}
 	if (remainingDays === 1) {
-		return {
-			label: "Morgen",
-			background: STATUS_NEUTRAL_BACKGROUND,
-			foreground: DAYOVA_DESIGN_SYSTEM.colors.primary,
-		};
-	}
-	return {
-		label: "Geplant",
-		background: STATUS_NEUTRAL_BACKGROUND,
-		foreground: DAYOVA_DESIGN_SYSTEM.colors.primary,
-	};
-};
-
-const getStatus = (
-	plan: LearningPlanOverview,
-	todayKey: string,
-): { label: string; background: string; foreground: string } => {
-	const sessionCount = plan.sessionCount ?? 0;
-	const completedCount = plan.completedCount ?? 0;
-	if (sessionCount > 0 && completedCount >= sessionCount) {
-		return {
-			label: "Fertig",
-			background: DAYOVA_DESIGN_SYSTEM.colors.successSubtle,
-			foreground: DAYOVA_DESIGN_SYSTEM.colors.success,
-		};
-	}
-
-	const sessionKey = plan.currentSession?.dateKey;
-	const daysUntilSession = sessionKey
-		? differenceInCalendarDays(sessionKey, todayKey)
-		: null;
-	if (daysUntilSession !== null && daysUntilSession < 0) {
-		return {
-			label: "Fällig",
-			background: STATUS_DUE_BACKGROUND,
-			foreground: STATUS_DUE_FOREGROUND,
-		};
-	}
-	if (daysUntilSession === 0) {
-		return {
-			label: "Heute",
-			background: STATUS_NEUTRAL_BACKGROUND,
-			foreground: DAYOVA_DESIGN_SYSTEM.colors.primary,
-		};
-	}
-	if (daysUntilSession === 1) {
 		return {
 			label: "Morgen",
 			background: STATUS_NEUTRAL_BACKGROUND,
@@ -444,7 +401,7 @@ function LearningPlanCard({
 					background: STATUS_NEUTRAL_BACKGROUND,
 					foreground: DAYOVA_DESIGN_SYSTEM.colors.primary,
 				}
-			: getStatus(plan, todayKey);
+			: getLearningPlanStatus(plan, todayKey);
 	const remainingDays = Math.max(
 		0,
 		plan.examDateKey
@@ -739,7 +696,6 @@ function HomeworkCard({
 
 export default function LearningPlansScreen() {
 	const insets = useSafeAreaInsets();
-	const { colors } = useDayovaTheme();
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const removePlan = useMutation(api.learningPlans.removePlan);
@@ -840,7 +796,7 @@ export default function LearningPlansScreen() {
 				}}
 			>
 				<View className="mt-7 flex-row items-center justify-between">
-					<Text className="font-poppins font-semibold text-heading-1 text-text">
+					<Text className="font-poppins font-semibold text-heading-2 text-text">
 						Deine Pläne
 					</Text>
 
@@ -850,9 +806,9 @@ export default function LearningPlansScreen() {
 						accessibilityHint="Öffnet den Eintragserstellungsdialog, um entweder eine Prüfung oder Hausaufgabe zu erstellen."
 						activeOpacity={0.88}
 						onPress={openCreateTypePicker}
-						className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
+						className="h-12 w-12 items-center justify-center rounded-full active:opacity-80"
 					>
-						<Plus size={28} color={colors.text} strokeWidth={1.8} />
+						<AddIcon outlinedGradient />
 					</TouchableOpacity>
 				</View>
 
@@ -926,17 +882,9 @@ export default function LearningPlansScreen() {
 								<Button
 									accessibilityLabel="Lernplan erstellen"
 									onPress={() => router.push(ROUTES.createExam)}
-									size="sm"
-									className="mt-2"
+									className="mt-2 w-full"
 								>
-									<Plus
-										size={18}
-										color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-										strokeWidth={2.4}
-									/>
-									<Text className="font-poppins font-semibold text-body-4">
-										Neuen Lernplan starten
-									</Text>
+									<Text>Lernplan erstellen</Text>
 								</Button>
 							</View>
 						)}
@@ -972,19 +920,11 @@ export default function LearningPlansScreen() {
 									Übersicht erscheint.
 								</Text>
 								<Button
-									accessibilityLabel="Hausaufgabe erstellen"
+									accessibilityLabel="Hausaufgabe eintragen"
 									onPress={() => router.push(ROUTES.createHomework)}
-									size="sm"
-									className="mt-2"
+									className="mt-2 w-full"
 								>
-									<Plus
-										size={18}
-										color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-										strokeWidth={2.4}
-									/>
-									<Text className="font-poppins font-semibold text-body-4">
-										Neue Hausaufgabe eintragen
-									</Text>
+									<Text>Hausaufgabe eintragen</Text>
 								</Button>
 							</View>
 						)}

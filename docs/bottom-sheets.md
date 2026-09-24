@@ -5,6 +5,9 @@ subject and exam-type selector.
 
 ## App-owned sheet contract
 
+- The root sheet provider captures the screen safe-area insets above navigation.
+  Sheets cover the native tab bar and must not reserve the tab screen's extra
+  bottom inset; otherwise confirmation text and buttons sit unnecessarily high.
 - App code uses `ConfirmationSheet`, `ActionSheet`, `SelectSheet`, or
   `DayovaSheetFrame`; only the frame, plus `BottomSheetModalProvider` in the
   root layout, imports Gorhom primitives.
@@ -27,6 +30,8 @@ subject and exam-type selector.
   remain shared with the app.
 - This contract is tracked in [DAY-470](https://linear.app/dayova/issue/DAY-470).
   It supersedes DAY-392's fixed `medium` sizing while retaining long-content access.
+- Form fields use `DayovaSheetInput` for Gorhom keyboard handling and
+  `onPresented` for initial focus after presentation.
 - `visible` is controlled state. A close followed immediately by a reopen is a
   valid transition; a stale native `onDismiss` must not close the new request.
 - Android date/time selection closes in the shared adapter. Callers do not add
@@ -93,3 +98,11 @@ When those conditions are met, the migration path is:
 4. Remove `@gorhom/bottom-sheet` and `react-native-gesture-handler` from
    dependencies if they are no longer used.
 5. Re-test picker sheets on Android and iOS with long option lists.
+
+## Material-upload action sheet
+
+Learning-material upload uses `ActionSheet` with row layout and
+`appearance="flat"`: file/camera choices have borders without raised shadows,
+and the sheet uses a compact shared close control (32px circle, 20px icon,
+8px hit slop). Other action sheets retain the existing raised default.
+The compact appearance does not change dismissal, focus, or Android Back behavior.

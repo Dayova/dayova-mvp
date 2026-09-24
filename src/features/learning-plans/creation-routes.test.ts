@@ -1,11 +1,26 @@
 import { expect, test } from "vitest";
 import type { Id } from "#convex/_generated/dataModel";
 import {
+	examEntryResumePath,
 	examEntrySuccessPath,
 	learningPlanMaterialPath,
 	learningPlanResumePath,
 	learningPlanTopicsPath,
 } from "./creation-routes";
+
+test("preserves a personal subject when resuming exam creation", () => {
+	expect(
+		examEntryResumePath({
+			examDayEntryId: "exam-id",
+			subject: "Astronomie",
+			personalSubjectId: "personal-subject-id",
+			examTypeLabel: "Klausur",
+			examDateKey: "2026-09-30",
+			durationMinutes: 90,
+			topicDescription: "Sternentwicklung",
+		}),
+	).toContain("personalSubjectId=personal-subject-id");
+});
 
 test("builds the exam confirmation route for a saved materialless exam", () => {
 	expect(
@@ -26,6 +41,19 @@ test("routes explicitly between topics and material on the mounted setup screen"
 	);
 	expect(learningPlanMaterialPath(learningPlanId)).toBe(
 		"/learning-plans/new?learningPlanId=learning-plan-id&step=material",
+	);
+});
+
+test("preserves a typed recovery code independently from learner-facing copy", () => {
+	const learningPlanId = "learning-plan-id" as Id<"learningPlans">;
+
+	expect(
+		learningPlanMaterialPath(learningPlanId, {
+			errorCode: "aiConsentRequired",
+			errorMessage: "Die Formulierung darf sich ändern.",
+		}),
+	).toBe(
+		"/learning-plans/new?learningPlanId=learning-plan-id&step=material&errorCode=aiConsentRequired&errorMessage=Die%20Formulierung%20darf%20sich%20%C3%A4ndern.",
 	);
 });
 

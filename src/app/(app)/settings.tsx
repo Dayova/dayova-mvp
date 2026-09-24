@@ -1,10 +1,12 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Pressable, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { ReleaseInformationSheet } from "~/components/release-information-sheet";
 import { ErrorMessage } from "~/components/ui/error-message";
 import {
 	Bell,
+	BookOpen,
 	Computer,
 	CreditCard,
 	Globe,
@@ -29,12 +31,17 @@ import {
 	SettingsRow,
 	SettingsSection,
 } from "~/features/settings/settings-list";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { openExternalUrl } from "~/lib/open-external-url";
+import { ROUTES } from "~/lib/routes";
 import { env } from "~/lib/runtime-config";
 import { getNativeSubscriptionManagementUrl } from "~/lib/store-subscription";
 import { useDayovaTheme } from "~/lib/theme";
 import { THEME_OPTIONS, type ThemePreference } from "~/lib/theme-preference";
-import { cn } from "~/lib/utils";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
+
+const PRIMARY_INTERACTIVE_GRADIENT =
+	DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 
 const themeIconByPreference = {
 	light: Sun,
@@ -70,16 +77,23 @@ function ThemePreferenceToggle({
 						accessibilityLabel={option.accessibilityLabel}
 						accessibilityRole="radio"
 						accessibilityState={{ checked: isActive }}
-						className={cn(
-							"h-11 w-11 items-center justify-center rounded-full",
-							isActive ? "bg-primary" : "bg-transparent",
-						)}
+						className="h-11 w-11 items-center justify-center overflow-hidden rounded-full"
 						onPress={() => {
 							void setPreference(option.value).catch((error: unknown) => {
 								console.warn("Unable to save Dayova theme preference", error);
 							});
 						}}
 					>
+						{isActive ? (
+							<LinearGradient
+								testID={`theme-option-gradient-${option.value}`}
+								pointerEvents="none"
+								colors={PRIMARY_INTERACTIVE_GRADIENT.colors}
+								start={PRIMARY_INTERACTIVE_GRADIENT.start}
+								end={PRIMARY_INTERACTIVE_GRADIENT.end}
+								style={StyleSheet.absoluteFill}
+							/>
+						) : null}
 						<Icon
 							size={20}
 							color={isActive ? "#FFFFFF" : colors.secondaryText}
@@ -93,6 +107,7 @@ function ThemePreferenceToggle({
 }
 
 export default function SettingsScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const { user } = useAuthSession();
 	const profileName = user?.name?.trim();
@@ -144,7 +159,10 @@ export default function SettingsScreen() {
 										? `${profileName}, Profil & Konto`
 										: "Profil & Konto"
 								}
-								onPress={() => router.push("/profile")}
+								onPress={() => {
+									trackFeature("settings.profile_opened");
+									router.push("/profile");
+								}}
 							/>
 						</SettingsCard>
 
@@ -156,7 +174,10 @@ export default function SettingsScreen() {
 											buttonRef={buttonRef}
 											icon={Mail}
 											label="Support kontaktieren"
-											onPress={onPress}
+											onPress={() => {
+												trackFeature("settings.support_opened");
+												onPress();
+											}}
 											busy={busy}
 											disabled={busy}
 										/>
@@ -169,7 +190,16 @@ export default function SettingsScreen() {
 							<SettingsRow
 								icon={Timer}
 								label="Lernzeiten"
-								onPress={() => router.push("/learning-times")}
+								onPress={() => {
+									trackFeature("settings.learning_times_opened");
+									router.push("/learning-times");
+								}}
+							/>
+							<SettingsDivider />
+							<SettingsRow
+								icon={BookOpen}
+								label="Persönliche Fächer"
+								onPress={() => router.push(ROUTES.personalSubjects)}
 							/>
 						</SettingsSection>
 
@@ -177,13 +207,19 @@ export default function SettingsScreen() {
 							<SettingsRow
 								icon={Computer}
 								label="App-Informationen"
-								onPress={() => setShowReleaseInformation(true)}
+								onPress={() => {
+									trackFeature("settings.release_information_opened");
+									setShowReleaseInformation(true);
+								}}
 							/>
 							<SettingsDivider />
 							<SettingsRow
 								icon={Bell}
 								label="Mitteilungen"
-								onPress={() => router.push("/notification-settings")}
+								onPress={() => {
+									trackFeature("settings.notifications_opened");
+									router.push("/notification-settings");
+								}}
 							/>
 							<SettingsDivider />
 							<SettingsRow
@@ -192,7 +228,10 @@ export default function SettingsScreen() {
 								trailing={
 									<ThemePreferenceToggle
 										preference={preference}
-										setPreference={setPreference}
+										setPreference={async (value) => {
+											await setPreference(value);
+											trackFeature("settings.theme_changed", "succeeded");
+										}}
 									/>
 								}
 							/>
@@ -204,7 +243,10 @@ export default function SettingsScreen() {
 									<SettingsRow
 										icon={CreditCard}
 										label="Dayova abonnieren"
-										onPress={() => router.push("/subscription")}
+										onPress={() => {
+											trackFeature("settings.subscription_opened");
+											router.push("/subscription");
+										}}
 									/>
 								) : (
 									<SettingsRow
@@ -236,7 +278,10 @@ export default function SettingsScreen() {
 								<SettingsRow
 									icon={Sparkles}
 									label="KI & Datenschutz"
-									onPress={openAiConsentSettings}
+									onPress={() => {
+										trackFeature("settings.ai_privacy_opened");
+										openAiConsentSettings();
+									}}
 									accessibilityLabel={`KI & Datenschutz, ${aiConsentStatusLabel}`}
 									trailing={
 										<View className="rounded-full bg-muted px-3 py-2">
@@ -250,13 +295,19 @@ export default function SettingsScreen() {
 								<SettingsRow
 									icon={Globe}
 									label="Datenschutz"
-									onPress={() => openLink("legal", env.EXPO_PUBLIC_PRIVACY_URL)}
+									onPress={() => {
+										trackFeature("settings.privacy_opened");
+										openLink("legal", env.EXPO_PUBLIC_PRIVACY_URL);
+									}}
 								/>
 								<SettingsDivider />
 								<SettingsRow
 									icon={Globe}
 									label="Nutzungsbedingungen"
-									onPress={() => openLink("legal", env.EXPO_PUBLIC_TERMS_URL)}
+									onPress={() => {
+										trackFeature("settings.terms_opened");
+										openLink("legal", env.EXPO_PUBLIC_TERMS_URL);
+									}}
 								/>
 							</SettingsSection>
 							{linkErrors.legal ? (

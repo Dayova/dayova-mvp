@@ -8,6 +8,7 @@ import {
 	type QueryCtx,
 	query,
 } from "./_generated/server";
+import { assertAccountActive } from "./accountDeletion";
 import {
 	type AnswerRating,
 	evaluateMultipleChoiceAnswer,
@@ -19,6 +20,7 @@ import {
 	type LearningQuestionBlueprint,
 	type LearningTopic,
 } from "./learningContentPlan";
+import { LEARNING_PLAN_MAX_FILE_COUNT } from "./learningPlanUploadPolicy";
 import {
 	getLearningSessionComposition,
 	isLearningSessionCompositionEligible,
@@ -143,6 +145,7 @@ const requireOwnerTokenIdentifier = async (ctx: QueryCtx | MutationCtx) => {
 	if (identity === null) {
 		throwUserFacingError("Nicht authentifiziert.");
 	}
+	await assertAccountActive(ctx, identity.tokenIdentifier);
 
 	return identity.tokenIdentifier;
 };
@@ -1102,7 +1105,7 @@ export const getSessionGenerationContext = internalQuery({
 			.withIndex("by_learningPlanId", (q) =>
 				q.eq("learningPlanId", session.learningPlanId),
 			)
-			.take(20);
+			.take(LEARNING_PLAN_MAX_FILE_COUNT + 1);
 		const answers = await ctx.db
 			.query("learningPlanAnswers")
 			.withIndex("by_learningPlanId", (q) =>
@@ -1563,9 +1566,106 @@ export const ensureSessionContent = mutation({
 	},
 });
 
-export const getSessionContent = query({
+const readSessionStaticContent = async (
+	ctx: QueryCtx,
+	sessionId: Id<"learningPlanSessions">,
+	ownerTokenIdentifier: string,
+) => {
+	const session = await getOwnedSession(ctx, sessionId, ownerTokenIdentifier);
+	assertSessionIsCommitted(session);
+	const plan = await getOwnedPlan(
+		ctx,
+		session.learningPlanId,
+		ownerTokenIdentifier,
+	);
+	const items = await listItems(ctx, sessionId);
+	return {
+		plan: {
+			id: plan._id,
+			subject: plan.subject,
+			examTypeLabel: plan.examTypeLabel,
+			topicDescription: plan.topicDescription,
+		},
+		session: {
+			id: session._id,
+			learningPlanId: session.learningPlanId,
+			phase: session.phase,
+			sessionPurpose: session.sessionPurpose,
+			title: session.title,
+			dateLabel: session.dateLabel,
+			startTime: session.startTime,
+			durationMinutes: session.durationMinutes,
+			goal: session.goal,
+			expectedOutcome: session.expectedOutcome,
+			completed: session.completed ?? false,
+			executionStatus: getSessionExecutionStatus(session),
+			compositionVariant: session.compositionVariant ?? "control",
+			knowledgeValidationStatus: session.knowledgeValidationStatus,
+			knowledgeValidationConfidence: session.knowledgeValidationConfidence,
+			contentGenerationStatus: session.contentGenerationStatus,
+			contentGenerationVersion: session.contentGenerationVersion,
+		},
+		praxisDurationSeconds:
+			session.phase === "rehearsal"
+				? Math.max(10, Math.min(session.durationMinutes, 30)) * 60
+				: null,
+		items: items.map(publicItem),
+	};
+};
+
+const readSessionProgress = async (
+	ctx: QueryCtx,
+	sessionId: Id<"learningPlanSessions">,
+	itemIds: Id<"learningSessionContentItems">[],
+	ownerTokenIdentifier: string,
+) => {
+	if (itemIds.length > 100) {
+		throwUserFacingError("Zu viele Lerninhalte angefragt.");
+	}
+	const attempts = [];
+	for (const itemId of itemIds) {
+		const latest = await ctx.db
+			.query("learningSessionAnswerAttempts")
+			.withIndex("by_itemId_and_createdAt", (q) => q.eq("itemId", itemId))
+			.order("desc")
+			.take(1);
+		const attempt = latest[0];
+		if (
+			attempt?.sessionId === sessionId &&
+			attempt.ownerTokenIdentifier === ownerTokenIdentifier
+		) {
+			attempts.push(attempt);
+		}
+	}
+	const analysis = await ctx.db
+		.query("learningSessionAnalyses")
+		.withIndex("by_sessionId", (q) => q.eq("sessionId", sessionId))
+		.unique();
+	return {
+		attempts: attempts.map(publicAttempt),
+		analysis:
+			analysis?.ownerTokenIdentifier === ownerTokenIdentifier
+				? publicAnalysis(analysis)
+				: null,
+	};
+};
+
+export const getSessionStaticContent = query({
+	args: { sessionId: v.id("learningPlanSessions") },
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		return await readSessionStaticContent(
+			ctx,
+			args.sessionId,
+			ownerTokenIdentifier,
+		);
+	},
+});
+
+export const getSessionProgress = query({
 	args: {
 		sessionId: v.id("learningPlanSessions"),
+		itemIds: v.array(v.id("learningSessionContentItems")),
 	},
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
@@ -1575,52 +1675,31 @@ export const getSessionContent = query({
 			ownerTokenIdentifier,
 		);
 		assertSessionIsCommitted(session);
-		const plan = await getOwnedPlan(
+		return await readSessionProgress(
 			ctx,
-			session.learningPlanId,
+			args.sessionId,
+			args.itemIds,
 			ownerTokenIdentifier,
 		);
-		const items = await listItems(ctx, args.sessionId);
-		const attempts = await getLatestAttempts(ctx, items);
-		const analysis = await ctx.db
-			.query("learningSessionAnalyses")
-			.withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
-			.unique();
+	},
+});
 
-		return {
-			plan: {
-				id: plan._id,
-				subject: plan.subject,
-				examTypeLabel: plan.examTypeLabel,
-				topicDescription: plan.topicDescription,
-			},
-			session: {
-				id: session._id,
-				learningPlanId: session.learningPlanId,
-				phase: session.phase,
-				sessionPurpose: session.sessionPurpose,
-				title: session.title,
-				dateLabel: session.dateLabel,
-				startTime: session.startTime,
-				durationMinutes: session.durationMinutes,
-				goal: session.goal,
-				expectedOutcome: session.expectedOutcome,
-				completed: session.completed ?? false,
-				executionStatus: getSessionExecutionStatus(session),
-				compositionVariant: session.compositionVariant ?? "control",
-				knowledgeValidationStatus: session.knowledgeValidationStatus,
-				knowledgeValidationConfidence: session.knowledgeValidationConfidence,
-				contentGenerationStatus: session.contentGenerationStatus,
-				contentGenerationVersion: session.contentGenerationVersion,
-			},
-			praxisDurationSeconds:
-				session.phase === "rehearsal"
-					? Math.max(10, Math.min(session.durationMinutes, 30)) * 60
-					: null,
-			items: items.map(publicItem),
-			attempts: attempts.map(publicAttempt),
-			analysis: analysis ? publicAnalysis(analysis) : null,
-		};
+export const getSessionContent = query({
+	args: { sessionId: v.id("learningPlanSessions") },
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const staticContent = await readSessionStaticContent(
+			ctx,
+			args.sessionId,
+			ownerTokenIdentifier,
+		);
+		const progress = await readSessionProgress(
+			ctx,
+			args.sessionId,
+			staticContent.items.map((item) => item.id),
+			ownerTokenIdentifier,
+		);
+		return { ...staticContent, ...progress };
 	},
 });
 

@@ -13,20 +13,19 @@ describe("learning-plan creation progress", () => {
 			examType: 1,
 			examSubject: 1.5,
 			examDate: 2,
-			learningAvailability: 2.5,
-			examTopics: 3,
-			materialUpload: 3.5,
-			materialAnalysis: 4,
-			scopeConfirmation: 4.5,
-			planGeneration: 5,
+			examTopics: 2.5,
+			materialUpload: 3,
+			materialAnalysis: 3.5,
+			scopeConfirmation: 4,
+			planGeneration: 4.5,
 		});
-		expect(LEARNING_PLAN_CREATION_TOTAL_STEPS).toBe(5);
+		expect(LEARNING_PLAN_CREATION_TOTAL_STEPS).toBe(4.5);
 
 		const openingProgress = [
 			LEARNING_PLAN_CREATION_STEPS.examType,
 			LEARNING_PLAN_CREATION_STEPS.examSubject,
 			LEARNING_PLAN_CREATION_STEPS.examDate,
-			LEARNING_PLAN_CREATION_STEPS.learningAvailability,
+			LEARNING_PLAN_CREATION_STEPS.examTopics,
 		];
 		expect(
 			openingProgress.every(
@@ -38,10 +37,10 @@ describe("learning-plan creation progress", () => {
 
 	test("turns intermediate progress into a changing percentage", () => {
 		expect(
-			(["examType", "examDetails", "basics", "learningAvailability"] as const)
+			(["examType", "examDetails", "basics"] as const)
 				.map(getExamEntryCreationProgress)
 				.map(getLearningPlanCreationProgressPercentage),
-		).toEqual([20, 30, 40, 50]);
+		).toEqual([22, 33, 44]);
 	});
 
 	test("normalizes non-finite progress for visual and accessible output", () => {
@@ -50,7 +49,7 @@ describe("learning-plan creation progress", () => {
 				currentStep: Number.NaN,
 				totalSteps: Number.POSITIVE_INFINITY,
 			}),
-		).toEqual({ currentStep: 1, totalSteps: 5 });
-		expect(getLearningPlanCreationProgressPercentage(Number.NaN)).toBe(20);
+		).toEqual({ currentStep: 1, totalSteps: 4.5 });
+		expect(getLearningPlanCreationProgressPercentage(Number.NaN)).toBe(22);
 	});
 });

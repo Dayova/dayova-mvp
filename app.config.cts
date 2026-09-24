@@ -75,6 +75,7 @@ const config: ExpoConfig = {
 	},
 	ios: {
 		supportsTablet: true,
+		requireFullScreen: true,
 		bundleIdentifier: isProduction ? "de.dayova.app" : "de.dayova.app-dev",
 		runtimeVersion: APP_VERSION,
 		infoPlist: {
@@ -95,6 +96,14 @@ const config: ExpoConfig = {
 	},
 	plugins: [
 		"expo-router",
+		[
+			"expo-build-properties",
+			{
+				ios: {
+					enableSceneSupport: true,
+				},
+			},
+		],
 		"expo-status-bar",
 		[
 			"@clerk/expo",
@@ -125,6 +134,7 @@ const config: ExpoConfig = {
 		"expo-localization",
 		"./plugins/withIosInAppPurchase",
 		"./plugins/withNinjaLongPaths",
+		"./plugins/withAndroidGradleDaemonJvm",
 		"./plugins/withAndroidGradleJvmMemory",
 		"./plugins/withAndroidPackagingOptions",
 		"./plugins/withDayovaAndroidTheme",

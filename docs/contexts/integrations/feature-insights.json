@@ -1,0 +1,26 @@
+{
+  "projectId": 190091,
+  "dashboardId": 818617,
+  "queries": [
+    {
+      "name": "Feature coverage · awaiting DAY-435 release",
+      "description": "No feature events exist at setup. Zero means unmeasured, not unused. Only identified production-channel devices are eligible; iOS remains disabled. Fixed rolling 30 days. Verify a release and known-user actions before interpreting adoption.",
+      "sql": "SELECT if(count() = 0, 'AWAITING_INSTRUMENTED_RELEASE', 'RECORDED_SUBSET_ONLY') AS coverage_status, count() AS recorded_events, uniq(distinct_id) AS instrumented_users FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.eas_channel = 'production' AND distinct_id NOT LIKE 'analytics-smoke-%' AND event IN ('feature_interaction','app_screen_viewed')"
+    },
+    {
+      "name": "Feature actions · outcomes and unique users",
+      "description": "DAY-435 release required. Successful/performed actions are separated from attempts, failures and cancellation; never sum them as usage. Production channel only, excludes synthetic smoke identities. Fixed rolling 30 days. Client checkout success is not revenue.",
+      "sql": "SELECT properties.interaction AS interaction, uniqIf(distinct_id, properties.outcome IN ('performed','succeeded')) AS users_with_action, countIf(properties.outcome IN ('performed','succeeded')) AS completed_interactions, countIf(properties.outcome = 'attempted') AS attempts, countIf(properties.outcome = 'failed') AS failures, countIf(properties.outcome = 'cancelled') AS cancellations, countIf(properties.outcome = 'pending') AS pending FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.eas_channel = 'production' AND distinct_id NOT LIKE 'analytics-smoke-%' AND event = 'feature_interaction' GROUP BY interaction ORDER BY users_with_action DESC"
+    },
+    {
+      "name": "Screen reach · feature exposure denominator",
+      "description": "DAY-435 release required. Unique identified users who viewed each named surface, plus observations. Production channel only; iOS excluded. Fixed rolling 30 days. Screen exposure is not successful feature use. Compare with matching successful actions, not all registered users.",
+      "sql": "SELECT properties.screen AS screen, uniq(distinct_id) AS exposed_users, count() AS observations FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.eas_channel = 'production' AND distinct_id NOT LIKE 'analytics-smoke-%' AND event = 'app_screen_viewed' GROUP BY screen ORDER BY exposed_users DESC"
+    },
+    {
+      "name": "Feature repeat use · two or more calendar days",
+      "description": "DAY-435 release required. Users repeating the same successful/performed action on at least two project calendar days. Production channel only, rolling 30 days. Read raw user counts; no automatic removal threshold. Excludes retries marked attempted/failed.",
+      "sql": "SELECT interaction, count() AS observed_action_users, countIf(active_days >= 2) AS repeat_users, max(active_days) AS maximum_active_days FROM (SELECT distinct_id, properties.interaction AS interaction, uniq(toDate(timestamp)) AS active_days FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.eas_channel = 'production' AND distinct_id NOT LIKE 'analytics-smoke-%' AND event = 'feature_interaction' AND properties.outcome IN ('performed','succeeded') GROUP BY distinct_id, interaction) GROUP BY interaction ORDER BY repeat_users DESC"
+    }
+  ]
+}
