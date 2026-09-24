@@ -28,7 +28,6 @@ type ConfirmationSheetProps = {
 	actionLayout?: ConfirmationActionLayout;
 	maxWidth?: number;
 	scrollable?: boolean;
-	size?: "content" | "medium";
 };
 
 function ConfirmationSheet({
@@ -47,8 +46,7 @@ function ConfirmationSheet({
 	closeAccessibilityLabel = "Bestätigung schließen",
 	actionLayout: requestedActionLayout = "inline",
 	maxWidth,
-	scrollable = false,
-	size = "content",
+	scrollable = true,
 }: ConfirmationSheetProps) {
 	const { colors } = useDayovaTheme();
 	const { shouldStackInlineContent } = useContentSizeLayout();
@@ -74,12 +72,12 @@ function ConfirmationSheet({
 				<ActivityIndicator
 					color={
 						confirmTone === "destructive"
-							? colors.background
+							? colors.dangerAction
 							: DAYOVA_DESIGN_SYSTEM.colors.light1
 					}
 				/>
 			) : (
-				<Text>{confirmLabel}</Text>
+				<Text className="shrink text-center">{confirmLabel}</Text>
 			)}
 		</Button>
 	);
@@ -94,7 +92,7 @@ function ConfirmationSheet({
 			onPress={safeClose}
 			variant="neutral"
 		>
-			<Text>{cancelLabel}</Text>
+			<Text className="shrink text-center">{cancelLabel}</Text>
 		</Button>
 	);
 	const actions = (
@@ -117,7 +115,7 @@ function ConfirmationSheet({
 		<DayovaSheetFrame
 			visible={visible}
 			title={title}
-			description={scrollable ? undefined : description}
+			description={description}
 			onClose={safeClose}
 			dismissible={!isBusy}
 			closeAccessibilityLabel={closeAccessibilityLabel}
@@ -125,13 +123,7 @@ function ConfirmationSheet({
 			footer={scrollable ? actions : undefined}
 			maxWidth={maxWidth}
 			scrollable={scrollable}
-			size={size}
 		>
-			{scrollable ? (
-				<Text className="font-poppins text-body-3 text-secondary-text">
-					{description}
-				</Text>
-			) : null}
 			{children}
 			{error}
 			{scrollable ? null : actions}

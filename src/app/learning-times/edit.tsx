@@ -1,13 +1,7 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMemo, useRef, useState } from "react";
-import {
-	ActivityIndicator,
-	Platform,
-	Pressable,
-	ScrollView,
-	View,
-} from "react-native";
+import { ActivityIndicator, Platform, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -19,7 +13,6 @@ import {
 	DateTimePickerSheet,
 } from "~/components/ui/date-time-picker-sheet";
 import { ErrorMessage } from "~/components/ui/error-message";
-import { Trash2 } from "~/components/ui/icon";
 import { Screen } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
@@ -33,7 +26,6 @@ import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { dismissToOrReplace } from "~/lib/navigation";
 import { getSafeReturnTo, ROUTES, withReturnTo } from "~/lib/routes";
-import { useDayovaTheme } from "~/lib/theme";
 import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { getUserFacingErrorMessage } from "~/lib/user-facing-errors";
 
@@ -82,7 +74,6 @@ export default function LearningTimesScreen() {
 	}>();
 	const insets = useSafeAreaInsets();
 	const { user } = useAuthSession();
-	const { colors } = useDayovaTheme();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const learningTimes = useQuery(
 		api.learningTimes.listMine,
@@ -313,18 +304,14 @@ export default function LearningTimesScreen() {
 				) : null}
 
 				{isEditingExisting ? (
-					<Pressable
+					<Button
 						accessibilityLabel="Lernzeit entfernen"
-						accessibilityRole="button"
-						className="min-h-12 flex-row items-center justify-center gap-2 rounded-[24px] active:bg-destructive/10 disabled:opacity-50"
+						variant="destructive"
 						disabled={!canRemove}
 						onPress={requestRemove}
 					>
-						<Trash2 size={18} color={colors.destructive} strokeWidth={2} />
-						<Text className="font-poppins font-semibold text-body-3 text-destructive">
-							Lernzeit entfernen
-						</Text>
-					</Pressable>
+						<Text className="shrink text-center">Lernzeit entfernen</Text>
+					</Button>
 				) : null}
 			</ScrollView>
 

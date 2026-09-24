@@ -249,7 +249,6 @@ export default function PersonalSubjectsScreen() {
 				dismissible={!isBusy}
 				closeAccessibilityLabel="Umbenennen schließen"
 				scrollable
-				size="content"
 			>
 				<View className="gap-4">
 					<View className="min-h-16 flex-row items-center rounded-input border border-border bg-card px-5">

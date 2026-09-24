@@ -239,7 +239,6 @@ function SubjectAddFlow({
 			dismissible={!isBusy}
 			closeAccessibilityLabel="Fach hinzufügen schließen"
 			scrollable
-			size="content"
 		>
 			<View className="gap-4">
 				<View className="min-h-16 flex-row items-center rounded-input border border-border bg-card px-5">
@@ -343,7 +342,6 @@ function SubjectPickerSheet({
 				closeAccessibilityLabel="Fachauswahl schließen"
 				contentClassName="gap-3"
 				scrollable
-				size="content"
 			>
 				<SubjectPickerContent
 					options={options}

@@ -12,7 +12,6 @@ import {
 	ChevronDown,
 	Clock3,
 	PropertyEdit,
-	X,
 } from "~/components/ui/icon";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { ActionSurface, Surface } from "~/components/ui/surface";
@@ -122,59 +121,56 @@ export function MaterialCard({
 	size: number;
 	status?: "queued" | "processing" | "ready" | "failed";
 }) {
-	const { colors } = useDayovaTheme();
 	const { shouldStackInlineContent } = useContentSizeLayout();
 	const retryGateRef = useRef(createAsyncActionGate());
 
 	return (
-		<Surface
-			className="mb-3 flex-row items-center rounded-[24px] px-4 py-4"
-			variant="soft"
-		>
-			<View className="h-11 w-11 items-center justify-center rounded-full bg-primary/12">
-				<Attachment size={21} color="#00BAFF" strokeWidth={2.2} />
-			</View>
-			<View className="ml-3 flex-1">
-				<Text
-					numberOfLines={shouldStackInlineContent ? undefined : 1}
-					className="font-poppins font-semibold text-body-3 text-text"
-				>
-					{name}
-				</Text>
-				<Text className="mt-1 font-poppins text-body-4 text-text/50">
-					{formatFileSize(size)}
-					{status === "queued" || status === "processing"
-						? " · Wird verarbeitet …"
-						: ""}
-				</Text>
-				{status === "failed" && onRetry ? (
-					<TouchableOpacity
-						accessibilityLabel={`${name} erneut verarbeiten`}
-						accessibilityRole="button"
-						accessibilityState={{ busy: isRetrying, disabled: isRetrying }}
-						disabled={isRetrying}
-						onPress={() => {
-							void retryGateRef.current.run(async () => await onRetry());
-						}}
-						className="mt-1 self-start"
+		<Surface className="mb-3 gap-3 rounded-[24px] px-4 py-4" variant="soft">
+			<View className="flex-row items-center">
+				<View className="h-11 w-11 items-center justify-center rounded-full bg-primary/12">
+					<Attachment size={21} color="#00BAFF" strokeWidth={2.2} />
+				</View>
+				<View className="ml-3 flex-1">
+					<Text
+						numberOfLines={shouldStackInlineContent ? undefined : 1}
+						className="font-poppins font-semibold text-body-3 text-text"
 					>
-						<Text className="font-poppins font-semibold text-body-4 text-destructive">
-							{isRetrying ? "Wird erneut verarbeitet …" : "Erneut versuchen"}
-						</Text>
-					</TouchableOpacity>
-				) : null}
+						{name}
+					</Text>
+					<Text className="mt-1 font-poppins text-body-4 text-text/50">
+						{formatFileSize(size)}
+						{status === "queued" || status === "processing"
+							? " · Wird verarbeitet …"
+							: ""}
+					</Text>
+					{status === "failed" && onRetry ? (
+						<TouchableOpacity
+							accessibilityLabel={`${name} erneut verarbeiten`}
+							accessibilityRole="button"
+							accessibilityState={{ busy: isRetrying, disabled: isRetrying }}
+							disabled={isRetrying}
+							onPress={() => {
+								void retryGateRef.current.run(async () => await onRetry());
+							}}
+							className="mt-1 self-start"
+						>
+							<Text className="font-poppins font-semibold text-body-4 text-destructive">
+								{isRetrying ? "Wird erneut verarbeitet …" : "Erneut versuchen"}
+							</Text>
+						</TouchableOpacity>
+					) : null}
+				</View>
 			</View>
-			<TouchableOpacity
+			<Button
 				accessibilityHint="Entfernt dieses hochgeladene Material aus dem Lernplan."
 				accessibilityLabel={`${name} entfernen`}
 				accessibilityRole="button"
-				activeOpacity={0.75}
-				hitSlop={8}
 				onPress={onRemove}
-				className="h-9 w-9 items-center justify-center rounded-full bg-black/5"
+				variant="destructive"
+				size="sm"
 			>
-				<X size={16} color={colors.text} strokeWidth={2.3} />
-			</TouchableOpacity>
+				<Text className="shrink text-center">Entfernen</Text>
+			</Button>
 		</Surface>
 	);
 }
@@ -474,7 +470,7 @@ export function SessionEditForm({
 				)}
 			>
 				<Button
-					variant="neutral"
+					variant="destructive"
 					className={
 						shouldStackInlineContent
 							? "w-full shadow-none"

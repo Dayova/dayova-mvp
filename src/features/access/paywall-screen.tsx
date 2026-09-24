@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AccountDeletionPasswordField } from "~/components/ui/account-deletion-password-field";
+import { Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
 import {
@@ -277,7 +278,6 @@ export function PaywallScreen() {
 				confirmLabel="Konto löschen"
 				confirmDisabled={!deletionPassword}
 				scrollable
-				size="medium"
 				isBusy={isDeletingAccount}
 				errorMessage={deleteError}
 				onClose={() => {
@@ -350,6 +350,18 @@ function ManagementAction({
 	label: string;
 	onPress: () => void;
 }) {
+	if (destructive) {
+		return (
+			<Button
+				variant="destructive"
+				className="m-3"
+				accessibilityLabel={accessibilityLabel ?? label}
+				onPress={onPress}
+			>
+				<Text className="shrink text-center">{label}</Text>
+			</Button>
+		);
+	}
 	return (
 		<Pressable
 			accessibilityLabel={accessibilityLabel}
