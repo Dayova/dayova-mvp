@@ -49,6 +49,7 @@ import { logDiagnosticError } from "~/lib/diagnostics";
 import { dismissToOrReplace, useBackIntent } from "~/lib/navigation";
 import { triggerSuccessHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { cn } from "~/lib/utils";
 
@@ -146,6 +147,7 @@ function TextAnswer({
 }
 
 export default function LearningSessionContentScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const params = useLocalSearchParams<{
@@ -377,8 +379,11 @@ export default function LearningSessionContentScreen() {
 		setErrorMessage(null);
 		try {
 			if (!(await requestAiConsent())) return;
+			trackFeature("learning_session.retry", "attempted", sessionId);
 			await prepareSessionContent({ sessionId });
+			trackFeature("learning_session.retry", "succeeded", sessionId);
 		} catch (error) {
+			trackFeature("learning_session.retry", "failed", sessionId);
 			setErrorMessage(
 				getErrorMessage(
 					error,
@@ -507,6 +512,7 @@ export default function LearningSessionContentScreen() {
 
 	const repeatCurrentQuestion = () => {
 		if (!currentItem || isBusy) return;
+		trackFeature("learning_session.question_repeated", "performed", sessionId);
 		resetItemState();
 		setRepeatingItemId(currentItem.id);
 		setErrorMessage(null);
@@ -611,6 +617,7 @@ export default function LearningSessionContentScreen() {
 		setIsBusy(true);
 		setErrorMessage(null);
 		try {
+			trackFeature("learning_session.continue", "attempted", sessionId);
 			await recordCompletedOutcome();
 			const extension = await extendSessionContent({
 				sessionId: content.session.id,
@@ -620,9 +627,11 @@ export default function LearningSessionContentScreen() {
 			setRetryStartedAt(Date.now());
 			setCurrentIndex(extension.firstNewItemIndex);
 			setCompletionPhase(null);
+			trackFeature("learning_session.continue", "succeeded", sessionId);
 			setIsContinuation(true);
 			didAutoFinishRef.current = false;
 		} catch (error) {
+			trackFeature("learning_session.continue", "failed", sessionId);
 			setErrorMessage(
 				getErrorMessage(
 					error,
@@ -636,6 +645,7 @@ export default function LearningSessionContentScreen() {
 
 	const continueTheory = () => {
 		if (!content || isBusy) return;
+		trackFeature("learning_session.theory_next", "performed", sessionId);
 		runTheoryTopicPrimaryAction({
 			currentIndex: theoryTopicPosition.topicIndex,
 			total: theoryTopicPosition.total,
@@ -662,6 +672,7 @@ export default function LearningSessionContentScreen() {
 
 	const showPreviousTheoryTopic = () => {
 		if (isBusy || theoryTopicPosition.previousSessionIndex === null) return;
+		trackFeature("learning_session.theory_previous", "performed", sessionId);
 		setErrorMessage(null);
 		setCurrentIndex(theoryTopicPosition.previousSessionIndex);
 	};
@@ -683,6 +694,13 @@ export default function LearningSessionContentScreen() {
 			) {
 				return;
 			}
+			trackFeature(
+				submitAsUnknown
+					? "learning_session.answer_unknown"
+					: "learning_session.answer",
+				"attempted",
+				sessionId,
+			);
 			const attempt =
 				currentItem.kind === "multipleChoice"
 					? await submitAnswer({
@@ -695,6 +713,13 @@ export default function LearningSessionContentScreen() {
 							itemId: currentItem.id,
 							answerText: writtenAnswer,
 						});
+			trackFeature(
+				submitAsUnknown
+					? "learning_session.answer_unknown"
+					: "learning_session.answer",
+				"succeeded",
+				sessionId,
+			);
 			if (attempt.rating === "correct" && !isPreTheoryQuestion) {
 				void triggerSuccessHaptic({
 					platform: process.env.EXPO_OS,
@@ -718,6 +743,13 @@ export default function LearningSessionContentScreen() {
 			}
 			setLocalAttempt(attempt as SessionAnswerAttempt);
 		} catch (error) {
+			trackFeature(
+				submitAsUnknown
+					? "learning_session.answer_unknown"
+					: "learning_session.answer",
+				"failed",
+				sessionId,
+			);
 			setErrorMessage(
 				getErrorMessage(error, "Die Antwort konnte nicht gespeichert werden."),
 			);

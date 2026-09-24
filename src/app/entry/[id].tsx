@@ -26,6 +26,7 @@ import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { goBackOrReplace } from "~/lib/navigation";
 import { ROUTES } from "~/lib/routes";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 type ParsedNotes = {
 	summary: string[];
@@ -122,6 +123,7 @@ function NotesCard({ value }: { value?: string }) {
 }
 
 export default function EntryDetailScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const { user } = useAuthSession();
@@ -223,6 +225,11 @@ export default function EntryDetailScreen() {
 				const deletedDayKey = await deleteDayEntry({
 					id: id as Id<"dayEntries">,
 				});
+				trackFeature(
+					isExam ? "exam.remove" : "homework.remove",
+					"succeeded",
+					id,
+				);
 				setIsDeleteVisible(false);
 				router.replace(
 					`/home${deletedDayKey ? `?dayKey=${encodeURIComponent(deletedDayKey)}` : ""}`,
@@ -243,10 +250,21 @@ export default function EntryDetailScreen() {
 
 	const toggleCompleted = () => {
 		if (!canToggleCompleted || !id || !user || !isConvexAuthenticated) return;
+		const interaction =
+			entry?.kind === "Hausaufgabe"
+				? isCompleted
+					? "homework.reopen"
+					: "homework.complete"
+				: isCompleted
+					? "entry.reopen"
+					: "entry.complete";
+		trackFeature(interaction, "attempted", id);
 		void setDayEntryCompleted({
 			id: id as Id<"dayEntries">,
 			completed: !isCompleted,
-		});
+		})
+			.then(() => trackFeature(interaction, "succeeded", id))
+			.catch(() => trackFeature(interaction, "failed", id));
 	};
 
 	const openLearningPlan = () => {
