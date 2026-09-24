@@ -1,0 +1,94 @@
+name: Keep OTA comment current
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  issue_comment:
+    types: [created, edited]
+
+permissions:
+  issues: write
+  pull-requests: read
+
+jobs:
+  mark_pending:
+    if: >-
+      github.event_name == 'pull_request_target' ||
+      (github.event.issue.pull_request &&
+       github.event.sender.login == 'expo[bot]' &&
+       github.event.comment.user.login == 'expo[bot]' &&
+       (contains(github.event.comment.body, '<!-- dayova-ota-report -->') ||
+        startsWith(github.event.comment.body, '## 📱 OTA compatibility')))
+    # Irrelevant comments must not displace a pending reconciliation.
+    concurrency:
+      group: ota-comment-${{ github.event.pull_request.number || github.event.issue.number }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # No checkout, PR scripts, dependency installation, or production secrets.
+      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const marker = '<!-- dayova-ota-report -->';
+            const repo = context.repo;
+            const number = context.payload.pull_request?.number ?? context.payload.issue?.number;
+            const checkedSha = body => body.match(/\*\*Checked commit:\*\* `([a-f0-9]{40})`/)?.[1];
+            const isReport = comment => comment.user?.login === 'expo[bot]' &&
+              (comment.body?.includes(marker) ||
+               (comment.body?.startsWith('## 📱 OTA compatibility\n') &&
+                comment.body.includes('<!-- eas-comment-id: ')));
+            const readPr = async () => (await github.rest.pulls.get({ ...repo, pull_number: number })).data;
+            const pr = await readPr();
+            if (pr.state !== 'open' || pr.base.ref !== 'main') return;
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              ...repo, issue_number: number, per_page: 100,
+            });
+            for (const candidate of comments.filter(isReport)) {
+              // Re-read after listing: EAS may have just replaced the old report.
+              const { data: comment } = await github.rest.issues.getComment({
+                ...repo, comment_id: candidate.id,
+              });
+              if (!isReport(comment)) continue;
+              const latest = await readPr();
+              if (latest.state !== 'open' || latest.base.ref !== 'main') return;
+              const sha = latest.head.sha;
+              if (checkedSha(comment.body) === sha) continue;
+
+              // A current EAS result can arrive while an earlier pending edit is
+              // in flight. Restore that result from its authenticated webhook.
+              const eventComment = context.payload.comment;
+              const currentResult = context.eventName === 'issue_comment' &&
+                context.payload.sender?.login === 'expo[bot]' &&
+                eventComment?.id === comment.id && isReport(eventComment) &&
+                checkedSha(eventComment.body) === sha;
+              const previous = checkedSha(comment.body) ??
+                comment.body.match(/\*\*Previous assessed commit:\*\* `([a-f0-9]{40})`/)?.[1];
+              const easMarker = comment.body.match(/<!-- eas-comment-id: [^>]+-->/)?.[0];
+              if (!easMarker) continue;
+              const pending = [
+                marker,
+                '## 📱 OTA compatibility',
+                '',
+                '### ⏳ Latest commit not yet evaluated',
+                '',
+                '**Latest commit:** `' + sha + '`',
+                '',
+                'An OTA assessment for this commit is pending or has not completed. **OTA compatibility is not confirmed.**',
+                '',
+                'Previous results apply only to the commit they assessed. If this run fails, is skipped, or is canceled, compatibility remains unconfirmed.',
+                '',
+                '🔎 [View current PR checks](' + latest.html_url + '/checks)',
+                ...(previous ? ['', '**Previous assessed commit:** `' + previous + '`'] : []),
+                '',
+                '💡 Advisory for merging. The final EAS report replaces this message when an assessment completes.',
+                '',
+                easMarker,
+              ].join('\n');
+              const body = currentResult ? eventComment.body : pending;
+              if (body !== comment.body) {
+                await github.rest.issues.updateComment({ ...repo, comment_id: comment.id, body });
+              }
+            }
