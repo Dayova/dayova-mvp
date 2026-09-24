@@ -21,6 +21,7 @@ let mockSnapshot:
 	| { plan: { topicDescription: string }; documents: never[] }
 	| undefined;
 let mockPauseVisible = false;
+let mockConfirmPause: () => void;
 let mockRemovalAllowed = false;
 jest.mock("convex/react", () => ({
 	useConvexAuth: () => ({ isAuthenticated: true }),
@@ -109,8 +110,15 @@ jest.mock("~/components/ui/screen", () => {
 });
 jest.mock("~/components/ui/action-sheet", () => ({ ActionSheet: () => null }));
 jest.mock("~/components/ui/confirmation-sheet", () => ({
-	ConfirmationSheet: ({ visible }: { visible: boolean }) => {
+	ConfirmationSheet: ({
+		visible,
+		onConfirm,
+	}: {
+		visible: boolean;
+		onConfirm: () => void;
+	}) => {
 		mockPauseVisible = visible;
+		mockConfirmPause = onConfirm;
 		return null;
 	},
 }));
@@ -247,6 +255,31 @@ describe("exam creation across the topics boundary", () => {
 		expect(mockRouter.replace).not.toHaveBeenCalled();
 		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
 	});
+
+	test("releases removal protection after explicitly confirming pause", async () => {
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "topic",
+		};
+		mockSnapshot = {
+			plan: { topicDescription: "Zellteilung und Mitose" },
+			documents: [],
+		};
+		await render(<NewLearningPlanScreen />);
+		await act(() => mockProgress.onBack());
+		expect(mockPauseVisible).toBe(true);
+		expect(mockRemovalAllowed).toBe(false);
+		let allowedAtDispatch = false;
+		mockRouter.dismissTo.mockImplementationOnce(() => {
+			allowedAtDispatch = mockRemovalAllowed;
+		});
+		await act(() => mockConfirmPause());
+		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans");
+		expect(allowedAtDispatch).toBe(true);
+		expect(mockPauseVisible).toBe(false);
+	});
+
 	test("releases removal protection before completing a new exam with material later", async () => {
 		mockParams = {
 			examDayEntryId: "exam-1",
