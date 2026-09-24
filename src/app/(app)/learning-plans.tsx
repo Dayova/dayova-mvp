@@ -13,6 +13,7 @@ import Animated, {
 	withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-screens/experimental";
 import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -695,6 +696,7 @@ function HomeworkCard({
 }
 
 export default function LearningPlansScreen() {
+	const { colors } = useDayovaTheme();
 	const insets = useSafeAreaInsets();
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
@@ -786,7 +788,10 @@ export default function LearningPlansScreen() {
 	};
 
 	return (
-		<View className="flex-1 bg-background">
+		<SafeAreaView
+			edges={{ bottom: true }}
+			style={{ flex: 1, backgroundColor: colors.background }}
+		>
 			<ThemedStatusBar />
 			<View
 				className="gap-6 px-6"
@@ -817,11 +822,7 @@ export default function LearningPlansScreen() {
 
 			<ScrollView
 				className="flex-1"
-				contentContainerStyle={{
-					paddingHorizontal: 24,
-					paddingTop: 0,
-					paddingBottom: Math.max(insets.bottom + 72, 104),
-				}}
+				contentContainerClassName="px-6 pb-6"
 				showsVerticalScrollIndicator={false}
 			>
 				{activeTab === "learningPlans" ? (
@@ -960,6 +961,6 @@ export default function LearningPlansScreen() {
 				onClose={closeDeleteSheet}
 				onConfirm={() => void deleteSelectedItem()}
 			/>
-		</View>
+		</SafeAreaView>
 	);
 }

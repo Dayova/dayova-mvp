@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-screens/experimental";
 import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import { CreateEntryButton } from "~/components/create-entry-button";
@@ -373,7 +374,7 @@ function AgendaItemRow({
 }) {
 	return (
 		<View className="flex-row">
-			<View className="w-12 pt-2 pr-1">
+			<View className="w-16 pt-2 pr-1">
 				<Text
 					className={cn(
 						"text-right font-poppins text-body-5",
@@ -531,6 +532,7 @@ function AgendaDayPage({
 }
 
 export function DashboardScreen() {
+	const { colors } = useDayovaTheme();
 	const router = useRouter();
 	const trackFeature = useFeatureAnalytics();
 	const params = useLocalSearchParams<{ dayKey?: string }>();
@@ -732,7 +734,11 @@ export function DashboardScreen() {
 	);
 
 	return (
-		<View className="flex-1 bg-background">
+		<SafeAreaView
+			// This native safe area includes the tab bar on both platforms.
+			edges={{ bottom: true }}
+			style={{ flex: 1, backgroundColor: colors.background }}
+		>
 			<ThemedStatusBar />
 			<View
 				className="bg-background px-6"
@@ -821,10 +827,8 @@ export function DashboardScreen() {
 				nestedScrollEnabled
 				showsVerticalScrollIndicator={false}
 				stickyHeaderIndices={[2]}
-				// Native tabs own the screen edge; this keeps the final item comfortably clear.
-				contentContainerStyle={{
-					paddingBottom: Math.max(insets.bottom + 72, 104),
-				}}
+				// The native safe area reserves the tab bar; padding adds breathing room.
+				contentContainerClassName="pb-6"
 			>
 				<DashboardHighlightCarousel>
 					<DashboardNextStepCard
@@ -887,6 +891,6 @@ export function DashboardScreen() {
 					</View>
 				</GestureDetector>
 			</ScrollView>
-		</View>
+		</SafeAreaView>
 	);
 }

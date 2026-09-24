@@ -1,0 +1,33 @@
+Running on DAY-169 iPhone 16 - iOS 26.5 - 0D8A5A07-FCA7-414F-B61A-BE572AB2DA55
+ > Flow ios-final-check
+Open exp+dayova://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8094%3FdisableOnboarding%3D1... COMPLETED
+Assert that "Entry native stack verification" is visible... COMPLETED
+Tap on "Resume exam"... COMPLETED
+Assert that "Ist genug Lernzeit eingeplant?" is visible... COMPLETED
+Swipe from (1%, 50%) to (95%, 50%) in 650 ms... COMPLETED
+Assert that "Wann findet die Prüfung statt?" is visible... COMPLETED
+Assert that "30. September 2026" is visible... COMPLETED
+Tap on "Zurück"... COMPLETED
+Assert that "Welches Fach ist es?" is visible... COMPLETED
+Swipe from (1%, 50%) to (20%, 50%) in 1500 ms... COMPLETED
+Assert that "Welches Fach ist es?" is visible... COMPLETED
+Swipe from (1%, 50%) to (95%, 50%) in 650 ms... COMPLETED
+Assert that "Welche Art von Prüfung ist es?" is visible... COMPLETED
+Tap on "Weiter"... COMPLETED
+Tap on "Weiter"... COMPLETED
+Tap on "Weiter"... COMPLETED
+Assert that "Ist genug Lernzeit eingeplant?" is visible... COMPLETED
+Tap on "Weiter"... COMPLETED
+Swipe from (1%, 50%) to (95%, 50%) in 650 ms... COMPLETED
+Assert that "Ist genug Lernzeit eingeplant?" is visible... COMPLETED
+Assert that "Topics destination fixture" is visible... COMPLETED
+Tap on "Native back"... COMPLETED
+Assert that "Entry native stack verification" is visible... COMPLETED
+Tap on "Open homework"... COMPLETED
+Assert that "Abgabe" is visible... COMPLETED
+Tap on "Weiter"... COMPLETED
+Assert that "Erledigen" is visible... COMPLETED
+Swipe from (1%, 50%) to (95%, 50%) in 650 ms... COMPLETED
+Assert that "Abgabe" is visible... COMPLETED
+Tap on "Zurück"... COMPLETED
+Assert that "Entry native stack verification" is visible... COMPLETED

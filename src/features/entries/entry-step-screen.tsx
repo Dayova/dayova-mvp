@@ -1,5 +1,5 @@
 import { useConvexAuth, useMutation } from "convex/react";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { Redirect, Stack, useRouter } from "expo-router";
 import {
 	type ReactNode,
 	useCallback,
@@ -18,7 +18,6 @@ import {
 	type KeyboardAwareScrollViewRef,
 	KeyboardStickyView,
 } from "react-native-keyboard-controller";
-import Animated, { FadeIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -48,8 +47,7 @@ import { useLearningPlanCreationProgress } from "~/features/learning-plans/creat
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { SubjectPickerSheet } from "~/features/subjects/subject-picker";
 import type { SubjectSelection } from "~/features/subjects/use-subject-options";
-import { createAsyncActionGate } from "~/lib/async-action-gate";
-import { getDayKey, parseDayKey, startOfLocalDay } from "~/lib/day-key";
+import { getDayKey, startOfLocalDay } from "~/lib/day-key";
 import { EXAM_TYPE_OPTIONS } from "~/lib/entry-options";
 import {
 	constrainEndTimeForStart,
@@ -66,8 +64,9 @@ import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { cn } from "~/lib/utils";
 
-type EntryType = "homework" | "exam";
-type EntryStep = "basics" | "planning" | "examType" | "examDetails";
+import { useEntryDraft } from "./entry-draft";
+import { type EntryStep, entryStepPath } from "./entry-routes";
+
 type PickerTarget =
 	| "dueDate"
 	| "plannedDate"
@@ -80,10 +79,6 @@ const EXAM_DURATION_OPTIONS = {
 	minimumMinutes: MIN_EXAM_DURATION_MINUTES,
 	maximumMinutes: MAX_EXAM_DURATION_MINUTES,
 } as const;
-
-const parseDateKey = (value?: string) => {
-	return parseDayKey(value) ?? startOfLocalDay(new Date());
-};
 
 const formatDate = (date: Date) =>
 	new Intl.DateTimeFormat("de-DE", {
@@ -211,7 +206,19 @@ function StickyActionFooter({
 	);
 }
 
-export default function NewEntryScreen() {
+export function EntryStepScreen({ step }: { step: EntryStep }) {
+	const { initialized, draft } = useEntryDraft();
+	if (
+		!initialized ||
+		(draft.type === "homework"
+			? !["basics", "planning"].includes(step)
+			: step === "planning")
+	)
+		return <Redirect href="/home" />;
+	return <EntryStepContent step={step} />;
+}
+
+function EntryStepContent({ step }: { step: EntryStep }) {
 	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
@@ -223,61 +230,36 @@ export default function NewEntryScreen() {
 	const createDayEntry = useMutation(api.dayEntries.create);
 	const updatePendingExam = useMutation(api.dayEntries.updatePendingExam);
 	const { capture } = useValidationAnalytics();
-	const params = useLocalSearchParams<{
-		type?: string;
-		dayKey?: string;
-		dayLabel?: string;
-		step?: string;
-		subject?: string;
-		personalSubjectId?: string;
-		examTypeLabel?: string;
-		examDayEntryId?: string;
-		durationMinutes?: string;
-		topicDescription?: string;
-	}>();
-	const entryType: EntryType = params.type === "exam" ? "exam" : "homework";
-	const isHomework = entryType === "homework";
-	const savedExamIdRef = useRef(
-		!isHomework
-			? (params.examDayEntryId as Id<"dayEntries"> | undefined)
-			: undefined,
-	);
-	const [initialDate] = useState(() => parseDateKey(params.dayKey));
-
-	const [step, setStep] = useState<EntryStep>(() => {
-		if (isHomework) return "basics";
-		if (params.step === "basics" || params.step === "learningAvailability") {
-			return "basics";
-		}
-		return "examType";
-	});
-	const [subject, setSubject] = useState(params.subject ?? "");
-	const [personalSubjectId, setPersonalSubjectId] = useState<
-		Id<"personalSubjects"> | undefined
-	>(() => params.personalSubjectId as Id<"personalSubjects"> | undefined);
-	const [examTypeLabel, setExamTypeLabel] = useState(
-		params.examTypeLabel ?? "",
-	);
-	const [note, setNote] = useState("");
-	const [dueDate, setDueDate] = useState(initialDate);
-	const [plannedDate, setPlannedDate] = useState(initialDate);
-	const [plannedTime, setPlannedTime] = useState(() => {
-		const next = new Date();
-		next.setHours(16, 0, 0, 0);
-		return next;
-	});
-	const [plannedEndTime, setPlannedEndTime] = useState(() => {
-		const next = new Date();
-		const duration =
-			!isHomework && Number.isFinite(Number(params.durationMinutes))
-				? Math.min(
-						MAX_EXAM_DURATION_MINUTES,
-						Math.max(MIN_EXAM_DURATION_MINUTES, Number(params.durationMinutes)),
-					)
-				: 30;
-		next.setHours(16, duration, 0, 0);
-		return next;
-	});
+	const {
+		draft,
+		updateDraft,
+		initialParams: params,
+		savedExamIdRef,
+		entryCreationGateRef,
+	} = useEntryDraft();
+	const isHomework = draft.type === "homework";
+	const {
+		subject,
+		personalSubjectId,
+		examTypeLabel,
+		note,
+		dueDate,
+		plannedDate,
+		plannedTime,
+		plannedEndTime,
+	} = draft;
+	const setPersonalSubjectId = (
+		personalSubjectId: Id<"personalSubjects"> | undefined,
+	) => updateDraft({ personalSubjectId });
+	const setSubject = (subject: string) => updateDraft({ subject });
+	const setExamTypeLabel = (examTypeLabel: string) =>
+		updateDraft({ examTypeLabel });
+	const setNote = (note: string) => updateDraft({ note });
+	const setDueDate = (dueDate: Date) => updateDraft({ dueDate });
+	const setPlannedDate = (plannedDate: Date) => updateDraft({ plannedDate });
+	const setPlannedTime = (plannedTime: Date) => updateDraft({ plannedTime });
+	const setPlannedEndTime = (plannedEndTime: Date) =>
+		updateDraft({ plannedEndTime });
 	const [isCreating, setIsCreating] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
@@ -293,7 +275,6 @@ export default function NewEntryScreen() {
 	const keyboardDismissFrameRef = useRef<ReturnType<
 		typeof requestAnimationFrame
 	> | null>(null);
-	const entryCreationGateRef = useRef(createAsyncActionGate());
 
 	const trimmedSubject = subject.trim();
 	const subjectSelection: SubjectSelection = {
@@ -596,11 +577,12 @@ export default function NewEntryScreen() {
 
 	const goToStep = useCallback(
 		(nextStep: EntryStep) => {
-			scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+			if (nextStep === step) return;
+			Keyboard.dismiss();
 			trackFeature("entry.step_changed", "performed", undefined, nextStep);
-			setStep(nextStep);
+			router.navigate(entryStepPath(nextStep, isHomework));
 		},
-		[trackFeature],
+		[isHomework, router, step, trackFeature],
 	);
 	const handleBack = useCallback(() => {
 		if (selectTarget) {
@@ -613,40 +595,18 @@ export default function NewEntryScreen() {
 			return true;
 		}
 
-		if (step === "planning") {
-			goToStep("basics");
-			return true;
-		}
-
-		if (step === "basics" && !isHomework) {
-			goToStep("examDetails");
-			return true;
-		}
-
-		if (step === "examDetails") {
-			goToStep("examType");
-			return true;
-		}
-
-		if (step === "examType") {
-			goBackOrReplace(router, ROUTES.home);
-			return true;
-		}
-
-		goBackOrReplace(router, ROUTES.home);
+		if (isCreating || entryCreationGateRef.current.isRunning) return true;
+		Keyboard.dismiss();
+		goBackOrReplace(router, "/home");
 		return true;
-	}, [goToStep, isHomework, pickerTarget, router, selectTarget, step]);
+	}, [entryCreationGateRef, isCreating, pickerTarget, router, selectTarget]);
 
+	// Ordinary steps belong to the native stack. Overlays and pending writes consume Back.
 	const runBackIntent = useBackIntent(
-		Boolean(selectTarget || pickerTarget || !isHomework || step !== "basics"),
+		Boolean(selectTarget || pickerTarget || isCreating),
 		handleBack,
-		{
-			allowRouteRemoval:
-				!selectTarget &&
-				!pickerTarget &&
-				(step === "examType" || (isHomework && step === "basics")),
-		},
 	);
+
 	useLearningPlanCreationProgress({
 		active: !isHomework,
 		currentStep: getExamEntryCreationProgress(step),
@@ -720,7 +680,11 @@ export default function NewEntryScreen() {
 
 	return (
 		<View className="flex-1 bg-background">
-			<Stack.Screen options={{ gestureEnabled: true }} />
+			<Stack.Screen
+				options={{
+					gestureEnabled: !isCreating && !pickerTarget && !selectTarget,
+				}}
+			/>
 			{!isHomework ? (
 				<View className="px-8 pb-8">
 					<Text className="font-poppins font-semibold text-heading-2 text-text">
@@ -864,7 +828,7 @@ export default function NewEntryScreen() {
 				) : (
 					// biome-ignore lint/complexity/noUselessFragments: Keeps the exam flow grouped as the sibling branch of the homework flow.
 					<>
-						<Animated.View key={step} entering={FadeIn.duration(220)}>
+						<View>
 							{step === "basics" ? (
 								<ExamDateSelector
 									selectedDate={plannedDate}
@@ -881,7 +845,7 @@ export default function NewEntryScreen() {
 									onSelect={selectSubject}
 								/>
 							)}
-						</Animated.View>
+						</View>
 					</>
 				)}
 			</KeyboardSafeScrollView>

@@ -278,6 +278,7 @@ function DayovaSheetFrame({
 
 	const canShowCloseButton = showCloseButton && dismissible;
 	const hasHeader = Boolean(title || description || canShowCloseButton);
+	const isDynamicScrollable = scrollable && size === "content";
 	const hasFixedFooter = scrollable && size !== "content" && Boolean(footer);
 	const content = (
 		<View
@@ -292,14 +293,18 @@ function DayovaSheetFrame({
 			onAccessibilityEscape={dismiss}
 			className={cn(
 				"bg-card pt-1",
-				!scrollable && "px-6",
+				(!scrollable || isDynamicScrollable) && "px-6",
 				size !== "content" && !scrollable && "flex-1",
 			)}
 			// Safe-area padding is runtime device data and cannot be a static utility.
 			style={
-				scrollable && size !== "content"
+				scrollable && !isDynamicScrollable
 					? { flex: 1 }
-					: { paddingBottom: Math.max(insets.bottom + 20, 32) }
+					: {
+							paddingBottom: hasFixedFooter
+								? 12
+								: Math.max(insets.bottom + 20, 32),
+						}
 			}
 		>
 			{!title ? (
@@ -314,7 +319,10 @@ function DayovaSheetFrame({
 			) : null}
 			{hasHeader ? (
 				<View
-					className={cn("mb-6 gap-3", scrollable && "px-6")}
+					className={cn(
+						"mb-6 gap-3",
+						scrollable && !isDynamicScrollable && "px-6",
+					)}
 					testID={scrollable ? "dayova-sheet-header" : undefined}
 				>
 					<View className="min-h-10 flex-row items-start gap-4">
@@ -349,7 +357,16 @@ function DayovaSheetFrame({
 					) : null}
 				</View>
 			) : null}
-			{scrollable && size !== "content" ? (
+			{isDynamicScrollable ? (
+				<>
+					{children ? (
+						<View className={contentClassName}>{children}</View>
+					) : null}
+					{footer ? (
+						<View className={children ? "mt-6" : undefined}>{footer}</View>
+					) : null}
+				</>
+			) : scrollable ? (
 				<>
 					<BottomSheetScrollView
 						bounces={false}
@@ -434,7 +451,7 @@ function DayovaSheetFrame({
 				width: sheetWidth,
 			}}
 		>
-			{scrollable && size === "content" ? (
+			{isDynamicScrollable ? (
 				<BottomSheetScrollView
 					bounces={false}
 					keyboardShouldPersistTaps="handled"

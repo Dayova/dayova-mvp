@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 import { convexTest } from "convex-test";
-import { expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import { api, internal } from "./_generated/api";
 import schema from "./schema";
 
@@ -11,27 +11,53 @@ const userIdentity = {
 	subject: "user",
 	tokenIdentifier: "test:user",
 	email: "user@example.com",
-	fva: [0, -1],
 };
 
 const otherIdentity = {
 	subject: "other",
 	tokenIdentifier: "test:other",
 	email: "other@example.com",
-	fva: [0, -1],
 };
 
-test("accepts one idempotent deletion request after recent reverification", async () => {
+afterEach(() => {
+	vi.unstubAllEnvs();
+	vi.unstubAllGlobals();
+});
+
+test("HTTP password verification propagates identity without fva", async () => {
+	vi.stubEnv("CLERK_SECRET_KEY", "test-server-key");
+	const verify = vi.fn().mockResolvedValue(Response.json({ verified: true }));
+	vi.stubGlobal("fetch", verify);
+	const backend = convexTest(schema, modules);
+	const user = backend.withIdentity(userIdentity);
+	const response = await user.fetch("/account-deletion", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ password: "test-only", userId: "other" }),
+	});
+	expect(response.status).toBe(200);
+	expect(await response.json()).toMatchObject({ status: "accepted" });
+	expect(verify.mock.calls[0][0]).toBe(
+		"https://api.clerk.com/v1/users/user/verify_password",
+	);
+	const requests = await backend.run((ctx) =>
+		ctx.db.query("accountDeletionRequests").take(10),
+	);
+	expect(requests).toHaveLength(1);
+	expect(requests[0].ownerTokenIdentifier).toBe(userIdentity.tokenIdentifier);
+});
+
+test("accepts one idempotent verified internal deletion request", async () => {
 	const backend = convexTest(schema, modules);
 	const user = backend.withIdentity(userIdentity);
 	await user.mutation(api.users.syncCurrentUser, { name: "Delete Me" });
 
 	const first = await user.mutation(
-		api.accountDeletion.requestCurrentUserDeletion,
+		internal.accountDeletion.enqueueVerifiedDeletion,
 		{},
 	);
 	const second = await user.mutation(
-		api.accountDeletion.requestCurrentUserDeletion,
+		internal.accountDeletion.enqueueVerifiedDeletion,
 		{},
 	);
 
@@ -49,9 +75,9 @@ test("accepts one idempotent deletion request after recent reverification", asyn
 	});
 });
 
-test("asks Clerk for reverification when the first factor is stale", async () => {
+test("legacy public entry point cannot bypass server verification", async () => {
 	const backend = convexTest(schema, modules);
-	const staleUser = backend.withIdentity({ ...userIdentity, fva: [11, -1] });
+	const staleUser = backend.withIdentity({ ...userIdentity, fva: [0, -1] });
 
 	const result = await staleUser.mutation(
 		api.accountDeletion.requestCurrentUserDeletion,
@@ -78,7 +104,7 @@ test("revokes application access as soon as deletion is requested", async () => 
 	const backend = convexTest(schema, modules);
 	const user = backend.withIdentity(userIdentity);
 	await user.mutation(api.users.syncCurrentUser, { name: "Delete Me" });
-	await user.mutation(api.accountDeletion.requestCurrentUserDeletion, {});
+	await user.mutation(internal.accountDeletion.enqueueVerifiedDeletion, {});
 
 	await expect(
 		user.mutation(api.users.syncCurrentUser, { name: "Still Here" }),
@@ -96,7 +122,7 @@ test("deletes account data in bounded internal batches and preserves other users
 		name: "Keep Me",
 	});
 	const accepted = await user.mutation(
-		api.accountDeletion.requestCurrentUserDeletion,
+		internal.accountDeletion.enqueueVerifiedDeletion,
 		{},
 	);
 	if (!("requestId" in accepted)) throw new Error("request not accepted");
@@ -240,7 +266,7 @@ test("moves exhausted retries to manual review without storing raw errors", asyn
 	const user = backend.withIdentity(userIdentity);
 	await user.mutation(api.users.syncCurrentUser, {});
 	const accepted = await user.mutation(
-		api.accountDeletion.requestCurrentUserDeletion,
+		internal.accountDeletion.enqueueVerifiedDeletion,
 		{},
 	);
 	if (!("requestId" in accepted)) throw new Error("request not accepted");
@@ -275,6 +301,6 @@ test("rejects account deletion without an authenticated identity", async () => {
 	const backend = convexTest(schema, modules);
 
 	await expect(
-		backend.mutation(api.accountDeletion.requestCurrentUserDeletion, {}),
+		backend.mutation(internal.accountDeletion.enqueueVerifiedDeletion, {}),
 	).rejects.toThrow("Nicht authentifiziert");
 });

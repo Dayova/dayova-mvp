@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Pressable, type TextInput, View } from "react-native";
-import Animated, {
-	FadeInDown,
-	LinearTransition,
-} from "react-native-reanimated";
+import { type TextInput, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import {
 	Field,
 	FieldAccessory,
@@ -21,12 +18,15 @@ import {
 	Plus,
 } from "~/components/ui/icon";
 import { Input } from "~/components/ui/input";
+import {
+	SelectionControl,
+	SelectionIndicator,
+} from "~/components/ui/selection-control";
 import { Text } from "~/components/ui/text";
 import { InlineSubjectPicker } from "~/features/subjects/subject-picker";
 import type { SubjectSelection } from "~/features/subjects/use-subject-options";
 import { formatAccessibleExamDate } from "~/lib/exam-date";
 import { useDayovaTheme } from "~/lib/theme";
-import { cn } from "~/lib/utils";
 
 const EXAM_TYPE_OPTIONS = [
 	{ label: "Test", Icon: Pencil },
@@ -141,63 +141,22 @@ function SingleSelectOption({
 	onPress: () => void;
 }) {
 	const { colors } = useDayovaTheme();
-
 	return (
-		<Animated.View
-			entering={FadeInDown.duration(220)}
-			layout={LinearTransition.duration(180)}
+		<SelectionControl
+			selected={selected}
+			accessibilityLabel={label}
+			onPress={onPress}
+			contentClassName="min-h-16 flex-row items-center gap-4 px-5 py-3"
 		>
-			<Pressable
-				accessibilityRole="radio"
-				accessibilityState={{ selected }}
-				onPress={onPress}
-				className={cn(
-					"min-h-16 flex-row items-center gap-4 rounded-[24px] border px-5 py-3 active:opacity-80",
-					selected ? "border-primary/40 bg-accent" : "border-border bg-card",
-				)}
+			<View
+				accessible={false}
+				className="h-9 w-9 items-center justify-center rounded-full bg-accent"
 			>
-				<View
-					accessible={false}
-					className={cn(
-						"h-9 w-9 items-center justify-center rounded-full",
-						selected ? "bg-primary/15" : "bg-accent",
-					)}
-				>
-					<Icon
-						size={20}
-						color={selected ? colors.primary : colors.secondaryText}
-						strokeWidth={2}
-					/>
-				</View>
-				<Text
-					className={cn(
-						"flex-1 font-poppins text-body-2",
-						selected ? "font-semibold text-primary" : "text-text",
-					)}
-				>
-					{label}
-				</Text>
-				<RadioIndicator selected={selected} color={colors.primary} />
-			</Pressable>
-		</Animated.View>
-	);
-}
-
-function RadioIndicator({
-	selected,
-	color,
-}: {
-	selected: boolean;
-	color: string;
-}) {
-	return (
-		<View
-			className="h-6 w-6 items-center justify-center rounded-full border-2"
-			// The selection color comes from the active runtime theme.
-			style={{ borderColor: selected ? color : `${color}66` }}
-		>
-			{selected ? <View className="h-3 w-3 rounded-full bg-primary" /> : null}
-		</View>
+				<Icon size={20} color={colors.secondaryText} strokeWidth={2} />
+			</View>
+			<Text className="flex-1 font-poppins text-body-2 text-text">{label}</Text>
+			<SelectionIndicator />
+		</SelectionControl>
 	);
 }
 

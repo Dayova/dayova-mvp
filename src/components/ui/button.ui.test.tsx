@@ -4,7 +4,7 @@ import { Button } from "./button";
 import { Text } from "./text";
 
 describe("Button visual variants", () => {
-	test("keeps destructive actions flat without restoring a heavy red surface", async () => {
+	test("keeps destructive actions red with white labels and no shadow", async () => {
 		const screen = await render(
 			<Button accessibilityLabel="Eintrag löschen" variant="destructive">
 				<Text>Eintrag löschen</Text>
@@ -13,9 +13,9 @@ describe("Button visual variants", () => {
 
 		const button = screen.getByRole("button", { name: "Eintrag löschen" });
 		const label = screen.getByText("Eintrag löschen");
-		expect(button.props.className).toContain("bg-button-neutral");
-		expect(button.props.className).not.toContain("bg-destructive");
+		expect(button.props.className).toContain("bg-destructive");
+		expect(button.props.className).not.toContain("bg-button-neutral");
 		expect(button.props.className).not.toContain("shadow-sm");
-		expect(label.props.className).toContain("text-background");
+		expect(label.props.className).toContain("text-white");
 	});
 });

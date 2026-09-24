@@ -1,0 +1,52 @@
+appId: de.dayova.app-dev
+---
+- openLink: 'exp+dayova://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8094%3FdisableOnboarding%3D1'
+- extendedWaitUntil:
+    visible: Entry native stack verification
+    timeout: 60000
+- tapOn: Resume exam
+- assertVisible: Ist genug Lernzeit eingeplant?
+- swipe:
+    start: 1%, 50%
+    end: 95%, 50%
+    duration: 650
+- assertVisible: Wann findet die Prüfung statt?
+- assertVisible: '30. September 2026'
+- tapOn: Zurück
+- assertVisible: Welches Fach ist es?
+- swipe:
+    start: 1%, 50%
+    end: 20%, 50%
+    duration: 1500
+- assertVisible: Welches Fach ist es?
+- swipe:
+    start: 1%, 50%
+    end: 95%, 50%
+    duration: 650
+- assertVisible: Welche Art von Prüfung ist es?
+- tapOn: Weiter
+- tapOn: Weiter
+- tapOn: Weiter
+- assertVisible: Ist genug Lernzeit eingeplant?
+- tapOn: Weiter
+- swipe:
+    start: 1%, 50%
+    end: 95%, 50%
+    duration: 650
+- assertVisible: Ist genug Lernzeit eingeplant?
+- extendedWaitUntil:
+    visible: Topics destination fixture
+    timeout: 30000
+- tapOn: Native back
+- assertVisible: Entry native stack verification
+- tapOn: Open homework
+- assertVisible: Abgabe
+- tapOn: Weiter
+- assertVisible: Erledigen
+- swipe:
+    start: 1%, 50%
+    end: 95%, 50%
+    duration: 650
+- assertVisible: Abgabe
+- tapOn: Zurück
+- assertVisible: Entry native stack verification

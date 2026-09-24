@@ -1,0 +1,43 @@
+appId: ${APP_ID}
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: Heute
+    timeout: 60000
+- tapOn: Heute
+- tapOn: "Neuen Eintrag erstellen."
+- tapOn: ".*Neue Prüfung.*"
+- tapOn: Klausur
+- tapOn: Weiter
+- tapOn: Chemie
+- tapOn: Weiter
+- assertVisible: Wann findet die Prüfung statt?
+- startRecording: navigation-gestures
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - swipe:
+          start: 1%, 50%
+          end: 20%, 50%
+          duration: 1500
+      - assertVisible: Wann findet die Prüfung statt?
+      - swipe:
+          start: 1%, 50%
+          end: 95%, 50%
+          duration: 650
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- assertVisible: Welches Fach ist es?
+- takeScreenshot: retained-subject
+- tapOn: Zurück
+- assertVisible: Welche Art von Prüfung ist es?
+- takeScreenshot: retained-exam-type
+- tapOn: Zurück
+- assertVisible: Heute
+- takeScreenshot: root-exit
+- stopRecording

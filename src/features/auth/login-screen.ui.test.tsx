@@ -190,6 +190,7 @@ jest.mock("react-native-reanimated", () => {
 				value,
 			};
 		},
+		withSpring: (value: unknown) => value,
 		withRepeat: (value: unknown) => value,
 		withSequence: (...values: unknown[]) => values.at(-1),
 		withTiming: (value: unknown) => value,
@@ -1490,15 +1491,13 @@ describe("OnboardingScreen", () => {
 		const screen = await render(<OnboardingStepScreen stepId="studyDays" />);
 
 		const monday = screen.getByRole("checkbox", { name: "Montag" });
-		expect(monday.props.accessibilityState).toEqual({ checked: false });
-		expect(monday).toHaveStyle({
-			backgroundColor: "#F1F7FB",
-			borderColor: "#D7DCE3",
-		});
-		expect(screen.getByTestId("study-day-pill-check-slot-Montag")).toHaveProp(
-			"className",
-			"h-4 w-4 items-center justify-center",
-		);
+		expect(monday).not.toBeChecked();
+		expect(monday.props.style).toBeUndefined();
+		expect(
+			screen.getByTestId("study-day-pill-check-slot-Montag", {
+				includeHiddenElements: true,
+			}).props.className,
+		).toContain("h-4 w-4");
 		expect(screen.getByTestId("study-day-pill-balance-slot-Montag")).toHaveProp(
 			"className",
 			"ml-2 h-4 w-4",

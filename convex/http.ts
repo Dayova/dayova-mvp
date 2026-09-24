@@ -1,9 +1,25 @@
 import { httpRouter } from "convex/server";
 import { internal } from "./_generated/api";
 import { env, httpAction } from "./_generated/server";
+import { handleDeletionPasswordRequest } from "./deletionPasswordHttp";
+import { readOptionalEnv } from "./env";
 import { logDiagnosticError } from "./errors";
 
 const http = httpRouter();
+
+http.route({
+	path: "/account-deletion",
+	method: "POST",
+	handler: httpAction(async (ctx, request) =>
+		handleDeletionPasswordRequest(request, {
+			identity: await ctx.auth.getUserIdentity(),
+			secretKey: readOptionalEnv("CLERK_SECRET_KEY"),
+			verify: fetch,
+			enqueue: () =>
+				ctx.runMutation(internal.accountDeletion.enqueueVerifiedDeletion, {}),
+		}),
+	),
+});
 
 const timingSafeEqual = (left: string, right: string) => {
 	if (left.length !== right.length) return false;

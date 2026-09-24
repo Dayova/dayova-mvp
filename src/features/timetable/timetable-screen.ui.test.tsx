@@ -1,3 +1,7 @@
+jest.mock("react-native-reanimated", () =>
+	require("../../../tests/mocks/selection-reanimated.cjs"),
+);
+
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render } from "@testing-library/react-native";
 import type { ReactNode } from "react";

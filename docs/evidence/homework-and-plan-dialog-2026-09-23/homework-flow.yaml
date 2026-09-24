@@ -1,0 +1,25 @@
+appId: ${APP_ID}
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: Heute
+    timeout: 60000
+- tapOn: Heute
+- tapOn: "Neuen Eintrag erstellen."
+- tapOn: ".*Neue Hausaufgabe.*"
+- assertVisible: Abgabe
+- takeScreenshot: homework-basics
+- tapOn: Wähle das Fach aus
+- tapOn: Chemie
+- takeScreenshot: homework-subject
+- tapOn: Weiter
+- assertVisible: Erledigen
+- takeScreenshot: homework-schedule
+- tapOn: Zurück
+- assertVisible: Abgabe
+- assertVisible: Chemie
+- takeScreenshot: homework-retained
+- tapOn: Zurück
+- assertVisible: Heute
+- takeScreenshot: homework-exit

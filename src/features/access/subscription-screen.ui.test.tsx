@@ -129,6 +129,9 @@ jest.mock("~/lib/diagnostics", () => ({ logDiagnosticError: jest.fn() }));
 
 jest.mock("~/lib/runtime-config", () => ({
 	env: {
+		EXPO_PUBLIC_PRIVACY_URL: "https://dayova.com/privacy",
+		EXPO_PUBLIC_TERMS_URL: "https://dayova.com/terms",
+		EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL: "https://dayova.com/subscription-terms",
 		EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY: "android_test_key",
 		EXPO_PUBLIC_REVENUECAT_IOS_API_KEY: "ios_test_key",
 	},
@@ -154,6 +157,23 @@ describe("SubscriptionScreen", () => {
 		expect(
 			decodeURIComponent(mockOpenExternalUrl.mock.calls[0][0] ?? ""),
 		).toContain("Bereich: Abonnement");
+	});
+
+	test("keeps every footer destination actionable after layout changes", async () => {
+		const screen = await render(<SubscriptionScreen />);
+		await waitFor(() => expect(mockGetPlans).toHaveBeenCalledTimes(1));
+		for (const [name, url] of [
+			["Datenschutz", "https://dayova.com/privacy"],
+			["Nutzungsbedingungen", "https://dayova.com/terms"],
+			["Abo-Bedingungen", "https://dayova.com/subscription-terms"],
+		]) {
+			await fireEvent.press(screen.getByRole("link", { name }));
+			expect(mockOpenExternalUrl).toHaveBeenLastCalledWith(url);
+		}
+		await fireEvent.press(screen.getByRole("button", { name: "Support" }));
+		expect(mockOpenExternalUrl).toHaveBeenLastCalledWith(
+			expect.stringContaining("mailto:kontakt@dayova.de?"),
+		);
 	});
 
 	test("shows only localized Store plans and complete billing amounts", async () => {
@@ -456,3 +476,14 @@ test("releases manual retry after access requests time out without backend updat
 	expect(mockPurchase).toHaveBeenCalledTimes(1);
 	expect(mockReplace).toHaveBeenCalledWith("/subscription-success");
 });
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+);
+
+jest.mock("~/lib/theme", () => ({
+	useDayovaTheme: () => ({
+		colors: jest.requireActual<typeof import("~/lib/design-system")>(
+			"~/lib/design-system",
+		).DAYOVA_DESIGN_SYSTEM.colors,
+	}),
+}));
