@@ -2,7 +2,7 @@
 import { convexTest } from "convex-test";
 import { afterEach, expect, test, vi } from "vitest";
 import { api, internal } from "./_generated/api";
-import { CRM_PROPERTIES } from "./crmNotion";
+import { CRM_PROPERTIES, createNotionClient } from "./crmNotion";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -87,7 +87,17 @@ function mockNotion(
 					Student: "title",
 					Email: "email",
 					Tags: "multi_select",
-				}).map(([name, type]) => [name, { type }]),
+					Status: "status",
+					"Registration Date": "date",
+				}).map(([name, type]) => [
+					name,
+					{
+						type,
+						...(type === "status"
+							? { status: { options: [{ name: "Registered" }] } }
+							: {}),
+					},
+				]),
 			),
 		});
 	});
@@ -104,6 +114,36 @@ async function signup() {
 	vi.stubEnv("NOTION_CRM_DATA_SOURCE_ID", source);
 	return { t, userId };
 }
+
+test.each([
+	"Status",
+	"Registration Date",
+	"Registered",
+])("creation rejects a schema missing %s before sending a page", async (missing) => {
+	const properties: Record<string, unknown> = {
+		Student: { type: "title" },
+		Email: { type: "email" },
+		Tags: { type: "multi_select" },
+		Status: {
+			type: "status",
+			status: {
+				options: missing === "Registered" ? [] : [{ name: "Registered" }],
+			},
+		},
+		"Registration Date": { type: "date" },
+	};
+	if (missing !== "Registered") delete properties[missing];
+	const fetchMock = vi.fn(async () => Response.json({ properties }));
+	vi.stubGlobal("fetch", fetchMock);
+	await expect(
+		createNotionClient("test-only", source).checkCreationSchema(),
+	).rejects.toMatchObject({ category: "schema" });
+	expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(fetchMock).toHaveBeenCalledWith(
+			expect.stringContaining("/data_sources/"),
+			expect.objectContaining({ method: "GET" }),
+		);
+});
 afterEach(() => {
 	vi.unstubAllEnvs();
 	vi.unstubAllGlobals();
@@ -199,6 +239,10 @@ test("authenticated signup queues once, login retries do not duplicate, legacy u
 
 test("off and dry-run never create, live creates minimal CRM record once and subsequent runs reuse it", async () => {
 	const { t, userId } = await signup();
+	const registeredAt = await t.run(
+		async (ctx) => (await ctx.db.get("users", userId))?._creationTime,
+	);
+	if (registeredAt === undefined) throw new Error("missing signup");
 	const { creates, fetchMock } = mockNotion();
 	expect(await t.action(internal.crmSync.reconcile, {})).toMatchObject({
 		status: "disabled",
@@ -228,12 +272,15 @@ test("off and dry-run never create, live creates minimal CRM record once and sub
 		"Payment Status": { select: { name: "None" } },
 		"Subscription Plan": { select: { name: "None" } },
 		Tags: { multi_select: [{ name: "Added through Integration with App" }] },
+		Status: { status: { name: "Registered" } },
+		"Registration Date": {
+			date: { start: new Date(registeredAt).toISOString() },
+		},
 	});
 	for (const field of [
 		"Phone Number",
 		"Date of Birth",
 		"Notes",
-		"Status",
 		"School",
 		"Learning Challenges",
 	])

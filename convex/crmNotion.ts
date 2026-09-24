@@ -187,9 +187,18 @@ export function createNotionClient(token: string, dataSourceId: string) {
 				Student: "title",
 				Email: "email",
 				Tags: "multi_select",
+				Status: "status",
+				"Registration Date": "date",
 			})) {
 				if (!properties[name] || object(properties[name]).type !== type)
 					throw new CrmFailure("schema");
+			}
+			const statuses = object(object(properties.Status).status).options;
+			if (
+				!Array.isArray(statuses) ||
+				!statuses.some((option) => object(option).name === "Registered")
+			) {
+				throw new CrmFailure("schema");
 			}
 		},
 		async createStudent(
@@ -219,6 +228,8 @@ export function createNotionClient(token: string, dataSourceId: string) {
 							},
 							Email: { email },
 							Tags: { multi_select: [{ name: CRM_APP_ORIGIN_TAG }] },
+							Status: { status: { name: "Registered" } },
+							"Registration Date": date(projection.registeredAt),
 							"Clerk User ID": richText(clerkId),
 							...projectionProperties(projection, now),
 						},

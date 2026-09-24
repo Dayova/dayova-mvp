@@ -341,7 +341,14 @@ test("live projection retries the same payload, preserves CRM-owned fields and r
 	expect(payload.properties["Subscription Plan"]).toEqual({
 		select: { name: "Monthly" },
 	});
-	for (const key of ["Clerk User ID", "Email", "Tags", "Status", "Notes"])
+	for (const key of [
+		"Clerk User ID",
+		"Email",
+		"Tags",
+		"Status",
+		"Registration Date",
+		"Notes",
+	])
 		expect(payload.properties).not.toHaveProperty(key);
 	expect(JSON.stringify(payload)).not.toContain(tokenIdentifier);
 	expect(await t.action(internal.crmSync.reconcile, {})).toMatchObject({
