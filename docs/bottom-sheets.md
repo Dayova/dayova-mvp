@@ -11,16 +11,27 @@ subject and exam-type selector.
 - App code uses `ConfirmationSheet`, `ActionSheet`, `SelectSheet`, or
   `DayovaSheetFrame`; only the frame, plus `BottomSheetModalProvider` in the
   root layout, imports Gorhom primitives.
-- The frame API intentionally supports only dynamic `content` height and the
-  scrollable `medium` size. Unused width, header/footer class, and `large`
-  escape hatches were removed so callers cannot create one-off sheet systems.
-- Dynamic `content` sheets place their header, description, fields, and actions
-  inside the same directly measured Gorhom scrollable. Do not wrap that
-  scrollable in a `flex: 1` container or leave a header/footer outside its measured
-  content; that clips form actions during size changes.
-- Form fields inside sheets use `DayovaSheetInput`, which preserves the shared
-  `Input` styling while registering focus with Gorhom's keyboard handling.
-  Use `onPresented` for initial focus instead of focusing before presentation.
+- All app sheets size to their content, capped at 720 points and the available
+  screen height above the system inset. There is no caller-selected fixed size.
+  Short information, confirmation and option sheets must not reserve empty space.
+- Content scrolls by default, including the heading, so long titles and large
+  system text cannot consume a fixed header and make the body unreachable.
+  At font scales of 1.5 or more, the close control gets its own row so long
+  headings retain the full text width. Only the native date/time wheel opts out
+  of the surrounding scroll view.
+- Actions use Gorhom's measured footer and content inset, keeping the last row
+  clear of the buttons. At font scales of 1.5 or more, viewports below 480 points,
+  or measured action areas exceeding 40% of the maximum sheet height, actions
+  enter the same scroll flow as the content. Reachability wins over pinning.
+- Screen safe-area insets are captured above navigation by `SheetSafeAreaProvider`.
+  A tab bar's local content inset must not become bottom padding inside a sheet.
+- Action descriptions wrap completely; compact widths and enlarged text stack
+  tile menus and confirmation buttons. Theme tokens and existing button semantics
+  remain shared with the app.
+- This contract is tracked in [DAY-470](https://linear.app/dayova/issue/DAY-470).
+  It supersedes DAY-392's fixed `medium` sizing while retaining long-content access.
+- Form fields use `DayovaSheetInput` for Gorhom keyboard handling and
+  `onPresented` for initial focus after presentation.
 - `visible` is controlled state. A close followed immediately by a reopen is a
   valid transition; a stale native `onDismiss` must not close the new request.
 - Android date/time selection closes in the shared adapter. Callers do not add

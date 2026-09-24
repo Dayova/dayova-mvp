@@ -2,6 +2,8 @@ import {
 	BottomSheetBackdrop,
 	type BottomSheetBackdropProps,
 	type BottomSheetBackgroundProps,
+	BottomSheetFooter,
+	type BottomSheetFooterProps,
 	BottomSheetModal,
 	BottomSheetScrollView,
 	BottomSheetTextInput,
@@ -21,7 +23,9 @@ import {
 	AccessibilityInfo,
 	BackHandler,
 	findNodeHandle,
+	type LayoutChangeEvent,
 	Platform,
+	StyleSheet,
 	useWindowDimensions,
 	View,
 } from "react-native";
@@ -30,13 +34,13 @@ import { Input } from "~/components/ui/input";
 import { useSheetAccessibility } from "~/components/ui/sheet-accessibility";
 import { useSheetSafeAreaInsets } from "~/components/ui/sheet-safe-area";
 import { Text } from "~/components/ui/text";
+import { getContentSizeLayout } from "~/lib/content-size-layout";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
 const DEFAULT_MAX_SHEET_WIDTH = 560;
 
-type DayovaSheetSize = "content" | "medium";
 type DayovaSheetPhase = "closed" | "opening" | "presented" | "closing";
 
 type DayovaSheetFrameProps = {
@@ -48,7 +52,6 @@ type DayovaSheetFrameProps = {
 	description?: ReactNode;
 	children?: ReactNode;
 	footer?: ReactNode;
-	size?: DayovaSheetSize;
 	dismissible?: boolean;
 	showCloseButton?: boolean;
 	compactCloseButton?: boolean;
@@ -60,6 +63,22 @@ type DayovaSheetFrameProps = {
 	maxWidth?: number;
 };
 
+// Gorhom forwards only selected accessibility props to its native content.
+// Wrap the actual portal so its scroll area AND floating footer form one modal.
+function SheetModalContainer({ children }: { children?: ReactNode }) {
+	return (
+		<View
+			accessibilityViewIsModal
+			pointerEvents="box-none"
+			// The third-party portal host must cover the native viewport.
+			style={StyleSheet.absoluteFill}
+			testID="dayova-sheet-modal"
+		>
+			{children}
+		</View>
+	);
+}
+
 function DayovaSheetFrame({
 	visible,
 	onClose,
@@ -69,11 +88,10 @@ function DayovaSheetFrame({
 	description,
 	children,
 	footer,
-	size = "content",
 	dismissible = true,
 	showCloseButton = true,
 	compactCloseButton = false,
-	scrollable = false,
+	scrollable = true,
 	closeAccessibilityLabel = "Dialog schließen",
 	accessibilityLabel,
 	returnFocusRef,
@@ -103,17 +121,27 @@ function DayovaSheetFrame({
 	const sheetWidth = Math.min(availableSheetWidth, maxWidth);
 	const sheetHorizontalInset = Math.max((windowWidth - sheetWidth) / 2, 0);
 	const maximumHeight = Math.max(
-		240,
+		1,
 		Math.min(windowHeight - insets.top - 20, 720),
 	);
-	const fixedHeight =
-		scrollable || fontScale >= 1.2
-			? maximumHeight
-			: Math.min(maximumHeight, windowHeight * 0.68, 560);
-	const snapPoints = useMemo(
-		() => (size === "content" ? undefined : [fixedHeight]),
-		[fixedHeight, size],
-	);
+	const { horizontalPadding } = getContentSizeLayout({
+		fontScale,
+		viewportWidth: sheetWidth,
+		requestedHorizontalPadding: 24,
+	});
+	const bottomPadding = Math.max(insets.bottom + 20, 32);
+	const [footerHeight, setFooterHeight] = useState(0);
+	// A pinned action area must leave meaningful room for reading. At large
+	// text sizes or in a short viewport, the entire dialog scrolls together.
+	const hasFixedFooter =
+		Boolean(footer) &&
+		scrollable &&
+		fontScale < 1.5 &&
+		maximumHeight >= 480 &&
+		footerHeight <= maximumHeight * 0.4;
+	const measureFooter = useCallback((event: LayoutChangeEvent) => {
+		setFooterHeight(event.nativeEvent.layout.height);
+	}, []);
 	const accessibleTitle =
 		accessibilityLabel ?? (typeof title === "string" ? title : "Dialog");
 
@@ -278,7 +306,32 @@ function DayovaSheetFrame({
 
 	const canShowCloseButton = showCloseButton && dismissible;
 	const hasHeader = Boolean(title || description || canShowCloseButton);
-	const hasFixedFooter = scrollable && size !== "content" && Boolean(footer);
+	const hasSeparateCloseRow = fontScale >= 1.5 && canShowCloseButton;
+	const actions = useMemo(
+		() =>
+			footer ? (
+				<View
+					onAccessibilityEscape={dismiss}
+					onLayout={measureFooter}
+					className="bg-card pt-4"
+					// Measured action size and screen insets control the pinned/flow layout.
+					style={{
+						paddingHorizontal: horizontalPadding,
+						paddingBottom: bottomPadding,
+					}}
+					testID="dayova-sheet-actions"
+				>
+					{footer}
+				</View>
+			) : null,
+		[footer, dismiss, measureFooter, horizontalPadding, bottomPadding],
+	);
+	const renderFooter = useCallback(
+		(props: BottomSheetFooterProps) => (
+			<BottomSheetFooter {...props}>{actions}</BottomSheetFooter>
+		),
+		[actions],
+	);
 	const content = (
 		<View
 			accessibilityActions={
@@ -286,120 +339,78 @@ function DayovaSheetFrame({
 					? [{ name: "escape", label: closeAccessibilityLabel }]
 					: undefined
 			}
-			accessibilityViewIsModal
 			importantForAccessibility="yes"
 			onAccessibilityAction={handleAccessibilityAction}
 			onAccessibilityEscape={dismiss}
-			className={cn(
-				"bg-card pt-1",
-				!scrollable && "px-6",
-				size !== "content" && !scrollable && "flex-1",
-			)}
-			// Safe-area padding is runtime device data and cannot be a static utility.
-			style={
-				scrollable && size !== "content"
-					? { flex: 1 }
-					: { paddingBottom: Math.max(insets.bottom + 20, 32) }
-			}
+			className="bg-card pt-1"
+			testID="dayova-sheet-content"
 		>
-			{!title ? (
-				<View
-					ref={initialFocusRef}
-					accessible
-					accessibilityLabel={accessibleTitle}
-					accessibilityRole="header"
-					className="absolute h-px w-px opacity-[0.01]"
-					collapsable={false}
-				/>
-			) : null}
-			{hasHeader ? (
-				<View
-					className={cn("mb-6 gap-3", scrollable && "px-6")}
-					testID={scrollable ? "dayova-sheet-header" : undefined}
-				>
-					<View className="min-h-10 flex-row items-start gap-4">
-						{title ? (
-							<View
-								ref={initialFocusRef}
-								accessible
-								accessibilityLabel={accessibleTitle}
-								accessibilityRole="header"
-								className="flex-1"
-								collapsable={false}
-							>
-								<Text className="pt-1 font-poppins font-semibold text-body-1 text-text">
-									{title}
-								</Text>
+			<View
+				// Horizontal spacing responds to the available width and text size.
+				style={{ paddingHorizontal: horizontalPadding }}
+			>
+				{!title ? (
+					<View
+						ref={initialFocusRef}
+						accessible
+						accessibilityLabel={accessibleTitle}
+						accessibilityRole="header"
+						className="absolute h-px w-px opacity-[0.01]"
+						collapsable={false}
+					/>
+				) : null}
+				{hasHeader ? (
+					<View className="mb-6 gap-3" testID="dayova-sheet-header">
+						{hasSeparateCloseRow ? (
+							<View className="self-end">
+								<CloseButton
+									compact={compactCloseButton}
+									accessibilityLabel={closeAccessibilityLabel}
+									onPress={dismiss}
+								/>
 							</View>
-						) : (
-							<View className="flex-1" />
-						)}
-						{canShowCloseButton ? (
-							<CloseButton
-								compact={compactCloseButton}
-								accessibilityLabel={closeAccessibilityLabel}
-								onPress={dismiss}
-							/>
+						) : null}
+						<View className="min-h-10 flex-row items-start gap-4">
+							{title ? (
+								<View
+									ref={initialFocusRef}
+									accessible
+									accessibilityLabel={accessibleTitle}
+									accessibilityRole="header"
+									className="min-w-0 flex-1"
+									collapsable={false}
+								>
+									<Text
+										accessible={false}
+										accessibilityRole="header"
+										className="pt-1 font-poppins font-semibold text-body-1 text-text"
+									>
+										{title}
+									</Text>
+								</View>
+							) : (
+								<View className="flex-1" />
+							)}
+							{canShowCloseButton && !hasSeparateCloseRow ? (
+								<CloseButton
+									compact={compactCloseButton}
+									accessibilityLabel={closeAccessibilityLabel}
+									onPress={dismiss}
+								/>
+							) : null}
+						</View>
+						{description ? (
+							<Text className="font-poppins text-body-3 text-secondary-text">
+								{description}
+							</Text>
 						) : null}
 					</View>
-					{description ? (
-						<Text className="font-poppins text-body-3 text-secondary-text">
-							{description}
-						</Text>
-					) : null}
-				</View>
-			) : null}
-			{scrollable && size !== "content" ? (
-				<>
-					<BottomSheetScrollView
-						bounces={false}
-						contentContainerStyle={{
-							paddingBottom: hasFixedFooter
-								? 12
-								: Math.max(insets.bottom + 20, 32),
-						}}
-						keyboardShouldPersistTaps="handled"
-						nestedScrollEnabled
-						showsVerticalScrollIndicator={false}
-						// Gorhom scrollables require their fill geometry through `style`.
-						style={{ flex: 1 }}
-						testID="dayova-sheet-scroll-content"
-					>
-						{children ? (
-							<View className={cn("px-6", contentClassName)}>{children}</View>
-						) : null}
-					</BottomSheetScrollView>
-					{hasFixedFooter ? (
-						<View
-							className="bg-card px-6 pt-4"
-							style={{ paddingBottom: Math.max(insets.bottom + 20, 32) }}
-						>
-							{footer}
-						</View>
-					) : null}
-				</>
-			) : (
-				<>
-					{children ? (
-						<View
-							className={cn(
-								size !== "content" && "flex-1",
-								scrollable && "px-6",
-								contentClassName,
-							)}
-						>
-							{children}
-						</View>
-					) : null}
-					{footer ? (
-						<View
-							className={cn(children && "mt-6", scrollable && "px-6")}
-						>
-							{footer}
-						</View>
-					) : null}
-				</>
-			)}
+				) : null}
+				{children ? (
+					<View className={cn(contentClassName)}>{children}</View>
+				) : null}
+			</View>
+			{!hasFixedFooter ? actions : null}
 		</View>
 	);
 
@@ -408,12 +419,14 @@ function DayovaSheetFrame({
 		// runtime width and theme colors cannot be represented by static utilities.
 		<BottomSheetModal
 			ref={sheetRef}
+			containerComponent={SheetModalContainer}
 			accessible={false}
 			android_keyboardInputMode="adjustResize"
 			backgroundComponent={renderBackground}
 			backgroundStyle={{ backgroundColor: colors.surface }}
 			backdropComponent={renderBackdrop}
-			enableDynamicSizing={size === "content"}
+			enableDynamicSizing
+			footerComponent={hasFixedFooter ? renderFooter : undefined}
 			enablePanDownToClose={dismissible}
 			handleIndicatorStyle={{
 				backgroundColor: colors.border,
@@ -425,7 +438,6 @@ function DayovaSheetFrame({
 			maxDynamicContentSize={maximumHeight}
 			onChange={handleChange}
 			onDismiss={handleDismiss}
-			snapPoints={snapPoints}
 			style={{
 				borderTopLeftRadius: DAYOVA_DESIGN_SYSTEM.radius.rectangle,
 				borderTopRightRadius: DAYOVA_DESIGN_SYSTEM.radius.rectangle,
@@ -434,22 +446,24 @@ function DayovaSheetFrame({
 				width: sheetWidth,
 			}}
 		>
-			{scrollable && size === "content" ? (
+			{scrollable ? (
 				<BottomSheetScrollView
 					bounces={false}
 					keyboardShouldPersistTaps="handled"
-					showsVerticalScrollIndicator={false}
-					testID="dayova-sheet-scroll-view"
+					nestedScrollEnabled
+					showsVerticalScrollIndicator
+					enableFooterMarginAdjustment={hasFixedFooter}
+					// Gorhom includes this measured inset in dynamic sizing and scrolling,
+					// so the last content never sits behind the floating action area.
+					contentContainerStyle={{
+						paddingBottom: footer ? (hasFixedFooter ? 8 : 0) : bottomPadding,
+					}}
+					testID="dayova-sheet-scroll-content"
 				>
 					{content}
 				</BottomSheetScrollView>
-			) : scrollable ? (
-				content
 			) : (
-				<BottomSheetView
-					// Gorhom views do not expose NativeWind class props.
-					style={size !== "content" ? { flex: 1 } : undefined}
-				>
+				<BottomSheetView style={{ paddingBottom: footer ? 0 : bottomPadding }}>
 					{content}
 				</BottomSheetView>
 			)}

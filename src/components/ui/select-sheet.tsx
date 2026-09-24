@@ -38,7 +38,6 @@ function SelectSheet<T extends string | number>({
 			closeAccessibilityLabel="Auswahl schließen"
 			contentClassName="gap-3"
 			scrollable
-			size="content"
 		>
 			{options.map((option) => {
 				const isSelected = selectedValue === option;
