@@ -12,7 +12,6 @@ import {
 	ChevronDown,
 	Clock3,
 	PropertyEdit,
-	X,
 } from "~/components/ui/icon";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { ActionSurface, Surface } from "~/components/ui/surface";
@@ -115,39 +114,36 @@ export function MaterialCard({
 	size: number;
 	onRemove: () => void;
 }) {
-	const { colors } = useDayovaTheme();
 	const { shouldStackInlineContent } = useContentSizeLayout();
 
 	return (
-		<Surface
-			className="mb-3 flex-row items-center rounded-[24px] px-4 py-4"
-			variant="soft"
-		>
-			<View className="h-11 w-11 items-center justify-center rounded-full bg-primary/12">
-				<Attachment size={21} color="#00BAFF" strokeWidth={2.2} />
+		<Surface className="mb-3 gap-3 rounded-[24px] px-4 py-4" variant="soft">
+			<View className="flex-row items-center">
+				<View className="h-11 w-11 items-center justify-center rounded-full bg-primary/12">
+					<Attachment size={21} color="#00BAFF" strokeWidth={2.2} />
+				</View>
+				<View className="ml-3 flex-1">
+					<Text
+						numberOfLines={shouldStackInlineContent ? undefined : 1}
+						className="font-poppins font-semibold text-body-3 text-text"
+					>
+						{name}
+					</Text>
+					<Text className="mt-1 font-poppins text-body-4 text-text/50">
+						{formatFileSize(size)}
+					</Text>
+				</View>
 			</View>
-			<View className="ml-3 flex-1">
-				<Text
-					numberOfLines={shouldStackInlineContent ? undefined : 1}
-					className="font-poppins font-semibold text-body-3 text-text"
-				>
-					{name}
-				</Text>
-				<Text className="mt-1 font-poppins text-body-4 text-text/50">
-					{formatFileSize(size)}
-				</Text>
-			</View>
-			<TouchableOpacity
+			<Button
 				accessibilityHint="Entfernt dieses hochgeladene Material aus dem Lernplan."
 				accessibilityLabel={`${name} entfernen`}
 				accessibilityRole="button"
-				activeOpacity={0.75}
-				hitSlop={8}
 				onPress={onRemove}
-				className="h-9 w-9 items-center justify-center rounded-full bg-black/5"
+				variant="destructive"
+				size="sm"
 			>
-				<X size={16} color={colors.text} strokeWidth={2.3} />
-			</TouchableOpacity>
+				<Text className="shrink text-center">Entfernen</Text>
+			</Button>
 		</Surface>
 	);
 }
@@ -445,7 +441,7 @@ export function SessionEditForm({
 				)}
 			>
 				<Button
-					variant="neutral"
+					variant="destructive"
 					className={
 						shouldStackInlineContent
 							? "w-full shadow-none"

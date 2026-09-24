@@ -299,7 +299,6 @@ function DayovaSheetFrame({
 
 	const canShowCloseButton = showCloseButton && dismissible;
 	const hasHeader = Boolean(title || description || canShowCloseButton);
-	const hasSeparateCloseRow = fontScale >= 1.5 && canShowCloseButton;
 	const actions = useMemo(
 		() =>
 			footer ? (
@@ -354,28 +353,28 @@ function DayovaSheetFrame({
 				) : null}
 				{hasHeader ? (
 					<View className="mb-6 gap-3" testID="dayova-sheet-header">
-						{hasSeparateCloseRow ? (
-							<View className="self-end">
+						{canShowCloseButton ? (
+							<View className="mb-2 self-end" testID="dayova-sheet-close-row">
 								<CloseButton
 									accessibilityLabel={closeAccessibilityLabel}
 									onPress={dismiss}
 								/>
 							</View>
 						) : null}
-						<View className="min-h-10 flex-row items-start gap-4">
+						<View className="w-full" testID="dayova-sheet-title-row">
 							{title ? (
 								<View
 									ref={initialFocusRef}
 									accessible
 									accessibilityLabel={accessibleTitle}
 									accessibilityRole="header"
-									className="min-w-0 flex-1"
+									className="min-w-0"
 									collapsable={false}
 								>
 									<Text
 										accessible={false}
 										accessibilityRole="header"
-										className="pt-1 font-poppins font-semibold text-body-1 text-text"
+										className="font-poppins font-semibold text-body-1 text-text"
 									>
 										{title}
 									</Text>
@@ -383,12 +382,6 @@ function DayovaSheetFrame({
 							) : (
 								<View className="flex-1" />
 							)}
-							{canShowCloseButton && !hasSeparateCloseRow ? (
-								<CloseButton
-									accessibilityLabel={closeAccessibilityLabel}
-									onPress={dismiss}
-								/>
-							) : null}
 						</View>
 						{description ? (
 							<Text className="font-poppins text-body-3 text-secondary-text">
