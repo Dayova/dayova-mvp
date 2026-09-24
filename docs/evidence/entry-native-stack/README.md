@@ -47,7 +47,7 @@ restarted flow cannot update the old exam. A complete cold resume still restores
 all predecessors.
 
 After refreshing the stack against the 2026-09-24 `main`, the final combined
-branch passed 67 Jest suites / 300 tests, 119 Vitest files / 778 tests with two
+branch passed 67 Jest suites / 300 tests, 121 Vitest files / 825 tests with two
 workers, TypeScript, Biome, ESLint, and whitespace checks. The smaller worker
 count avoids local timeouts caused by concurrent Expo config subprocesses. The
 native recordings below predate this URL-validation change; they remain evidence
@@ -170,11 +170,24 @@ Both sheets and individual before/after frames were inspected.
 
 Coverage: 11.79-second video; 24 full-timeline frames sampled at 2 fps (0.5-second interval); 2 contact sheet(s); no audio stream.
 
-## Remaining release checks
+## Release-build check and remaining scope
 
-Neither an OS-killed cold deep link nor the exact current-lockfile release binary
-has been verified natively. Expo development builds do not support custom-scheme
-cold launch testing in the same way as release builds ([Expo documentation](https://docs.expo.dev/develop/development-builds/development-workflows/)).
-The real Expo parser regression verifies the leaf-only cold URL shape, retained
-exam ID, date, duration, and reconstructed predecessors. Repeat OS-killed entry
-and saved-exam resume URLs in a current preview/release build before release.
+An [iOS simulator release build](https://expo.dev/accounts/dayova/projects/dayova/builds/210ca4b3-ca1a-41d5-a52b-e5e2e3d0e945)
+from `bf6e0fec` finished successfully using the current lockfile, production
+environment, `ota-staging` channel, and `de.dayova.app` bundle ID. It was
+installed and cold-launched on the iPhone 16 / iOS 26.5 simulator. The app
+reached its welcome and login screens without a crash. Later stack-refresh
+commits changed workflow, release-documentation, and test files only; the
+release build has the same app source and native dependencies as the PR head.
+
+This fresh install has no authenticated session. The login screen has only
+email/password sign-in and registration, and the repository supplies no reusable
+test account. Therefore the release binary has **not** exercised the exam flow,
+OS-killed cold entry/resume URLs, or gestures through authenticated screens.
+The development-client native recordings above cover those gestures with an
+isolated fixture. The real Expo parser regression covers the leaf-only cold URL
+shape, retained exam ID, date, duration, and reconstructed predecessors.
+Repeat OS-killed entry and saved-exam resume URLs in an authenticated
+preview/release build before release. Expo development builds do not support
+custom-scheme cold launch testing in the same way as release builds
+([Expo documentation](https://docs.expo.dev/develop/development-builds/development-workflows/)).
