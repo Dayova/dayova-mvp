@@ -1,5 +1,5 @@
 import type { Doc, Id } from "./_generated/dataModel";
-import type { MutationCtx } from "./_generated/server";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 import {
 	type AdaptiveLearningTarget,
 	type AdaptiveTargetHistory,
@@ -8,10 +8,11 @@ import {
 	selectAdaptiveMaintenanceTarget,
 	selectNextAdaptiveLearningTarget,
 } from "./adaptiveLearningPlanPolicy";
+import { throwUserFacingError } from "./errors";
 import { setLearningPlanGenerationProgress } from "./learningPlanGenerationProgressModel";
 import { deleteSessionLearningDataForSession } from "./learningSessionContent";
-import { normalizeLearningTopics } from "./learningTopicMap";
 import { parseLearningWindowEnd } from "./learningTimePolicy";
+import { normalizeLearningTopics } from "./learningTopicMap";
 import { getScheduleConflictMessage } from "./scheduleConflicts";
 
 const MAX_LEARNING_TIMES = 50;
@@ -209,7 +210,7 @@ const formatDateLabel = (date: Date) =>
 	}).format(date);
 
 const getRollingSessionSchedule = async (
-	ctx: MutationCtx,
+	ctx: MutationCtx | QueryCtx,
 	args: {
 		ownerTokenIdentifier: string;
 		plan: Doc<"learningPlans">;
@@ -217,15 +218,31 @@ const getRollingSessionSchedule = async (
 		durationMinutes: number;
 		excludeSession?: Doc<"learningPlanSessions">;
 		requireFullDuration?: boolean;
+		preview?: {
+			referenceTime: number;
+			learningTimes: Array<{
+				dayOfWeek: number;
+				startTime: string;
+				endTime: string;
+			}>;
+			excludeSessionIds: Set<string>;
+			reserved: Array<{
+				dateKey: string;
+				startTime: string;
+				durationMinutes: number;
+			}>;
+		};
 	},
 ) => {
-	const learningTimes = await ctx.db
-		.query("userLearningTimes")
-		.withIndex("by_ownerTokenIdentifier", (q) =>
-			q.eq("ownerTokenIdentifier", args.ownerTokenIdentifier),
-		)
-		.take(MAX_LEARNING_TIMES);
-	const now = new Date();
+	const learningTimes =
+		args.preview?.learningTimes ??
+		(await ctx.db
+			.query("userLearningTimes")
+			.withIndex("by_ownerTokenIdentifier", (q) =>
+				q.eq("ownerTokenIdentifier", args.ownerTokenIdentifier),
+			)
+			.take(MAX_LEARNING_TIMES));
+	const now = args.preview ? new Date(args.preview.referenceTime) : new Date();
 	const berlinNow = getBerlinDateTime(now);
 	// Completed sessions no longer constrain the next slot to their original date.
 	const afterCompletedSession =
@@ -249,7 +266,8 @@ const getRollingSessionSchedule = async (
 			? null
 			: afterStartMinutes + args.afterSession.durationMinutes;
 
-	while (cursor < examDate) {
+	let searchedDays = 0;
+	while (cursor < examDate && searchedDays++ < 366) {
 		const dateKey = cursor.toISOString().slice(0, 10);
 		const utcDay = cursor.getUTCDay();
 		const dayOfWeek = utcDay === 0 ? 7 : utcDay;
@@ -275,6 +293,11 @@ const getRollingSessionSchedule = async (
 				candidateStart + 10 <= end;
 				candidateStart += 10
 			) {
+				if (
+					args.requireFullDuration &&
+					candidateStart + args.durationMinutes > end
+				)
+					break;
 				windowCandidates.push({
 					startTime: formatTimeMinutes(candidateStart),
 					durationMinutes: Math.min(args.durationMinutes, end - candidateStart),
@@ -291,6 +314,8 @@ const getRollingSessionSchedule = async (
 				durationMinutes: candidate.durationMinutes,
 				excludeDayEntryId: args.excludeSession?.dayEntryId,
 				excludeLearningPlanSessionId: args.excludeSession?._id,
+				excludeSessionIds: args.preview?.excludeSessionIds,
+				reserved: args.preview?.reserved,
 			});
 			if (!conflict) {
 				return {
@@ -304,6 +329,149 @@ const getRollingSessionSchedule = async (
 		cursor.setUTCDate(cursor.getUTCDate() + 1);
 	}
 	return null;
+};
+
+/** One read-only calculation powers both consent previews and their atomic apply. */
+export const computeLearningTimeImpact = async (
+	ctx: QueryCtx | MutationCtx,
+	ownerTokenIdentifier: string,
+	learningTimes: Array<{
+		dayOfWeek: number;
+		startTime: string;
+		endTime: string;
+	}>,
+	referenceTime: number,
+) => {
+	const plans = (
+		await Promise.all(
+			(["accepted", "generated"] as const).map((status) =>
+				ctx.db
+					.query("learningPlans")
+					.withIndex("by_ownerTokenIdentifier_and_status", (q) =>
+						q
+							.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+							.eq("status", status),
+					)
+					.take(51),
+			),
+		)
+	).flat();
+	if (plans.length > 50)
+		throwUserFacingError(
+			"Zu viele aktive Lernpläne für eine sichere Vorschau. Deine bisherigen Zeiten bleiben unverändert.",
+		);
+	plans.sort(
+		(a, b) =>
+			a.examDateKey.localeCompare(b.examDateKey) || a._id.localeCompare(b._id),
+	);
+	const groups = await Promise.all(
+		plans.map(async (plan) => {
+			const sessions = await ctx.db
+				.query("learningPlanSessions")
+				.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+					q.eq("learningPlanId", plan._id),
+				)
+				.take(51);
+			if (sessions.length > 50)
+				throwUserFacingError(
+					"Dieser Lernplan ist zu groß für eine sichere Vorschau.",
+				);
+			return { plan, sessions };
+		}),
+	);
+	const pending = groups.flatMap(({ sessions }) =>
+		sessions.filter((s) => getSessionExecutionStatus(s) === "notStarted"),
+	);
+	const preview = {
+		referenceTime,
+		learningTimes,
+		excludeSessionIds: new Set(pending.map((s) => s._id)),
+		reserved: [] as Array<{
+			dateKey: string;
+			startTime: string;
+			durationMinutes: number;
+		}>,
+	};
+	const changes: Array<{
+		sessionId: Id<"learningPlanSessions">;
+		planId: Id<"learningPlans">;
+		title: string;
+		previousDateKey: string;
+		previousStartTime: string;
+		dateKey: string;
+		dateLabel: string;
+		startTime: string;
+		durationMinutes: number;
+	}> = [];
+	const conflicts: Array<{
+		sessionId: Id<"learningPlanSessions">;
+		title: string;
+		examDateKey: string;
+	}> = [];
+	for (const { plan, sessions } of groups) {
+		let previous = sessions
+			.filter((s) => getSessionExecutionStatus(s) !== "notStarted")
+			.at(-1);
+		let blocked = false;
+		for (const session of sessions.filter(
+			(s) => getSessionExecutionStatus(s) === "notStarted",
+		)) {
+			const schedule = blocked
+				? null
+				: await getRollingSessionSchedule(ctx, {
+						ownerTokenIdentifier,
+						plan,
+						afterSession: previous,
+						durationMinutes: session.durationMinutes,
+						excludeSession: session,
+						requireFullDuration: true,
+						preview,
+					});
+			if (!schedule) {
+				blocked = true;
+				conflicts.push({
+					sessionId: session._id,
+					title: session.title,
+					examDateKey: plan.examDateKey,
+				});
+				continue;
+			}
+			preview.reserved.push(schedule);
+			if (
+				session.dateKey !== schedule.dateKey ||
+				session.startTime !== schedule.startTime
+			)
+				changes.push({
+					sessionId: session._id,
+					planId: plan._id,
+					title: session.title,
+					previousDateKey: session.dateKey,
+					previousStartTime: session.startTime,
+					...schedule,
+				});
+			previous = { ...session, ...schedule };
+		}
+	}
+	// Bind consent to both the observed revisions and the concrete resulting dates.
+	const revision = JSON.stringify([
+		groups.map(({ plan, sessions }) => [
+			plan._id,
+			plan.updatedAt,
+			plan.examDateKey,
+			sessions.map((s) => [
+				s._id,
+				s.updatedAt,
+				s.executionStatus,
+				s.completed,
+				s.dateKey,
+				s.startTime,
+			]),
+		]),
+		learningTimes,
+		changes,
+		conflicts,
+	]);
+	return { changes, conflicts, revision };
 };
 
 export const rescheduleFutureLearningPlanSessions = async (

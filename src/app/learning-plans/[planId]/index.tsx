@@ -46,6 +46,7 @@ import {
 	getLearningPathNodeState,
 	LearningPathVisual,
 } from "~/features/learning-plans/learning-path-visual";
+import { LearningTimeImpactSheet } from "~/features/learning-plans/learning-time-impact-sheet";
 import { LearningTimeSuggestionCard } from "~/features/learning-plans/learning-time-suggestion-card";
 import { NextSessionRecovery } from "~/features/learning-plans/next-session-recovery";
 import {
@@ -310,8 +311,8 @@ export default function LearningPlanSessionsScreen() {
 	const confirmProposedDefaults = useMutation(
 		api.learningTimes.confirmProposedDefaults,
 	);
-	const applyBehavioralSuggestion = useMutation(
-		api.learningTimes.applyBehavioralSuggestion,
+	const [impactFingerprint, setImpactFingerprint] = useState<string | null>(
+		null,
 	);
 	const respondToBehavioralSuggestion = useMutation(
 		api.learningTimes.respondToBehavioralSuggestion,
@@ -652,11 +653,8 @@ export default function LearningPlanSessionsScreen() {
 										behavioralLearningTimeSuggestion.observedStartTime
 									}
 									onConfirm={() =>
-										void runLearningTimeAction(() =>
-											applyBehavioralSuggestion({
-												fingerprint:
-													behavioralLearningTimeSuggestion.fingerprint,
-											}),
+										setImpactFingerprint(
+											behavioralLearningTimeSuggestion.fingerprint,
 										)
 									}
 									onAdjust={() =>
@@ -758,6 +756,11 @@ export default function LearningPlanSessionsScreen() {
 					<View />
 				)}
 			</ScrollView>
+			<LearningTimeImpactSheet
+				fingerprint={impactFingerprint}
+				referenceTime={behaviorSuggestionReferenceTime}
+				onClose={() => setImpactFingerprint(null)}
+			/>
 		</Screen>
 	);
 }

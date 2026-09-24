@@ -421,6 +421,7 @@ test("offers and applies a consent-based behavioral learning-time suggestion", a
 	await expect(
 		t.mutation(api.learningTimes.applyBehavioralSuggestion, {
 			fingerprint: suggestion.fingerprint,
+			expectedImpactRevision: "stale",
 		}),
 	).rejects.toThrow();
 	expect(await t.query(api.learningTimes.listMine, {})).toEqual(originalTimes);
@@ -460,9 +461,15 @@ test("offers and applies a consent-based behavioral learning-time suggestion", a
 			updatedAt: Date.now(),
 		});
 	});
+	const blockedImpact = await t.query(
+		api.learningTimes.previewBehavioralSuggestion,
+		{ fingerprint: suggestion.fingerprint, referenceTime: Date.now() },
+	);
+	expect(blockedImpact?.conflicts).toHaveLength(1);
 	await expect(
 		t.mutation(api.learningTimes.applyBehavioralSuggestion, {
 			fingerprint: suggestion.fingerprint,
+			expectedImpactRevision: blockedImpact?.revision ?? "missing",
 		}),
 	).rejects.toThrow();
 	expect(await t.query(api.learningTimes.listMine, {})).toEqual(originalTimes);
@@ -478,8 +485,16 @@ test("offers and applies a consent-based behavioral learning-time suggestion", a
 			examDateKey: "2099-01-30",
 		});
 	});
+	const impact = await t.query(api.learningTimes.previewBehavioralSuggestion, {
+		fingerprint: suggestion.fingerprint,
+		referenceTime: Date.now(),
+	});
+	expect(impact?.conflicts).toEqual([]);
+	expect(await t.query(api.learningTimes.listMine, {})).toEqual(originalTimes);
+	if (!impact) throw new Error("Expected impact preview");
 	await t.mutation(api.learningTimes.applyBehavioralSuggestion, {
 		fingerprint: suggestion.fingerprint,
+		expectedImpactRevision: impact.revision,
 	});
 	expect(await t.query(api.learningTimes.listMine, {})).toEqual([
 		expect.objectContaining({
@@ -503,6 +518,7 @@ test("offers and applies a consent-based behavioral learning-time suggestion", a
 	await expect(
 		t.mutation(api.learningTimes.applyBehavioralSuggestion, {
 			fingerprint: suggestion.fingerprint,
+			expectedImpactRevision: impact.revision,
 		}),
 	).rejects.toThrow();
 	expect(after?.plan.behavioralLearningTimeSuggestion).toBeUndefined();

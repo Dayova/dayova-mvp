@@ -18,6 +18,31 @@ const defaultPreferences: NotificationPlanningPreferences = {
 	forgottenEventEnabled: true,
 };
 
+test.each([
+	"started",
+	"completed",
+	"partiallyCompleted",
+	"missed",
+	"adjusted",
+] as const)("does not retain old learning reminders after %s", (executionStatus) => {
+	const plan = buildLocalNotificationPlan({
+		now: new Date(2026, 5, 16, 7, 0),
+		preferences: { ...defaultPreferences, dailyBriefingEnabled: false },
+		entriesByDay: {
+			"2026-06-16": [
+				{
+					title: "Lernschritt",
+					time: "17:00",
+					kind: "Lernen",
+					durationMinutes: 30,
+					executionStatus,
+				},
+			],
+		},
+	});
+	expect(plan).toEqual([]);
+});
+
 test("local notification planner creates briefing, before-event, and forgotten reminders for incomplete entries", () => {
 	const plan = buildLocalNotificationPlan({
 		now: new Date(2026, 5, 16, 7, 0),

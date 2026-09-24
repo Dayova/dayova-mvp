@@ -214,6 +214,7 @@ export default defineSchema({
 			),
 		),
 		learningTimeIntroPromptHandledAt: v.optional(v.number()),
+		learningRoutineDismissedDateKey: v.optional(v.string()),
 		behavioralLearningTimeSuggestionDismissedFingerprint: v.optional(
 			v.string(),
 		),

@@ -4,6 +4,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { assertAccountActive } from "./accountDeletion";
+import { computeLearningTimeImpact } from "./adaptiveLearningPlan";
 import { throwUserFacingError } from "./errors";
 import { deriveProposedLearningTimes } from "./learningTimeAvailability";
 import {
@@ -239,6 +240,95 @@ const beginFreshObservation = async (
 			behavioralLearningTimeUndo: undefined,
 		});
 };
+
+/** Voluntary home-only check-in; absence is never added to behavioral evidence. */
+export const getHomeRoutine = query({
+	args: { referenceTime: v.number() },
+	handler: async (ctx, { referenceTime }) => {
+		const identity = await requireIdentity(ctx);
+		const { dateKey } = getBerlinDateTime(new Date(referenceTime));
+		const { user, suggestion } = await getBehavioralSuggestion(
+			ctx,
+			identity.tokenIdentifier,
+			referenceTime,
+		);
+		if (
+			!user ||
+			user.learningRoutineDismissedDateKey === dateKey ||
+			isBehavioralSuggestionSnoozed(
+				user.behavioralLearningTimeSuggestionSnoozedAt,
+				referenceTime,
+			)
+		)
+			return null;
+		const behavioral =
+			suggestion &&
+			suggestion.fingerprint !==
+				user.behavioralLearningTimeSuggestionDismissedFingerprint
+				? suggestion
+				: null;
+		const entries = await ctx.db
+			.query("dayEntries")
+			.withIndex("by_ownerTokenIdentifier_and_dayKey", (q) =>
+				q
+					.eq("ownerTokenIdentifier", identity.tokenIdentifier)
+					.eq("dayKey", dateKey),
+			)
+			.take(100);
+		for (const entry of entries.sort((a, b) =>
+			(a.time ?? "").localeCompare(b.time ?? ""),
+		)) {
+			if (!entry.relatedLearningPlanSessionId) continue;
+			const session = await ctx.db.get(
+				"learningPlanSessions",
+				entry.relatedLearningPlanSessionId,
+			);
+			if (
+				!session ||
+				session.ownerTokenIdentifier !== identity.tokenIdentifier ||
+				session.completed ||
+				(session.executionStatus && session.executionStatus !== "notStarted") ||
+				session.planningStatus === "provisional" ||
+				session.dateKey !== dateKey
+			)
+				continue;
+			const plan = await ctx.db.get("learningPlans", session.learningPlanId);
+			if (
+				!plan ||
+				plan.ownerTokenIdentifier !== identity.tokenIdentifier ||
+				plan.status !== "accepted" ||
+				plan.examDateKey <= dateKey
+			)
+				continue;
+			return {
+				behavioral,
+				session: {
+					id: session._id,
+					planId: plan._id,
+					title: session.title,
+					startTime: session.startTime,
+					durationMinutes: session.durationMinutes,
+					updatedAt: session.updatedAt,
+				},
+			};
+		}
+		return behavioral ? { behavioral, session: null } : null;
+	},
+});
+
+export const dismissHomeRoutine = mutation({
+	args: {},
+	returns: v.null(),
+	handler: async (ctx) => {
+		const identity = await requireIdentity(ctx);
+		const user = await getOwnerUser(ctx, identity.tokenIdentifier);
+		if (user)
+			await ctx.db.patch("users", user._id, {
+				learningRoutineDismissedDateKey: getBerlinDateTime().dateKey,
+			});
+		return null;
+	},
+});
 
 const ensureProposedDefaults = async (
 	ctx: MutationCtx,
@@ -497,8 +587,72 @@ export const confirmProposedDefaults = mutation({
 	},
 });
 
+const impactValidator = v.object({
+	revision: v.string(),
+	changes: v.array(
+		v.object({
+			sessionId: v.id("learningPlanSessions"),
+			planId: v.id("learningPlans"),
+			title: v.string(),
+			previousDateKey: v.string(),
+			previousStartTime: v.string(),
+			dateKey: v.string(),
+			dateLabel: v.string(),
+			startTime: v.string(),
+			durationMinutes: v.number(),
+		}),
+	),
+	conflicts: v.array(
+		v.object({
+			sessionId: v.id("learningPlanSessions"),
+			title: v.string(),
+			examDateKey: v.string(),
+		}),
+	),
+});
+
+export const previewBehavioralSuggestion = query({
+	args: { fingerprint: v.string(), referenceTime: v.number() },
+	returns: v.union(v.null(), impactValidator),
+	handler: async (ctx, args) => {
+		const identity = await requireIdentity(ctx);
+		const { suggestion, learningTimes, user } = await getBehavioralSuggestion(
+			ctx,
+			identity.tokenIdentifier,
+			args.referenceTime,
+		);
+		if (
+			!suggestion ||
+			suggestion.fingerprint !== args.fingerprint ||
+			user?.behavioralLearningTimeSuggestionDismissedFingerprint ===
+				args.fingerprint ||
+			isBehavioralSuggestionSnoozed(
+				user?.behavioralLearningTimeSuggestionSnoozedAt,
+				args.referenceTime,
+			)
+		)
+			return null;
+		const proposed = learningTimes.map((row) => {
+			const replacement = suggestion.entries.find(
+				(entry) => entry.dayOfWeek === row.dayOfWeek,
+			);
+			return {
+				dayOfWeek: row.dayOfWeek,
+				startTime: replacement?.startTime ?? row.startTime,
+				endTime: replacement?.endTime ?? row.endTime,
+			};
+		});
+		return await computeLearningTimeImpact(
+			ctx,
+			identity.tokenIdentifier,
+			proposed,
+			args.referenceTime,
+		);
+	},
+});
+
 export const applyBehavioralSuggestion = mutation({
-	args: { fingerprint: v.string() },
+	args: { fingerprint: v.string(), expectedImpactRevision: v.string() },
 	returns: v.object({
 		rescheduledCount: v.number(),
 		unscheduledCount: v.number(),
@@ -569,7 +723,10 @@ export const applyBehavioralSuggestion = mutation({
 			ctx,
 			identity.tokenIdentifier,
 		);
-		const result = await rescheduleAfterChange(ctx);
+		const result: { rescheduledCount: number; unscheduledCount: number } =
+			await ctx.runMutation(internal.learningPlans.applyLearningTimeImpact, {
+				expectedRevision: args.expectedImpactRevision,
+			});
 		if (result.unscheduledCount > 0) {
 			// Throwing rolls back both preference and calendar changes atomically.
 			throwUserFacingError(
