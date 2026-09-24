@@ -150,7 +150,9 @@ export default function NewLearningPlanScreen() {
 		params.topicDescription ?? params.teacherGuidance ?? null,
 	);
 	const [isBusy, setIsBusy] = useState(false);
-	const [isPostponingMaterial, setIsPostponingMaterial] = useState(false);
+	const [confirmedExit, setConfirmedExit] = useState<
+		"materialLater" | "pause" | null
+	>(null);
 	const [isUploading, setIsUploading] = useState(false);
 	const [retryingDocumentId, setRetryingDocumentId] =
 		useState<Id<"learningPlanDocuments"> | null>(null);
@@ -196,7 +198,7 @@ export default function NewLearningPlanScreen() {
 	const isPlanSnapshotLoading = Boolean(learningPlanId && snapshot === null);
 	const canUpload =
 		canWrite &&
-		!isPostponingMaterial &&
+		!confirmedExit &&
 		!isBusy &&
 		!openingUploadAction &&
 		!isPlanSnapshotLoading &&
@@ -698,7 +700,7 @@ export default function NewLearningPlanScreen() {
 				if (!isMeaningfulTopicDescription(topics)) {
 					throw new Error("Prüfungsthemen fehlen.");
 				}
-				setIsPostponingMaterial(true);
+				setConfirmedExit("materialLater");
 			},
 		);
 	};
@@ -789,20 +791,20 @@ export default function NewLearningPlanScreen() {
 	};
 
 	useBackIntent(hasExamEntry, goBack, {
-		allowRouteRemoval: isPostponingMaterial,
+		allowRouteRemoval: confirmedExit !== null,
 	});
 	// Commit the explicit exit intent before removing this protected native route.
 	// Ordinary Back/swipe still follows the saved-draft pause confirmation.
 	useEffect(() => {
-		if (!isPostponingMaterial) return;
-		if (setupOrigin === "resumedDraft") {
+		if (!confirmedExit) return;
+		if (confirmedExit === "pause" || setupOrigin === "resumedDraft") {
 			dismissToOrReplace(router, ROUTES.learningPlans);
 		} else {
 			router.replace(
 				examEntrySuccessPath({ dayKey: examDateKey, examDateLabel }),
 			);
 		}
-	}, [isPostponingMaterial, setupOrigin, router, examDateKey, examDateLabel]);
+	}, [confirmedExit, setupOrigin, router, examDateKey, examDateLabel]);
 	useLearningPlanCreationProgress({
 		active: true,
 		currentStep: currentProgressStep,
@@ -936,7 +938,7 @@ export default function NewLearningPlanScreen() {
 				onClose={() => setIsPauseConfirmationVisible(false)}
 				onConfirm={() => {
 					setIsPauseConfirmationVisible(false);
-					dismissToOrReplace(router, ROUTES.learningPlans);
+					setConfirmedExit("pause");
 				}}
 			/>
 		</Screen>

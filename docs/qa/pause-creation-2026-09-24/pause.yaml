@@ -1,0 +1,12 @@
+appId: de.dayova.app-dev
+---
+# Start on the topics screen of an existing saved QA draft.
+# Back position matches the reviewed iPhone viewport.
+- tapOn:
+    point: 14%,12%
+- assertVisible: Später fortsetzen
+- tapOn: Später fortsetzen
+- extendedWaitUntil:
+    visible: Deine Pläne
+    timeout: 8000
+- takeScreenshot: pause-success
