@@ -41,6 +41,21 @@ This fix does not complete grade-11 QA, adaptive/reminder acceptance, Android
 parity, or the separate product-quality review. Keep the PR draft until its
 required review/evidence gates are met.
 
+### Subsequent grade-10 diagnostic replay
+
+The same plan completed all five diagnostic answers in the iPhone simulator.
+The completion screen displayed “Wissenscheck abgeschlossen”. After returning
+to the plan, the reminder displayed Friday 16:00–22:00 as “Vorschlag von Dayova”.
+Choosing “Später” removed it without confirming the proposed hours; the plan
+remained accessible with its completed diagnostic node. The backend persisted
+`postDiagnosticLearningTimeReminderDismissedAt: 1790343769220`.
+This verifies presentation and skipping, not repeated-launch or adaptive consent
+behavior. The diagnostic segment was captured as still images, not a recording.
+
+| Diagnostic completed | Reminder | Skipped |
+| --- | --- | --- |
+| <a href="diagnostic-complete.png"><img src="diagnostic-complete.png" width="180" alt="Five-answer diagnostic completed" /></a> | <a href="reminder.png"><img src="reminder.png" width="180" alt="Unconfirmed grade-10 time suggestion" /></a> | <a href="reminder-skipped.png"><img src="reminder-skipped.png" width="180" alt="Plan after skipping the reminder" /></a> |
+
 | Before | After |
 | --- | --- |
 | <a href="before.png"><img src="before.png" width="180" alt="Persisted learning-plan generation failure" /></a> | <a href="after.png"><img src="after.png" width="180" alt="Generated ten-minute diagnostic" /></a> |
