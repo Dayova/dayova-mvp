@@ -98,7 +98,9 @@ test("Notion pagination includes duplicates and inventories beyond 200 contacts"
 			}),
 		),
 	);
-	await expect(createNotionClient("test", source).students()).rejects.toMatchObject({
+	await expect(
+		createNotionClient("test", source).students(),
+	).rejects.toMatchObject({
 		category: "capacity",
 	});
 });
@@ -624,8 +626,12 @@ test("a changed account email updates the linked Notion contact", async () => {
 	await finishAudit(t);
 	vi.stubEnv("NOTION_CRM_MODE", "off");
 	await t
-		.withIdentity({ subject: clerkId, tokenIdentifier, email })
-		.mutation(api.users.updateProfile, { email: "changed@example.com" });
+		.withIdentity({
+			subject: clerkId,
+			tokenIdentifier,
+			email: "changed@example.com",
+		})
+		.mutation(api.users.syncCurrentUser, {});
 	vi.stubEnv("NOTION_CRM_MODE", "live");
 	await finishAudit(t);
 	expect((patches[1] as { properties: unknown }).properties).toMatchObject({
@@ -767,8 +773,12 @@ test("an email already used by another Notion contact blocks the linked update",
 	expect(patches).toHaveLength(1);
 	vi.stubEnv("NOTION_CRM_MODE", "off");
 	await t
-		.withIdentity({ subject: clerkId, tokenIdentifier, email })
-		.mutation(api.users.updateProfile, { email: "changed@example.com" });
+		.withIdentity({
+			subject: clerkId,
+			tokenIdentifier,
+			email: "changed@example.com",
+		})
+		.mutation(api.users.syncCurrentUser, {});
 	vi.stubEnv("NOTION_CRM_MODE", "live");
 	expect((await finishAudit(t))[0]).toMatchObject({
 		status: "failed",
@@ -859,12 +869,13 @@ test("profile changes schedule live reconciliation once, while unchanged sign-in
 		});
 		await authenticated.mutation(api.users.updateProfile, { state: "Berlin" });
 		await authenticated.mutation(api.users.updateProfile, { state: "Berlin" });
-		await authenticated.mutation(api.users.updateProfile, {
+		const refreshedIdentity = t.withIdentity({
+			subject: clerkId,
+			tokenIdentifier,
 			email: "changed@example.com",
 		});
-		await authenticated.mutation(api.users.updateProfile, {
-			email: "changed@example.com",
-		});
+		await refreshedIdentity.mutation(api.users.syncCurrentUser, {});
+		await refreshedIdentity.mutation(api.users.syncCurrentUser, {});
 		vi.stubEnv("NOTION_CRM_MODE", "off");
 		await authenticated.mutation(api.users.updateProfile, { grade: "11" });
 		const scheduled = await t.run((ctx) =>

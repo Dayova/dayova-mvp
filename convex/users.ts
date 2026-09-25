@@ -508,6 +508,9 @@ export const updateProfile = mutation({
 		}
 
 		const patch = profileFields(args);
+		// Clerk owns email verification. Older clients may still send an email,
+		// but only syncCurrentUser can persist the primary address from its JWT.
+		delete patch.email;
 		await ctx.db.patch("users", user._id, patch);
 		await scheduleCrmProfileSync(ctx, user, patch);
 		return { success: true };
