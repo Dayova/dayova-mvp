@@ -54,7 +54,7 @@ Server-only Convex variables:
 | Variable | Value |
 | --- | --- |
 | `LOOPS_API_KEY` | API key stored only in the intended Convex deployment |
-| `LOOPS_STUDENT_LIST_ID` | Production: `cmucp5ftscjij0jyh2p78ed9y`; separate test list in development |
+| `LOOPS_STUDENT_LIST_ID` | Production: `cmucp5ftscjij0jyh2p78ed9y`; development: `cmucsgnds09t00jx5gxt255cs` (Schüler Testen) |
 | `LOOPS_MODE` | `off` (also the default) or `live` |
 
 1. Deploy with mode off. Confirm the deployment and Loops destination. Live mode
@@ -73,6 +73,19 @@ Server-only Convex variables:
 5. Inspect `loopsState:status` and a synthetic contact's readback. Confirm ordinary
    app signup never waits on the external API. Keep the parent CRM PR dependency
    intact until it is merged.
+
+The development deployment is `kindred-canary-599`; production is
+`sleek-bulldog-130`. Keep production mode off until both stack layers have passed
+required review/checks, merged into main and deployed successfully. The current
+EAS PR workflow targets main, so the child PR does not receive the complete CI/OTA
+report while its base is the CRM branch. After the parent merges, retarget/update
+the child against main and wait for its own required checks; local compatibility
+tests do not replace that gate.
+
+Before enabling production, check existing Loops contact/list triggers, run a
+production dry-run and inspect pending/review counts. After activation, verify
+delivery and monitor retries. Existing-account import remains DAY-467; enabling
+the worker only delivers accounts already queued by the new signup hook.
 
 ## Recovery and deletion
 
