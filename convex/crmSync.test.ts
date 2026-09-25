@@ -13,6 +13,45 @@ import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
 
+test("one Notion client spaces consecutive requests below the integration limit", async () => {
+	const requestTimes: number[] = [];
+	vi.stubGlobal(
+		"fetch",
+		vi.fn(async () => {
+			requestTimes.push(performance.now());
+			return Response.json({
+				results: [],
+				has_more: requestTimes.length === 1,
+				next_cursor: requestTimes.length === 1 ? "next" : null,
+			});
+		}),
+	);
+	await createNotionClient("test", source).students();
+	expect(requestTimes).toHaveLength(2);
+	expect(requestTimes[1] - requestTimes[0]).toBeGreaterThanOrEqual(375);
+});
+
+test("Notion throttling waits for Retry-After before retrying a safe request", async () => {
+	const requestTimes: number[] = [];
+	vi.stubGlobal(
+		"fetch",
+		vi.fn(async () => {
+			requestTimes.push(performance.now());
+			return requestTimes.length === 1
+				? new Response(null, {
+						status: 429,
+						headers: { "Retry-After": "1" },
+					})
+				: Response.json({
+						properties: { "Clerk User ID": { type: "rich_text" } },
+					});
+		}),
+	);
+	await createNotionClient("test", source).checkSchema(false);
+	expect(requestTimes).toHaveLength(2);
+	expect(requestTimes[1] - requestTimes[0]).toBeGreaterThanOrEqual(950);
+});
+
 test("Notion pagination includes duplicates and inventories beyond 200 contacts", async () => {
 	let calls = 0;
 	vi.stubGlobal(
