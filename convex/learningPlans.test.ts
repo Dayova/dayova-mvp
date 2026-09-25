@@ -1041,14 +1041,22 @@ test("atomically claims stale session retries and rejects a second claimant", as
 		t.mutation(internal.learningPlans.markContentGenerationClaimFailed, {
 			learningPlanId,
 			generationId: "outdated-retry",
+			failureReason: "materialProcessing",
 		}),
 	).resolves.toBe(false);
 	await expect(
 		t.mutation(internal.learningPlans.markContentGenerationClaimFailed, {
 			learningPlanId,
 			generationId: "claimed-retry",
+			failureReason: "materialProcessing",
 		}),
 	).resolves.toBe(true);
+	const failedRetry = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(failedRetry?.plan.contentGeneration?.failureReason).toBe(
+		"materialProcessing",
+	);
 	await expect(
 		t.mutation(
 			internal.learningPlans.claimIncompleteContentGenerationSessions,

@@ -101,6 +101,22 @@ const KNOWLEDGE_QUESTIONS_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Assess wh
 const GENERATED_PLAN_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Return a realistic, calendar-ready German learning plan with concrete study sessions.`;
 const BERLIN_TIME_ZONE = "Europe/Berlin";
 
+const getContentGenerationFailureReason = (error: unknown) => {
+	const code = getUserFacingBackendErrorCode(error);
+	switch (code) {
+		case "insufficient_material":
+			return "insufficientMaterial";
+		case "material_processing":
+			return "materialProcessing";
+		case "scheduling_constraints":
+			return "schedulingConstraints";
+		case "generation_processing":
+			return "generationProcessing";
+		default:
+			return "unknown";
+	}
+};
+
 const vertexProviderOptions = {
 	google: {
 		thinkingConfig: {
@@ -1753,6 +1769,7 @@ const normalizeSessions = (
 export const __testOnlyLearningPlanAi = {
 	normalizeSessions,
 	getEmptyScheduleErrorMessage,
+	getContentGenerationFailureReason,
 	generatedTaskChoiceSchema,
 	generatedTaskItemSchema,
 	normalizeTaskChoiceText,
@@ -3039,10 +3056,11 @@ export const retryFailedSessionContent = action({
 				isReady: finalState.isReady,
 			};
 		} catch (error) {
+			const failureReason = getContentGenerationFailureReason(error);
 			try {
 				await ctx.runMutation(
 					internal.learningPlans.markContentGenerationClaimFailed,
-					{ learningPlanId: args.learningPlanId, generationId },
+					{ learningPlanId: args.learningPlanId, generationId, failureReason },
 				);
 			} catch (releaseError) {
 				logDiagnosticError(
@@ -3558,7 +3576,7 @@ MVP-Vorgabe:
 						context.learningTimes,
 						context.occupiedEntries,
 					),
-					"unknown",
+					"scheduling_constraints",
 				);
 			}
 
@@ -3636,17 +3654,7 @@ MVP-Vorgabe:
 					.filter(isLearningSessionCompositionEligible).length,
 			};
 		} catch (error) {
-			const failureCode = getUserFacingBackendErrorCode(error);
-			const failureReason =
-				failureCode === "insufficient_material"
-					? "insufficientMaterial"
-					: failureCode === "material_processing"
-						? "materialProcessing"
-						: failureCode === "scheduling_constraints"
-							? "schedulingConstraints"
-							: failureCode === "generation_processing"
-								? "generationProcessing"
-								: "unknown";
+			const failureReason = getContentGenerationFailureReason(error);
 			logDiagnosticError("learningPlanAi.generatePlan", error, {
 				learningPlanId: args.learningPlanId,
 				failureReason,

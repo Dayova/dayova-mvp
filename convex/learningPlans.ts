@@ -2411,6 +2411,7 @@ export const markContentGenerationClaimFailed = internalMutation({
 	args: {
 		learningPlanId: v.id("learningPlans"),
 		generationId: v.string(),
+		failureReason: contentGenerationFailureReasonValidator,
 	},
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier =
@@ -2426,7 +2427,7 @@ export const markContentGenerationClaimFailed = internalMutation({
 			contentGenerationStage: "failed",
 			contentGenerationId: undefined,
 			contentGenerationStartedAt: undefined,
-			contentGenerationFailureReason: "generationProcessing",
+			contentGenerationFailureReason: args.failureReason,
 			updatedAt: Date.now(),
 		});
 		return true;
