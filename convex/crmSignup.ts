@@ -2,7 +2,6 @@ import { internal } from "./_generated/api";
 import type { ActionCtx } from "./_generated/server";
 import type { CrmCounts, CrmMatch } from "./crmContract";
 import {
-	CRM_MAX_STUDENTS,
 	CrmFailure,
 	type createNotionClient,
 	type StudentRow,
@@ -24,12 +23,11 @@ export async function provisionSignups(
 ) {
 	const pending = await ctx.runQuery(internal.crmSignupState.pending, {});
 	if (!pending.length) return;
-	await notion.checkCreationSchema();
+	if (!options.dryRun) await notion.checkCreationSchema();
 	const { counts } = options;
 	counts.created = 0;
 	counts.wouldCreate = 0;
 	counts.creationReview = 0;
-	let size = options.students.length;
 	const reservedEmails = new Set(
 		options.students.map((row) => row.email?.toLowerCase()),
 	);
@@ -97,8 +95,9 @@ export async function provisionSignups(
 		const email = user.email.trim().toLowerCase();
 		const collision =
 			reservedEmails.has(email) ||
-			(await notion.students({ property: "Email", email: { equals: email } }))
-				.length > 0;
+			(!options.dryRun &&
+				(await notion.students({ property: "Email", email: { equals: email } }))
+					.length > 0);
 		if (collision) {
 			await review();
 			continue;
@@ -111,14 +110,15 @@ export async function provisionSignups(
 				now: Date.now(),
 			},
 		);
-		if (match.status !== "matched") {
+		if (
+			match.status !== "matched" ||
+			match.projection.email.toLowerCase() !== email
+		) {
 			await review();
 			continue;
 		}
-		if (size >= CRM_MAX_STUDENTS) throw new CrmFailure("capacity");
 		if (options.dryRun) {
 			counts.wouldCreate++;
-			size++;
 			reservedEmails.add(email);
 			continue;
 		}
@@ -144,7 +144,6 @@ export async function provisionSignups(
 		);
 		if (created.clerkId !== user.clerkId)
 			throw new CrmFailure("identity_changed");
-		size++;
 		options.students.push(created);
 		reservedEmails.add(email);
 		counts.created++;

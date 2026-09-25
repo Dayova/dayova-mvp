@@ -14,4 +14,10 @@ crons.interval(
 	internal.crmSync.reconcile,
 	{},
 );
+crons.interval(
+	"Deliver student CRM updates",
+	{ minutes: 5 },
+	internal.crmSync.reconcile,
+	{ updatesOnly: true },
+);
 export default crons;

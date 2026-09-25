@@ -1,10 +1,10 @@
 import type { CrmError, CrmProjection } from "./crmContract";
 import { CRM_PROFILE_PROPERTIES, profileProperties } from "./crmProfile";
 
-export const CRM_MAX_STUDENTS = 200;
 export const CRM_APP_ORIGIN_TAG = "Added through Integration with App";
 export const CRM_PROPERTIES = {
 	...CRM_PROFILE_PROPERTIES,
+	Email: "email",
 	"Clerk User ID": "rich_text",
 	"Convex User ID": "rich_text",
 	"Identity Status": "select",
@@ -42,6 +42,7 @@ export type StudentRow = {
 	pageId: string;
 	clerkId: string;
 	email?: string;
+	lastEditedAt?: string;
 	markedPaid: boolean;
 };
 
@@ -81,6 +82,9 @@ export function parseStudent(value: unknown, dataSourceId: string): StudentRow {
 		...(typeof email === "string" && email.trim()
 			? { email: email.trim() }
 			: {}),
+		...(typeof page.last_edited_time === "string"
+			? { lastEditedAt: page.last_edited_time }
+			: {}),
 		markedPaid: payment != null && object(payment).name === "Paid",
 	};
 }
@@ -94,6 +98,7 @@ const date = (value: number | null) => ({
 export function projectionProperties(projection: CrmProjection, now: number) {
 	return {
 		...profileProperties(projection.profile),
+		Email: { email: projection.email },
 		"Convex User ID": richText(projection.userId),
 		"Identity Status": { select: { name: "matched" } },
 		"Entitlement State": { select: { name: projection.state } },
@@ -226,12 +231,12 @@ export function createNotionClient(token: string, dataSourceId: string) {
 									},
 								],
 							},
-							Email: { email },
 							Tags: { multi_select: [{ name: CRM_APP_ORIGIN_TAG }] },
 							Status: { status: { name: "Registered" } },
 							"Registration Date": date(projection.registeredAt),
 							"Clerk User ID": richText(clerkId),
 							...projectionProperties(projection, now),
+							Email: { email },
 						},
 					},
 					false,
@@ -248,36 +253,47 @@ export function createNotionClient(token: string, dataSourceId: string) {
 				if (!schema[name] || object(schema[name]).type !== type)
 					throw new CrmFailure("schema");
 		},
+		async studentsPage(
+			options: { cursor?: string; pageSize?: number; filter?: unknown } = {},
+		) {
+			const result = object(
+				await request(`data_sources/${dataSourceId}/query`, "POST", {
+					page_size: options.pageSize ?? 100,
+					sorts: [{ timestamp: "created_time", direction: "ascending" }],
+					...(options.cursor ? { start_cursor: options.cursor } : {}),
+					...(options.filter ? { filter: options.filter } : {}),
+				}),
+			);
+			if (
+				!Array.isArray(result.results) ||
+				typeof result.has_more !== "boolean"
+			)
+				throw new CrmFailure("schema");
+			if (result.has_more && typeof result.next_cursor !== "string")
+				throw new CrmFailure("schema");
+			if (result.request_status !== undefined) {
+				const status = object(result.request_status);
+				if (status.type === "incomplete") throw new CrmFailure("capacity");
+				if (status.type !== "complete") throw new CrmFailure("schema");
+			}
+			return {
+				rows: result.results.map((row) => parseStudent(row, dataSourceId)),
+				nextCursor: result.has_more
+					? (result.next_cursor as string)
+					: undefined,
+			};
+		},
 		async students(filter?: unknown): Promise<StudentRow[]> {
 			const rows: StudentRow[] = [];
 			let cursor: string | undefined;
 			const cursors = new Set<string>();
 			do {
-				const result = object(
-					await request(`data_sources/${dataSourceId}/query`, "POST", {
-						page_size: 100,
-						...(cursor ? { start_cursor: cursor } : {}),
-						...(filter ? { filter } : {}),
-					}),
-				);
-				if (
-					!Array.isArray(result.results) ||
-					typeof result.has_more !== "boolean"
-				)
-					throw new CrmFailure("schema");
-				rows.push(
-					...result.results.map((row) => parseStudent(row, dataSourceId)),
-				);
-				if (rows.length > CRM_MAX_STUDENTS) throw new CrmFailure("capacity");
-				if (!result.has_more) return rows;
-				if (
-					typeof result.next_cursor !== "string" ||
-					cursors.has(result.next_cursor)
-				)
-					throw new CrmFailure("schema");
-				cursor = result.next_cursor;
+				const page = await this.studentsPage({ cursor, filter });
+				rows.push(...page.rows);
+				if (!page.nextCursor) return rows;
+				if (cursors.has(page.nextCursor)) throw new CrmFailure("schema");
+				cursor = page.nextCursor;
 				cursors.add(cursor);
-				if (cursors.size > 10) throw new CrmFailure("capacity");
 			} while (cursor);
 			return rows;
 		},
@@ -287,9 +303,14 @@ export function createNotionClient(token: string, dataSourceId: string) {
 		},
 		async writeStudent(pageId: string, projection: CrmProjection, now: number) {
 			if (!uuid(pageId)) throw new CrmFailure("schema");
-			await request(`pages/${pageId}`, "PATCH", {
-				properties: projectionProperties(projection, now),
-			});
+			const result = object(
+				await request(`pages/${pageId}`, "PATCH", {
+					properties: projectionProperties(projection, now),
+				}),
+			);
+			return typeof result.last_edited_time === "string"
+				? result.last_edited_time
+				: undefined;
 		},
 	};
 }

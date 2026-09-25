@@ -44,6 +44,7 @@ test("profile mapping uses the Clerk name convention and Notion's existing state
 
 test("missing and unsupported profile values preserve CRM fields without leaking legacy school names", () => {
 	expect(profileProperties({})).toEqual({});
+	expect(profileProperties({ operatingSystems: [] })).toEqual({});
 	expect(
 		profileProperties({
 			grade: "university",

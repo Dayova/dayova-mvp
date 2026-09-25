@@ -47,12 +47,14 @@ async function project(
 			: (access?.state ?? "none");
 	return {
 		userId: user._id,
+		email: user.email,
 		registeredAt: user._creationTime,
 		profile: {
 			name: user.name,
 			grade: user.grade,
 			state: user.state,
 			schoolType: user.schoolType,
+			operatingSystems: user.operatingSystems,
 		},
 		state,
 		...crmBilling(entitlement, state),
@@ -116,7 +118,13 @@ export const inspectStudent = internalQuery({
 			return { status: "conflict" };
 		const projection = await project(ctx, user, args.now);
 		return projection
-			? { status: "matched", projection }
+			? {
+					status: "matched",
+					projection,
+					lastProjectionHash: pageLinks[0]?.lastProjectionHash,
+					lastNotionEditedAt: pageLinks[0]?.lastNotionEditedAt,
+					linkError: pageLinks[0]?.error,
+				}
 			: { status: "conflict" };
 	},
 });
@@ -124,7 +132,11 @@ export const inspectStudent = internalQuery({
 export const paidUsers = internalQuery({
 	args: { paginationOpts: paginationOptsValidator, now: v.number() },
 	returns: paginationResultValidator(
-		v.object({ clerkId: v.string(), paid: v.boolean() }),
+		v.object({
+			clerkId: v.string(),
+			paid: v.boolean(),
+			hasLinkedCrm: v.boolean(),
+		}),
 	),
 	handler: async (ctx, args) => {
 		const page = await ctx.db.query("users").paginate(args.paginationOpts);
@@ -133,15 +145,68 @@ export const paidUsers = internalQuery({
 			page: await Promise.all(
 				page.page.map(async (user) => {
 					const projection = await project(ctx, user, args.now);
+					const links = await ctx.db
+						.query("crmStudentLinks")
+						.withIndex("by_userId", (q) => q.eq("userId", user._id))
+						.take(2);
 					return {
 						clerkId: user.clerkId,
 						paid:
 							projection?.state === "paid" ||
 							projection?.state === "billing grace",
+						hasLinkedCrm: links.length === 1 && !links[0].error,
 					};
 				}),
 			),
 		};
+	},
+});
+
+export const linkedPages = internalQuery({
+	args: { paginationOpts: paginationOptsValidator },
+	returns: paginationResultValidator(
+		v.object({
+			linkId: v.id("crmStudentLinks"),
+			pageId: v.string(),
+			userId: v.id("users"),
+		}),
+	),
+	handler: async (ctx, { paginationOpts }) => {
+		const result = await ctx.db
+			.query("crmStudentLinks")
+			.paginate(paginationOpts);
+		return {
+			...result,
+			page: result.page.map((link) => ({
+				linkId: link._id,
+				pageId: link.pageId,
+				userId: link.userId,
+			})),
+		};
+	},
+});
+
+export const markMissingLink = internalMutation({
+	args: {
+		linkId: v.id("crmStudentLinks"),
+		pageId: v.string(),
+		runId: v.string(),
+	},
+	returns: v.boolean(),
+	handler: async (ctx, args) => {
+		const state = await ctx.db
+			.query("crmSyncState")
+			.withIndex("by_key", (q) => q.eq("key", "students"))
+			.unique();
+		if (!state?.running || state.mode !== "live" || state.runId !== args.runId)
+			return false;
+		const link = await ctx.db.get("crmStudentLinks", args.linkId);
+		if (!link || link.pageId !== args.pageId) return false;
+		await ctx.db.patch("crmStudentLinks", link._id, {
+			error: "identity_changed",
+			lastAttemptAt: Date.now(),
+		});
+		return true;
 	},
 });
 
@@ -150,6 +215,7 @@ export const begin = internalMutation({
 		runId: v.string(),
 		dataSourceId: v.string(),
 		mode: v.union(v.literal("dry-run"), v.literal("live")),
+		countAsAudit: v.optional(v.boolean()),
 	},
 	returns: v.boolean(),
 	handler: async (ctx, args) => {
@@ -170,7 +236,9 @@ export const begin = internalMutation({
 				"CRM requires a successful dry run within 24 hours before enabling live sync.",
 			);
 		const value = {
-			...args,
+			runId: args.runId,
+			dataSourceId: args.dataSourceId,
+			mode: args.mode,
 			key: "students",
 			running: true,
 			startedAt: now,
@@ -178,7 +246,18 @@ export const begin = internalMutation({
 			error: undefined,
 			finishedAt: undefined,
 			...(state?.dataSourceId !== args.dataSourceId
-				? { dryRunAt: undefined, lastSuccessAt: undefined }
+				? {
+						dryRunAt: undefined,
+						lastSuccessAt: undefined,
+						auditCursor: undefined,
+						auditPhase: undefined,
+						auditFailed: undefined,
+					}
+				: {}),
+			...(args.mode === "live" &&
+			args.countAsAudit !== false &&
+			!state?.auditPhase
+				? { auditFailed: 0 }
 				: {}),
 		};
 		if (state) await ctx.db.patch("crmSyncState", state._id, value);
@@ -187,8 +266,41 @@ export const begin = internalMutation({
 	},
 });
 
+export const auditProgress = internalQuery({
+	args: {},
+	returns: v.object({
+		phase: v.union(
+			v.literal("students"),
+			v.literal("links"),
+			v.literal("paid"),
+		),
+		cursor: v.union(v.string(), v.null()),
+		failed: v.number(),
+	}),
+	handler: async (ctx) => {
+		const state = await ctx.db
+			.query("crmSyncState")
+			.withIndex("by_key", (q) => q.eq("key", "students"))
+			.unique();
+		return {
+			phase: state?.auditPhase ?? "students",
+			cursor: state?.auditCursor ?? null,
+			failed: state?.auditFailed ?? 0,
+		};
+	},
+});
+
 export const finish = internalMutation({
-	args: { runId: v.string(), counts: crmCounts, error: v.optional(crmError) },
+	args: {
+		runId: v.string(),
+		counts: crmCounts,
+		error: v.optional(crmError),
+		countAsAudit: v.optional(v.boolean()),
+		nextCursor: v.optional(v.string()),
+		nextPhase: v.optional(
+			v.union(v.literal("students"), v.literal("links"), v.literal("paid")),
+		),
+	},
 	returns: v.null(),
 	handler: async (ctx, args) => {
 		const state = await ctx.db
@@ -197,13 +309,22 @@ export const finish = internalMutation({
 			.unique();
 		if (!state || state.runId !== args.runId) return null;
 		const now = Date.now();
+		const auditRun = state.mode === "live" && args.countAsAudit !== false;
+		const auditFailed = (state.auditFailed ?? 0) + args.counts.failed;
 		await ctx.db.patch("crmSyncState", state._id, {
 			running: false,
 			finishedAt: now,
 			counts: args.counts,
 			error: args.error,
+			...(auditRun && !args.error
+				? {
+						auditCursor: args.nextCursor,
+						auditPhase: args.nextPhase,
+						auditFailed,
+					}
+				: {}),
 			...(!args.error && state.mode === "dry-run" ? { dryRunAt: now } : {}),
-			...(!args.error && state.mode === "live" && args.counts.failed === 0
+			...(!args.error && auditRun && !args.nextPhase && auditFailed === 0
 				? { lastSuccessAt: now }
 				: {}),
 		});
@@ -218,6 +339,8 @@ export const recordLink = internalMutation({
 		clerkId: v.string(),
 		error: v.optional(crmError),
 		syncedAt: v.optional(v.number()),
+		projectionHash: v.optional(v.string()),
+		notionEditedAt: v.optional(v.string()),
 	},
 	returns: v.boolean(),
 	handler: async (ctx, args) => {
@@ -247,6 +370,12 @@ export const recordLink = internalMutation({
 			lastAttemptAt: Date.now(),
 			error: args.error,
 			...(args.syncedAt !== undefined ? { lastSyncedAt: args.syncedAt } : {}),
+			...(args.projectionHash !== undefined
+				? { lastProjectionHash: args.projectionHash }
+				: {}),
+			...(args.notionEditedAt !== undefined
+				? { lastNotionEditedAt: args.notionEditedAt }
+				: {}),
 		};
 		if (pages[0]) await ctx.db.patch("crmStudentLinks", pages[0]._id, value);
 		// Failure reporting must not establish an unverified identity mapping.
@@ -265,6 +394,11 @@ export const status = internalQuery({
 			startedAt: v.number(),
 			finishedAt: v.optional(v.number()),
 			lastSuccessAt: v.optional(v.number()),
+			auditCursor: v.optional(v.string()),
+			auditPhase: v.optional(
+				v.union(v.literal("students"), v.literal("links"), v.literal("paid")),
+			),
+			auditFailed: v.optional(v.number()),
 			counts: crmCounts,
 			error: v.optional(crmError),
 		}),
@@ -280,6 +414,9 @@ export const status = internalQuery({
 			startedAt: row.startedAt,
 			finishedAt: row.finishedAt,
 			lastSuccessAt: row.lastSuccessAt,
+			auditCursor: row.auditCursor,
+			auditPhase: row.auditPhase,
+			auditFailed: row.auditFailed,
 			counts: row.counts,
 			error: row.error,
 		};

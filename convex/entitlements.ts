@@ -3,22 +3,20 @@ import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import {
-	env,
 	internalMutation,
 	internalQuery,
 	mutation,
 	query,
 } from "./_generated/server";
+import { enqueueCrmUpdate } from "./crmUpdates";
 import { throwUserFacingError } from "./errors";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const TRIAL_DURATION_MS = 14 * DAY_MS;
 const TRIAL_REMINDER_DELAY_MS = 12 * DAY_MS;
 
-async function scheduleCrmSync(ctx: MutationCtx) {
-	if (env.NOTION_CRM_MODE === "live") {
-		await ctx.scheduler.runAfter(0, internal.crmSync.reconcile, {});
-	}
+async function scheduleCrmSync(ctx: MutationCtx, userId: Doc<"users">["_id"]) {
+	await enqueueCrmUpdate(ctx, userId);
 }
 
 const getPaidThrough = (entitlement: {
@@ -236,7 +234,7 @@ export const applyRevenueCatSnapshot = internalMutation({
 				createdAt: args.verifiedAt,
 				updatedAt: args.verifiedAt,
 			});
-			await scheduleCrmSync(ctx);
+			await scheduleCrmSync(ctx, user._id);
 
 			return { success: true as const };
 		}
@@ -261,7 +259,7 @@ export const applyRevenueCatSnapshot = internalMutation({
 			updatedAt: args.verifiedAt,
 		});
 		if (changed || entitlement.subscriptionVerifiedAt === undefined) {
-			await scheduleCrmSync(ctx);
+			await scheduleCrmSync(ctx, entitlement.userId);
 		}
 
 		return { success: true as const };
@@ -387,7 +385,7 @@ export const activateMyTrial = mutation({
 			updatedAt: now,
 		};
 		await ctx.db.insert("accessEntitlements", entitlement);
-		await scheduleCrmSync(ctx);
+		await scheduleCrmSync(ctx, user._id);
 		await ctx.scheduler.runAt(
 			reminderAt,
 			internal.entitlements.deliverTrialReminder,

@@ -36,6 +36,7 @@ export const CRM_PROFILE_PROPERTIES = {
 	Grade: "select",
 	State: "select",
 	"School Type": "select",
+	OS: "multi_select",
 } as const;
 
 const text = (value?: string) => ({
@@ -44,6 +45,11 @@ const text = (value?: string) => ({
 
 export function profileProperties(profile: CrmProjection["profile"]) {
 	const properties: Record<string, unknown> = {};
+	if (profile.operatingSystems?.length) {
+		properties.OS = {
+			multi_select: profile.operatingSystems.map((name) => ({ name })),
+		};
+	}
 	// Absent source values must not erase manually maintained legacy profiles.
 	if (profile.name !== undefined) {
 		const name = profile.name.trim();

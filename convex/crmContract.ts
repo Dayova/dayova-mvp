@@ -1,4 +1,9 @@
 import { type Infer, v } from "convex/values";
+import { OPERATING_SYSTEMS } from "../src/lib/operating-systems";
+
+export const operatingSystem = v.union(
+	...OPERATING_SYSTEMS.map((value) => v.literal(value)),
+);
 
 export const crmError = v.union(
 	v.literal("configuration"),
@@ -17,6 +22,7 @@ export const crmCounts = v.object({
 	created: v.optional(v.number()),
 	wouldCreate: v.optional(v.number()),
 	creationReview: v.optional(v.number()),
+	missingLinkedPages: v.optional(v.number()),
 	total: v.number(),
 	matched: v.number(),
 	unmatched: v.number(),
@@ -41,12 +47,14 @@ export const emptyCounts = (): CrmCounts => ({
 });
 export const crmProjection = v.object({
 	userId: v.id("users"),
+	email: v.string(),
 	registeredAt: v.number(),
 	profile: v.object({
 		name: v.optional(v.string()),
 		grade: v.optional(v.string()),
 		state: v.optional(v.string()),
 		schoolType: v.optional(v.string()),
+		operatingSystems: v.optional(v.array(operatingSystem)),
 	}),
 	state: v.union(
 		v.literal("none"),
@@ -79,7 +87,13 @@ export const crmProjection = v.object({
 });
 export type CrmProjection = Infer<typeof crmProjection>;
 export const crmMatch = v.union(
-	v.object({ status: v.literal("matched"), projection: crmProjection }),
+	v.object({
+		status: v.literal("matched"),
+		projection: crmProjection,
+		lastProjectionHash: v.optional(v.string()),
+		lastNotionEditedAt: v.optional(v.string()),
+		linkError: v.optional(crmError),
+	}),
 	v.object({
 		status: v.union(
 			v.literal("unmatched"),
