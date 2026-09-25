@@ -33,6 +33,12 @@ import {
 	type ClerkProfile as RegisterProfile,
 	splitClerkName as splitName,
 } from "~/lib/clerk-registration";
+import {
+	type EmailReplacementResult,
+	getPendingEmailReplacement,
+	replacePrimaryEmail,
+	resumePrimaryEmailReplacement,
+} from "~/lib/clerk-email-replacement";
 import { getDayKey } from "~/lib/day-key";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import {
@@ -120,7 +126,34 @@ type AuthFlowResult =
 
 type ProfileUpdateResult =
 	| { status: "complete" }
-	| { status: "needs_email_verification"; message: string };
+	| { status: "needs_email_verification"; message: string }
+	| { status: "email_retry_required"; message: string }
+	| { status: "profile_sync_pending"; message: string }
+	| { status: "email_activation_pending"; message: string }
+	| { status: "email_cleanup_pending"; message: string };
+
+const EMAIL_ACTIVATION_PENDING_MESSAGE =
+	"Deine neue E-Mail-Adresse ist bestätigt. Die Umstellung konnte noch nicht abgeschlossen werden; wir versuchen es beim nächsten Start erneut.";
+const EMAIL_CLEANUP_PENDING_MESSAGE =
+	"Deine neue E-Mail-Adresse ist aktiv. Die alte Adresse konnte noch nicht entfernt werden; wir versuchen es beim nächsten Start erneut.";
+
+function getEmailReplacementResult(
+	replacement: EmailReplacementResult,
+): ProfileUpdateResult {
+	if (replacement === "activation_pending") {
+		return {
+			status: "email_activation_pending",
+			message: EMAIL_ACTIVATION_PENDING_MESSAGE,
+		};
+	}
+	if (replacement === "cleanup_pending") {
+		return {
+			status: "email_cleanup_pending",
+			message: EMAIL_CLEANUP_PENDING_MESSAGE,
+		};
+	}
+	return { status: "complete" };
+}
 
 type PendingVerification =
 	| { mode: "login"; email: string }
@@ -171,7 +204,7 @@ interface AuthFlowContextType {
 interface AccountActionsContextType {
 	isLoading: boolean;
 	updateProfile: (input: UpdateProfileInput) => Promise<ProfileUpdateResult>;
-	verifyProfileEmailCode: (code: string) => Promise<void>;
+	verifyProfileEmailCode: (code: string) => Promise<ProfileUpdateResult>;
 	changePassword: (input: PasswordChangeInput) => Promise<void>;
 	completeForcedPasswordReset: (password: string) => Promise<void>;
 	deleteAccount: () => Promise<void>;
@@ -180,6 +213,7 @@ interface AccountActionsContextType {
 
 type PendingProfileEmail = {
 	email: string;
+	previousPrimaryEmailId: string;
 	emailAddress: {
 		id: string;
 		attemptVerification: (params: { code: string }) => Promise<{ id: string }>;
@@ -447,6 +481,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	);
 	const { clearAnswers } = useOnboarding();
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const emailReplacementAttemptRef = useRef<string | null>(null);
 	const passwordResetHasRemoteAttemptRef = useRef(false);
 	const verificationRecoveryRef = useRef<{
 		registrationAttemptId: string;
@@ -616,6 +651,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				);
 			});
 	}, [clerkUser]);
+
+	useEffect(() => {
+		if (!clerkUser || isSubmitting) return;
+		const pending = getPendingEmailReplacement(clerkUser);
+		if (!pending) return;
+		const attemptKey = `${clerkUser.id}:${pending.previousId}:${pending.nextId}`;
+		if (emailReplacementAttemptRef.current === attemptKey) return;
+		emailReplacementAttemptRef.current = attemptKey;
+		void (async () => {
+			await clerkUser.reload();
+			await resumePrimaryEmailReplacement(clerkUser);
+		})().catch((error) => {
+			logDiagnosticError("Failed to resume primary email replacement.", error, {
+				source: "auth.emailReplacement.resume",
+				level: "warn",
+			});
+		});
+	}, [clerkUser, isSubmitting]);
 
 	const activateSession = useCallback(
 		async (sessionId: string | null) => {
@@ -1282,6 +1335,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				throw new Error("Bitte wähle eine gültige Klassenstufe aus.");
 			}
 			const { firstName, lastName } = splitName(normalizedProfile.name);
+			let emailReplacementResult: EmailReplacementResult = "complete";
 
 			try {
 				await clerkUser.update({
@@ -1313,11 +1367,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 						(await clerkUser.createEmailAddress({
 							email: normalizedProfile.email,
 						}));
+					const previousId = clerkUser.primaryEmailAddress?.id;
+					if (!previousId) {
+						throw new Error(
+							"Die bisherige E-Mail-Adresse ist nicht verfügbar.",
+						);
+					}
 
 					if (emailAddress.verification?.status !== "verified") {
 						await emailAddress.prepareVerification({ strategy: "email_code" });
 						setPendingProfileEmail({
 							email: normalizedProfile.email,
+							previousPrimaryEmailId: previousId,
 							emailAddress,
 							profile: normalizedProfile,
 						});
@@ -1328,9 +1389,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 						};
 					}
 
-					await clerkUser.update({
-						primaryEmailAddressId: emailAddress.id,
-					});
+					emailReplacementResult = await replacePrimaryEmail(
+						clerkUser,
+						previousId,
+						emailAddress.id,
+					);
 				}
 
 				await persistProfileToConvex(normalizedProfile);
@@ -1340,7 +1403,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					schoolType: normalizedProfile.schoolType,
 					state: normalizedProfile.state,
 				});
-				return { status: "complete" };
+				return getEmailReplacementResult(emailReplacementResult);
 			} catch (error) {
 				throw new Error(
 					getClerkErrorMessage(
@@ -1351,32 +1414,74 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			}
 		});
 
-	const verifyProfileEmailCode = async (code: string) =>
+	const verifyProfileEmailCode = async (
+		code: string,
+	): Promise<ProfileUpdateResult> =>
 		withSubmitting(async () => {
 			if (!pendingProfileEmail || !clerkUser) {
 				throw new Error("Es gibt keine offene E-Mail-Bestätigung.");
 			}
 
+			let verifiedEmail: { id: string };
 			try {
-				const verifiedEmail =
+				verifiedEmail =
 					await pendingProfileEmail.emailAddress.attemptVerification({
 						code: code.trim(),
 					});
-				await clerkUser.update({
-					primaryEmailAddressId: verifiedEmail.id,
-				});
-				await persistProfileToConvex(pendingProfileEmail.profile);
-				setPendingProfile({
-					name: pendingProfileEmail.profile.name,
-					grade: pendingProfileEmail.profile.grade,
-					schoolType: pendingProfileEmail.profile.schoolType,
-					state: pendingProfileEmail.profile.state,
-				});
-				setPendingProfileEmail(null);
 			} catch (error) {
 				throw new Error(
 					getClerkErrorMessage(error, "E-Mail konnte nicht bestätigt werden."),
 				);
+			}
+
+			setPendingProfileEmail(null);
+			try {
+				await clerkUser.reload();
+				const replacement = await replacePrimaryEmail(
+					clerkUser,
+					pendingProfileEmail.previousPrimaryEmailId,
+					verifiedEmail.id,
+				);
+				const verifiedProfile = {
+					name: pendingProfileEmail.profile.name,
+					grade: pendingProfileEmail.profile.grade,
+					schoolType: pendingProfileEmail.profile.schoolType,
+					state: pendingProfileEmail.profile.state,
+				};
+				try {
+					await persistProfileToConvex(pendingProfileEmail.profile);
+				} catch (error) {
+					setPendingProfile(verifiedProfile);
+					logDiagnosticError(
+						"Failed to sync verified profile to Convex.",
+						error,
+						{
+							source: "auth.emailReplacement.profileSync",
+							level: "warn",
+						},
+					);
+					const emailResult = getEmailReplacementResult(replacement);
+					return {
+						status: "profile_sync_pending",
+						message: `${emailResult.status === "complete" ? "Deine neue E-Mail-Adresse ist aktiv." : emailResult.message} Deine Profilangaben werden beim nächsten Start erneut abgeglichen.`,
+					};
+				}
+				setPendingProfile(verifiedProfile);
+				return getEmailReplacementResult(replacement);
+			} catch (error) {
+				logDiagnosticError(
+					"Failed to finish verified email replacement.",
+					error,
+					{
+						source: "auth.emailReplacement.finish",
+						level: "warn",
+					},
+				);
+				return {
+					status: "email_retry_required",
+					message:
+						"Deine neue E-Mail-Adresse wurde bestätigt, aber die Umstellung konnte nicht abgeschlossen werden. Öffne die App erneut und speichere dein Profil noch einmal.",
+				};
 			}
 		});
 
@@ -1636,6 +1741,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					result: { status: "none" },
 				});
 				verificationRecoveryRef.current = null;
+				emailReplacementAttemptRef.current = null;
 				passwordResetHasRemoteAttemptRef.current = false;
 				clearAnswers();
 			},
