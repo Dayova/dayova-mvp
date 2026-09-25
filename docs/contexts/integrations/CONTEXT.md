@@ -1,5 +1,7 @@
 # Integrations Context
 
+Automatic Loops student contacts (DAY-427): [signup sync contract and runbook](loops-signup.md).
+
 This context covers third-party services and external system boundaries, including documentation, issue tracking, analytics, AI services, payments, email, and future migrations.
 
 Notion is Dayova's main internal documentation and knowledge workspace. Linear owns actionable work and workflow state; GitHub owns code and pull requests. Link these systems rather than duplicating their records.

@@ -5,6 +5,7 @@ import {
 	learningEvidenceDimensionValidator,
 	learningTopicValidator,
 } from "./learningTopicMap";
+import { loopsError, loopsJobFields } from "./loopsContract";
 import { theoryContentValidator } from "./theoryContent";
 
 const planQuestionValidator = v.object({
@@ -131,6 +132,17 @@ const sessionContentChoiceValidator = v.object({
 });
 
 export default defineSchema({
+	loopsStudents: defineTable(loopsJobFields)
+		.index("by_userId", ["userId"])
+		.index("by_status_and_nextAttemptAt", ["status", "nextAttemptAt"]),
+	loopsWorker: defineTable({
+		key: v.string(),
+		runId: v.string(),
+		leaseUntil: v.number(),
+		finishedAt: v.optional(v.number()),
+		retryAt: v.optional(v.number()),
+		error: v.optional(loopsError),
+	}).index("by_key", ["key"]),
 	crmStudentSignups: defineTable({
 		userId: v.id("users"),
 		status: v.union(v.literal("pending"), v.literal("review")),

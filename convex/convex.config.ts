@@ -4,6 +4,9 @@ import { v } from "convex/values";
 
 const app = defineApp({
 	env: {
+		LOOPS_API_KEY: v.optional(v.string()),
+		LOOPS_STUDENT_LIST_ID: v.optional(v.string()),
+		LOOPS_MODE: v.optional(v.union(v.literal("off"), v.literal("live"))),
 		NOTION_CRM_TOKEN: v.optional(v.string()),
 		NOTION_CRM_DATA_SOURCE_ID: v.optional(v.string()),
 		NOTION_CRM_MODE: v.optional(
