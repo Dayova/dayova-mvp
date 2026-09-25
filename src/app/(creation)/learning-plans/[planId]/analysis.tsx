@@ -13,7 +13,6 @@ import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { learningPlanMaterialPath } from "~/features/learning-plans/creation-routes";
-import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import {
 	dismissToOrReplace,
@@ -39,28 +38,28 @@ export default function LearningPlanAnalysisScreen() {
 	const [retryAttempt, setRetryAttempt] = useState(0);
 	const didStartRef = useRef(false);
 
-	const snapshot = (useQuery(
-		api.learningPlans.getSnapshot,
+	const plan = useQuery(
+		api.learningPlans.getPlanDetails,
 		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
-	) ?? null) as LearningPlanSnapshot | null;
+	);
 
 	useEffect(() => {
 		void retryAttempt;
-		if (!planId || !snapshot) return;
+		if (!planId || !plan) return;
 
 		if (
-			snapshot.plan.status === "generated" &&
-			snapshot.plan.diagnosticPlacement === "firstSession"
+			plan.status === "generated" &&
+			plan.diagnosticPlacement === "firstSession"
 		) {
 			router.replace(planPath(planId, "review"));
 			return;
 		}
 		if (
-			snapshot.plan.diagnosticPlacement === "firstSession" &&
-			snapshot.plan.knowledgeQuestions.length > 0
+			plan.diagnosticPlacement === "firstSession" &&
+			plan.knowledgeQuestions.length > 0
 		) {
 			router.replace(
-				snapshot.plan.scopeConfirmedAt
+				plan.scopeConfirmedAt
 					? planPath(planId, "generating")
 					: planPath(planId, "scope"),
 			);
@@ -99,11 +98,11 @@ export default function LearningPlanAnalysisScreen() {
 		});
 	}, [
 		generateKnowledgeQuestions,
+		plan,
 		planId,
 		requestAiConsent,
 		retryAttempt,
 		router,
-		snapshot,
 	]);
 
 	const goBack = () => {

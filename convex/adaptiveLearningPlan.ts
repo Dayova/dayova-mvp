@@ -8,6 +8,7 @@ import {
 	selectAdaptiveMaintenanceTarget,
 	selectNextAdaptiveLearningTarget,
 } from "./adaptiveLearningPlanPolicy";
+import { setLearningPlanGenerationProgress } from "./learningPlanGenerationProgressModel";
 import { deleteSessionLearningDataForSession } from "./learningSessionContent";
 import { normalizeLearningTopics } from "./learningTopicMap";
 import { getScheduleConflictMessage } from "./scheduleConflicts";
@@ -602,7 +603,12 @@ export const advanceRollingLearningPlan = async (
 	await ctx.db.patch("learningPlans", plan._id, {
 		adaptationRevision,
 		topicReadiness: effectiveTopicReadiness,
-		contentGenerationStage: "ready",
+		updatedAt: Date.now(),
+	});
+	await setLearningPlanGenerationProgress(ctx, {
+		ownerTokenIdentifier: plan.ownerTokenIdentifier,
+		learningPlanId: plan._id,
+		stage: "ready",
 		updatedAt: Date.now(),
 	});
 	return {
