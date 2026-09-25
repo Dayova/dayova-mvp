@@ -137,6 +137,7 @@ export default function LearningPlanGeneratingScreen() {
 		if (
 			!planId ||
 			!plan ||
+			plan.status === "generated" ||
 			learningTimes === undefined ||
 			learningTimes.length > 0 ||
 			didPrepareLearningTimesRef.current
@@ -183,12 +184,13 @@ export default function LearningPlanGeneratingScreen() {
 
 	useEffect(() => {
 		void retryAttempt;
-		if (!planId || !plan || !learningTimes?.length) return;
+		if (!planId || !plan) return;
 
 		if (plan.status === "generated") {
 			router.replace(planPath(planId, "review"));
 			return;
 		}
+		if (!learningTimes?.length) return;
 		if (plan.diagnosticPlacement !== "firstSession") {
 			router.replace(planPath(planId, "analysis"));
 			return;
