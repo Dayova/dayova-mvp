@@ -168,6 +168,10 @@ jobs:
         <!-- dayova-ota-report -->
         ## 📱 OTA compatibility
 
+        **Checked commit:** `${{ github.sha }}` · 🔎 [View EAS run](${{ workflow.url }})
+
+        **This report applies only to the checked commit.** If the PR's latest commit differs, this result is **outdated** and OTA compatibility for the latest commit is **unconfirmed** until this comment updates.
+
         ### ${{ after.ota_checks.status == 'success' && (after.ota_checks.outputs.ota_safe == 'true' && '✅ OTA-compatible' || after.ota_checks.outputs.ota_safe == 'false' && '⚠️ Not OTA-compatible') || '❓ Compatibility not confirmed' }}
 
         ${{ after.ota_checks.status == 'success' && (after.ota_checks.outputs.ota_safe == 'true' && 'This commit is compatible with the recorded app builds.' || after.ota_checks.outputs.ota_safe == 'false' && 'This commit cannot ship via OTA to the recorded app builds. A verified native release or compatibility review is needed.') || 'The assessment failed or was skipped. Open the EAS run to see what needs attention.' }}
@@ -176,8 +180,6 @@ jobs:
         | --- | --- |
         | 🧬 Native fingerprints | ${{ after.production_fingerprint.status == 'success' && '✅ Completed' || after.production_fingerprint.status == 'failure' && '❌ Failed' || '⏭️ Not completed' }} |
         | 📦 iOS & Android exports + OTA assessment | ${{ after.ota_checks.status == 'success' && '✅ Completed' || after.ota_checks.status == 'failure' && '❌ Failed' || '⏭️ Not completed' }} |
-
-        🔎 [View EAS run](${{ workflow.url }}) · **Checked commit:** `${{ github.sha }}`
 
         💡 **Advisory for merging.** Native changes can still merge. Nothing is published by this PR check; main rechecks the merged commit before publishing.
 

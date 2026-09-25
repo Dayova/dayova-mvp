@@ -86,20 +86,22 @@ unconfirmed result when an upstream job fails or is skipped. The native EAS
 `github-comment` job posts that same rendered report to the PR conversation using
 the existing GitHub integration.
 
-For PRs targeting `main`, the GitHub **Keep OTA comment current** workflow
-attempts to mark an existing report **⏳ Latest commit not yet evaluated** when
-a PR is updated. Its GitHub
-Actions token currently cannot edit Expo bot comments (HTTP 403), so this
-pending edit can fail. The final EAS report can still update Expo's own comment.
-Until its checked commit matches the live PR head, compatibility remains
-unconfirmed, including when a run is canceled.
+Expo updates one PR comment across runs. The report puts its checked commit and
+EAS run link at the top and explicitly says that its verdict applies only to
+that commit. If the PR head differs, the visible result is outdated and OTA
+compatibility for the latest commit is unconfirmed until Expo updates the
+comment. A canceled run can leave the previous result visible, so reviewers
+must compare the checked commit with the live PR head before merging.
 
-The notifier also handles EAS comment events and reads the live PR head. Its
-permission limitation means it cannot currently correct late results in an
-Expo bot comment. Updates are asynchronous; always compare the report's commit
-with the PR head. The notifier uses GitHub's automatic token with issue-comment
-write and PR read permissions, does not check out or execute PR code, and needs
-no production credentials.
+The GitHub Actions token cannot edit Expo's comment. The previous notifier
+attempted that edit and failed with HTTP 403; it was removed to keep OTA
+feedback in a single comment. The **OTA report freshness** commit status marks
+the current PR head pending while Expo's report covers an older commit, then
+marks it current when the Expo bot updates its comment. A current status only
+confirms that the report covers the head; reviewers must still read the OTA
+verdict. The status also covers same-repository stacked PRs; it only reads PR
+metadata and comments and does not run quality or OTA jobs. It does not create
+or edit PR comments.
 
 Incompatibility is advisory: a legitimate native change can merge, but
 production OTA remains blocked until the required
