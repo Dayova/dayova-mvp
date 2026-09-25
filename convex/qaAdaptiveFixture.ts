@@ -3,6 +3,61 @@ import { internalMutation } from "./_generated/server";
 
 const MARKER = "qa-native-adaptive-20260925";
 
+/** Switch only the known grade-11 QA exam between deadline and success cases. */
+export const setGradeElevenExamCase = internalMutation({
+	args: { planId: v.id("learningPlans"), future: v.boolean() },
+	returns: v.null(),
+	handler: async (ctx, args) => {
+		if (
+			![
+				"https://trustworthy-skunk-257.convex.cloud",
+				"https://trustworthy-skunk-257.eu-west-1.convex.cloud",
+			].includes(process.env.CONVEX_CLOUD_URL ?? "")
+		)
+			throw new Error("Designated QA deployment required");
+		if (Date.now() >= Date.parse("2026-09-28T00:00:00Z"))
+			throw new Error("Fixture expired");
+		const plan = await ctx.db.get("learningPlans", args.planId);
+		if (
+			!plan ||
+			plan.subject !== "Mathematik" ||
+			plan.status !== "accepted" ||
+			!["2026-09-25", "2026-10-05"].includes(plan.examDateKey)
+		)
+			throw new Error("Unexpected QA exam");
+		const user = await ctx.db
+			.query("users")
+			.withIndex("by_tokenIdentifier", (q) =>
+				q.eq("tokenIdentifier", plan.ownerTokenIdentifier),
+			)
+			.unique();
+		if (user?.name !== "Philipp QA Elf")
+			throw new Error("Grade eleven QA account required");
+		const dateKey = args.future ? "2026-10-05" : "2026-09-25";
+		const label = args.future ? "5. Oktober 2026" : "25. September 2026";
+		if (plan.examDateKey === dateKey) return null;
+		if (plan.examDayEntryId) {
+			const entry = await ctx.db.get("dayEntries", plan.examDayEntryId);
+			if (
+				!entry ||
+				entry.ownerTokenIdentifier !== plan.ownerTokenIdentifier ||
+				entry.relatedLearningPlanId !== plan._id
+			)
+				throw new Error("Unexpected linked exam");
+			await ctx.db.patch("dayEntries", entry._id, {
+				dayKey: dateKey,
+				plannedDateLabel: label,
+			});
+		}
+		await ctx.db.patch("learningPlans", plan._id, {
+			examDateKey: dateKey,
+			examDateLabel: label,
+			updatedAt: Date.now(),
+		});
+		return null;
+	},
+});
+
 /** Explicit admin-only QA fixture. Never overwrites existing progress or times. */
 export const create = internalMutation({
 	args: { userId: v.id("users") },

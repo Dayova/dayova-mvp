@@ -8,6 +8,9 @@ import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
 const create = makeFunctionReference<"mutation">("qaAdaptiveFixture:create");
+const setExam = makeFunctionReference<"mutation">(
+	"qaAdaptiveFixture:setGradeElevenExamCase",
+);
 beforeEach(() => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date("2026-09-25T12:00:00Z"));
@@ -163,4 +166,39 @@ test("rejects expired fixture dates", async () => {
 	const { t, userId } = await setup();
 	vi.setSystemTime(new Date("2026-10-01T00:00:00Z"));
 	await expect(t.mutation(create, { userId })).rejects.toThrow("expired");
+});
+
+test("switches only the QA exam deadline without changing sessions", async () => {
+	const { t, userId } = await setup();
+	const planId = await t.mutation(create, { userId });
+	await t.run((ctx) =>
+		ctx.db.patch("learningPlans", planId, {
+			subject: "Mathematik",
+			examDateKey: "2026-09-25",
+		}),
+	);
+	const sessions = () =>
+		t.run((ctx) =>
+			ctx.db
+				.query("learningPlanSessions")
+				.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+					q.eq("learningPlanId", planId),
+				)
+				.take(20),
+		);
+	const before = await sessions();
+	await t.mutation(setExam, { planId, future: true });
+	await t.mutation(setExam, { planId, future: true });
+	expect(
+		(await t.run((ctx) => ctx.db.get("learningPlans", planId)))?.examDateKey,
+	).toBe("2026-10-05");
+	await t.mutation(setExam, { planId, future: false });
+	expect(
+		(await t.run((ctx) => ctx.db.get("learningPlans", planId)))?.examDateKey,
+	).toBe("2026-09-25");
+	expect(await sessions()).toEqual(before);
+	vi.stubEnv("CONVEX_CLOUD_URL", "https://production.convex.cloud");
+	await expect(t.mutation(setExam, { planId, future: true })).rejects.toThrow(
+		"QA deployment",
+	);
 });
