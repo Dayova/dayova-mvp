@@ -1,6 +1,7 @@
 import { beforeEach, expect, jest, test } from "@jest/globals";
 import { render, waitFor } from "@testing-library/react-native";
 import GeneratingScreen from "~/app/(creation)/learning-plans/[planId]/generating";
+import { useBackIntent } from "~/lib/navigation";
 
 const mockReplace = jest.fn();
 const mockMutation = jest.fn<() => Promise<void>>();
@@ -90,12 +91,20 @@ test.each([
 	);
 	expect(mockAction).not.toHaveBeenCalled();
 	expect(mockMutation).not.toHaveBeenCalled();
+	expect(useBackIntent).toHaveBeenCalledWith(true, expect.any(Function), {
+		allowRouteRemoval: true,
+	});
 });
 
-test("does not start a new generation while learning times are still loading", () => {
+test("does not start a new generation while learning times are still loading", async () => {
 	mockStatus = "questionsReady";
 	mockTimes = undefined;
 	render(<GeneratingScreen />);
 	expect(mockReplace).not.toHaveBeenCalled();
 	expect(mockAction).not.toHaveBeenCalled();
+	await waitFor(() =>
+		expect(useBackIntent).toHaveBeenCalledWith(true, expect.any(Function), {
+			allowRouteRemoval: false,
+		}),
+	);
 });
