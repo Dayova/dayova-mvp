@@ -7,6 +7,45 @@ import { deriveBehavioralLearningTimeSuggestion } from "./learningTimeBehavior";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
+test("replays only QA observations after undo without changing sessions", async () => {
+	const { t, userId } = await setup();
+	const planId = await t.mutation(create, { userId });
+	const read = () =>
+		t.run((ctx) =>
+			ctx.db
+				.query("learningPlanSessions")
+				.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+					q.eq("learningPlanId", planId),
+				)
+				.take(20),
+		);
+	const before = await read();
+	await t.run((ctx) =>
+		ctx.db.patch("users", userId, {
+			behavioralLearningTimeObservationStartedAt: Date.now(),
+			behavioralLearningTimeSuggestionDismissedFingerprint:
+				"1:17:00-18:00|2:17:00-18:00|5:19:10-00:00=>1:18:00-19:00",
+		}),
+	);
+	const replay = makeFunctionReference<"mutation">(
+		"qaAdaptiveFixture:replayObservation",
+	);
+	await t.mutation(replay, { userId });
+	await t.mutation(replay, { userId });
+	expect(
+		(await t.run((ctx) => ctx.db.get("users", userId)))
+			?.behavioralLearningTimeObservationStartedAt,
+	).toBeUndefined();
+	expect(await read()).toEqual(before);
+	await t.run((ctx) =>
+		ctx.db.patch("users", userId, {
+			behavioralLearningTimeSuggestionDismissedFingerprint: "unrelated",
+		}),
+	);
+	await expect(t.mutation(replay, { userId })).rejects.toThrow("Expected QA");
+	vi.stubEnv("CONVEX_CLOUD_URL", "https://production.convex.cloud");
+	await expect(t.mutation(replay, { userId })).rejects.toThrow("QA deployment");
+});
 const create = makeFunctionReference<"mutation">("qaAdaptiveFixture:create");
 const setExam = makeFunctionReference<"mutation">(
 	"qaAdaptiveFixture:setGradeElevenExamCase",

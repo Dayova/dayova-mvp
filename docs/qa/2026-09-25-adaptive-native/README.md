@@ -55,4 +55,15 @@ In both dark and light themes, swiped the Italian learning-plan card and tapped 
 <a href="android-light-swiped.png"><img src="android-light-swiped.png" width="180" alt="Android light: swiped card action layering" /></a>
 <a href="android-light-opened.png"><img src="android-light-opened.png" width="180" alt="Android light: arrow opens diagnostic introduction" /></a>
 
-Still not claimed: native adaptive apply/undo on Android, an action-only card variant without a production consumer, or full cross-platform acceptance of #651/#742 and the separate upload-size boundary matrix for #652/#656.
+## Android adaptive acceptance — 22:07–22:11 CEST
+
+After the user signed into the same QA Elf account, an expiring internal QA-only helper replayed the synthetic observation case. It clears only the observation epoch and the exact known dismissed fixture fingerprint, refuses outstanding undo/snooze state, and checks the fixture and original Monday/Tuesday windows. No session progress is reset. Eight fixture tests, TypeScript and targeted ESLint pass.
+
+Native acceptance through Home and the impact sheet passed: Monday changed to 18:00–19:00, Tuesday stayed 17:00–18:00, Friday stayed the unconfirmed default. Then the plan's native undo button restored Monday to 17:00–18:00. The automated downward-scroll lookup missed the undo control above the timeline; scrolling upward and tapping the visible button via ADB succeeded. This is an observed native undo, not a passing Maestro undo script.
+
+Backend snapshots after both actions matched all nine baseline session IDs, dates, start times, completion/execution states and start/outcome timestamps exactly. As on iPhone, the synthetic Monday session was already started, so this proves preference apply/undo and protection of existing progress, not a native pending-session reschedule. App commit and device match the Android spot-check above. Android status-bar time is device-local; host run timestamps are CEST.
+
+<a href="android-adaptive-applied.png"><img src="android-adaptive-applied.png" width="180" alt="Android: Monday accepted at 18–19; other days unchanged" /></a>
+<a href="android-adaptive-undone.png"><img src="android-adaptive-undone.png" width="180" alt="Android: Monday restored to 17–18 after native undo" /></a>
+
+Still not claimed: an action-only card variant without a production consumer, full cross-platform acceptance of every #651/#742 scenario, or the separate upload-size boundary matrix for #652/#656. No merge or production release.

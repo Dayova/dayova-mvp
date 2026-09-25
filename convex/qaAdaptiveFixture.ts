@@ -3,6 +3,63 @@ import { internalMutation } from "./_generated/server";
 
 const MARKER = "qa-native-adaptive-20260925";
 
+/** Replay the synthetic observation case on another device after native undo. */
+export const replayObservation = internalMutation({
+	args: { userId: v.id("users") },
+	returns: v.null(),
+	handler: async (ctx, { userId }) => {
+		if (
+			![
+				"https://trustworthy-skunk-257.convex.cloud",
+				"https://trustworthy-skunk-257.eu-west-1.convex.cloud",
+			].includes(process.env.CONVEX_CLOUD_URL ?? "")
+		)
+			throw new Error("Designated QA deployment required");
+		if (Date.now() >= Date.parse("2026-09-28T00:00:00Z"))
+			throw new Error("Fixture expired");
+		const user = await ctx.db.get("users", userId);
+		if (
+			user?.name !== "Philipp QA Elf" ||
+			user.behavioralLearningTimeUndo ||
+			user.behavioralLearningTimeSuggestionSnoozedAt ||
+			(user.behavioralLearningTimeSuggestionDismissedFingerprint &&
+				user.behavioralLearningTimeSuggestionDismissedFingerprint !==
+					"1:17:00-18:00|2:17:00-18:00|5:19:10-00:00=>1:18:00-19:00")
+		)
+			throw new Error("Expected QA account after undo");
+		const plans = await ctx.db
+			.query("learningPlans")
+			.withIndex("by_ownerTokenIdentifier", (q) =>
+				q.eq("ownerTokenIdentifier", user.tokenIdentifier),
+			)
+			.take(100);
+		if (!plans.some((p) => p.notes === MARKER))
+			throw new Error("Fixture required");
+		const times = await ctx.db
+			.query("userLearningTimes")
+			.withIndex("by_ownerTokenIdentifier", (q) =>
+				q.eq("ownerTokenIdentifier", user.tokenIdentifier),
+			)
+			.take(100);
+		if (
+			![1, 2].every((day) =>
+				times.some(
+					(t) =>
+						t.dayOfWeek === day &&
+						t.startTime === "17:00" &&
+						t.endTime === "18:00",
+				),
+			)
+		)
+			throw new Error("Restore original times first");
+		await ctx.db.patch("users", userId, {
+			behavioralLearningTimeObservationStartedAt: undefined,
+			behavioralLearningTimeSuggestionDismissedFingerprint: undefined,
+		});
+		return null;
+	},
+});
+
 /** Switch only the known grade-11 QA exam between deadline and success cases. */
 export const setGradeElevenExamCase = internalMutation({
 	args: { planId: v.id("learningPlans"), future: v.boolean() },
