@@ -404,7 +404,13 @@ const questionsSchema = z
 					"Observable German learning goal for this topic.",
 				),
 				keywords: boundedArray(
-					germanTextSchema(2, "Short German keyword for this topic."),
+					z
+						.string()
+						.trim()
+						.min(1)
+						.describe(
+							`Short German keyword or subject symbol (for example m, b or x) for this topic. ${GERMAN_UI_TEXT_RULE}`,
+						),
 					1,
 					8,
 				),
@@ -2207,6 +2213,7 @@ const getSubjectSpecificLearningInstruction = (subject: string) =>
 		: "";
 
 export const __testOnlyLearningPlanAi = {
+	questionsSchema,
 	withGeneratedTextRetry,
 	normalizeSessions,
 	getEmptyScheduleErrorMessage,
