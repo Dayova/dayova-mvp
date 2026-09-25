@@ -67,12 +67,18 @@ uncommitted upload is not acceptable provenance.
 
 ### Pull request feedback
 
-CI checks OTA compatibility before merge for trusted contributors' PRs targeting
-`main` from this repository. After lint, typecheck and tests pass, the same
+CI checks OTA compatibility before merge for trusted contributors' PRs from
+this repository when their current open PR base chain reaches `main`. Direct PRs
+to `main` qualify immediately. For stacked PRs, a lightweight job follows each
+parent branch through open GitHub PRs; a missing, ambiguous or cyclic parent
+chain skips lint, fingerprints and OTA assessment. The PR report then replaces
+any earlier compatible result with an unconfirmed result. An API lookup failure
+also leaves compatibility unconfirmed. Retargeting a PR rechecks its chain;
+changing only an ancestor PR's base requires a later event on its descendants
+to recheck them. After lint, typecheck and tests pass, the same
 production fingerprint and OTA jobs used on `main` verify both platform exports
-and compare the candidate with the distributed-binary baseline. Fork PRs do not
-run the production-scoped quality-check, fingerprint, or OTA jobs, including
-forks opened by repository owners, members, or collaborators.
+and compare the candidate with the distributed-binary baseline. Expo does not
+start this `pull_request` workflow for fork PRs.
 
 The **PR OTA compatibility report** in the EAS workflow shows the checked commit,
 run link, result, reason, baseline and fingerprints, including an explicit
