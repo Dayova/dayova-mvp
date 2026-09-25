@@ -5,37 +5,25 @@ import { useCallback, useMemo, useRef } from "react";
 // but not when a user selects a new primary email address. Include that address
 // so Convex reauthenticates with a fresh Clerk token after verification.
 export function useClerkConvexAuth() {
-	const {
-		isLoaded,
-		isSignedIn,
-		getToken,
-		orgId,
-		orgRole,
-		sessionId,
-		sessionClaims,
-	} = useAuth();
+	const { isLoaded, isSignedIn, getToken, orgId, orgRole, sessionId } =
+		useAuth();
 	const { user } = useUser();
 	const primaryEmail = user?.primaryEmailAddress?.emailAddress;
-	const usesConvexSession = sessionClaims?.aud === "convex";
-	const contextKey = JSON.stringify([
-		sessionId,
-		orgId,
-		orgRole,
-		primaryEmail,
-		usesConvexSession,
-	]);
+	const contextKey = JSON.stringify([sessionId, orgId, orgRole, primaryEmail]);
 	const lastFreshContext = useRef<string | null>(null);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: Clerk's getToken is not memoized; identity changes must drive Convex reauthentication.
 	const fetchAccessToken = useCallback(
 		async ({ forceRefreshToken }: { forceRefreshToken: boolean }) => {
-			const options = usesConvexSession
-				? {}
-				: ({ template: "convex" } as const);
 			const mustRefresh =
 				forceRefreshToken || lastFreshContext.current !== contextKey;
 			try {
-				const token = await getToken({ ...options, skipCache: mustRefresh });
+				// A Clerk session can have aud="convex" without an email claim.
+				// The JWT template includes the verified primary email needed by syncCurrentUser.
+				const token = await getToken({
+					template: "convex",
+					skipCache: mustRefresh,
+				});
 				if (token) {
 					if (mustRefresh) lastFreshContext.current = contextKey;
 					return token;
@@ -48,7 +36,7 @@ export function useClerkConvexAuth() {
 		// Clerk's Expo getToken is not memoized; session and primary-email changes
 		// should restart Convex authentication.
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[contextKey, usesConvexSession],
+		[contextKey],
 	);
 
 	return useMemo(

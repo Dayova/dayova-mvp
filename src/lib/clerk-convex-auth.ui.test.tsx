@@ -4,6 +4,7 @@ import { useClerkConvexAuth } from "./clerk-convex-auth";
 
 let mockPrimaryEmail = "old@example.com";
 let mockSessionId = "session-1";
+let mockSessionClaims: Record<string, unknown> = {};
 const mockGetToken = jest.fn(async (): Promise<string | null> => "fresh-token");
 
 jest.mock("@clerk/expo", () => ({
@@ -14,7 +15,7 @@ jest.mock("@clerk/expo", () => ({
 		orgId: null,
 		orgRole: null,
 		sessionId: mockSessionId,
-		sessionClaims: {},
+		sessionClaims: mockSessionClaims,
 	}),
 	useUser: () => ({
 		user: { primaryEmailAddress: { emailAddress: mockPrimaryEmail } },
@@ -73,4 +74,16 @@ test("a failed fresh fetch never reuses a token from the previous identity", asy
 		skipCache: true,
 	});
 	expect(mockGetToken).toHaveBeenCalledTimes(1);
+});
+
+test("requests the email-bearing template even when the session audience is convex", async () => {
+	mockSessionClaims = { aud: "convex" };
+	mockGetToken.mockClear();
+	const { result } = await renderHook(() => useClerkConvexAuth());
+	await result.current.fetchAccessToken({ forceRefreshToken: false });
+	expect(mockGetToken).toHaveBeenCalledWith({
+		template: "convex",
+		skipCache: true,
+	});
+	mockSessionClaims = {};
 });
