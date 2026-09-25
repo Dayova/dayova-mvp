@@ -1022,27 +1022,47 @@ const buildModelInputFromDocuments = async (
 
 		const mediaType = resolveMediaType(document.fileType, document.fileName);
 		const buffer = Buffer.from(arrayBuffer);
+		const supportsNativeModelInput = isVertexNativeCandidate(
+			mediaType,
+			document.fileName,
+		);
+		let extractedText = "";
 
 		try {
-			const extractedText = await extractTextFromBytes(
+			extractedText = await extractTextFromBytes(
 				document.fileName,
 				mediaType,
 				buffer,
 			);
-			if (extractedText) {
-				const sourceLabel =
-					(document.sourceKind ?? "school") === "school"
-						? "INTERNES SCHULMATERIAL"
-						: "EXTERNE LERNHILFE";
-				textSections.push(
-					`[${sourceLabel}: ${document.fileName}]\n${extractedText}`,
+		} catch (error) {
+			if (!supportsNativeModelInput) {
+				logDiagnosticError("learningPlanAi.documentExtraction", error, {
+					fileName: document.fileName,
+					storageProvider: document.storageProvider,
+				});
+				throwUserFacingError(
+					`Die Datei "${document.fileName}" konnte nicht verarbeitet werden. Ersetze sie oder lade sie erneut hoch.`,
+					"material_processing",
 				);
 			}
-		} catch {
-			// Images and some PDFs are still useful as native model inputs.
+			// Images and some PDFs remain available as native model inputs.
+		}
+		if (extractedText) {
+			const sourceLabel =
+				(document.sourceKind ?? "school") === "school"
+					? "INTERNES SCHULMATERIAL"
+					: "EXTERNE LERNHILFE";
+			textSections.push(
+				`[${sourceLabel}: ${document.fileName}]\n${extractedText}`,
+			);
+		} else if (!supportsNativeModelInput) {
+			throwUserFacingError(
+				`Die Datei "${document.fileName}" enthält keinen lesbaren Inhalt. Ersetze sie oder lade sie erneut hoch.`,
+				"material_processing",
+			);
 		}
 
-		if (isVertexNativeCandidate(mediaType, document.fileName)) {
+		if (supportsNativeModelInput) {
 			fileParts.push({
 				type: "file",
 				data: buffer,
@@ -1770,6 +1790,7 @@ export const __testOnlyLearningPlanAi = {
 	normalizeSessions,
 	getEmptyScheduleErrorMessage,
 	getContentGenerationFailureReason,
+	buildModelInputFromDocuments,
 	generatedTaskChoiceSchema,
 	generatedTaskItemSchema,
 	normalizeTaskChoiceText,
