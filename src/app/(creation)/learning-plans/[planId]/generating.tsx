@@ -345,7 +345,9 @@ export default function LearningPlanGeneratingScreen() {
 		goBackOrReplace(router, "/home");
 		return true;
 	};
-	useBackIntent(true, goBack);
+	useBackIntent(true, goBack, {
+		allowRouteRemoval: plan?.status === "generated",
+	});
 	useLearningPlanCreationProgress({
 		active: true,
 		currentStep: LEARNING_PLAN_CREATION_STEPS.planGeneration,
