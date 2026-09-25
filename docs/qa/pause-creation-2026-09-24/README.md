@@ -20,8 +20,8 @@ The before image is the user's report, not temporal proof. The executed native a
 
 ## Before
 
-![Before](before.png)
+<a href="before.png"><img src="before.png" alt="Before" width="180" /></a>
 
 ## After — returned to Plans, draft retained
 
-![After](after.png)
+<a href="after.png"><img src="after.png" alt="After" width="180" /></a>

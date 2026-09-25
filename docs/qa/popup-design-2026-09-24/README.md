@@ -10,8 +10,8 @@ These are actual simulator captures of the changed `DayovaSheetFrame`, `Confirma
 
 | iOS simulator | Android emulator |
 | --- | --- |
-| ![Planning header](ios-planning.png) | ![Planning header](android-planning.png) |
-| ![Destructive confirmation](ios-delete.png) | ![Destructive confirmation](android-delete.png) |
+| <a href="ios-planning.png"><img src="ios-planning.png" alt="Planning header" width="180" /></a> | <a href="android-planning.png"><img src="android-planning.png" alt="Planning header" width="180" /></a> |
+| <a href="ios-delete.png"><img src="ios-delete.png" alt="Destructive confirmation" width="180" /></a> | <a href="android-delete.png"><img src="android-delete.png" alt="Destructive confirmation" width="180" /></a> |
 
 Observed: grey handle retained; X above title; full-width title/description; red outlined, tinted delete action with readable wrapping and no icon. No real account, plan, or material was deleted. The floating gear belongs to the development environment.
 

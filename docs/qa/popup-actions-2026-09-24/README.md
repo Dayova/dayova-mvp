@@ -24,54 +24,54 @@ the server was subsequently cold-restarted to ensure refreshed CSS color tokens.
 They are not an independent color-value measurement. Android, Dark and enlarged
 text were not freshly visually revalidated for this follow-up.
 
-![Verified cancel](verified-cancel-ios.png)
-![Verified swipe](verified-swipe-ios.png)
-![Verified confirmation](verified-confirmation-ios.png)
+<a href="verified-cancel-ios.png"><img src="verified-cancel-ios.png" alt="Verified cancel" width="180" /></a>
+<a href="verified-swipe-ios.png"><img src="verified-swipe-ios.png" alt="Verified swipe" width="180" /></a>
+<a href="verified-confirmation-ios.png"><img src="verified-confirmation-ios.png" alt="Verified confirmation" width="180" /></a>
 
 ### review-20260924-16.25.44.png
 
-![review-20260924-16.25.44.png](review-20260924-16.25.44.png)
+<a href="review-20260924-16.25.44.png"><img src="review-20260924-16.25.44.png" alt="review-20260924-16.25.44.png" width="180" /></a>
 
 ### review-20260924-16.25.16.png
 
-![review-20260924-16.25.16.png](review-20260924-16.25.16.png)
+<a href="review-20260924-16.25.16.png"><img src="review-20260924-16.25.16.png" alt="review-20260924-16.25.16.png" width="180" /></a>
 
 ### review-20260924-16.25.03.png
 
-![review-20260924-16.25.03.png](review-20260924-16.25.03.png)
+<a href="review-20260924-16.25.03.png"><img src="review-20260924-16.25.03.png" alt="review-20260924-16.25.03.png" width="180" /></a>
 
 ### review-20260924-16.24.59.png
 
-![review-20260924-16.24.59.png](review-20260924-16.24.59.png)
+<a href="review-20260924-16.24.59.png"><img src="review-20260924-16.24.59.png" alt="review-20260924-16.24.59.png" width="180" /></a>
 
 ### review-20260924-16.24.43.png
 
-![review-20260924-16.24.43.png](review-20260924-16.24.43.png)
+<a href="review-20260924-16.24.43.png"><img src="review-20260924-16.24.43.png" alt="review-20260924-16.24.43.png" width="180" /></a>
 
 ### review-20260924-16.24.22.png
 
-![review-20260924-16.24.22.png](review-20260924-16.24.22.png)
+<a href="review-20260924-16.24.22.png"><img src="review-20260924-16.24.22.png" alt="review-20260924-16.24.22.png" width="180" /></a>
 
 ### review-20260924-16.24.04.png
 
-![review-20260924-16.24.04.png](review-20260924-16.24.04.png)
+<a href="review-20260924-16.24.04.png"><img src="review-20260924-16.24.04.png" alt="review-20260924-16.24.04.png" width="180" /></a>
 
 ### review-20260924-16.23.47.png
 
-![review-20260924-16.23.47.png](review-20260924-16.23.47.png)
+<a href="review-20260924-16.23.47.png"><img src="review-20260924-16.23.47.png" alt="review-20260924-16.23.47.png" width="180" /></a>
 
 ### before-planning-20260923.png
 
-![before-planning-20260923.png](before-planning-20260923.png)
+<a href="before-planning-20260923.png"><img src="before-planning-20260923.png" alt="before-planning-20260923.png" width="180" /></a>
 
 ### before-rename-android.png
 
-![before-rename-android.png](before-rename-android.png)
+<a href="before-rename-android.png"><img src="before-rename-android.png" alt="before-rename-android.png" width="180" /></a>
 
 ### before-learningtime-swipe.png
 
-![before-learningtime-swipe.png](before-learningtime-swipe.png)
+<a href="before-learningtime-swipe.png"><img src="before-learningtime-swipe.png" alt="before-learningtime-swipe.png" width="180" /></a>
 
 ### review-20260924-16.23.36.png
 
-![review-20260924-16.23.36.png](review-20260924-16.23.36.png)
+<a href="review-20260924-16.23.36.png"><img src="review-20260924-16.23.36.png" alt="review-20260924-16.23.36.png" width="180" /></a>

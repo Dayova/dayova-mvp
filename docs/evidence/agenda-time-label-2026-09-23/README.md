@@ -17,7 +17,7 @@ All agenda rows retain the same time-column width so their timeline aligns.
 
 | Before (12:55 CEST) | After (13:39 CEST) |
 | --- | --- |
-| <img src="iphone-before.png" width="280" alt="Before: ganztägig splits into two lines" /> | <img src="iphone-after.png" width="280" alt="After: ganztägig is complete on one line" /> |
+| <img src="iphone-before.png" width="180" alt="Before: ganztägig splits into two lines" /> | <img src="iphone-after.png" width="180" alt="After: ganztägig is complete on one line" /> |
 
 The before capture is from the earlier combined QA retest; the defect was
 also measured on base `2d8e11727c22d713bd11371945a03db799170192` immediately

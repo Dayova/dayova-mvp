@@ -14,14 +14,14 @@ geprüft. Entfernt wurde nur die eigens angelegte Testlernzeit; sie ist neu anle
 
 | Zustand | Screenshot |
 | --- | --- |
-| Einstellungen | <img src="dayova-android-settings-verified.png" width="240" alt="Android Einstellungen" /> |
-| Leer | <img src="dayova-android-times-empty.png" width="240" alt="Keine Lernzeiten" /> |
-| Anlegen | <img src="dayova-android-times-add.png" width="240" alt="Neue Lernzeit" /> |
-| Montag gespeichert | <img src="dayova-android-times-saved.png" width="240" alt="Montag gespeichert" /> |
-| Dienstag gespeichert | <img src="dayova-android-times-updated.png" width="240" alt="Dienstag gespeichert" /> |
-| Löschdialog | <img src="dayova-android-times-delete-dialog.png" width="240" alt="Roter Entfernen-Button mit weißer Schrift" /> |
-| Abgebrochen | <img src="dayova-android-times-delete-cancelled.png" width="240" alt="Editor nach Abbruch" /> |
-| Gelöscht | <img src="dayova-android-times-deleted.png" width="240" alt="Leer nach bestätigtem Entfernen" /> |
+| Einstellungen | <img src="dayova-android-settings-verified.png" width="180" alt="Android Einstellungen" /> |
+| Leer | <img src="dayova-android-times-empty.png" width="180" alt="Keine Lernzeiten" /> |
+| Anlegen | <img src="dayova-android-times-add.png" width="180" alt="Neue Lernzeit" /> |
+| Montag gespeichert | <img src="dayova-android-times-saved.png" width="180" alt="Montag gespeichert" /> |
+| Dienstag gespeichert | <img src="dayova-android-times-updated.png" width="180" alt="Dienstag gespeichert" /> |
+| Löschdialog | <img src="dayova-android-times-delete-dialog.png" width="180" alt="Roter Entfernen-Button mit weißer Schrift" /> |
+| Abgebrochen | <img src="dayova-android-times-delete-cancelled.png" width="180" alt="Editor nach Abbruch" /> |
+| Gelöscht | <img src="dayova-android-times-deleted.png" width="180" alt="Leer nach bestätigtem Entfernen" /> |
 
 Grenzen: Integrationstest, kein isolierter PR-Vorher-/Nachhervergleich.
 Keine Abnahme der altersabhängigen Defaults, Zeitpicker-Grenzfälle,

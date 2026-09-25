@@ -8,11 +8,11 @@ Restore the original white trash icon and 104-point reveal width in the black le
 
 Before: user-supplied iPhone screenshot, 2026-09-24 17:47.
 
-![Before: red delete pills](before-ios.png)
+<a href="before-ios.png"><img src="before-ios.png" alt="Before: red delete pills" width="180" /></a>
 
 After: native iPhone simulator, iOS 26.4, 2026-09-24 18:21, combined QA branch with this patch. Opened Plans and swiped the draft card. White edit/trash icons and separator are visible; no red pill remains. Both draft and active plan cards use the same action rail; an active plan was not separately exercised in this run.
 
-![After: white trash icon](after-ios.png)
+<a href="after-ios.png"><img src="after-ios.png" alt="After: white trash icon" width="180" /></a>
 
 ## Validation
 

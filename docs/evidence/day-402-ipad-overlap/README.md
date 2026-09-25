@@ -2,7 +2,7 @@
 
 Captured on 2026-09-22 from source commit `58c045d` on a dedicated iPad Pro 11-inch (M4), iOS 26.4 simulator, using the development client and local Metro server.
 
-![Corrected welcome screen](after-ipad-portrait.png)
+<a href="after-ipad-portrait.png"><img src="after-ipad-portrait.png" alt="Corrected welcome screen" width="180" /></a>
 
 The portrait still shows separated decorative rows and the unchanged central logo and sign-in actions. The floating Tools control is development-client UI, not production artwork.
 

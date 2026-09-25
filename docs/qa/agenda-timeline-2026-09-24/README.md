@@ -20,9 +20,9 @@ fixed card height and no new dependency are introduced.
 
 | Before (user-provided iPhone) | After (same QA account, iPhone) |
 | --- | --- |
-| ![Before](before-ios.png) | ![After](after-single-ios.png) |
+| <a href="before-ios.png"><img src="before-ios.png" alt="Before" width="180" /></a> | <a href="after-single-ios.png"><img src="after-single-ios.png" alt="After" width="180" /></a> |
 
-![Three-item local presentation fixture](after-multiple-fixture-ios.png)
+<a href="after-multiple-fixture-ios.png"><img src="after-multiple-fixture-ios.png" alt="Three-item local presentation fixture" width="180" /></a>
 
 iPhone QA simulator, iOS 26.4, Light mode, default text size. Single-item image
 uses the real existing agenda. Three-item image uses a temporary **local

@@ -6,11 +6,11 @@ returns to the preceding learning-time step at 50%.
 
 | Before: unexpected exam overview | After: preceding setup step |
 | --- | --- |
-| <img src="before-back-result.png" width="280" alt="Before: Biologie Klassenarbeit overview after Back" /> | <img src="after-back-result.png" width="280" alt="After: Back returns to the learning-time check at 50 percent" /> |
+| <img src="before-back-result.png" width="180" alt="Before: Biologie Klassenarbeit overview after Back" /> | <img src="after-back-result.png" width="180" alt="After: Back returns to the learning-time check at 50 percent" /> |
 
 | After: topics before Back | After: selected date retained | After: topics restored by Continue |
 | --- | --- | --- |
-| <img src="after-topics.png" width="240" alt="Topics at 60 percent before Back" /> | <img src="after-date-preserved.png" width="240" alt="30 September 2026 retained at the 40 percent date step" /> | <img src="after-topics-restored.png" width="240" alt="Zellaufbau, Fotosynthese restored at 60 percent" /> |
+| <img src="after-topics.png" width="180" alt="Topics at 60 percent before Back" /> | <img src="after-date-preserved.png" width="180" alt="30 September 2026 retained at the 40 percent date step" /> | <img src="after-topics-restored.png" width="180" alt="Zellaufbau, Fotosynthese restored at 60 percent" /> |
 
 **Screen recordings** — the previews animate; each links directly to its downloadable MP4.
 
