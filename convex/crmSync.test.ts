@@ -183,6 +183,139 @@ test("a successful live run continues after the first dry-run window and destina
 			mode: "live",
 		}),
 	).rejects.toThrow("dry run");
+	await t.mutation(internal.crmSyncState.begin, {
+		runId: "new-target-dry",
+		dataSourceId: pageId,
+		mode: "dry-run",
+	});
+	await t.mutation(internal.crmSyncState.finish, {
+		runId: "new-target-dry",
+		counts: emptyCounts(),
+	});
+	expect(
+		(await t.query(internal.crmSyncState.status, {}))?.liveVerifiedAt,
+	).toBeUndefined();
+});
+
+test("a row-level audit failure does not disable later live updates when the dry-run window expires", async () => {
+	const t = convexTest(schema, modules);
+	await enable(t);
+	await t.mutation(internal.crmSyncState.begin, {
+		runId: "conflicted-audit",
+		dataSourceId: source,
+		mode: "live",
+	});
+	await t.mutation(internal.crmSyncState.finish, {
+		runId: "conflicted-audit",
+		counts: { ...emptyCounts(), failed: 1 },
+	});
+	expect(
+		(await t.query(internal.crmSyncState.status, {}))?.lastSuccessAt,
+	).toBeUndefined();
+	expect(
+		(await t.query(internal.crmSyncState.status, {}))?.liveVerifiedAt,
+	).toBeTypeOf("number");
+	await t.run(async (ctx) => {
+		const row = await ctx.db.query("crmSyncState").unique();
+		if (row)
+			await ctx.db.patch("crmSyncState", row._id, {
+				dryRunAt: Date.now() - 48 * 3600_000,
+			});
+	});
+	expect(
+		await t.mutation(internal.crmSyncState.begin, {
+			runId: "later-update",
+			dataSourceId: source,
+			mode: "live",
+			countAsAudit: false,
+		}),
+	).toBe(true);
+	await t.mutation(internal.crmSyncState.finish, {
+		runId: "later-update",
+		counts: emptyCounts(),
+		countAsAudit: false,
+	});
+	await expect(
+		t.mutation(internal.crmSyncState.begin, {
+			runId: "wrong-target",
+			dataSourceId: pageId,
+			mode: "live",
+		}),
+	).rejects.toThrow("dry run");
+});
+
+test("a terminal live audit error does not authorize later live runs", async () => {
+	const t = convexTest(schema, modules);
+	await enable(t);
+	await t.mutation(internal.crmSyncState.begin, {
+		runId: "failed-audit",
+		dataSourceId: source,
+		mode: "live",
+	});
+	await t.mutation(internal.crmSyncState.finish, {
+		runId: "failed-audit",
+		counts: emptyCounts(),
+		error: "schema",
+	});
+	expect(
+		(await t.query(internal.crmSyncState.status, {}))?.liveVerifiedAt,
+	).toBeUndefined();
+	await t.run(async (ctx) => {
+		const row = await ctx.db.query("crmSyncState").unique();
+		if (row)
+			await ctx.db.patch("crmSyncState", row._id, {
+				dryRunAt: Date.now() - 48 * 3600_000,
+			});
+	});
+	await expect(
+		t.mutation(internal.crmSyncState.begin, {
+			runId: "later-live",
+			dataSourceId: source,
+			mode: "live",
+		}),
+	).rejects.toThrow("dry run");
+});
+
+test("a partial audit followed by a terminal error never verifies live mode", async () => {
+	const t = convexTest(schema, modules);
+	await enable(t);
+	await t.mutation(internal.crmSyncState.begin, {
+		runId: "first-batch",
+		dataSourceId: source,
+		mode: "live",
+	});
+	await t.mutation(internal.crmSyncState.finish, {
+		runId: "first-batch",
+		counts: emptyCounts(),
+		nextPhase: "links",
+	});
+	expect(
+		(await t.query(internal.crmSyncState.status, {}))?.liveVerifiedAt,
+	).toBeUndefined();
+	await t.mutation(internal.crmSyncState.begin, {
+		runId: "failed-batch",
+		dataSourceId: source,
+		mode: "live",
+	});
+	await t.mutation(internal.crmSyncState.finish, {
+		runId: "failed-batch",
+		counts: emptyCounts(),
+		error: "schema",
+	});
+	await t.run(async (ctx) => {
+		const row = await ctx.db.query("crmSyncState").unique();
+		if (row)
+			await ctx.db.patch("crmSyncState", row._id, {
+				dryRunAt: Date.now() - 48 * 3600_000,
+			});
+	});
+	await expect(
+		t.mutation(internal.crmSyncState.begin, {
+			runId: "later-live",
+			dataSourceId: source,
+			mode: "live",
+		}),
+	).rejects.toThrow("dry run");
 });
 
 test("duplicate identities prevent every write, even when the duplicate is on another Notion page", async () => {

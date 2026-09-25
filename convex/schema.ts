@@ -170,6 +170,7 @@ export default defineSchema({
 		startedAt: v.number(),
 		finishedAt: v.optional(v.number()),
 		dryRunAt: v.optional(v.number()),
+		liveVerifiedAt: v.optional(v.number()),
 		lastSuccessAt: v.optional(v.number()),
 		auditCursor: v.optional(v.string()),
 		auditPhase: v.optional(

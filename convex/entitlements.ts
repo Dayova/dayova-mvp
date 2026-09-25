@@ -244,6 +244,8 @@ export const applyRevenueCatSnapshot = internalMutation({
 			subscriptionExpiresAt: args.expiresAt,
 			subscriptionGraceExpiresAt: args.graceExpiresAt,
 			subscriptionProductId: args.productId,
+			// An omitted period is unknown now; retaining a previous trial/paid phase
+			// could mislabel a subscription that changed since the last snapshot.
 			subscriptionPeriodType: args.periodType,
 			subscriptionStore: args.store,
 			subscriptionWillRenew: args.willRenew,

@@ -238,8 +238,9 @@ Technical owner: Jakob. CRM matching/review: Julius with Jakob.
    transitions in a test database. The default `off` mode allows an explicit dry run.
 6. Once the intended deployment and destination are verified, set mode to `live`.
    First enablement requires a successful dry run for the same data source within
-   24 hours. Successful live runs keep the recurring sync enabled. A destination
-   change requires a new dry run. Run reconciliation manually once, inspect the
+   24 hours. A completed live audit without a terminal error keeps recurring sync
+   enabled even when individual contacts need review; a destination change
+   requires a new dry run. Run reconciliation manually once, inspect the
    destination and record the deployment, aggregate counts and timestamp in DAY-366.
 
 For production commands, explicitly select `--prod`; this runbook is not a claim
@@ -280,9 +281,11 @@ or external CRM edit racing an in-flight Notion request cannot be rolled back
 across systems; resolve any orphaned contact through the CRM deletion process.
 
 `crmSyncState:status` is internal/admin-only. Inspect counts, error, running,
-startedAt, finishedAt, lastSuccessAt, auditPhase, auditCursor and auditFailed.
+startedAt, finishedAt, liveVerifiedAt, lastSuccessAt, auditPhase, auditCursor and auditFailed.
 Counts refer to the latest batch, while lastSuccessAt advances only after a
-complete successful audit. Alert via the deployment's existing
+complete zero-failure audit. liveVerifiedAt records that a completed live audit
+finished without a terminal error and keeps the initial dry-run gate open;
+it is not a clean-audit signal. Alert via the deployment's existing
 operations monitoring on a failed cron, nonzero failed/conflict/creationReview/
 missingLinkedPages counts, or a live
 lastSuccessAt older than two hours. If running exceeds eleven minutes, the worker
