@@ -514,7 +514,11 @@ const generatedPlanSchema = z
 				),
 				dayOffsetBeforeExam: z.number().int().min(0).max(120),
 				startTime: z.string().regex(/^\d{2}:\d{2}$/),
-				durationMinutes: z.number().int().min(15).max(180),
+				durationMinutes: z
+					.number()
+					.int()
+					.min(MIN_LEARNING_SLOT_MINUTES)
+					.max(180),
 				goal: germanTextSchema(
 					20,
 					"Student-facing goal for this session, tied to the student's answers and exam topic.",
@@ -2227,6 +2231,7 @@ const getSubjectSpecificLearningInstruction = (subject: string) =>
 		: "";
 
 export const __testOnlyLearningPlanAi = {
+	generatedPlanSchema,
 	questionsSchema,
 	withGeneratedTextRetry,
 	normalizeSessions,
