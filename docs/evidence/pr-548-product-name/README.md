@@ -9,10 +9,10 @@ The naming decision lives in
 
 | Screen | Before | After |
 | --- | --- | --- |
-| Settings | [<img src="android-settings-before.png" alt="Settings before the naming correction" width="280">](android-settings-before.png) | [<img src="android-settings-after.png" alt="Settings using Dayova" width="280">](android-settings-after.png) |
-| Paywall | [<img src="android-paywall-before.png" alt="Paywall before the naming correction" width="280">](android-paywall-before.png) | [<img src="android-paywall-after.png" alt="Paywall using Dayova" width="280">](android-paywall-after.png) |
-| Subscription selection | [<img src="android-subscription-before.png" alt="Subscription selection before the naming correction" width="280">](android-subscription-before.png) | [<img src="android-subscription-after.png" alt="Subscription selection using Dayova" width="280">](android-subscription-after.png) |
-| Confirmation | [<img src="android-success-before.png" alt="Confirmation before the naming correction" width="280">](android-success-before.png) | [<img src="android-success-after.png" alt="Confirmation using Dayova" width="280">](android-success-after.png) |
+| Settings | [<img src="android-settings-before.png" alt="Settings before the naming correction" width="180">](android-settings-before.png) | [<img src="android-settings-after.png" alt="Settings using Dayova" width="180">](android-settings-after.png) |
+| Paywall | [<img src="android-paywall-before.png" alt="Paywall before the naming correction" width="180">](android-paywall-before.png) | [<img src="android-paywall-after.png" alt="Paywall using Dayova" width="180">](android-paywall-after.png) |
+| Subscription selection | [<img src="android-subscription-before.png" alt="Subscription selection before the naming correction" width="180">](android-subscription-before.png) | [<img src="android-subscription-after.png" alt="Subscription selection using Dayova" width="180">](android-subscription-after.png) |
+| Confirmation | [<img src="android-success-before.png" alt="Confirmation before the naming correction" width="180">](android-success-before.png) | [<img src="android-success-after.png" alt="Confirmation using Dayova" width="180">](android-success-after.png) |
 
 ## Sources and capture method
 

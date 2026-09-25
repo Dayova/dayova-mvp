@@ -23,12 +23,12 @@ The before screenshot is the user's original report; a still image alone does no
 
 ### Before: reported material screen
 
-![Before](before-material.png)
+<a href="before-material.png"><img src="before-material.png" alt="Before" width="180" /></a>
 
 ### After: native success destination after tapping “Später hinzufügen”
 
-![After](after-new-exam.png)
+<a href="after-new-exam.png"><img src="after-new-exam.png" alt="After" width="180" /></a>
 
 ### After: resumed draft returns to Plans
 
-![Resumed draft](after-resumed-draft.png)
+<a href="after-resumed-draft.png"><img src="after-resumed-draft.png" alt="Resumed draft" width="180" /></a>

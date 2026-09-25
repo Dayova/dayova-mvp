@@ -80,23 +80,23 @@ Previews are limited to 280 px wide. Click any screenshot to view the original.
 
 | Before | After |
 | --- | --- |
-| [<img src="android-compact-before.png" alt="Android status-bar overlap" width="280">](android-compact-before.png) | [<img src="android-compact-after.png" alt="Android status-bar clearance" width="280">](android-compact-after.png) |
+| [<img src="android-compact-before.png" alt="Android status-bar overlap" width="180">](android-compact-before.png) | [<img src="android-compact-after.png" alt="Android status-bar clearance" width="180">](android-compact-after.png) |
 
 ### Android: three-button navigation
 
 | Before | After scrolling |
 | --- | --- |
-| [<img src="android-threebutton-before.png" alt="Android footer obscured" width="280">](android-threebutton-before.png) | [<img src="android-threebutton-after.png" alt="Android footer reachable" width="280">](android-threebutton-after.png) |
+| [<img src="android-threebutton-before.png" alt="Android footer obscured" width="180">](android-threebutton-before.png) | [<img src="android-threebutton-after.png" alt="Android footer reachable" width="180">](android-threebutton-after.png) |
 
 ### Android: 200% font scale
 
-[<img src="android-large-text-after.png" alt="Large text footer after scrolling" width="280">](android-large-text-after.png)
+[<img src="android-large-text-after.png" alt="Large text footer after scrolling" width="180">](android-large-text-after.png)
 
 ### iOS comparison
 
 | Before | After |
 | --- | --- |
-| [<img src="ios-before.png" alt="iOS baseline" width="280">](ios-before.png) | [<img src="ios-after.png" alt="iOS with explicit safe-area viewport" width="280">](ios-after.png) |
+| [<img src="ios-before.png" alt="iOS baseline" width="180">](ios-before.png) | [<img src="ios-after.png" alt="iOS with explicit safe-area viewport" width="180">](ios-after.png) |
 
 ## Regression tests
 

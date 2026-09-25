@@ -8,7 +8,7 @@ No source edits or backend deployment were used for these captures.
 
 | Before | After |
 | --- | --- |
-| <img src="before.png" width="240" alt="Welcome screen before PR 653" /> | <img src="after.png" width="240" alt="Welcome screen after PR 653" /> |
+| <img src="before.png" width="180" alt="Welcome screen before PR 653" /> | <img src="after.png" width="180" alt="Welcome screen after PR 653" /> |
 | [Before recording](before.mp4) | [After recording](after.mp4) |
 
 ## Inspection

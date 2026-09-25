@@ -17,9 +17,9 @@ and Android emulator, in that order, with distinct existing QA accounts.
   single-line and horizontally scrolled. No profile changes were saved.
 - TypeScript passed; complete Jest run: **83 suites, 385 tests passed**.
 
-![iPad after native Back](ipad-back-subject.png)
-![iPhone after native Back](iphone-back-subject.png)
-![Android after system Back](android-back-subject.png)
+<a href="ipad-back-subject.png"><img src="ipad-back-subject.png" alt="iPad after native Back" width="180" /></a>
+<a href="iphone-back-subject.png"><img src="iphone-back-subject.png" alt="iPhone after native Back" width="180" /></a>
+<a href="android-back-subject.png"><img src="android-back-subject.png" alt="Android after system Back" width="180" /></a>
 
 ## Evidence boundaries and remaining acceptance
 

@@ -17,11 +17,11 @@ Full screen recordings: [before](before.mp4), [after](after.mp4),
 Each is a ten-second MP4. The GIF is a cropped, resized, 20 fps preview at
 the original speed; it contains the complete ten-second comparison.
 
-![C selected before and after](selected-comparison.png)
+<a href="selected-comparison.png"><img src="selected-comparison.png" alt="C selected before and after" width="180" /></a>
 
-![Resting, holding B, and holding B with reduced motion](interaction-states.png)
+<a href="interaction-states.png"><img src="interaction-states.png" alt="Resting, holding B, and holding B with reduced motion" width="180" /></a>
 
-![Dark theme and long answer states](additional-states.png)
+<a href="additional-states.png"><img src="additional-states.png" alt="Dark theme and long answer states" width="180" /></a>
 
 The original 1080×2400 PNGs are included alongside these labeled comparisons.
 `after-unselected.png` shows the initial state; `after-pressed.png` holds B

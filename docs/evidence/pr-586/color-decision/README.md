@@ -11,9 +11,9 @@ selected-state legibility and consistency, not a learner-preference study.
 
 ## Compare the same selected state
 
-![Light: original, retained, alternative](light-comparison.png)
+<a href="light-comparison.png"><img src="light-comparison.png" alt="Light: original, retained, alternative" width="180" /></a>
 
-![Dark: original, retained, alternative](dark-comparison.png)
+<a href="dark-comparison.png"><img src="dark-comparison.png" alt="Dark: original, retained, alternative" width="180" /></a>
 
 The selected-row crops preserve native pixels at 1:1 before the viewer scales
 the image. A/B/C identify design options; each screenshot selects answer C.
@@ -26,9 +26,9 @@ Original full-resolution 1080×2400 screenshots:
 
 Full-screen context, resized equally to 360 pixels per screen:
 
-![Light full-screen context](light-full-context.png)
+<a href="light-full-context.png"><img src="light-full-context.png" alt="Light full-screen context" width="180" /></a>
 
-![Dark full-screen context](dark-full-context.png)
+<a href="dark-full-context.png"><img src="dark-full-context.png" alt="Dark full-screen context" width="180" /></a>
 
 ## Recordings
 

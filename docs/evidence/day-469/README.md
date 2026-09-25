@@ -25,7 +25,7 @@ paths are covered by the shared component's shadow-free lint boundary.
 
 | Before (reporter, original build unknown) | After (native Android) |
 | --- | --- |
-| <img src="before-reporter.png" alt="Reported Android shadows below both arrow buttons" width="280" /> | Pending native capture; no visual approval claimed. |
+| <img src="before-reporter.png" alt="Reported Android shadows below both arrow buttons" width="180" /> | Pending native capture; no visual approval claimed. |
 
 Jakob requested adjacent before/after evidence in
 [PR #657](https://github.com/Dayova/dayova-mvp/pull/657#issuecomment-5766118902).

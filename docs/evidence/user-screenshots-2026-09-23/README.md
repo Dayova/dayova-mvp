@@ -26,84 +26,84 @@ Nach Bildschirm und Plattform benannte Nutzeraufnahmen; Build nicht unabhängig 
 
 ### android-account-ready.png
 
-<img src="android-account-ready.png" width="360" alt="android-account-ready.png" />
+<img src="android-account-ready.png" width="180" alt="android-account-ready.png" />
 
 ### android-create-dialog.png
 
-<img src="android-create-dialog.png" width="360" alt="android-create-dialog.png" />
+<img src="android-create-dialog.png" width="180" alt="android-create-dialog.png" />
 
 ### android-exam-type.png
 
-<img src="android-exam-type.png" width="360" alt="android-exam-type.png" />
+<img src="android-exam-type.png" width="180" alt="android-exam-type.png" />
 
 ### android-home.png
 
-<img src="android-home.png" width="360" alt="android-home.png" />
+<img src="android-home.png" width="180" alt="android-home.png" />
 
 ### android-subjects.png
 
-<img src="android-subjects.png" width="360" alt="android-subjects.png" />
+<img src="android-subjects.png" width="180" alt="android-subjects.png" />
 
 ### ipad-08.12.51.png
 
-<img src="ipad-08.12.51.png" width="360" alt="ipad-08.12.51.png" />
+<img src="ipad-08.12.51.png" width="180" alt="ipad-08.12.51.png" />
 
 ### ipad-16.00.03.png
 
-<img src="ipad-16.00.03.png" width="360" alt="ipad-16.00.03.png" />
+<img src="ipad-16.00.03.png" width="180" alt="ipad-16.00.03.png" />
 
 ### ipad-16.00.05.png
 
-<img src="ipad-16.00.05.png" width="360" alt="ipad-16.00.05.png" />
+<img src="ipad-16.00.05.png" width="180" alt="ipad-16.00.05.png" />
 
 ### ipad-16.00.18.png
 
-<img src="ipad-16.00.18.png" width="360" alt="ipad-16.00.18.png" />
+<img src="ipad-16.00.18.png" width="180" alt="ipad-16.00.18.png" />
 
 ### ipad-16.00.26.png
 
-<img src="ipad-16.00.26.png" width="360" alt="ipad-16.00.26.png" />
+<img src="ipad-16.00.26.png" width="180" alt="ipad-16.00.26.png" />
 
 ### iphone-15.58.46.png
 
-<img src="iphone-15.58.46.png" width="360" alt="iphone-15.58.46.png" />
+<img src="iphone-15.58.46.png" width="180" alt="iphone-15.58.46.png" />
 
 ### iphone-15.58.47.png
 
-<img src="iphone-15.58.47.png" width="360" alt="iphone-15.58.47.png" />
+<img src="iphone-15.58.47.png" width="180" alt="iphone-15.58.47.png" />
 
 ### iphone-15.58.49.png
 
-<img src="iphone-15.58.49.png" width="360" alt="iphone-15.58.49.png" />
+<img src="iphone-15.58.49.png" width="180" alt="iphone-15.58.49.png" />
 
 ### iphone-15.58.56.png
 
-<img src="iphone-15.58.56.png" width="360" alt="iphone-15.58.56.png" />
+<img src="iphone-15.58.56.png" width="180" alt="iphone-15.58.56.png" />
 
 ### iphone-15.58.59.png
 
-<img src="iphone-15.58.59.png" width="360" alt="iphone-15.58.59.png" />
+<img src="iphone-15.58.59.png" width="180" alt="iphone-15.58.59.png" />
 
 ### iphone-15.59.04.png
 
-<img src="iphone-15.59.04.png" width="360" alt="iphone-15.59.04.png" />
+<img src="iphone-15.59.04.png" width="180" alt="iphone-15.59.04.png" />
 
 ### iphone-15.59.06.png
 
-<img src="iphone-15.59.06.png" width="360" alt="iphone-15.59.06.png" />
+<img src="iphone-15.59.06.png" width="180" alt="iphone-15.59.06.png" />
 
 ### iphone-15.59.12.png
 
-<img src="iphone-15.59.12.png" width="360" alt="iphone-15.59.12.png" />
+<img src="iphone-15.59.12.png" width="180" alt="iphone-15.59.12.png" />
 
 ### iphone-15.59.19.png
 
-<img src="iphone-15.59.19.png" width="360" alt="iphone-15.59.19.png" />
+<img src="iphone-15.59.19.png" width="180" alt="iphone-15.59.19.png" />
 
 ### iphone-15.59.27.png
 
-<img src="iphone-15.59.27.png" width="360" alt="iphone-15.59.27.png" />
+<img src="iphone-15.59.27.png" width="180" alt="iphone-15.59.27.png" />
 
 ### iphone-15.59.39.png
 
-<img src="iphone-15.59.39.png" width="360" alt="iphone-15.59.39.png" />
+<img src="iphone-15.59.39.png" width="180" alt="iphone-15.59.39.png" />

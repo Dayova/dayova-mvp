@@ -12,7 +12,7 @@ password, verification code, or API key. Grey gears are simulator overlays.
 
 | iPad | iPhone | Android |
 | --- | --- | --- |
-| <img src="ipad-two-exams.png" width="240" alt="iPad: two exam drafts" /> | <img src="iphone-two-exams.png" width="240" alt="iPhone: two exam drafts" /> | <img src="android-two-exams.png" width="240" alt="Android: two exam drafts" /> |
+| <img src="ipad-two-exams.png" width="180" alt="iPad: two exam drafts" /> | <img src="iphone-two-exams.png" width="180" alt="iPhone: two exam drafts" /> | <img src="android-two-exams.png" width="180" alt="Android: two exam drafts" /> |
 
 All three lists contain Mathematics and Biology **drafts**, with missing school
 material. Mathematics is dated 30 September. Biology is 29 September on iPad and
@@ -22,7 +22,7 @@ No successful upload, AI generation, knowledge check, or repetition is inferred.
 
 | iPhone registration result | Android registration result |
 | --- | --- |
-| <img src="iphone-account-ready.png" width="240" alt="iPhone account-ready screen" /> | <img src="android-account-ready.png" width="240" alt="Android account-ready screen" /> |
+| <img src="iphone-account-ready.png" width="180" alt="iPhone account-ready screen" /> | <img src="android-account-ready.png" width="180" alt="Android account-ready screen" /> |
 
 These images document the visible account-ready screen only, not every preceding
 registration step or successful subsequent deletion.
@@ -37,7 +37,7 @@ No backend deployment was performed. This is not production or OTA evidence.
 
 | Native material upload passed | Subsequent generation blocked |
 | --- | --- |
-| <img src="ipad-material-upload-success.png" width="280" alt="iPad: synthetic 804-byte text file shown as uploaded" /> | <img src="ipad-generation-config-error.png" width="280" alt="iPad: learning plan generation technical failure at 78 percent" /> |
+| <img src="ipad-material-upload-success.png" width="180" alt="iPad: synthetic 804-byte text file shown as uploaded" /> | <img src="ipad-generation-config-error.png" width="180" alt="iPad: learning plan generation technical failure at 78 percent" /> |
 
 - Opened the existing Mathematics draft, the missing-material prompt, upload
   form, source selector, and native Files picker. Selected a synthetic 804-byte
