@@ -10,56 +10,66 @@ const parent = (head: string, base: string) => ({
 	base: { ref: base, repo: { full_name: repository } },
 });
 
-const requestFrom = (parents: Record<string, ReturnType<typeof parent>[]>) =>
+const requestFrom = (pages: ReturnType<typeof parent>[][]) =>
 	vi.fn<typeof fetch>(async (input) => {
-		const head = new URL(String(input)).searchParams.get("head")?.split(":")[1];
-		return new Response(JSON.stringify(parents[head ?? ""] ?? []), { status: 200 });
+		const page = Number(new URL(String(input)).searchParams.get("page"));
+		return new Response(JSON.stringify(pages[page - 1] ?? []), { status: 200 });
 	});
 
 describe("OTA stack root", () => {
 	it("accepts a direct PR to main without calling GitHub", async () => {
-		const request = requestFrom({});
+		const request = requestFrom([]);
 		expect(await reachesMainThroughOpenPrs("main", repository, request)).toBe(true);
 		expect(request).not.toHaveBeenCalled();
 	});
 
 	it("follows open parent PRs until their base is main", async () => {
-		const request = requestFrom({
-			"codex/child": [parent("codex/child", "codex/parent")],
-			"codex/parent": [parent("codex/parent", "main")],
-		});
+		const request = requestFrom([[
+			parent("codex/child", "codex/parent"),
+			parent("codex/parent", "main"),
+		]]);
 		expect(
 			await reachesMainThroughOpenPrs("codex/child", repository, request),
 		).toBe(true);
-		expect(request).toHaveBeenCalledTimes(2);
+		expect(request).toHaveBeenCalledTimes(1);
 	});
 
 	it("rejects a branch without an open parent PR", async () => {
 		expect(
-			await reachesMainThroughOpenPrs("codex/orphan", repository, requestFrom({})),
+			await reachesMainThroughOpenPrs("codex/orphan", repository, requestFrom([])),
 		).toBe(false);
 	});
 
 	it("rejects ambiguous parent PRs", async () => {
-		const request = requestFrom({
-			"codex/parent": [
+		const request = requestFrom([[
 				parent("codex/parent", "main"),
 				parent("codex/parent", "other"),
-			],
-		});
+		]]);
 		expect(
 			await reachesMainThroughOpenPrs("codex/parent", repository, request),
 		).toBe(false);
 	});
 
 	it("rejects a cyclic stack", async () => {
-		const request = requestFrom({
-			"codex/a": [parent("codex/a", "codex/b")],
-			"codex/b": [parent("codex/b", "codex/a")],
-		});
+		const request = requestFrom([[
+			parent("codex/a", "codex/b"),
+			parent("codex/b", "codex/a"),
+		]]);
 		expect(await reachesMainThroughOpenPrs("codex/a", repository, request)).toBe(
 			false,
 		);
+		expect(request).toHaveBeenCalledTimes(1);
+	});
+
+	it("follows a parent on the next API page", async () => {
+		const firstPage = Array.from({ length: 100 }, (_, index) =>
+			parent(`codex/other-${index}`, "main"),
+		);
+		const request = requestFrom([
+			firstPage,
+			[parent("codex/child", "codex/parent"), parent("codex/parent", "main")],
+		]);
+		expect(await reachesMainThroughOpenPrs("codex/child", repository, request)).toBe(true);
 		expect(request).toHaveBeenCalledTimes(2);
 	});
 
