@@ -8,9 +8,11 @@
 - Android: explicit Back from intro 1 reaches welcome; system Back from intro 2 reaches intro 1; explicit Back from intro 3 reaches 2 then 1. Flow completed and screen recording inspected across its full timeline.
 - Separate Android form check: entered synthetic name `QA Rueckweg`, advanced to grade, pressed system Back; name remained visible and its assertion passed. Further explicit form-back steps did not finish, so not claimed.
 
-![iPhone welcome after Back](iphone-welcome.png)
-![iPhone intro 2 after Back from intro 3](iphone-back-second.png)
-![Android preserved name after system Back](android-name-preserved.png)
+| iPhone: welcome after Back | iPhone: intro 2 after Back | Android: preserved name |
+| --- | --- | --- |
+| <a href="iphone-welcome.png"><img src="iphone-welcome.png" alt="iPhone welcome after Back" width="180" /></a> | <a href="iphone-back-second.png"><img src="iphone-back-second.png" alt="iPhone intro 2 after Back from intro 3" width="180" /></a> | <a href="android-name-preserved.png"><img src="android-name-preserved.png" alt="Android preserved name after system Back" width="180" /></a> |
+
+Click a preview to open the original-resolution PNG. Preview formatting does not change the evidence or its coverage.
 
 ## Recording inspection
 
