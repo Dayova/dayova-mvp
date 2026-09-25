@@ -1,7 +1,8 @@
 import { useRouter } from "expo-router";
 import { useMemo, useRef, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, Keyboard, View } from "react-native";
 import { ScreenHeader as Header } from "~/components/screen-header";
+import { AccountDeletionPasswordField } from "~/components/ui/account-deletion-password-field";
 import { Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import { ErrorMessage } from "~/components/ui/error-message";
@@ -68,6 +69,7 @@ export default function ProfileScreen() {
 	const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 	const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 	const [deleteError, setDeleteError] = useState<string | null>(null);
+	const [deletionPassword, setDeletionPassword] = useState("");
 	const accountGateRef = useRef(createAsyncActionGate());
 	const handleLogout = () => {
 		void accountGateRef.current.run(async () => {
@@ -89,11 +91,13 @@ export default function ProfileScreen() {
 		});
 	};
 	const handleDeleteAccount = () => {
+		if (!deletionPassword) return;
 		void accountGateRef.current.run(async () => {
+			Keyboard.dismiss();
 			setDeleteError(null);
 			setIsDeletingAccount(true);
 			try {
-				await deleteAccount();
+				await deleteAccount(deletionPassword);
 				setShowDeleteConfirmation(false);
 			} catch (error) {
 				logDiagnosticError("Failed to delete account.", error, {
@@ -104,6 +108,7 @@ export default function ProfileScreen() {
 					"Das Konto konnte nicht vollständig gelöscht werden. Bitte versuche es erneut.",
 				);
 			} finally {
+				setDeletionPassword("");
 				setIsDeletingAccount(false);
 			}
 		});
@@ -388,11 +393,24 @@ export default function ProfileScreen() {
 				title="Konto wirklich löschen?"
 				description="Dein Dayova-Konto und deine gespeicherten Daten werden dauerhaft gelöscht. Ein aktives App-Store-Abo musst du zusätzlich im App Store kündigen."
 				confirmLabel="Konto löschen"
+				confirmDisabled={!deletionPassword}
+				scrollable
+				size="medium"
 				isBusy={isDeletingAccount}
 				errorMessage={deleteError}
-				onClose={() => setShowDeleteConfirmation(false)}
+				onClose={() => {
+					setDeletionPassword("");
+					setDeleteError(null);
+					setShowDeleteConfirmation(false);
+				}}
 				onConfirm={handleDeleteAccount}
-			/>
+			>
+				<AccountDeletionPasswordField
+					value={deletionPassword}
+					onChangeText={setDeletionPassword}
+					disabled={isDeletingAccount}
+				/>
+			</ConfirmationSheet>
 		</>
 	);
 }

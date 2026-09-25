@@ -8,6 +8,7 @@ import {
 	mutation,
 	query,
 } from "./_generated/server";
+import { assertAccountActive } from "./accountDeletion";
 import { throwUserFacingError } from "./errors";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -122,6 +123,7 @@ const getCurrentUser = async (ctx: MutationCtx | QueryCtx) => {
 	if (!identity) {
 		throwUserFacingError("Nicht authentifiziert.");
 	}
+	await assertAccountActive(ctx, identity.tokenIdentifier);
 
 	const user = await ctx.db
 		.query("users")

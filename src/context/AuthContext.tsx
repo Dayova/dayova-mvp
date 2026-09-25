@@ -4,7 +4,7 @@ import {
 	useSignIn,
 	useUser,
 } from "@clerk/expo";
-import { useConvexAuth, useMutation } from "convex/react";
+import { useConvex, useConvexAuth, useMutation } from "convex/react";
 import { usePostHog } from "posthog-react-native";
 import type React from "react";
 import {
@@ -19,6 +19,7 @@ import {
 } from "react";
 import { api } from "#convex/_generated/api";
 import { useOnboarding } from "~/context/OnboardingContext";
+import { submitAccountDeletion } from "~/lib/account-deletion-request";
 import {
 	createValidationAnalytics,
 	isPostHogConfigured,
@@ -172,7 +173,7 @@ interface AccountActionsContextType {
 	verifyProfileEmailCode: (code: string) => Promise<void>;
 	changePassword: (input: PasswordChangeInput) => Promise<void>;
 	completeForcedPasswordReset: (password: string) => Promise<void>;
-	deleteAccount: () => Promise<void>;
+	deleteAccount: (currentPassword: string) => Promise<void>;
 	logout: () => Promise<void>;
 }
 
@@ -440,9 +441,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		api.validationAnalytics.markActivity,
 	);
 	const updateConvexProfile = useMutation(api.users.updateProfile);
-	const deleteCurrentUserDataBatch = useMutation(
-		api.accountDeletion.deleteCurrentUserDataBatch,
-	);
+	const convex = useConvex();
 	const { clearAnswers } = useOnboarding();
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const passwordResetHasRemoteAttemptRef = useRef(false);
@@ -1639,19 +1638,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		);
 	};
 
-	const deleteAccount = async () => {
-		if (!clerkUser) {
-			throw new Error("Das Konto ist nicht mehr verfügbar.");
-		}
-
-		while (true) {
-			const deletion = await deleteCurrentUserDataBatch({});
-			if (deletion.done) break;
-		}
-
+	const deleteAccount = async (currentPassword: string) => {
 		try {
-			await clerkUser.delete();
-			await logout();
+			const session = clerk.session;
+			if (!session) throw new Error("Bitte melde dich erneut an.");
+			await submitAccountDeletion(
+				{
+					session,
+					request: async (token) => {
+						const endpoint = new URL(convex.url);
+						endpoint.hostname = endpoint.hostname.replace(
+							/\.convex\.cloud$/,
+							".convex.site",
+						);
+						endpoint.pathname = "/account-deletion";
+						const response = await fetch(endpoint.toString(), {
+							signal: AbortSignal.timeout(20_000),
+							method: "POST",
+							headers: {
+								Authorization: `Bearer ${token}`,
+								"Content-Type": "application/json",
+							},
+							body: JSON.stringify({ password: currentPassword }),
+						});
+						if (!response.ok)
+							throw new Error(
+								"Die Kontolöschung konnte nicht bestätigt werden.",
+							);
+						return response.json();
+					},
+					logout,
+				},
+				currentPassword,
+			);
 		} catch (error) {
 			throw new Error(
 				getClerkErrorMessage(

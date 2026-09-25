@@ -1,8 +1,8 @@
 import { v } from "convex/values";
+import { z } from "zod";
 import { internal } from "./_generated/api";
 import { action, env, internalAction } from "./_generated/server";
 import { throwUserFacingError } from "./errors";
-import { z } from "zod";
 
 const ENTITLEMENT_ID = "dayova_full_access";
 const REVENUECAT_REQUEST_TIMEOUT_MS = 10_000;
@@ -172,6 +172,9 @@ export const syncMyEntitlement = action({
 		if (!identity) {
 			throwUserFacingError("Nicht authentifiziert.");
 		}
+		await ctx.runQuery(internal.accountDeletion.assertOwnerAccountActive, {
+			ownerTokenIdentifier: identity.tokenIdentifier,
+		});
 
 		const result = await fetchSubscriberSnapshot(
 			identity.subject,

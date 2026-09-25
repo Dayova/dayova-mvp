@@ -9,6 +9,7 @@
  */
 
 import type * as accountDeletion from "../accountDeletion.js";
+import type * as accountDeletionActions from "../accountDeletionActions.js";
 import type * as adaptiveLearningPlan from "../adaptiveLearningPlan.js";
 import type * as adaptiveLearningPlanPolicy from "../adaptiveLearningPlanPolicy.js";
 import type * as aiConsent from "../aiConsent.js";
@@ -63,6 +64,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   accountDeletion: typeof accountDeletion;
+  accountDeletionActions: typeof accountDeletionActions;
   adaptiveLearningPlan: typeof adaptiveLearningPlan;
   adaptiveLearningPlanPolicy: typeof adaptiveLearningPlanPolicy;
   aiConsent: typeof aiConsent;
