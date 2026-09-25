@@ -34,7 +34,6 @@
       "env": {
         "APP_VARIANT": "development",
         "EXPO_PUBLIC_CONVEX_URL": "https://spotted-snake-58.eu-west-1.convex.cloud",
-        "EXPO_PUBLIC_POSTHOG_API_KEY": "",
         "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "test_day423_qa_no_purchases",
         "EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY": "test_day423_qa_no_purchases"
       },
