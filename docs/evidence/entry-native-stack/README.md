@@ -267,12 +267,20 @@ covers a cancelled Subject swipe as well. The final branch adds resume-URL
 validation and a merge from `main` after the release build; its native step
 navigation code is unchanged from the tested build.
 
-The simulator also has a development client registered for the `dayova` URL
-scheme. Safari dispatched a `dayova:///entry/new?type=exam` cold link to that
-development client, even after the release app was reinstalled and force-closed,
-so this did not verify release-app cold-link handling. The real Expo parser
-regression covers the leaf-only cold URL shape, retained exam ID, date,
-duration, and reconstructed
-predecessors. Expo development builds do not support custom-scheme cold launch
-testing in the same way as release builds
+The simulator also had a development client registered for the `dayova` URL
+scheme, which originally intercepted the release app's cold link. On
+2026-09-25, the development-client app bundle was copied to a temporary backup
+and uninstalled from this simulator. With the release app terminated,
+`xcrun simctl openurl` opened `dayova:///entry/new?type=exam`; iOS showed
+“Open in Dayova?” and the
+[Maestro confirmation](ios-release-cold-link-confirm.yaml) passed with its
+[assertion log](ios-release-cold-link-confirm-maestro.txt): after accepting,
+the authenticated release app displayed Exam type. The development client
+was then reinstalled from the backup, and both bundle IDs were verified.
+No exam was saved. This verifies OS-to-release-app dispatch and the first
+cold-link step on the `a9f23cfd` build. The final PR's additional malformed
+resume-URL guards and complete saved-exam cold-resume behavior are covered by
+the real Expo parser and rendered stack tests, but have not been exercised in
+an exact-head release binary. Expo development builds do not support
+custom-scheme cold launch testing in the same way as release builds
 ([Expo documentation](https://docs.expo.dev/develop/development-builds/development-workflows/)).

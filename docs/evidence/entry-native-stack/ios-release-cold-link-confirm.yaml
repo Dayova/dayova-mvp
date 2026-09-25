@@ -1,0 +1,10 @@
+appId: de.dayova.app
+# Precondition: the development client is temporarily uninstalled so it cannot
+# intercept the `dayova` URL scheme. With the release app terminated, run:
+# xcrun simctl openurl <simulator-udid> 'dayova:///entry/new?type=exam'
+---
+- tapOn: Open
+- extendedWaitUntil:
+    visible: Welche Art von Prüfung ist es?
+    timeout: 60000
+- assertVisible: Welche Art von Prüfung ist es?
