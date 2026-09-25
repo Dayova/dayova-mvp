@@ -65,6 +65,7 @@ import {
 	MAX_LEARNING_TOPIC_COUNT,
 	normalizeLearningTopics,
 } from "./learningTopicMap";
+import { extractPdfText } from "./pdfText";
 import { areSemanticallyDuplicateQuestions } from "./questionNovelty";
 
 const MAX_UPLOAD_FILE_BYTES = 7 * 1024 * 1024;
@@ -885,6 +886,13 @@ const extractTextFromBytes = async (
 	if (fileType.startsWith("text/") || plainTextExtensions.has(extension)) {
 		return compactText(
 			new TextDecoder("utf-8").decode(fileBuffer),
+			MAX_EXTRACTED_TEXT_CHARS,
+		);
+	}
+
+	if (fileType === "application/pdf" || extension === "pdf") {
+		return compactText(
+			await extractPdfText(fileBuffer, MAX_EXTRACTED_TEXT_CHARS),
 			MAX_EXTRACTED_TEXT_CHARS,
 		);
 	}
