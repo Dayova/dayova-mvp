@@ -224,7 +224,8 @@ export type LearningPlanSnapshot = {
 				| "insufficientMaterial"
 				| "materialProcessing"
 				| "schedulingConstraints"
-				| "generationProcessing";
+				| "generationProcessing"
+				| "unknown";
 			totalSessionCount: number;
 			readySessionCount: number;
 			failedSessionCount: number;

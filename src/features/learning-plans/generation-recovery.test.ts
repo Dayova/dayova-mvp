@@ -28,14 +28,40 @@ describe("getLearningPlanGenerationFailure", () => {
 		});
 	});
 
-	it("falls back to a retryable processing failure", () => {
+	it("keeps an uncoded failure unknown and retryable", () => {
 		expect(
 			getLearningPlanGenerationFailure(new Error("Network error")),
 		).toMatchObject({
-			reason: "generationProcessing",
+			reason: "unknown",
 			canReviewTopics: false,
-			canEditMaterial: false,
+			canEditMaterial: true,
 			canEditLearningTimes: false,
+		});
+	});
+
+	it("does not infer a cause from an uncoded error message", () => {
+		expect(
+			getLearningPlanGenerationFailure(
+				new Error("Die Unterlagen konnten nicht verarbeitet werden."),
+			),
+		).toMatchObject({
+			reason: "unknown",
+			canEditMaterial: true,
+		});
+	});
+
+	it("shows the AI's specific material gap when the backend classified it", () => {
+		expect(
+			getLearningPlanGenerationFailure({
+				data: {
+					kind: "userFacing",
+					code: "insufficient_material",
+					message: "Es fehlen Aufgaben zur Berechnung der Steigung.",
+				},
+			}),
+		).toMatchObject({
+			reason: "insufficientMaterial",
+			message: "Es fehlen Aufgaben zur Berechnung der Steigung.",
 		});
 	});
 });

@@ -111,6 +111,7 @@ const contentGenerationFailureReasonValidator = v.union(
 	v.literal("materialProcessing"),
 	v.literal("schedulingConstraints"),
 	v.literal("generationProcessing"),
+	v.literal("unknown"),
 );
 
 const learningPlanSessionPlanningStatusValidator = v.union(

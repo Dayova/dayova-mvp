@@ -7,7 +7,8 @@ export type LearningPlanGenerationFailureReason =
 	| "insufficientMaterial"
 	| "materialProcessing"
 	| "schedulingConstraints"
-	| "generationProcessing";
+	| "generationProcessing"
+	| "unknown";
 
 export type LearningPlanGenerationFailure = {
 	reason: LearningPlanGenerationFailureReason;
@@ -22,35 +23,7 @@ const errorCodeToReason: Record<string, LearningPlanGenerationFailureReason> = {
 	material_processing: "materialProcessing",
 	scheduling_constraints: "schedulingConstraints",
 	generation_processing: "generationProcessing",
-};
-
-const inferReasonFromMessage = (
-	message: string | null,
-): LearningPlanGenerationFailureReason => {
-	const normalized = message?.toLocaleLowerCase("de-DE") ?? "";
-	if (
-		normalized.includes("lernzeit") ||
-		normalized.includes("lerntage") ||
-		normalized.includes("prüfungstermin") ||
-		normalized.includes("bereits belegt")
-	) {
-		return "schedulingConstraints";
-	}
-	if (
-		normalized.includes("zu groß") ||
-		normalized.includes("nicht gelesen") ||
-		normalized.includes("verarbeitet")
-	) {
-		return "materialProcessing";
-	}
-	if (
-		normalized.includes("unterlagen") ||
-		normalized.includes("prüfungsstoff") ||
-		normalized.includes("schulmaterial")
-	) {
-		return "insufficientMaterial";
-	}
-	return "generationProcessing";
+	unknown: "unknown",
 };
 
 const messageByReason: Record<LearningPlanGenerationFailureReason, string> = {
@@ -62,6 +35,8 @@ const messageByReason: Record<LearningPlanGenerationFailureReason, string> = {
 		"Für den Wissenscheck und den nächsten Lernschritt fehlen passende freie Lernzeiten. Passe deine Lernzeiten an und versuche es erneut.",
 	generationProcessing:
 		"Der Lernplan konnte technisch noch nicht vollständig erstellt werden. Deine Angaben bleiben gespeichert; du kannst es sicher erneut versuchen.",
+	unknown:
+		"Die Ursache konnte nicht sicher erkannt werden. Deine Angaben bleiben gespeichert; du kannst es erneut versuchen oder dein Material prüfen.",
 };
 
 export const getLearningPlanGenerationFailure = (
@@ -73,14 +48,19 @@ export const getLearningPlanGenerationFailure = (
 	const reason =
 		persistedReason ??
 		(code ? errorCodeToReason[code] : undefined) ??
-		inferReasonFromMessage(sourceMessage);
+		"unknown";
 
 	return {
 		reason,
-		message: messageByReason[reason],
+		message:
+			reason === "insufficientMaterial" && sourceMessage
+				? sourceMessage
+				: messageByReason[reason],
 		canReviewTopics: reason === "insufficientMaterial",
 		canEditMaterial:
-			reason === "insufficientMaterial" || reason === "materialProcessing",
+			reason === "insufficientMaterial" ||
+			reason === "materialProcessing" ||
+			reason === "unknown",
 		canEditLearningTimes: reason === "schedulingConstraints",
 	};
 };

@@ -34,6 +34,11 @@ import {
 	type LearningTopic,
 } from "./learningContentPlan";
 import { estimateGeminiCostUsdMicros } from "./learningPlanAiCost";
+import {
+	decideMaterialReadiness,
+	MIN_MATERIAL_QUESTION_COUNT,
+	MIN_MATERIAL_TOPIC_COUNT,
+} from "./materialAssessment";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 import {
 	getDefaultPreparationDepth,
@@ -87,12 +92,12 @@ const PROJECTED_SESSION_COST_USD_MICROS = 12_000;
 const MIN_LEARNING_SLOT_MINUTES = 10;
 const MAX_LEARNING_SESSION_MINUTES = 30;
 const MAX_GENERATED_SESSIONS = 40;
-const MIN_TOPIC_MAP_COUNT = 3;
+const MIN_TOPIC_MAP_COUNT = MIN_MATERIAL_TOPIC_COUNT;
 const PREFERRED_TOPIC_MAP_COUNT = 6;
 const TOPIC_MAP_GENERATION_INSTRUCTION = `Erstelle zuerst eine möglichst vollständige Themenkarte mit ${MIN_TOPIC_MAP_COUNT} bis ${MAX_LEARNING_TOPIC_COUNT} klar getrennten, einzeln prüfbaren Fähigkeiten. Ziele auf mindestens ${PREFERRED_TOPIC_MAP_COUNT} Themen, wenn die internen Schulmaterialien genügend fachliche Substanz enthalten; erfinde oder dupliziere aber keine Themen, um diese Zahl zu erreichen. Zerlege breite Sammelthemen in konkrete Fähigkeiten, die der Schüler jeweils erklären und in einer Aufgabe anwenden oder lösen können muss. Nutze kurze stabile ASCII-IDs wie "steigung-berechnen". Das learningGoal beschreibt beobachtbar, was der Schüler zu diesem Thema verstehen und lösen oder anwenden können muss. requiredEvidenceDimensions enthält grundsätzlich understanding und problemSolving; ergänze independent, wenn das Material eine selbstständige prüfungsnahe Anwendung verlangt. Lass problemSolving nur bei nachweislich reinem Faktenwissen weg. Nutze die vom Lernenden angegebenen Prüfungsthemen, um die relevanten Inhalte in den internen Schulmaterialien zu erkennen. Leite den wahrscheinlichen Prüfungsstoff aus dieser Themenangabe und den internen Schulmaterialien ab; die Schulmaterialien bleiben für die konkrete Ausgestaltung maßgeblich. Externe Lernhilfen definieren niemals den Prüfungsstoff. Priorisiere explizite Prüfungshinweise vor allgemeinen oder älteren Übungsinhalten.`;
 const GERMAN_UI_TEXT_RULE =
 	"All visible German UI text must use correct umlauts and ß, not ae/oe/ue/ss substitutions.";
-const KNOWLEDGE_QUESTIONS_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Return five to ten objectively assessable questions for the first-session knowledge check.`;
+const KNOWLEDGE_QUESTIONS_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Assess whether the uploaded school material supports a reliable start. Only for sufficient material, return five to ten objectively assessable questions for the first-session knowledge check.`;
 const GENERATED_PLAN_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Return a realistic, calendar-ready German learning plan with concrete study sessions.`;
 const BERLIN_TIME_ZONE = "Europe/Berlin";
 
@@ -255,10 +260,20 @@ type GeneratedGermanText = z.infer<ReturnType<typeof germanTextSchema>>;
 
 const questionsSchema = z
 	.object({
-		sourceSummary: germanTextSchema(
-			20,
-			"Brief German summary of the uploaded learning material.",
-		),
+		materialAssessment: z.object({
+			verdict: z.enum(["sufficient", "insufficient", "uncertain"]),
+			missingInformation: z
+				.string()
+				.max(180)
+				.describe(
+					"Specific German description of what exam-relevant information is missing when verdict is insufficient; otherwise an empty string.",
+				),
+		}),
+		sourceSummary: z
+			.string()
+			.describe(
+				"Brief German summary of the uploaded learning material when sufficient; otherwise an empty string.",
+			),
 		topics: boundedArray(
 			z.object({
 				id: z
@@ -285,7 +300,7 @@ const questionsSchema = z
 						"Evidence dimensions actually required by the exam material for this topic: understanding for explaining concepts, problemSolving for selecting and applying a method, independent for completing exam-like tasks without hints.",
 					),
 			}),
-			MIN_TOPIC_MAP_COUNT,
+			0,
 			MAX_LEARNING_TOPIC_COUNT,
 		),
 		questions: boundedArray(
@@ -333,7 +348,7 @@ const questionsSchema = z
 					5,
 				),
 			}),
-			5,
+			0,
 			10,
 		),
 	})
@@ -921,19 +936,40 @@ const buildModelInputFromDocuments = async (
 			);
 		}
 
-		const downloadUrl = await createManagedReadUrl(
-			ctx,
-			{
-				storageId: document.storageId,
-				storageProvider: document.storageProvider,
-			},
-			accessKey,
-			{
+		let downloadUrl: string;
+		try {
+			downloadUrl = await createManagedReadUrl(
+				ctx,
+				{
+					storageId: document.storageId,
+					storageProvider: document.storageProvider,
+				},
+				accessKey,
+				{
+					fileName: document.fileName,
+					userFacingMessage: `Die Datei "${document.fileName}" konnte nicht gelesen werden. Lade sie bitte erneut hoch.`,
+				},
+			);
+		} catch (error) {
+			logDiagnosticError("learningPlanAi.documentReadUrl", error, {
 				fileName: document.fileName,
-				userFacingMessage: `Die Datei "${document.fileName}" konnte nicht gelesen werden. Lade sie bitte erneut hoch.`,
-			},
-		);
-		const response = await fetch(downloadUrl);
+				storageProvider: document.storageProvider,
+			});
+			throwUserFacingError(
+				`Die Datei "${document.fileName}" konnte nicht gelesen werden. Lade sie bitte erneut hoch.`,
+				"material_processing",
+			);
+		}
+		const response = await fetch(downloadUrl).catch((error: unknown) => {
+			logDiagnosticError("learningPlanAi.documentDownload", error, {
+				fileName: document.fileName,
+				storageProvider: document.storageProvider,
+			});
+			throwUserFacingError(
+				`Die Datei "${document.fileName}" konnte nicht gelesen werden. Lade sie bitte erneut hoch.`,
+				"material_processing",
+			);
+		});
 		if (!response.ok) {
 			logDiagnosticError(
 				"learningPlanAi.documentDownload",
@@ -951,7 +987,16 @@ const buildModelInputFromDocuments = async (
 			);
 		}
 
-		const arrayBuffer = await response.arrayBuffer();
+		const arrayBuffer = await response.arrayBuffer().catch((error: unknown) => {
+			logDiagnosticError("learningPlanAi.documentBytes", error, {
+				fileName: document.fileName,
+				storageProvider: document.storageProvider,
+			});
+			throwUserFacingError(
+				`Die Datei "${document.fileName}" konnte nicht gelesen werden. Lade sie bitte erneut hoch.`,
+				"material_processing",
+			);
+		});
 		if (arrayBuffer.byteLength > MAX_UPLOAD_FILE_BYTES) {
 			throwUserFacingError(
 				`Die Datei "${document.fileName}" ist zu groß für die KI-Verarbeitung.`,
@@ -989,6 +1034,13 @@ const buildModelInputFromDocuments = async (
 				filename: `${(document.sourceKind ?? "school") === "school" ? "INTERN" : "EXTERN"} - ${document.fileName}`,
 			});
 		}
+	}
+
+	if (fileParts.length === 0 && textSections.length === 0) {
+		throwUserFacingError(
+			"Aus den hochgeladenen Dateien konnte kein lesbarer Inhalt gewonnen werden. Ersetze die Dateien oder lade sie erneut hoch.",
+			"material_processing",
+		);
 	}
 
 	return {
@@ -3066,6 +3118,9 @@ export const generateKnowledgeQuestions = action({
 				type: "text",
 				text: `${buildBaseContext(context)}
 
+Beurteile zuerst die fachliche Eignung der tatsächlich lesbaren internen Schulunterlagen zusammen mit den angegebenen Prüfungsthemen. Setze materialAssessment.verdict auf "sufficient", wenn daraus ohne erfundene Inhalte mindestens ${MIN_TOPIC_MAP_COUNT} konkrete Fähigkeiten und ${MIN_MATERIAL_QUESTION_COUNT} unterschiedliche, objektiv bewertbare Wissenscheck-Fragen für einen ersten Lernschritt ableitbar sind. Setze "insufficient" nur, wenn du eine konkrete fehlende prüfungsrelevante Information im gelesenen Material benennen kannst; beschreibe sie knapp in materialAssessment.missingInformation, ohne Zitate, Namen oder Dateinamen. Setze "uncertain", wenn du die Eignung nicht sicher beurteilen kannst. Technische Fehler bei Dateizugriff, Modellausgabe oder Terminplanung sind keine Aussage über die Qualität des Materials.
+Bei "insufficient" oder "uncertain" gib sourceSummary als leeren String und topics und questions als leere Arrays zurück. Bei "sufficient" gib missingInformation als leeren String zurück und befolge erst dann die folgenden Anweisungen:
+
 ${TOPIC_MAP_GENERATION_INSTRUCTION}
 Erstelle danach 5 bis 10 kurze, objektiv bewertbare Fragen für den Wissenscheck in der ersten Lernsession. Jede Frage muss als kind "performance" tatsächliches Wissen durch kurzes Lösen, Erklären oder Anwenden prüfen. Verwende keine Selbsteinschätzungs- oder Sicherheitsfragen. Ordne jede Frage über topicId exakt einer zuvor erzeugten Themen-ID und über evidenceDimension genau einer Evidenzdimension zu. Liefere außerdem eine fachlich richtige idealAnswer, eine kurze explanation und 1 bis 5 evaluationKeywords. Ziel ist nicht Notengebung, sondern belastbare Evidenz für den jeweils nächsten Lernschritt.
 Die Fragen müssen sich konkret auf Prüfungsthema und Inhalte aus dem Material beziehen, aber wie normale Prüfungs- oder Verständnisfragen formuliert sein.
@@ -3114,6 +3169,31 @@ Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzei
 					usage: result.usage,
 				});
 
+				const materialDecision = decideMaterialReadiness(
+					result.output.materialAssessment,
+					{
+						sourceSummary: result.output.sourceSummary,
+						topicCount: result.output.topics.length,
+						questionCount: result.output.questions.length,
+					},
+				);
+				if (materialDecision.kind !== "ready") {
+					return {
+						materialDecision:
+							materialDecision.kind === "insufficientMaterial"
+								? {
+										...materialDecision,
+										missingInformation: normalizeAiGeneratedGermanText(
+											materialDecision.missingInformation,
+										),
+									}
+								: materialDecision,
+						questions: [],
+						topics: [],
+						sourceSummary: "",
+					};
+				}
+
 				const questions = result.output.questions.map((question, index) => {
 					const normalizedOptions = question.options.map((option) =>
 						normalizeAiGeneratedGermanText(option),
@@ -3159,6 +3239,7 @@ Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzei
 				});
 
 				return {
+					materialDecision,
 					questions,
 					topics: result.output.topics.map((topic) => ({
 						id: topic.id,
@@ -3175,9 +3256,28 @@ Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzei
 					),
 				};
 			},
-			"Der Wissenscheck konnte nicht zuverlässig erstellt werden. Prüfe deine Schulunterlagen und versuche es erneut.",
-			"insufficient_material",
+			"Der Wissenscheck konnte nicht zuverlässig erstellt werden. Versuche es erneut.",
+			"generation_processing",
 		);
+
+		if (generatedQuestions.materialDecision.kind === "insufficientMaterial") {
+			throwUserFacingError(
+				`Die KI findet in deinen Unterlagen noch keine ausreichende Grundlage für den Wissenscheck. ${generatedQuestions.materialDecision.missingInformation} Prüfe die Themen und ergänze oder ersetze Material.`,
+				"insufficient_material",
+			);
+		}
+		if (generatedQuestions.materialDecision.kind === "unknown") {
+			throwUserFacingError(
+				"Die KI konnte nicht sicher beurteilen, ob die Unterlagen für den Wissenscheck ausreichen. Deine Angaben bleiben erhalten; du kannst es erneut versuchen oder Material ergänzen.",
+				"unknown",
+			);
+		}
+		if (generatedQuestions.materialDecision.kind === "generationProcessing") {
+			throwUserFacingError(
+				"Der Wissenscheck konnte nicht vollständig erstellt werden. Versuche es erneut.",
+				"generation_processing",
+			);
+		}
 
 		await ctx.runMutation(internal.learningPlans.storeKnowledgeQuestions, {
 			learningPlanId: args.learningPlanId,
@@ -3418,9 +3518,8 @@ MVP-Vorgabe:
 				};
 			};
 
-			const planFallbackMessage = usesFirstSessionDiagnostic
-				? "Aus den Unterlagen konnte kein stabiler Start für den Lernplan erstellt werden. Prüfe den erkannten Prüfungsstoff und versuche es erneut."
-				: "Aus diesen Antworten konnte kein stabiler Lernplan erstellt werden. Ergänze mindestens ein paar konkrete Stichworte zu deinem Wissensstand und versuche es erneut.";
+			const planFallbackMessage =
+				"Der Lernplan konnte nicht zuverlässig erstellt werden. Deine Angaben bleiben gespeichert; versuche es erneut.";
 			const planModelId =
 				ENABLE_FLASH_LITE || initialCostMode.economyMode
 					? FLASH_LITE_MODEL_ID
@@ -3449,7 +3548,7 @@ MVP-Vorgabe:
 					return normalizeGeneratedPlan(result.output);
 				},
 				planFallbackMessage,
-				"insufficient_material",
+				"generation_processing",
 			);
 			if (
 				generatedPlan.sessions.length < (usesFirstSessionDiagnostic ? 2 : 1)
@@ -3459,7 +3558,7 @@ MVP-Vorgabe:
 						context.learningTimes,
 						context.occupiedEntries,
 					),
-					"scheduling_constraints",
+					"unknown",
 				);
 			}
 
@@ -3545,7 +3644,9 @@ MVP-Vorgabe:
 						? "materialProcessing"
 						: failureCode === "scheduling_constraints"
 							? "schedulingConstraints"
-							: "generationProcessing";
+							: failureCode === "generation_processing"
+								? "generationProcessing"
+								: "unknown";
 			logDiagnosticError("learningPlanAi.generatePlan", error, {
 				learningPlanId: args.learningPlanId,
 				failureReason,

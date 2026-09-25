@@ -70,7 +70,8 @@ describe("learning plan material-analysis recovery", () => {
 			data: {
 				kind: "userFacing",
 				code: "insufficient_material",
-				message: "Material reicht nicht aus.",
+				message:
+					"Die KI findet in deinen Unterlagen noch keine ausreichende Grundlage für den Wissenscheck. Es fehlen Aufgaben zur Berechnung der Steigung. Prüfe die Themen und ergänze oder ersetze Material.",
 			},
 		});
 	});
@@ -81,7 +82,7 @@ describe("learning plan material-analysis recovery", () => {
 		await waitFor(() =>
 			expect(
 				screen.getByText(
-					"Aus deinen Unterlagen konnten wir noch keinen verlässlichen Prüfungsstoff erkennen. Prüfe die Themen und ergänze oder ersetze Material.",
+					"Die KI findet in deinen Unterlagen noch keine ausreichende Grundlage für den Wissenscheck. Es fehlen Aufgaben zur Berechnung der Steigung. Prüfe die Themen und ergänze oder ersetze Material.",
 				),
 			).toBeOnTheScreen(),
 		);
@@ -108,5 +109,26 @@ describe("learning plan material-analysis recovery", () => {
 		await waitFor(() =>
 			expect(mockGenerateKnowledgeQuestions).toHaveBeenCalledTimes(2),
 		);
+	});
+
+	test("keeps material editing available when the cause is unknown", async () => {
+		mockGenerateKnowledgeQuestions.mockRejectedValueOnce(
+			new Error("Unclassified AI failure"),
+		);
+		const screen = await render(<LearningPlanAnalysisScreen />);
+
+		await waitFor(() =>
+			expect(
+				screen.getByText(
+					"Die Ursache konnte nicht sicher erkannt werden. Deine Angaben bleiben gespeichert; du kannst es erneut versuchen oder dein Material prüfen.",
+				),
+			).toBeOnTheScreen(),
+		);
+		expect(
+			screen.getByRole("button", { name: "Material ergänzen oder ersetzen" }),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByRole("button", { name: "Erneut versuchen" }),
+		).toBeOnTheScreen();
 	});
 });
