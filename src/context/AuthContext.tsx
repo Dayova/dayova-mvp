@@ -1282,21 +1282,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				throw new Error("Bitte wähle eine gültige Klassenstufe aus.");
 			}
 			const { firstName, lastName } = splitName(normalizedProfile.name);
-			const unsafeMetadata: Record<string, unknown> = {
-				...(clerkUser.unsafeMetadata ?? {}),
-				grade: normalizedProfile.grade,
-				state: normalizedProfile.state,
-			};
-			delete unsafeMetadata.schoolType;
-			if (normalizedProfile.schoolType) {
-				unsafeMetadata.schoolType = normalizedProfile.schoolType;
-			}
 
 			try {
 				await clerkUser.update({
 					firstName,
 					lastName,
-					unsafeMetadata,
+				});
+				await clerkUser.updateMetadata({
+					unsafeMetadata: {
+						grade: normalizedProfile.grade,
+						state: normalizedProfile.state,
+						schoolType: normalizedProfile.schoolType ?? null,
+					},
 				});
 
 				const currentEmail =
