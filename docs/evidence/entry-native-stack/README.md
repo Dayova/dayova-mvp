@@ -71,6 +71,8 @@ installed dependencies were shared read-only with another local checkout, so
 the test, lint, and typecheck binaries were invoked directly; the repository's
 `pnpm` wrapper attempted a dependency reinstall and was not used for this run.
 EAS CI on the retargeted PR remains the authoritative clean-install check.
+CodeRabbit CLI also reviewed the full PR diff against `main` on 2026-09-25
+and reported zero findings.
 
 ## Native test scope
 
@@ -253,11 +255,17 @@ This checks the actual caller destination rather than assuming Home. The
 current PR head has newer resume-URL validation and a merge from `main`, but
 the first-step Back implementation is unchanged from this tested build.
 
-The earlier Simulator UI drag input did not trigger a native edge swipe in
-this release binary. Maestro did verify the first-step release-binary edge
-gesture from Pläne above. Intermediate release-binary gestures remain
-unverified; the separate native iOS development-client recordings cover
-completed and cancelled edge swipes through those steps.
+The same release build also passed the
+[full-step gesture flow](ios-release-step-gestures.yaml) with its
+[assertion log](ios-release-step-gestures-maestro.txt): after choosing Klausur
+and Chemie, completed 650 ms left-edge swipes moved Subject → Exam type,
+Availability → Date → Subject → Exam type → Plans. Going forward again after
+the Subject swipe retained the selected exam type. Neither flow saved an exam.
+The earlier Simulator UI drag input did not trigger a native edge swipe, but
+Maestro's edge swipes did. The separate native iOS development-client recording
+covers a cancelled Subject swipe as well. The final branch adds resume-URL
+validation and a merge from `main` after the release build; its native step
+navigation code is unchanged from the tested build.
 
 The simulator also has a development client registered for the `dayova` URL
 scheme. Safari dispatched a `dayova:///entry/new?type=exam` cold link to that
