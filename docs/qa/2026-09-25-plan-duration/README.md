@@ -49,8 +49,39 @@ to the plan, the reminder displayed Friday 16:00–22:00 as “Vorschlag von Day
 Choosing “Später” removed it without confirming the proposed hours; the plan
 remained accessible with its completed diagnostic node. The backend persisted
 `postDiagnosticLearningTimeReminderDismissedAt: 1790343769220`.
-This verifies presentation and skipping, not repeated-launch or adaptive consent
-behavior. The diagnostic segment was captured as still images, not a recording.
+An additional terminate/launch and reopening the same plan preserved the completed
+diagnostic and did not show the dismissed reminder again. This does not verify
+adaptive consent behavior. The diagnostic segment was captured as still images,
+not a recording.
+
+### Fresh grade-11 replay (25 September, 18:50–19:09 CEST)
+
+Same frontend commit and QA backend as above, with the duration fix deployed.
+The backend also contains an internal QA fixture helper; it was not invoked for
+this replay. No seeded observations or manual progress updates were used.
+
+- Fresh grade-11 profile verified in the QA backend; registration completed by the user.
+- First Mathematics/Test exam dated 25 September; no learning-time form in creation.
+- Two synthetic gallery worksheets uploaded; both reached `processingStatus: ready`.
+- AI scope summary and ten-minute diagnostic generated successfully.
+- Proposed Friday 19:10–00:00 stored as `systemDefault`, not confirmed.
+  The same-day start follows `max(defaultStart, roundUpToTenMinutes(now + 10))`;
+  this run does not prove a future-day 16:00 start visually.
+- All six diagnostic questions completed: one multiple-choice answer, four explicit
+  unknown answers, and one typed explanation. The submit button remained above
+  the visible native keyboard and submitted successfully without dismissing it.
+- The post-diagnostic reminder displayed “Vorschlag von Dayova” and could be skipped.
+  Dismissal persisted at `1790356086345`; the diagnostic remained completed.
+- Terminate/launch and reopening the same plan did not show the reminder again;
+  the completed node and next ten-minute theory session remained accessible.
+
+Still-image evidence plus observed UI actions and read-only backend checks;
+not a continuous recording or full #651/#742 adaptive acceptance. Android parity,
+adaptive preview/consent/undo and the remaining PDF boundary matrix remain separate.
+
+| Completed | Unconfirmed suggestion | After restart | Keyboard |
+| --- | --- | --- | --- |
+| <a href="grade11-complete.png"><img src="grade11-complete.png" width="180" alt="Six-answer grade-11 diagnostic completed" /></a> | <a href="grade11-reminder.png"><img src="grade11-reminder.png" width="180" alt="Optional unconfirmed grade-11 time suggestion" /></a> | <a href="grade11-reopened.png"><img src="grade11-reopened.png" width="180" alt="Progress preserved and reminder absent after restart" /></a> | <a href="grade11-keyboard.png"><img src="grade11-keyboard.png" width="180" alt="Submit action above native iPhone keyboard" /></a> |
 
 | Diagnostic completed | Reminder | Skipped |
 | --- | --- | --- |
