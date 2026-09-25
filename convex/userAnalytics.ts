@@ -5,6 +5,7 @@ import {
 	type AdaptiveTopicEvidence,
 	deriveAdaptiveDimensionStatus,
 } from "./adaptiveLearningPlanPolicy";
+import { getBerlinDayKey } from "./dayKeyVariants";
 import { throwUserFacingError } from "./errors";
 import type { LearningEvidenceDimension } from "./learningContentPlan";
 
@@ -293,6 +294,31 @@ const getSessionStatus = (
 	session: Doc<"learningPlanSessions">,
 ): SessionStatus =>
 	session.executionStatus ?? (session.completed ? "completed" : "notStarted");
+
+// Match the scheduler's Berlin calendar days: legacy ISO values can represent
+// local midnight on the previous UTC day. startTime holds the session's clock time.
+const getNextExecutableSession = (
+	sessions: Doc<"learningPlanSessions">[],
+	todayKey: string,
+) => {
+	const eligible = sessions
+		.filter((session) => session.planningStatus !== "provisional")
+		.flatMap((session) => {
+			const dayKey = getBerlinDayKey(session.dateKey);
+			return dayKey === null ? [] : [{ session, dayKey }];
+		})
+		.sort(
+			(left, right) =>
+				left.dayKey.localeCompare(right.dayKey) ||
+				left.session.startTime.localeCompare(right.session.startTime) ||
+				left.session.sortOrder - right.session.sortOrder,
+		);
+	return (
+		eligible.find(({ dayKey }) => dayKey >= todayKey)?.session ??
+		eligible[0]?.session ??
+		null
+	);
+};
 
 const isWithinPeriod = (
 	timestamp: number,
@@ -658,16 +684,8 @@ export const getOverview = query({
 
 		const openSessions = effectiveSessions
 			.filter((session) => getSessionStatus(session) !== "completed")
-			.filter((session) => planById.has(session.learningPlanId))
-			.sort((left, right) =>
-				`${left.dateKey}-${left.startTime}`.localeCompare(
-					`${right.dateKey}-${right.startTime}`,
-				),
-			);
-		const nextSession =
-			openSessions.find((session) => session.dateKey >= args.todayKey) ??
-			openSessions.at(-1) ??
-			null;
+			.filter((session) => planById.has(session.learningPlanId));
+		const nextSession = getNextExecutableSession(openSessions, args.todayKey);
 		const nextSessionPlan = nextSession
 			? planById.get(nextSession.learningPlanId)
 			: null;
@@ -1444,21 +1462,15 @@ export const getExamAnalysis = query({
 		const primaryProblem = publicProblems[0] ?? null;
 		const secondaryProblems = publicProblems.slice(1, 3);
 
-		const openSessions = effectiveSessions
-			.filter((session) => getSessionStatus(session) !== "completed")
-			.sort((left, right) =>
-				`${left.dateKey}-${left.startTime}`.localeCompare(
-					`${right.dateKey}-${right.startTime}`,
-				),
-			);
-		const nextSession =
-			openSessions.find((session) => session.dateKey >= args.todayKey) ??
-			openSessions.at(-1) ??
-			null;
+		const openSessions = effectiveSessions.filter(
+			(session) => getSessionStatus(session) !== "completed",
+		);
+		const nextSession = getNextExecutableSession(openSessions, args.todayKey);
 		const deferredValidationSession =
 			effectiveSessions
 				.filter(
 					(session) =>
+						session.planningStatus !== "provisional" &&
 						session.phase === "theory" &&
 						session.compositionVariant === "split" &&
 						getSessionStatus(session) === "completed" &&

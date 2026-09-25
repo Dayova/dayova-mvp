@@ -52,6 +52,8 @@ import { useDayovaTheme } from "~/lib/theme";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { cn } from "~/lib/utils";
 
+export { LearningSessionErrorBoundary as ErrorBoundary } from "~/features/learning-plans/session-error-boundary";
+
 const phaseTitle = (
 	phase: LearningSessionContentSnapshot["session"]["phase"],
 ) =>
