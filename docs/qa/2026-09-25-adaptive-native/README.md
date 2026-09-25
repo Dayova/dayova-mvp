@@ -20,6 +20,8 @@ The Monday-only proposal displayed 17:00–18:00 → 18:00–19:00. Opening its 
 
 ## Remaining acceptance
 
-Native successful apply/undo is **not yet passed**: the grade-11 account also contains a same-day exam conflict, so the device preview deliberately disables confirmation. Android acceptance is not claimed here. Existing screenshot evidence is a still image of the pre-fix preview, not proof of post-fix behavior.
+Native preview rechecked after deploying backend commit `fb16fe6c`: exactly one change, Monday September 28, 17:00 → 18:00; Tuesday is no longer moved. Native successful apply/undo is **not yet passed**: the grade-11 account also contains a same-day exam conflict, so the device preview deliberately disables confirmation. Android acceptance is not claimed here. Screenshots establish the displayed previews, not successful mutation execution.
 
 <a href="preview-before.png"><img src="preview-before.png" width="180" alt="Before: Monday-only proposal unexpectedly moves two sessions to Friday; separate exam conflict prevents applying" /></a>
+
+<a href="preview-after.png"><img src="preview-after.png" width="180" alt="After: only Monday moves from 17:00 to 18:00 on its original date; separate exam conflict still blocks applying" /></a>
