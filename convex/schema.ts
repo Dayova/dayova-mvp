@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { crmCounts, crmError, operatingSystem } from "./crmContract";
 import {
 	learningEvidenceDimensionValidator,
 	learningTopicValidator,
@@ -130,6 +131,55 @@ const sessionContentChoiceValidator = v.object({
 });
 
 export default defineSchema({
+	crmStudentSignups: defineTable({
+		userId: v.id("users"),
+		status: v.union(v.literal("pending"), v.literal("review")),
+		attemptedAt: v.optional(v.number()),
+		dataSourceId: v.optional(v.string()),
+		error: v.optional(crmError),
+	})
+		.index("by_userId", ["userId"])
+		.index("by_status", ["status"]),
+	crmStudentLinks: defineTable({
+		pageId: v.string(),
+		userId: v.id("users"),
+		lastAttemptAt: v.number(),
+		lastSyncedAt: v.optional(v.number()),
+		lastProjectionHash: v.optional(v.string()),
+		lastNotionEditedAt: v.optional(v.string()),
+		error: v.optional(crmError),
+	})
+		.index("by_pageId", ["pageId"])
+		.index("by_userId", ["userId"]),
+	crmStudentUpdates: defineTable({
+		userId: v.id("users"),
+		revision: v.number(),
+		status: v.union(v.literal("pending"), v.literal("review")),
+		nextAttemptAt: v.number(),
+		attempts: v.number(),
+		error: v.optional(crmError),
+	})
+		.index("by_userId", ["userId"])
+		.index("by_status_and_nextAttemptAt", ["status", "nextAttemptAt"]),
+	crmSyncState: defineTable({
+		key: v.string(),
+		runId: v.string(),
+		dataSourceId: v.string(),
+		mode: v.union(v.literal("dry-run"), v.literal("live")),
+		running: v.boolean(),
+		startedAt: v.number(),
+		finishedAt: v.optional(v.number()),
+		dryRunAt: v.optional(v.number()),
+		liveVerifiedAt: v.optional(v.number()),
+		lastSuccessAt: v.optional(v.number()),
+		auditCursor: v.optional(v.string()),
+		auditPhase: v.optional(
+			v.union(v.literal("students"), v.literal("links"), v.literal("paid")),
+		),
+		auditFailed: v.optional(v.number()),
+		counts: crmCounts,
+		error: v.optional(crmError),
+	}).index("by_key", ["key"]),
 	users: defineTable({
 		tokenIdentifier: v.string(),
 		clerkId: v.string(),
@@ -140,6 +190,8 @@ export default defineSchema({
 		grade: v.optional(v.string()),
 		schoolType: v.optional(v.string()),
 		state: v.optional(v.string()),
+		// At most the three supported native platforms, accumulated on sign-in.
+		operatingSystems: v.optional(v.array(operatingSystem)),
 		avatarUrl: v.optional(v.string()),
 		validationStudentCode: v.optional(v.string()),
 		validationRole: v.optional(v.union(v.literal("founder"))),
@@ -169,6 +221,7 @@ export default defineSchema({
 		subscriptionExpiresAt: v.optional(v.number()),
 		subscriptionGraceExpiresAt: v.optional(v.number()),
 		subscriptionProductId: v.optional(v.string()),
+		subscriptionPeriodType: v.optional(v.string()),
 		subscriptionStore: v.optional(v.string()),
 		subscriptionWillRenew: v.optional(v.boolean()),
 		subscriptionBillingIssueDetectedAt: v.optional(v.number()),

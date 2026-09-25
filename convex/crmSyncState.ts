@@ -1,0 +1,432 @@
+import {
+	paginationOptsValidator,
+	paginationResultValidator,
+} from "convex/server";
+import { v } from "convex/values";
+import type { Doc } from "./_generated/dataModel";
+import {
+	internalMutation,
+	internalQuery,
+	type QueryCtx,
+} from "./_generated/server";
+import { crmBilling } from "./crmBilling";
+import {
+	type CrmMatch,
+	type CrmProjection,
+	crmCounts,
+	crmError,
+	crmMatch,
+	emptyCounts,
+} from "./crmContract";
+import { getCurrentAccess } from "./entitlements";
+
+async function project(
+	ctx: QueryCtx,
+	user: Doc<"users">,
+	now: number,
+): Promise<CrmProjection | null> {
+	const rows = await ctx.db
+		.query("accessEntitlements")
+		.withIndex("by_ownerTokenIdentifier", (q) =>
+			q.eq("ownerTokenIdentifier", user.tokenIdentifier),
+		)
+		.take(2);
+	if (rows.length > 1) return null;
+	const entitlement = rows[0];
+	if (entitlement && entitlement.userId !== user._id) return null;
+	// A legacy/manual active flag is not evidence of a verified provider snapshot.
+	if (
+		entitlement?.revenueCatEntitlementActive &&
+		entitlement.subscriptionVerifiedAt === undefined
+	)
+		return null;
+	const access = entitlement ? getCurrentAccess(entitlement, now) : null;
+	const state =
+		access?.state === "billingGrace"
+			? "billing grace"
+			: (access?.state ?? "none");
+	return {
+		userId: user._id,
+		email: user.email,
+		registeredAt: user._creationTime,
+		profile: {
+			name: user.name,
+			grade: user.grade,
+			state: user.state,
+			schoolType: user.schoolType,
+			operatingSystems: user.operatingSystems,
+		},
+		state,
+		...crmBilling(entitlement, state),
+		product: entitlement?.subscriptionProductId ?? null,
+		store: entitlement?.subscriptionStore ?? null,
+		expiresAt: entitlement?.subscriptionExpiresAt ?? null,
+		graceExpiresAt: entitlement?.subscriptionGraceExpiresAt ?? null,
+		trialStartedAt: entitlement?.trialStartedAt ?? null,
+		trialExpiresAt: entitlement?.trialExpiresAt ?? null,
+		willRenew:
+			entitlement?.revenueCatEntitlementActive === true &&
+			entitlement.subscriptionWillRenew === true,
+	};
+}
+
+export const inspectStudent = internalQuery({
+	args: {
+		pageId: v.string(),
+		clerkId: v.string(),
+		email: v.optional(v.string()),
+		now: v.number(),
+	},
+	returns: crmMatch,
+	handler: async (ctx, args): Promise<CrmMatch> => {
+		if (!args.clerkId) {
+			if (!args.email) return { status: "unmatched" };
+			const candidates = await ctx.db
+				.query("users")
+				.withIndex("by_email", (q) => q.eq("email", args.email?.trim() ?? ""))
+				.take(2);
+			return {
+				status:
+					candidates.length === 1
+						? "proposed"
+						: candidates.length > 1
+							? "conflict"
+							: "unmatched",
+			};
+		}
+		const users = await ctx.db
+			.query("users")
+			.withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+			.take(2);
+		if (users.length !== 1)
+			return { status: users.length ? "conflict" : "unmatched" };
+		const user = users[0];
+		const pageLinks = await ctx.db
+			.query("crmStudentLinks")
+			.withIndex("by_pageId", (q) => q.eq("pageId", args.pageId))
+			.take(2);
+		const userLinks = await ctx.db
+			.query("crmStudentLinks")
+			.withIndex("by_userId", (q) => q.eq("userId", user._id))
+			.take(2);
+		if (
+			pageLinks.some((link) => link.userId !== user._id) ||
+			userLinks.some((link) => link.pageId !== args.pageId) ||
+			pageLinks.length > 1 ||
+			userLinks.length > 1
+		)
+			return { status: "conflict" };
+		const projection = await project(ctx, user, args.now);
+		return projection
+			? {
+					status: "matched",
+					projection,
+					lastProjectionHash: pageLinks[0]?.lastProjectionHash,
+					lastNotionEditedAt: pageLinks[0]?.lastNotionEditedAt,
+					linkError: pageLinks[0]?.error,
+				}
+			: { status: "conflict" };
+	},
+});
+
+export const paidUsers = internalQuery({
+	args: { paginationOpts: paginationOptsValidator, now: v.number() },
+	returns: paginationResultValidator(
+		v.object({
+			clerkId: v.string(),
+			paid: v.boolean(),
+			hasLinkedCrm: v.boolean(),
+		}),
+	),
+	handler: async (ctx, args) => {
+		const page = await ctx.db.query("users").paginate(args.paginationOpts);
+		return {
+			...page,
+			page: await Promise.all(
+				page.page.map(async (user) => {
+					const projection = await project(ctx, user, args.now);
+					const links = await ctx.db
+						.query("crmStudentLinks")
+						.withIndex("by_userId", (q) => q.eq("userId", user._id))
+						.take(2);
+					return {
+						clerkId: user.clerkId,
+						paid:
+							projection?.state === "paid" ||
+							projection?.state === "billing grace",
+						hasLinkedCrm: links.length === 1 && !links[0].error,
+					};
+				}),
+			),
+		};
+	},
+});
+
+export const linkedPages = internalQuery({
+	args: { paginationOpts: paginationOptsValidator },
+	returns: paginationResultValidator(
+		v.object({
+			linkId: v.id("crmStudentLinks"),
+			pageId: v.string(),
+			userId: v.id("users"),
+		}),
+	),
+	handler: async (ctx, { paginationOpts }) => {
+		const result = await ctx.db
+			.query("crmStudentLinks")
+			.paginate(paginationOpts);
+		return {
+			...result,
+			page: result.page.map((link) => ({
+				linkId: link._id,
+				pageId: link.pageId,
+				userId: link.userId,
+			})),
+		};
+	},
+});
+
+export const markMissingLink = internalMutation({
+	args: {
+		linkId: v.id("crmStudentLinks"),
+		pageId: v.string(),
+		runId: v.string(),
+	},
+	returns: v.boolean(),
+	handler: async (ctx, args) => {
+		const state = await ctx.db
+			.query("crmSyncState")
+			.withIndex("by_key", (q) => q.eq("key", "students"))
+			.unique();
+		if (!state?.running || state.mode !== "live" || state.runId !== args.runId)
+			return false;
+		const link = await ctx.db.get("crmStudentLinks", args.linkId);
+		if (!link || link.pageId !== args.pageId) return false;
+		await ctx.db.patch("crmStudentLinks", link._id, {
+			error: "identity_changed",
+			lastAttemptAt: Date.now(),
+		});
+		return true;
+	},
+});
+
+export const begin = internalMutation({
+	args: {
+		runId: v.string(),
+		dataSourceId: v.string(),
+		mode: v.union(v.literal("dry-run"), v.literal("live")),
+		countAsAudit: v.optional(v.boolean()),
+	},
+	returns: v.boolean(),
+	handler: async (ctx, args) => {
+		const state = await ctx.db
+			.query("crmSyncState")
+			.withIndex("by_key", (q) => q.eq("key", "students"))
+			.unique();
+		const now = Date.now();
+		// Longer than Convex's 10-minute action limit: an expired worker cannot overlap its successor.
+		if (state?.running && now < state.startedAt + 11 * 60_000) return false;
+		if (
+			args.mode === "live" &&
+			(state?.dataSourceId !== args.dataSourceId ||
+				(!state.lastSuccessAt &&
+					!state.liveVerifiedAt &&
+					(!state.dryRunAt || now - state.dryRunAt > 24 * 60 * 60_000)))
+		)
+			throw new Error(
+				"CRM requires a successful dry run within 24 hours before enabling live sync.",
+			);
+		const value = {
+			runId: args.runId,
+			dataSourceId: args.dataSourceId,
+			mode: args.mode,
+			key: "students",
+			running: true,
+			startedAt: now,
+			counts: emptyCounts(),
+			error: undefined,
+			finishedAt: undefined,
+			...(state?.dataSourceId !== args.dataSourceId
+				? {
+						dryRunAt: undefined,
+						liveVerifiedAt: undefined,
+						lastSuccessAt: undefined,
+						auditCursor: undefined,
+						auditPhase: undefined,
+						auditFailed: undefined,
+					}
+				: {}),
+			...(args.mode === "live" &&
+			args.countAsAudit !== false &&
+			!state?.auditPhase
+				? { auditFailed: 0 }
+				: {}),
+		};
+		if (state) await ctx.db.patch("crmSyncState", state._id, value);
+		else await ctx.db.insert("crmSyncState", value);
+		return true;
+	},
+});
+
+export const auditProgress = internalQuery({
+	args: {},
+	returns: v.object({
+		phase: v.union(
+			v.literal("students"),
+			v.literal("links"),
+			v.literal("paid"),
+		),
+		cursor: v.union(v.string(), v.null()),
+		failed: v.number(),
+	}),
+	handler: async (ctx) => {
+		const state = await ctx.db
+			.query("crmSyncState")
+			.withIndex("by_key", (q) => q.eq("key", "students"))
+			.unique();
+		return {
+			phase: state?.auditPhase ?? "students",
+			cursor: state?.auditCursor ?? null,
+			failed: state?.auditFailed ?? 0,
+		};
+	},
+});
+
+export const finish = internalMutation({
+	args: {
+		runId: v.string(),
+		counts: crmCounts,
+		error: v.optional(crmError),
+		countAsAudit: v.optional(v.boolean()),
+		nextCursor: v.optional(v.string()),
+		nextPhase: v.optional(
+			v.union(v.literal("students"), v.literal("links"), v.literal("paid")),
+		),
+	},
+	returns: v.null(),
+	handler: async (ctx, args) => {
+		const state = await ctx.db
+			.query("crmSyncState")
+			.withIndex("by_key", (q) => q.eq("key", "students"))
+			.unique();
+		if (!state || state.runId !== args.runId) return null;
+		const now = Date.now();
+		const auditRun = state.mode === "live" && args.countAsAudit !== false;
+		const auditFailed = (state.auditFailed ?? 0) + args.counts.failed;
+		await ctx.db.patch("crmSyncState", state._id, {
+			running: false,
+			finishedAt: now,
+			counts: args.counts,
+			error: args.error,
+			...(auditRun && !args.error
+				? {
+						auditCursor: args.nextCursor,
+						auditPhase: args.nextPhase,
+						auditFailed,
+					}
+				: {}),
+			...(!args.error && state.mode === "dry-run" ? { dryRunAt: now } : {}),
+			// Row-level identity conflicts need review, but must not revoke live delivery.
+			...(!args.error && auditRun && !args.nextPhase
+				? { liveVerifiedAt: now }
+				: {}),
+			...(!args.error && auditRun && !args.nextPhase && auditFailed === 0
+				? { lastSuccessAt: now }
+				: {}),
+		});
+		return null;
+	},
+});
+
+export const recordLink = internalMutation({
+	args: {
+		pageId: v.string(),
+		userId: v.id("users"),
+		clerkId: v.string(),
+		error: v.optional(crmError),
+		syncedAt: v.optional(v.number()),
+		projectionHash: v.optional(v.string()),
+		notionEditedAt: v.optional(v.string()),
+	},
+	returns: v.boolean(),
+	handler: async (ctx, args) => {
+		const users = await ctx.db
+			.query("users")
+			.withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+			.take(2);
+		if (users.length !== 1 || users[0]._id !== args.userId) return false;
+		const pages = await ctx.db
+			.query("crmStudentLinks")
+			.withIndex("by_pageId", (q) => q.eq("pageId", args.pageId))
+			.take(2);
+		const links = await ctx.db
+			.query("crmStudentLinks")
+			.withIndex("by_userId", (q) => q.eq("userId", args.userId))
+			.take(2);
+		if (
+			pages.length > 1 ||
+			links.length > 1 ||
+			pages.some((p) => p.userId !== args.userId) ||
+			links.some((p) => p.pageId !== args.pageId)
+		)
+			return false;
+		const value = {
+			pageId: args.pageId,
+			userId: args.userId,
+			lastAttemptAt: Date.now(),
+			error: args.error,
+			...(args.syncedAt !== undefined ? { lastSyncedAt: args.syncedAt } : {}),
+			...(args.projectionHash !== undefined
+				? { lastProjectionHash: args.projectionHash }
+				: {}),
+			...(args.notionEditedAt !== undefined
+				? { lastNotionEditedAt: args.notionEditedAt }
+				: {}),
+		};
+		if (pages[0]) await ctx.db.patch("crmStudentLinks", pages[0]._id, value);
+		// Failure reporting must not establish an unverified identity mapping.
+		else if (args.error !== undefined) return false;
+		else await ctx.db.insert("crmStudentLinks", value);
+		return true;
+	},
+});
+
+export const status = internalQuery({
+	args: {},
+	returns: v.union(
+		v.null(),
+		v.object({
+			running: v.boolean(),
+			startedAt: v.number(),
+			finishedAt: v.optional(v.number()),
+			liveVerifiedAt: v.optional(v.number()),
+			lastSuccessAt: v.optional(v.number()),
+			auditCursor: v.optional(v.string()),
+			auditPhase: v.optional(
+				v.union(v.literal("students"), v.literal("links"), v.literal("paid")),
+			),
+			auditFailed: v.optional(v.number()),
+			counts: crmCounts,
+			error: v.optional(crmError),
+		}),
+	),
+	handler: async (ctx) => {
+		const row = await ctx.db
+			.query("crmSyncState")
+			.withIndex("by_key", (q) => q.eq("key", "students"))
+			.unique();
+		if (!row) return null;
+		return {
+			running: row.running,
+			startedAt: row.startedAt,
+			finishedAt: row.finishedAt,
+			liveVerifiedAt: row.liveVerifiedAt,
+			lastSuccessAt: row.lastSuccessAt,
+			auditCursor: row.auditCursor,
+			auditPhase: row.auditPhase,
+			auditFailed: row.auditFailed,
+			counts: row.counts,
+			error: row.error,
+		};
+	},
+});
