@@ -1,8 +1,9 @@
 # Entry native history verification — 2026-09-21
 
-This change is stacked on PR #494. The original native recordings used its
-`69ba928a4be7ff01ed7f8ac333deeecc0270c4e4` head; the stack was refreshed
-against the 2026-09-24 `main` and PR #494 heads after those runs.
+This change was originally stacked on PR #494. After #494 merged, PR #698 was
+merged with the 2026-09-25 `main` and retargeted there. The original native
+recordings used #494's `69ba928a4be7ff01ed7f8ac333deeecc0270c4e4` head;
+the branch was refreshed after those runs.
 The entry flow now has actual native predecessors instead of changing local step
 state inside a single native route. See mobile-app ADR 0004.
 
@@ -62,6 +63,14 @@ caused by concurrent Expo config subprocesses. CodeRabbit CLI reviewed the
 saved-plan follow-up with zero findings. The native recordings below predate
 the URL-validation and saved-plan changes; they remain evidence for the
 unchanged entry gesture mechanics and the complete resume path.
+
+After merging `main` at `cb5dda0a` on 2026-09-25, the combined tree at
+`4cecd90b` passed 121 Vitest files / 820 tests, 69 Jest suites / 315 tests,
+18 Node script tests, TypeScript, Biome, ESLint, and whitespace checks. The
+installed dependencies were shared read-only with another local checkout, so
+the test, lint, and typecheck binaries were invoked directly; the repository's
+`pnpm` wrapper attempted a dependency reinstall and was not used for this run.
+EAS CI on the retargeted PR remains the authoritative clean-install check.
 
 ## Native test scope
 
@@ -207,7 +216,8 @@ user signed in, the authenticated release app could be exercised without
 creating or modifying records:
 
 - Exam creation: header Back moved Availability → Date → Subject → Exam type →
-  Home, preserving selections on each preceding step.
+  Home, preserving selections on each preceding step. This run opened exam
+  creation from Home; the first-step destination follows the entry origin.
 - Homework creation: header Back moved Planning → its first step → Home,
   preserving the subject selection.
 - An existing unfinished plan opened from Plans at Material. Header Back went
@@ -234,11 +244,20 @@ same iPhone 16 simulator. Auth persisted. In this release build:
   fortsetzen” returned to the Plans list, fixing the earlier stuck exit.
 - Force-closing and reopening the release app preserved the signed-in Home.
 
-The Simulator UI drag input did not trigger a native edge swipe in this
-release binary, so these authenticated release checks establish button Back
-and destination handling, not a release-binary gesture pass. The separate
-native iOS development-client recordings above cover completed and cancelled
-edge swipes through the entry flow.
+On 2026-09-25, the same signed-in `a9f23cfd` release build passed the
+[Plans-origin Maestro flow](ios-plans-origin.yaml) with its
+[assertion log](ios-plans-origin-maestro.txt): Pläne → new exam → the first 20%
+step → header Back returned to Pläne; repeating the route and completing a
+650 ms left-edge swipe also returned to Pläne. Neither path created an exam.
+This checks the actual caller destination rather than assuming Home. The
+current PR head has newer resume-URL validation and a merge from `main`, but
+the first-step Back implementation is unchanged from this tested build.
+
+The earlier Simulator UI drag input did not trigger a native edge swipe in
+this release binary. Maestro did verify the first-step release-binary edge
+gesture from Pläne above. Intermediate release-binary gestures remain
+unverified; the separate native iOS development-client recordings cover
+completed and cancelled edge swipes through those steps.
 
 The simulator also has a development client registered for the `dayova` URL
 scheme. Safari dispatched a `dayova:///entry/new?type=exam` cold link to that

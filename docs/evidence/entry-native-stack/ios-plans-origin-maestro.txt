@@ -1,0 +1,17 @@
+Running on DAY-169 iPhone 16 - iOS 26.5 - 0D8A5A07-FCA7-414F-B61A-BE572AB2DA55
+ > Flow ios-plans-origin
+Launch app "de.dayova.app"... COMPLETED
+Tap on "Pläne"... COMPLETED
+Assert that "Deine Pläne" is visible... COMPLETED
+Tap on "Neuen Eintrag erstellen."... COMPLETED
+Tap on point (50%,70%)... COMPLETED
+Assert that "Welche Art von Prüfung ist es?" is visible... COMPLETED
+Tap on "Zurück"... COMPLETED
+Assert that "Deine Pläne" is visible... COMPLETED
+Assert that "Welche Art von Prüfung ist es?" is not visible... COMPLETED
+Tap on "Neuen Eintrag erstellen."... COMPLETED
+Tap on point (50%,70%)... COMPLETED
+Assert that "Welche Art von Prüfung ist es?" is visible... COMPLETED
+Swipe from (1%, 50%) to (95%, 50%) in 650 ms... COMPLETED
+Assert that "Deine Pläne" is visible... COMPLETED
+Assert that "Welche Art von Prüfung ist es?" is not visible... COMPLETED
