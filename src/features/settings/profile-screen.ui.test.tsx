@@ -12,6 +12,10 @@ const mockLogout = jest.fn<() => Promise<void>>(async () => undefined);
 const mockDeleteAccount = jest.fn<() => Promise<void>>(async () => undefined);
 
 const mockSetPreference = jest.fn(async () => undefined);
+const mockUpdateProfile =
+	jest.fn<() => Promise<{ status: string; message?: string }>>();
+const mockVerifyProfileEmailCode =
+	jest.fn<() => Promise<{ status: string; message?: string }>>();
 
 jest.mock("expo-router", () => ({
 	useRouter: () => ({
@@ -31,8 +35,8 @@ jest.mock("~/context/AuthContext", () => ({
 	}),
 	useAccountActions: () => ({
 		isLoading: false,
-		updateProfile: jest.fn(),
-		verifyProfileEmailCode: jest.fn(),
+		updateProfile: mockUpdateProfile,
+		verifyProfileEmailCode: mockVerifyProfileEmailCode,
 		deleteAccount: mockDeleteAccount,
 		logout: mockLogout,
 	}),
@@ -124,6 +128,8 @@ describe("ProfileScreen account management", () => {
 		mockDeleteAccount.mockResolvedValue(undefined);
 		mockPush.mockReset();
 		mockReplace.mockReset();
+		mockUpdateProfile.mockReset();
+		mockVerifyProfileEmailCode.mockReset();
 	});
 
 	test("keeps personal details and account controls in one place", async () => {
@@ -138,6 +144,25 @@ describe("ProfileScreen account management", () => {
 		expect(
 			screen.getByRole("button", { name: "Konto löschen" }),
 		).toBeOnTheScreen();
+	});
+
+	test("does not announce full success while the old email still needs cleanup", async () => {
+		mockUpdateProfile.mockResolvedValueOnce({
+			status: "email_cleanup_pending",
+			message: "Die alte Adresse wird beim nächsten Start entfernt.",
+		});
+		const screen = await render(<ProfileScreen />);
+		await fireEvent.changeText(
+			screen.getByDisplayValue("test@example.com"),
+			"new@example.com",
+		);
+		await fireEvent.press(screen.getByRole("button", { name: "Speichern" }));
+		await waitFor(() =>
+			expect(
+				screen.getByText("Die alte Adresse wird beim nächsten Start entfernt."),
+			).toBeOnTheScreen(),
+		);
+		expect(screen.queryByText("Dein Profil wurde gespeichert.")).toBeNull();
 	});
 
 	test("owns one logout transaction and leaves session routing to the root guard", async () => {
