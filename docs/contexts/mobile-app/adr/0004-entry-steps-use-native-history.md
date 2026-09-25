@@ -40,6 +40,10 @@ parent navigator as well as internal gestures and gesture cancellation.
   It requires a saved exam ID, subject, exam type, canonical day key, and bounded
   integer duration. Incomplete resumes start a clean flow at Exam type without
   retaining the saved ID, so a fallback value cannot overwrite that exam.
+  On a cold link, initialize the draft from the leaf URL first; reset the
+  nested stack only after that navigator is focused. A reset during the same
+  layout effect as initialization can be lost, leaving the learner at Exam type
+  with prefilled answers but no predecessor history.
   Internal step URLs without an initialized draft exit safely to Home rather
   than showing an invalid form.
 - Learning-time settings are pushed outside the entry stack. Their visible Back

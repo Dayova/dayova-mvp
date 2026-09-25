@@ -246,41 +246,56 @@ same iPhone 16 simulator. Auth persisted. In this release build:
   fortsetzen” returned to the Plans list, fixing the earlier stuck exit.
 - Force-closing and reopening the release app preserved the signed-in Home.
 
-On 2026-09-25, the same signed-in `a9f23cfd` release build passed the
-[Plans-origin Maestro flow](ios-plans-origin.yaml) with its
-[assertion log](ios-plans-origin-maestro.txt): Pläne → new exam → the first 20%
-step → header Back returned to Pläne; repeating the route and completing a
-650 ms left-edge swipe also returned to Pläne. Neither path created an exam.
-This checks the actual caller destination rather than assuming Home. The
-current PR head has newer resume-URL validation and a merge from `main`, but
-the first-step Back implementation is unchanged from this tested build.
+On 2026-09-25, the signed-in `a9f23cfd` build first passed Plans-origin
+first-step header Back and edge swipe, followed by completed edge swipes at
+every exam step. A cold `dayova:///entry/new?type=exam` link also opened the
+release app at Exam type after the development client was temporarily removed
+from the simulator. These checks were repeated on the exact implementation
+below. The earlier Simulator UI drag input did not trigger a native edge
+swipe, but Maestro's did; the development-client recording separately covers
+a cancelled Subject swipe.
 
-The same release build also passed the
-[full-step gesture flow](ios-release-step-gestures.yaml) with its
-[assertion log](ios-release-step-gestures-maestro.txt): after choosing Klausur
-and Chemie, completed 650 ms left-edge swipes moved Subject → Exam type,
-Availability → Date → Subject → Exam type → Plans. Going forward again after
-the Subject swipe retained the selected exam type. Neither flow saved an exam.
-The earlier Simulator UI drag input did not trigger a native edge swipe, but
-Maestro's edge swipes did. The separate native iOS development-client recording
-covers a cancelled Subject swipe as well. The final branch adds resume-URL
-validation and a merge from `main` after the release build; its native step
-navigation code is unchanged from the tested build.
+The first exact-head [iOS simulator release build](https://expo.dev/accounts/dayova/projects/dayova/builds/fee7b559-63a2-4878-8977-ffd9221d8032)
+from `88b2d902` exposed a remaining cold-resume bug. With a complete resume
+URL, the release app applied Klausur from the query but stayed on Exam type;
+the [red Maestro run](ios-release-cold-resume-before-maestro.txt) could not
+find Availability. A second cold run reproduced the failure. The draft had
+been initialized, but its native history reset ran in the same layout effect
+before the entry navigator was focused. The follow-up initializes the draft
+first, then resets history after the focused navigator renders.
 
-The simulator also had a development client registered for the `dayova` URL
-scheme, which originally intercepted the release app's cold link. On
-2026-09-25, the development-client app bundle was copied to a temporary backup
-and uninstalled from this simulator. With the release app terminated,
-`xcrun simctl openurl` opened `dayova:///entry/new?type=exam`; iOS showed
-“Open in Dayova?” and the
-[Maestro confirmation](ios-release-cold-link-confirm.yaml) passed with its
-[assertion log](ios-release-cold-link-confirm-maestro.txt): after accepting,
-the authenticated release app displayed Exam type. The development client
-was then reinstalled from the backup, and both bundle IDs were verified.
-No exam was saved. This verifies OS-to-release-app dispatch and the first
-cold-link step on the `a9f23cfd` build. The final PR's additional malformed
-resume-URL guards and complete saved-exam cold-resume behavior are covered by
-the real Expo parser and rendered stack tests, but have not been exercised in
-an exact-head release binary. Expo development builds do not support
-custom-scheme cold launch testing in the same way as release builds
+The follow-up [iOS simulator release build](https://expo.dev/accounts/dayova/projects/dayova/builds/a4b31820-148a-49ca-8486-1f2dd56664b8)
+uses commit `485b0929`, production configuration, `ota-staging` channel, and
+the current lockfile. It was installed over the signed-in app. The
+[app-information assertion](ios-release-app-bundle.yaml) and
+[log](ios-release-app-bundle-maestro.txt) confirmed “App-Bundle”, so a cached
+OTA update did not mask this implementation. On iPhone 16 / iOS 26.5:
+
+- The [Plans-origin flow](ios-plans-origin.yaml) and
+  [log](ios-plans-origin-maestro.txt) passed: header Back and completed
+  left-edge swipe from the first 20% step returned to Plans.
+- The [full-step gesture flow](ios-release-step-gestures.yaml) and
+  [log](ios-release-step-gestures-maestro.txt) passed: Subject → Exam type,
+  Availability → Date → Subject → Exam type → Plans, retaining the selected
+  exam type when advancing again. The picker uses its accessibility label
+  rather than a screen coordinate.
+- The [cold-resume flow](ios-release-cold-resume.yaml) and
+  [log](ios-release-cold-resume-maestro.txt) passed after terminating the app
+  and opening a complete `dayova` URL: Availability → Date → Subject → Exam
+  type via completed edge swipes, then header Back to in-app Home. It used a
+  synthetic exam ID, so this verifies reconstructed navigation, not saving
+  an existing exam record.
+- The [malformed cold-link flow](ios-release-cold-resume-malformed.yaml)
+  passed for both [repeated type](ios-release-cold-resume-duplicate-type-maestro.txt)
+  and [missing duration](ios-release-cold-resume-missing-duration-maestro.txt):
+  each started at Exam type with Continue disabled. Back from that fresh
+  first step returned to in-app Home.
+
+No test in this release run created or updated an exam. The development
+client was reinstalled after the cold-link checks, and both app bundle IDs
+were verified. A real persisted exam ID was not used in the cold-resume
+protocol; the rendered save-path test covers retaining the existing ID and
+avoiding an accidental overwrite from an incomplete link. Expo development
+builds do not support custom-scheme cold launch testing in the same way as
+release builds
 ([Expo documentation](https://docs.expo.dev/develop/development-builds/development-workflows/)).

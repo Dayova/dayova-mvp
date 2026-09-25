@@ -1,0 +1,26 @@
+appId: de.dayova.app
+# Use the release build from the PR head. Temporarily remove any development
+# client registered for `dayova`, terminate the release app, then run:
+# xcrun simctl openurl <simulator-udid> 'dayova:///entry/new?type=exam&step=learningAvailability&subject=Chemie&examTypeLabel=Klausur&examDayEntryId=exam-1&dayKey=2026-10-01&durationMinutes=90'
+# exam-1 is a synthetic ID: this checks native resume history without saving.
+---
+- extendedWaitUntil:
+    visible: Ist genug Lernzeit eingeplant?
+    timeout: 30000
+- swipe:
+    start: 1%, 50%
+    end: 95%, 50%
+    duration: 650
+- assertVisible: Wann findet die Prüfung statt?
+- swipe:
+    start: 1%, 50%
+    end: 95%, 50%
+    duration: 650
+- assertVisible: Welches Fach ist es?
+- swipe:
+    start: 1%, 50%
+    end: 95%, 50%
+    duration: 650
+- assertVisible: Welche Art von Prüfung ist es?
+- tapOn: Zurück
+- assertVisible: Hallo Jakob

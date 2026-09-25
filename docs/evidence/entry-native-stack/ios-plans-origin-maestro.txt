@@ -4,13 +4,13 @@ Launch app "de.dayova.app"... COMPLETED
 Tap on "Pläne"... COMPLETED
 Assert that "Deine Pläne" is visible... COMPLETED
 Tap on "Neuen Eintrag erstellen."... COMPLETED
-Tap on point (50%,70%)... COMPLETED
+Tap on "Neue Prüfung.*"... COMPLETED
 Assert that "Welche Art von Prüfung ist es?" is visible... COMPLETED
 Tap on "Zurück"... COMPLETED
 Assert that "Deine Pläne" is visible... COMPLETED
 Assert that "Welche Art von Prüfung ist es?" is not visible... COMPLETED
 Tap on "Neuen Eintrag erstellen."... COMPLETED
-Tap on point (50%,70%)... COMPLETED
+Tap on "Neue Prüfung.*"... COMPLETED
 Assert that "Welche Art von Prüfung ist es?" is visible... COMPLETED
 Swipe from (1%, 50%) to (95%, 50%) in 650 ms... COMPLETED
 Assert that "Deine Pläne" is visible... COMPLETED

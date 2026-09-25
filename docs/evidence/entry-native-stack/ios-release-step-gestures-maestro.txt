@@ -5,7 +5,7 @@ Assert that "Pläne" is visible... COMPLETED
 Tap on "Pläne"... COMPLETED
 Assert that "Deine Pläne" is visible... COMPLETED
 Tap on "Neuen Eintrag erstellen."... COMPLETED
-Tap on point (50%,70%)... COMPLETED
+Tap on "Neue Prüfung.*"... COMPLETED
 Assert that "Welche Art von Prüfung ist es?" is visible... COMPLETED
 Tap on "Klausur"... COMPLETED
 Tap on "Weiter"... COMPLETED

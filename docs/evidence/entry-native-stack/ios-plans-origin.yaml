@@ -4,16 +4,13 @@ appId: de.dayova.app
 - tapOn: Pläne
 - assertVisible: Deine Pläne
 - tapOn: Neuen Eintrag erstellen.
-# The production picker card has no accessible label in this release build.
-- tapOn:
-    point: 50%,70%
+- tapOn: Neue Prüfung.*
 - assertVisible: Welche Art von Prüfung ist es?
 - tapOn: Zurück
 - assertVisible: Deine Pläne
 - assertNotVisible: Welche Art von Prüfung ist es?
 - tapOn: Neuen Eintrag erstellen.
-- tapOn:
-    point: 50%,70%
+- tapOn: Neue Prüfung.*
 - assertVisible: Welche Art von Prüfung ist es?
 - swipe:
     start: 1%, 50%
