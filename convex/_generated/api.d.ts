@@ -55,6 +55,7 @@ import type * as learningTopicMap from "../learningTopicMap.js";
 import type * as notifications from "../notifications.js";
 import type * as pdfText from "../pdfText.js";
 import type * as personalSubjects from "../personalSubjects.js";
+import type * as qaAdaptiveFixture from "../qaAdaptiveFixture.js";
 import type * as questionNovelty from "../questionNovelty.js";
 import type * as revenueCat from "../revenueCat.js";
 import type * as scheduleConflicts from "../scheduleConflicts.js";
@@ -122,6 +123,7 @@ declare const fullApi: ApiFromModules<{
   notifications: typeof notifications;
   pdfText: typeof pdfText;
   personalSubjects: typeof personalSubjects;
+  qaAdaptiveFixture: typeof qaAdaptiveFixture;
   questionNovelty: typeof questionNovelty;
   revenueCat: typeof revenueCat;
   scheduleConflicts: typeof scheduleConflicts;
