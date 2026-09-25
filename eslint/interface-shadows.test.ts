@@ -35,10 +35,6 @@ ruleTester.run("no-interface-shadows", noInterfaceShadows as Rule.RuleModule, {
 			code: 'const card = <View className={`shadow${"-none"}`} />;',
 			filename: "/repo/src/components/ui/surface.tsx",
 		},
-		{
-			code: "const overlap = { elevation: 20 };",
-			filename: "/repo/src/components/ui/notched-action-card.tsx",
-		},
 	],
 	invalid: [
 		{
@@ -78,6 +74,11 @@ ruleTester.run("no-interface-shadows", noInterfaceShadows as Rule.RuleModule, {
 				{ messageId: "shadow", data: { name: "shadowOpacity" } },
 				{ messageId: "shadow", data: { name: "elevation" } },
 			],
+		},
+		{
+			code: "const overlap = { elevation: 20 };",
+			filename: "/repo/src/components/ui/notched-action-card.tsx",
+			errors: [{ messageId: "shadow", data: { name: "elevation" } }],
 		},
 	],
 });

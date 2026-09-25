@@ -21,6 +21,7 @@ import {
 	SheetAccessibilityProvider,
 	useSheetAccessibility,
 } from "~/components/ui/sheet-accessibility";
+import { SheetSafeAreaProvider } from "~/components/ui/sheet-safe-area";
 import { AccessProvider } from "~/context/AccessContext";
 import { AiConsentProvider } from "~/context/AiConsentContext";
 import { AuthProvider } from "~/context/AuthContext";
@@ -176,20 +177,22 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 								useAuth={useClerkConvexAuth}
 							>
 								<ThemeProvider value={NAV_THEMES[resolvedTheme]}>
-									<BottomSheetModalProvider>
-										<SheetAccessibilityProvider>
-											<OnboardingProvider>
-												<AuthProvider>
-													<AccessProvider>
-														<AiConsentProvider>
-															<AnalyticsIdentity />
-															<AppNavigator />
-														</AiConsentProvider>
-													</AccessProvider>
-												</AuthProvider>
-											</OnboardingProvider>
-										</SheetAccessibilityProvider>
-									</BottomSheetModalProvider>
+									<SheetSafeAreaProvider>
+										<BottomSheetModalProvider>
+											<SheetAccessibilityProvider>
+												<OnboardingProvider>
+													<AuthProvider>
+														<AccessProvider>
+															<AiConsentProvider>
+																<AnalyticsIdentity />
+																<AppNavigator />
+															</AiConsentProvider>
+														</AccessProvider>
+													</AuthProvider>
+												</OnboardingProvider>
+											</SheetAccessibilityProvider>
+										</BottomSheetModalProvider>
+									</SheetSafeAreaProvider>
 								</ThemeProvider>
 							</ConvexProviderWithAuth>
 						</ClerkProvider>

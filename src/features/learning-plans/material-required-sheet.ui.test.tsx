@@ -17,7 +17,6 @@ jest.mock("~/components/ui/confirmation-sheet", () => {
 			onClose,
 			onConfirm,
 			scrollable,
-			size,
 			title,
 			visible,
 		}: {
@@ -29,7 +28,6 @@ jest.mock("~/components/ui/confirmation-sheet", () => {
 			onClose: () => void;
 			onConfirm: () => void;
 			scrollable?: boolean;
-			size?: "content" | "medium";
 			title: import("react").ReactNode;
 			visible: boolean;
 		}) =>
@@ -43,7 +41,7 @@ jest.mock("~/components/ui/confirmation-sheet", () => {
 						React.createElement(
 							Native.Text,
 							{ testID: "confirmation-sheet-layout" },
-							`${size ?? "content"}:${scrollable ? "scrollable" : "fixed"}:${maxWidth ?? "default"}`,
+							`${scrollable ? "scrollable" : "fixed"}:${maxWidth ?? "default"}`,
 						),
 						React.createElement(Native.Text, null, title),
 						React.createElement(Native.Text, null, description),
@@ -82,7 +80,7 @@ describe("MaterialRequiredSheet", () => {
 			screen.getByTestId("confirmation-actions-stacked"),
 		).toBeOnTheScreen();
 		expect(screen.getByTestId("confirmation-sheet-layout")).toHaveTextContent(
-			"medium:scrollable:760",
+			"scrollable:760",
 		);
 		expect(
 			screen.getByText(
