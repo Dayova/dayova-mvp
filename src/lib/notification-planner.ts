@@ -20,6 +20,13 @@ export type NotificationPlanningEntry = {
 	kind?: string;
 	durationMinutes?: number;
 	completed?: boolean;
+	executionStatus?:
+		| "notStarted"
+		| "started"
+		| "completed"
+		| "partiallyCompleted"
+		| "missed"
+		| "adjusted";
 	relatedLearningPlanId?: string;
 	relatedLearningPlanSessionId?: string;
 };
@@ -92,8 +99,12 @@ const formatEntryForBriefing = (entry: NotificationPlanningEntry) => {
 	return entry.time ? `${title} um ${entry.time}` : title;
 };
 
+const needsReminder = (entry: NotificationPlanningEntry) =>
+	entry.completed !== true &&
+	(!entry.executionStatus || entry.executionStatus === "notStarted");
+
 const getBriefingBody = (entries: NotificationPlanningEntry[]) => {
-	const activeEntries = entries.filter((entry) => entry.completed !== true);
+	const activeEntries = entries.filter(needsReminder);
 	if (activeEntries.length === 0) {
 		return "Heute stehen keine offenen Einträge an.";
 	}
@@ -150,7 +161,7 @@ export const buildLocalNotificationPlan = ({
 		}
 
 		for (const entry of entries) {
-			if (entry.completed === true) continue;
+			if (!needsReminder(entry)) continue;
 			const relatedDayEntryId = entry.relatedDayEntryId;
 			if (!relatedDayEntryId) continue;
 			const startMinutes = isExamEntry(entry)

@@ -1,5 +1,5 @@
 import type { Doc, Id } from "./_generated/dataModel";
-import type { MutationCtx } from "./_generated/server";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { getDayKeyQueryVariants } from "./dayKeyVariants";
 import { throwUserFacingError } from "./errors";
 import {
@@ -79,10 +79,16 @@ type ScheduleConflictArgs = {
 	durationMinutes?: number;
 	excludeDayEntryId?: Id<"dayEntries">;
 	excludeLearningPlanSessionId?: Id<"learningPlanSessions">;
+	excludeSessionIds?: Set<string>;
+	reserved?: Array<{
+		dateKey: string;
+		startTime: string;
+		durationMinutes: number;
+	}>;
 };
 
 export const getScheduleConflictMessage = async (
-	ctx: MutationCtx,
+	ctx: QueryCtx | MutationCtx,
 	{
 		ownerTokenIdentifier,
 		dayKey,
@@ -90,10 +96,24 @@ export const getScheduleConflictMessage = async (
 		durationMinutes,
 		excludeDayEntryId,
 		excludeLearningPlanSessionId,
+		excludeSessionIds,
+		reserved,
 	}: ScheduleConflictArgs,
 ) => {
 	const newInterval = getInterval({ time, durationMinutes });
 	if (!newInterval) return null;
+	for (const reservation of reserved ?? []) {
+		const interval = getInterval({
+			time: reservation.startTime,
+			durationMinutes: reservation.durationMinutes,
+		});
+		if (
+			reservation.dateKey === dayKey &&
+			interval &&
+			overlaps(newInterval, interval)
+		)
+			return "Dieser Zeitraum ist bereits für einen Lernschritt vorgesehen.";
+	}
 
 	const existingEntries = [];
 	for (const queryDayKey of getDayKeyQueryVariants(dayKey)) {
@@ -114,6 +134,11 @@ export const getScheduleConflictMessage = async (
 		if (seenEntryIds.has(entry._id)) continue;
 		seenEntryIds.add(entry._id);
 		if (excludeDayEntryId && entry._id === excludeDayEntryId) continue;
+		if (
+			entry.relatedLearningPlanSessionId &&
+			excludeSessionIds?.has(entry.relatedLearningPlanSessionId)
+		)
+			continue;
 		// Exams are date-only entries. Ignore legacy records that still carry time.
 		if (isExamEntry(entry)) continue;
 		// Completed learning appointments are history, including slots finished early.

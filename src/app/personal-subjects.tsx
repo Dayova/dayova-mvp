@@ -15,7 +15,7 @@ import {
 	DayovaSheetInput,
 } from "~/components/ui/dayova-sheet-frame";
 import { ErrorMessage } from "~/components/ui/error-message";
-import { BookOpen, Pencil, Trash2 } from "~/components/ui/icon";
+import { BookOpen, Pencil } from "~/components/ui/icon";
 import { PortraitContent } from "~/components/ui/portrait-content";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Surface } from "~/components/ui/surface";
@@ -178,10 +178,11 @@ export default function PersonalSubjectsScreen() {
 									overshootRight={false}
 									rightThreshold={40}
 									renderRightActions={(_progress, _translation, swipeable) => (
-										<Pressable
+										<Button
 											accessibilityLabel={`${subject.name} löschen`}
 											accessibilityRole="button"
-											className="ml-2 w-24 items-center justify-center rounded-card bg-destructive"
+											variant="destructive"
+											className="ml-2 min-w-24 self-stretch px-3"
 											onPress={() => {
 												swipeable.close();
 												setErrorMessage(null);
@@ -191,11 +192,8 @@ export default function PersonalSubjectsScreen() {
 												});
 											}}
 										>
-											<Trash2 size={22} color="#FFFFFF" strokeWidth={2} />
-											<Text className="mt-1 font-poppins text-body-4 text-white">
-												Löschen
-											</Text>
-										</Pressable>
+											<Text className="shrink text-center">Löschen</Text>
+										</Button>
 									)}
 								>
 									<Surface className="min-h-18 flex-row items-center border border-border px-5 py-3">

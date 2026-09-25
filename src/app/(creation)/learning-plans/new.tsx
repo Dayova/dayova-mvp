@@ -150,6 +150,9 @@ export default function NewLearningPlanScreen() {
 		params.topicDescription ?? params.teacherGuidance ?? null,
 	);
 	const [isBusy, setIsBusy] = useState(false);
+	const [confirmedExit, setConfirmedExit] = useState<
+		"materialLater" | "pause" | null
+	>(null);
 	const [isUploading, setIsUploading] = useState(false);
 	const [retryingDocumentId, setRetryingDocumentId] =
 		useState<Id<"learningPlanDocuments"> | null>(null);
@@ -195,6 +198,7 @@ export default function NewLearningPlanScreen() {
 	const isPlanSnapshotLoading = Boolean(learningPlanId && snapshot === null);
 	const canUpload =
 		canWrite &&
+		!confirmedExit &&
 		!isBusy &&
 		!openingUploadAction &&
 		!isPlanSnapshotLoading &&
@@ -558,7 +562,7 @@ export default function NewLearningPlanScreen() {
 				await ImagePicker.requestMediaLibraryPermissionsAsync();
 			if (!permission.granted) {
 				throw new Error(
-					"Erlaube den Zugriff auf deine Fotos, um Bilder aus deiner Mediathek hochzuladen.",
+					"Erlaube den Zugriff auf deine Fotos, um Bilder aus deiner Galerie hochzuladen.",
 				);
 			}
 
@@ -604,7 +608,7 @@ export default function NewLearningPlanScreen() {
 				code: null,
 				message: getErrorMessage(
 					error,
-					"Die Mediathek konnte nicht geöffnet werden.",
+					"Die Galerie konnte nicht geöffnet werden.",
 				),
 			});
 		} finally {
@@ -696,16 +700,7 @@ export default function NewLearningPlanScreen() {
 				if (!isMeaningfulTopicDescription(topics)) {
 					throw new Error("Prüfungsthemen fehlen.");
 				}
-				if (setupOrigin === "resumedDraft") {
-					dismissToOrReplace(router, ROUTES.learningPlans);
-					return;
-				}
-				router.replace(
-					examEntrySuccessPath({
-						dayKey: examDateKey,
-						examDateLabel,
-					}),
-				);
+				setConfirmedExit("materialLater");
 			},
 		);
 	};
@@ -795,7 +790,21 @@ export default function NewLearningPlanScreen() {
 		return exitCreation();
 	};
 
-	useBackIntent(hasExamEntry, goBack);
+	useBackIntent(hasExamEntry, goBack, {
+		allowRouteRemoval: confirmedExit !== null,
+	});
+	// Commit the explicit exit intent before removing this protected native route.
+	// Ordinary Back/swipe still follows the saved-draft pause confirmation.
+	useEffect(() => {
+		if (!confirmedExit) return;
+		if (confirmedExit === "pause" || setupOrigin === "resumedDraft") {
+			dismissToOrReplace(router, ROUTES.learningPlans);
+		} else {
+			router.replace(
+				examEntrySuccessPath({ dayKey: examDateKey, examDateLabel }),
+			);
+		}
+	}, [confirmedExit, setupOrigin, router, examDateKey, examDateLabel]);
 	useLearningPlanCreationProgress({
 		active: true,
 		currentStep: currentProgressStep,
@@ -887,7 +896,7 @@ export default function NewLearningPlanScreen() {
 					},
 					{
 						value: "library",
-						title: "Mediathek",
+						title: "Galerie",
 						description: "Vorhandene Fotos auswählen",
 						disabled: !canUpload,
 						icon:
@@ -929,7 +938,7 @@ export default function NewLearningPlanScreen() {
 				onClose={() => setIsPauseConfirmationVisible(false)}
 				onConfirm={() => {
 					setIsPauseConfirmationVisible(false);
-					dismissToOrReplace(router, ROUTES.learningPlans);
+					setConfirmedExit("pause");
 				}}
 			/>
 		</Screen>

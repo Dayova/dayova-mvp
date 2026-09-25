@@ -90,7 +90,7 @@ function ConfirmationSheet({
 			)}
 			disabled={isBusy}
 			onPress={safeClose}
-			variant="neutral"
+			variant="cancel"
 		>
 			<Text className="shrink text-center">{cancelLabel}</Text>
 		</Button>

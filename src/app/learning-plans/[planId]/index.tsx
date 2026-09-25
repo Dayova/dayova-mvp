@@ -46,6 +46,7 @@ import {
 	getLearningPathNodeState,
 	LearningPathVisual,
 } from "~/features/learning-plans/learning-path-visual";
+import { LearningTimeImpactSheet } from "~/features/learning-plans/learning-time-impact-sheet";
 import { LearningTimeSuggestionCard } from "~/features/learning-plans/learning-time-suggestion-card";
 import { NextSessionRecovery } from "~/features/learning-plans/next-session-recovery";
 import {
@@ -310,11 +311,18 @@ export default function LearningPlanSessionsScreen() {
 	const confirmProposedDefaults = useMutation(
 		api.learningTimes.confirmProposedDefaults,
 	);
-	const applyBehavioralSuggestion = useMutation(
-		api.learningTimes.applyBehavioralSuggestion,
+	const [impactFingerprint, setImpactFingerprint] = useState<string | null>(
+		null,
 	);
 	const respondToBehavioralSuggestion = useMutation(
 		api.learningTimes.respondToBehavioralSuggestion,
+	);
+	const undoBehavioralSuggestion = useMutation(
+		api.learningTimes.undoBehavioralSuggestion,
+	);
+	const canUndoBehavioralSuggestion = useQuery(
+		api.learningTimes.canUndoBehavioralSuggestion,
+		user && isConvexAuthenticated ? {} : "skip",
 	);
 	const dismissLearningTimePrompt = useMutation(
 		api.learningPlans.dismissLearningTimePrompt,
@@ -325,7 +333,18 @@ export default function LearningPlanSessionsScreen() {
 	const [learningTimeActionError, setLearningTimeActionError] = useState<
 		string | null
 	>(null);
-	const [behaviorSuggestionReferenceTime] = useState(() => Date.now());
+	const [behaviorSuggestionReferenceTime, setBehaviorSuggestionReferenceTime] =
+		useState(() => Date.now());
+	useFocusEffect(
+		useCallback(() => {
+			setBehaviorSuggestionReferenceTime(Date.now());
+			const interval = setInterval(
+				() => setBehaviorSuggestionReferenceTime(Date.now()),
+				60_000,
+			);
+			return () => clearInterval(interval);
+		}, []),
+	);
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && planId
@@ -548,6 +567,34 @@ export default function LearningPlanSessionsScreen() {
 					<View />
 				) : selectedSession ? (
 					<>
+						{canUndoBehavioralSuggestion ? (
+							<View className="mb-4 gap-3">
+								<Text className="font-poppins text-body-3 text-secondary-text">
+									Deine Lernzeiten wurden angepasst. Du kannst die letzte
+									Übernahme rückgängig machen, solange du die Zeiten nicht
+									erneut geändert hast.
+								</Text>
+								<Button
+									variant="neutral"
+									disabled={isLearningTimeActionBusy}
+									onPress={() =>
+										void runLearningTimeAction(() =>
+											undoBehavioralSuggestion({}),
+										)
+									}
+								>
+									<Text>Änderung rückgängig machen</Text>
+								</Button>
+								{learningTimeActionError ? (
+									<Text
+										accessibilityRole="alert"
+										className="font-poppins text-body-4 text-destructive"
+									>
+										{learningTimeActionError}
+									</Text>
+								) : null}
+							</View>
+						) : null}
 						{showLearningTimeReminder && learningTimeSuggestion ? (
 							<View className="gap-3">
 								<LearningTimeSuggestionCard
@@ -606,11 +653,8 @@ export default function LearningPlanSessionsScreen() {
 										behavioralLearningTimeSuggestion.observedStartTime
 									}
 									onConfirm={() =>
-										void runLearningTimeAction(() =>
-											applyBehavioralSuggestion({
-												fingerprint:
-													behavioralLearningTimeSuggestion.fingerprint,
-											}),
+										setImpactFingerprint(
+											behavioralLearningTimeSuggestion.fingerprint,
 										)
 									}
 									onAdjust={() =>
@@ -712,6 +756,11 @@ export default function LearningPlanSessionsScreen() {
 					<View />
 				)}
 			</ScrollView>
+			<LearningTimeImpactSheet
+				fingerprint={impactFingerprint}
+				referenceTime={behaviorSuggestionReferenceTime}
+				onClose={() => setImpactFingerprint(null)}
+			/>
 		</Screen>
 	);
 }

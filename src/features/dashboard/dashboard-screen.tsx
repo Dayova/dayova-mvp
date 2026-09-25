@@ -57,6 +57,7 @@ import {
 	DashboardNextStepCard,
 	DashboardWeeklyProgressCard,
 } from "./dashboard-product-cards";
+import { LearningRoutineCoach } from "./learning-routine-coach";
 
 const triggerDaySelectionHaptic = () => {
 	void triggerSelectionHaptic({
@@ -232,18 +233,16 @@ function TimelineRail({
 	isPrimary: boolean;
 }) {
 	return (
-		<View className="w-5 items-center self-stretch">
-			{!isFirst ? (
-				<View
-					className={cn(
-						"absolute top-0 h-4 w-px",
-						isPast ? "bg-path-1/60" : "bg-path-1",
-					)}
-				/>
-			) : null}
+		<View className="w-5 items-center justify-center self-stretch">
 			<View
 				className={cn(
-					"z-10 mt-3 h-3 w-3 rounded-full border-2",
+					"w-px flex-1",
+					!isFirst && (isPast ? "bg-path-1/60" : "bg-path-1"),
+				)}
+			/>
+			<View
+				className={cn(
+					"z-10 h-3 w-3 rounded-full border-2",
 					isPrimary
 						? "border-primary bg-primary"
 						: isPast
@@ -251,14 +250,12 @@ function TimelineRail({
 							: "border-path-3 bg-background",
 				)}
 			/>
-			{!isLast ? (
-				<View
-					className={cn(
-						"absolute top-6 bottom-0 w-px",
-						isPast ? "bg-path-1/60" : "bg-path-1",
-					)}
-				/>
-			) : null}
+			<View
+				className={cn(
+					"w-px flex-1",
+					!isLast && (isPast ? "bg-path-1/60" : "bg-path-1"),
+				)}
+			/>
 		</View>
 	);
 }
@@ -373,39 +370,58 @@ function AgendaItemRow({
 	onPress: () => void;
 }) {
 	return (
-		<View className="flex-row">
-			<View className="w-16 pt-2 pr-1">
-				<Text
-					className={cn(
-						"text-right font-poppins text-body-5",
-						isPast ? "text-secondary-text/55" : "text-secondary-text",
+		<View>
+			<View className="flex-row">
+				<View className="w-16 justify-center pr-1">
+					<Text
+						className={cn(
+							"text-right font-poppins text-body-5",
+							isPast ? "text-secondary-text/55" : "text-secondary-text",
+						)}
+						style={tabularNumberStyle}
+					>
+						{item.startMinutes === null
+							? "ganztägig"
+							: formatMinutes(item.startMinutes)}
+					</Text>
+				</View>
+				<TimelineRail
+					isFirst={isFirst}
+					isLast={isLast}
+					isPast={isPast}
+					isPrimary={isPrimary}
+				/>
+				<View className="flex-1 pl-1">
+					{item.kind === "schoolLesson" ? (
+						<SchoolLessonCard item={item} isPast={isPast} />
+					) : item.kind === "learningSession" ? (
+						<LearningSessionCard
+							item={item}
+							isPast={isPast}
+							onPress={onPress}
+						/>
+					) : (
+						<DashboardAgendaEntryCard
+							mode="screen"
+							item={item}
+							isPast={isPast}
+							onPress={onPress}
+						/>
 					)}
-					style={tabularNumberStyle}
-				>
-					{item.startMinutes === null
-						? "ganztägig"
-						: formatMinutes(item.startMinutes)}
-				</Text>
+				</View>
 			</View>
-			<TimelineRail
-				isFirst={isFirst}
-				isLast={isLast}
-				isPast={isPast}
-				isPrimary={isPrimary}
-			/>
-			<View className="flex-1 pb-5 pl-1">
-				{item.kind === "schoolLesson" ? (
-					<SchoolLessonCard item={item} isPast={isPast} />
-				) : item.kind === "learningSession" ? (
-					<LearningSessionCard item={item} isPast={isPast} onPress={onPress} />
-				) : (
-					<DashboardAgendaEntryCard
-						mode="screen"
-						item={item}
-						isPast={isPast}
-						onPress={onPress}
-					/>
-				)}
+			<View className="h-5 flex-row">
+				<View className="w-16" />
+				<View className="w-5 items-center">
+					{!isLast ? (
+						<View
+							className={cn(
+								"w-px flex-1",
+								isPast ? "bg-path-1/60" : "bg-path-1",
+							)}
+						/>
+					) : null}
+				</View>
 			</View>
 		</View>
 	);
@@ -830,25 +846,28 @@ export function DashboardScreen() {
 				// The native safe area reserves the tab bar; padding adds breathing room.
 				contentContainerClassName="pb-6"
 			>
-				<DashboardHighlightCarousel>
-					<DashboardNextStepCard
-						mode="screen"
-						fallbackAction={nextStepFallbackAction}
-						item={nextLearningStep}
-						isLoading={
-							entriesByDay === undefined || learningPlans === undefined
-						}
-						todayKey={todayKey}
-						onOpenFallback={openNextStepFallback}
-						onOpenItem={openItem}
-					/>
-					<DashboardWeeklyProgressCard
-						mode="screen"
-						isLoading={entriesByDay === undefined}
-						progress={weekProgress}
-						onOpenLearningPlans={openLearningPlans}
-					/>
-				</DashboardHighlightCarousel>
+				<View>
+					<DashboardHighlightCarousel>
+						<DashboardNextStepCard
+							mode="screen"
+							fallbackAction={nextStepFallbackAction}
+							item={nextLearningStep}
+							isLoading={
+								entriesByDay === undefined || learningPlans === undefined
+							}
+							todayKey={todayKey}
+							onOpenFallback={openNextStepFallback}
+							onOpenItem={openItem}
+						/>
+						<DashboardWeeklyProgressCard
+							mode="screen"
+							isLoading={entriesByDay === undefined}
+							progress={weekProgress}
+							onOpenLearningPlans={openLearningPlans}
+						/>
+					</DashboardHighlightCarousel>
+					<LearningRoutineCoach referenceTime={now.getTime()} />
+				</View>
 
 				<View className="z-10 flex-row items-center justify-between bg-background px-6 pt-5 pb-6">
 					<View className="min-w-0 flex-1 pr-4">

@@ -250,6 +250,8 @@ export type LearningPlanSnapshot = {
 				dayOfWeek: number;
 				startTime: string;
 				endTime: string;
+				previousStartTime?: string;
+				previousEndTime?: string;
 			}>;
 		};
 	};
