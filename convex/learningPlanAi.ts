@@ -404,7 +404,13 @@ const questionsSchema = z
 					"Observable German learning goal for this topic.",
 				),
 				keywords: boundedArray(
-					germanTextSchema(2, "Short German keyword for this topic."),
+					z
+						.string()
+						.trim()
+						.min(1)
+						.describe(
+							`Short German keyword or subject symbol (for example m, b or x) for this topic. ${GERMAN_UI_TEXT_RULE}`,
+						),
 					1,
 					8,
 				),
@@ -865,7 +871,7 @@ const withStructuredOutputErrorHandling = async <TResult>(
 const generatedTextRetrySystemInstruction = (attempt: number) =>
 	attempt === 0
 		? ""
-		: " Die vorherige Ausgabe war ungültig oder wiederholte bereits vorhandene Fragen. Erzeuge alle Fragen vollständig neu, ohne inhaltliche Duplikate und mit korrekten Unicode-Zeichen wie ä, ö, ü, Ä, Ö, Ü und ß.";
+		: " Die vorherige Ausgabe war ungültig oder wiederholte bereits vorhandene Fragen. Halte das JSON-Schema einschließlich aller Feldtypen, Längen und IDs exakt ein. Themen-IDs verwenden nur kleine ASCII-Buchstaben, Ziffern und einzelne Bindestriche zwischen Wörtern, keine Umlaute oder Leerzeichen (zum Beispiel groessen-vergleichen). Verwende dieselben IDs in allen Themenverweisen. Erzeuge alle Fragen vollständig neu, ohne inhaltliche Duplikate. Sichtbare deutsche Texte verwenden weiterhin korrekte Unicode-Zeichen wie ä, ö, ü, Ä, Ö, Ü und ß.";
 
 const theoryGenerationSystemInstruction = (attempt: number) =>
 	`Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse in Deutschland. Erstelle eine zusammenhängende Mini-Lektion aus kurzen deutschen Theorie-Seiten. Jede Seite konzentriert sich auf die in der Planung genannte Seitenrolle und baut auf der vorherigen Seite auf. Alle Pflichtfelder des Schemas unterstützen diese Rolle, statt ein zweites Thema einzuführen. Wiederhole keine Erklärung, kein Beispiel und keinen Merksatz auf einer späteren Seite.
@@ -885,21 +891,27 @@ const withGeneratedTextRetry = async <TResult>(
 ) => {
 	for (let attempt = 0; attempt < MAX_GENERATED_TEXT_ATTEMPTS; attempt += 1) {
 		try {
-			return await withStructuredOutputErrorHandling(
-				() => task(attempt),
-				fallbackMessage,
-				errorCode,
-			);
+			return await task(attempt);
 		} catch (error) {
+			const isInvalidObject = NoObjectGeneratedError.isInstance(error);
 			const isDuplicatePrompt = error instanceof DuplicateGeneratedPromptError;
 			const isEmptyOutput = NoOutputGeneratedError.isInstance(error);
 			if (
 				(isInvalidGeneratedGermanTextError(error) ||
 					isDuplicatePrompt ||
-					isEmptyOutput) &&
+					isEmptyOutput ||
+					isInvalidObject) &&
 				attempt < MAX_GENERATED_TEXT_ATTEMPTS - 1
 			) {
 				continue;
+			}
+
+			if (isInvalidObject) {
+				return await withStructuredOutputErrorHandling(
+					() => Promise.reject(error),
+					fallbackMessage,
+					errorCode,
+				);
 			}
 
 			if (isEmptyOutput) {
@@ -2207,6 +2219,7 @@ const getSubjectSpecificLearningInstruction = (subject: string) =>
 		: "";
 
 export const __testOnlyLearningPlanAi = {
+	questionsSchema,
 	withGeneratedTextRetry,
 	normalizeSessions,
 	getEmptyScheduleErrorMessage,
