@@ -868,12 +868,16 @@ test("claims plan generation atomically and persists an empty failed claim for e
 		t.mutation(internal.learningPlans.clearEmptyContentGeneration, {
 			learningPlanId,
 			generationId: "generation-1",
+			failureReason: "generationProcessing",
 		}),
 	).resolves.toBe(true);
 	const failed = await t.query(api.learningPlans.getSnapshot, {
 		id: learningPlanId,
 	});
 	expect(failed?.plan.contentGeneration?.stage).toBe("failed");
+	expect(failed?.plan.contentGeneration?.failureReason).toBe(
+		"generationProcessing",
+	);
 	await expect(
 		t.mutation(internal.learningPlans.beginContentGeneration, {
 			learningPlanId,
@@ -1037,14 +1041,22 @@ test("atomically claims stale session retries and rejects a second claimant", as
 		t.mutation(internal.learningPlans.markContentGenerationClaimFailed, {
 			learningPlanId,
 			generationId: "outdated-retry",
+			failureReason: "materialProcessing",
 		}),
 	).resolves.toBe(false);
 	await expect(
 		t.mutation(internal.learningPlans.markContentGenerationClaimFailed, {
 			learningPlanId,
 			generationId: "claimed-retry",
+			failureReason: "materialProcessing",
 		}),
 	).resolves.toBe(true);
+	const failedRetry = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(failedRetry?.plan.contentGeneration?.failureReason).toBe(
+		"materialProcessing",
+	);
 	await expect(
 		t.mutation(
 			internal.learningPlans.claimIncompleteContentGenerationSessions,
