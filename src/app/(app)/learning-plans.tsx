@@ -17,6 +17,7 @@ import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { CreateTypePickerModal } from "~/components/create-type-picker-modal";
+import { AddIcon } from "~/components/ui/add-icon";
 import { Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import {
@@ -739,7 +740,6 @@ function HomeworkCard({
 
 export default function LearningPlansScreen() {
 	const insets = useSafeAreaInsets();
-	const { colors } = useDayovaTheme();
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const removePlan = useMutation(api.learningPlans.removePlan);
@@ -850,9 +850,9 @@ export default function LearningPlansScreen() {
 						accessibilityHint="Öffnet den Eintragserstellungsdialog, um entweder eine Prüfung oder Hausaufgabe zu erstellen."
 						activeOpacity={0.88}
 						onPress={openCreateTypePicker}
-						className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
+						className="h-12 w-12 items-center justify-center rounded-full active:opacity-80"
 					>
-						<Plus size={28} color={colors.text} strokeWidth={1.8} />
+						<AddIcon outlinedGradient />
 					</TouchableOpacity>
 				</View>
 
