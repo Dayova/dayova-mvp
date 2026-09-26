@@ -780,7 +780,8 @@ export const undoBehavioralSuggestion = mutation({
 				updatedAt: now,
 			});
 		}
-		const result = await rescheduleAfterChange(ctx);
+		const result: { rescheduledCount: number; unscheduledCount: number } =
+			await ctx.runMutation(internal.learningPlans.applyLearningTimeImpact, {});
 		if (result.unscheduledCount > 0)
 			throwUserFacingError(
 				"Die vorherigen Zeiten passen nicht mehr zu allen Prüfungsfristen. Bitte passe sie in den Einstellungen an.",

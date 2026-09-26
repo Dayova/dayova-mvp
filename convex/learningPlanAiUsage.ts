@@ -28,14 +28,19 @@ export const record = internalMutation({
 		retryIndex: v.optional(v.number()),
 		batchIndex: v.optional(v.number()),
 	},
+	returns: v.id("learningPlanAiUsage"),
 	handler: async (ctx, args) => {
 		const identity = await ctx.auth.getUserIdentity();
-		if (!identity) throwUserFacingError("Nicht authentifiziert.");
-		await assertAccountActive(ctx, identity.tokenIdentifier);
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
-		if (!plan) {
+		if (
+			!plan ||
+			(identity && identity.tokenIdentifier !== plan.ownerTokenIdentifier)
+		) {
 			throwUserFacingError("Lernplan nicht gefunden.");
 		}
+		// Scheduled extraction has no client identity. This internal-only write
+		// derives its owner from the plan and still respects account deletion.
+		await assertAccountActive(ctx, plan.ownerTokenIdentifier);
 
 		const now = Date.now();
 		const usageId = await ctx.db.insert("learningPlanAiUsage", {
