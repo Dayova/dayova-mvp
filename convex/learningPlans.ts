@@ -3417,7 +3417,7 @@ export const moveSessionToday = mutation({
 		if (
 			!session ||
 			session.ownerTokenIdentifier !== owner ||
-			session.dateKey !== today ||
+			getBerlinDayKey(session.dateKey) !== today ||
 			getSessionExecutionStatus(session) !== "notStarted" ||
 			session.planningStatus === "provisional" ||
 			session.updatedAt !== args.expectedUpdatedAt
@@ -3468,8 +3468,8 @@ export const moveSessionToday = mutation({
 				(next) =>
 					next.sortOrder > session.sortOrder &&
 					getSessionExecutionStatus(next) === "notStarted" &&
-					(next.dateKey < today ||
-						(next.dateKey === today &&
+					((getBerlinDayKey(next.dateKey) ?? "") < today ||
+						(getBerlinDayKey(next.dateKey) === today &&
 							Number(next.startTime.slice(0, 2)) * 60 +
 								Number(next.startTime.slice(3)) <
 								hour * 60 + minute + session.durationMinutes)),

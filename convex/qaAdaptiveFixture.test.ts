@@ -7,6 +7,29 @@ import { deriveBehavioralLearningTimeSuggestion } from "./learningTimeBehavior";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
+test("today fixture is insert-only, idempotent and supplies ISO home coaching", async () => {
+	vi.setSystemTime(new Date("2026-09-26T10:00:00Z"));
+	const { t, userId } = await setup();
+	const ref = makeFunctionReference<"mutation">(
+		"qaAdaptiveFixture:createToday",
+	);
+	const before = await t.run((ctx) => ctx.db.get("users", userId));
+	const planId = await t.mutation(ref, { userId });
+	expect(await t.mutation(ref, { userId })).toBe(planId);
+	expect(await t.run((ctx) => ctx.db.get("users", userId))).toEqual(before);
+	const client = t.withIdentity({ tokenIdentifier: "qa:fixture" });
+	expect(
+		await client.query(api.learningTimes.getHomeRoutine, {
+			referenceTime: Date.now(),
+		}),
+	).toMatchObject({ session: { planId, startTime: "17:00" } });
+	expect(await client.query(api.learningTimes.listMine, {})).toEqual([]);
+	vi.stubEnv("CONVEX_CLOUD_URL", "https://production.convex.cloud");
+	await expect(t.mutation(ref, { userId })).rejects.toThrow("QA deployment");
+	vi.stubEnv("CONVEX_CLOUD_URL", "https://trustworthy-skunk-257.convex.cloud");
+	vi.setSystemTime(new Date("2026-09-27T00:00:00Z"));
+	await expect(t.mutation(ref, { userId })).rejects.toThrow("expired");
+});
 test("replays only QA observations after undo without changing sessions", async () => {
 	const { t, userId } = await setup();
 	const planId = await t.mutation(create, { userId });

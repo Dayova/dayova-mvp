@@ -3,6 +3,87 @@ import { internalMutation } from "./_generated/server";
 
 const MARKER = "qa-native-adaptive-20260925";
 
+/** Dated, insert-only fixture for native only-today acceptance. */
+export const createToday = internalMutation({
+	args: { userId: v.id("users") },
+	returns: v.id("learningPlans"),
+	handler: async (ctx, { userId }) => {
+		if (
+			![
+				"https://trustworthy-skunk-257.convex.cloud",
+				"https://trustworthy-skunk-257.eu-west-1.convex.cloud",
+			].includes(process.env.CONVEX_CLOUD_URL ?? "")
+		)
+			throw new Error("Designated QA deployment required");
+		const now = Date.now();
+		if (
+			now < Date.parse("2026-09-26T00:00:00Z") ||
+			now >= Date.parse("2026-09-26T20:00:00Z")
+		)
+			throw new Error("Fixture expired");
+		const user = await ctx.db.get("users", userId);
+		if (user?.name !== "Philipp QA Elf")
+			throw new Error("Designated QA account required");
+		const ownerTokenIdentifier = user.tokenIdentifier;
+		const plans = await ctx.db
+			.query("learningPlans")
+			.withIndex("by_ownerTokenIdentifier", (q) =>
+				q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+			)
+			.take(100);
+		const marker = "qa-native-only-today-20260926";
+		const existing = plans.find((p) => p.notes === marker);
+		if (existing) return existing._id;
+		if (plans.length === 100) throw new Error("Unexpected QA count");
+		const planId = await ctx.db.insert("learningPlans", {
+			ownerTokenIdentifier,
+			subject: "QA Nur heute",
+			examTypeLabel: "Test",
+			examDateKey: "2026-10-05",
+			examDateLabel: "5. Oktober 2026",
+			durationMinutes: 20,
+			topicDescription: "Synthetischer Test für einmaliges Verschieben",
+			status: "accepted",
+			notes: marker,
+			createdAt: now,
+			updatedAt: now,
+		});
+		const sessionId = await ctx.db.insert("learningPlanSessions", {
+			ownerTokenIdentifier,
+			learningPlanId: planId,
+			phase: "practice",
+			title: "QA Nur heute – Zeitwahl",
+			dateKey: "2026-09-26T00:00:00.000Z",
+			dateLabel: "26. September 2026",
+			startTime: "17:00",
+			durationMinutes: 20,
+			goal: "Zeitwahl prüfen",
+			tasks: [],
+			expectedOutcome: "Nur diesen Termin verschieben",
+			completed: false,
+			executionStatus: "notStarted",
+			planningStatus: "committed",
+			sortOrder: 0,
+			createdAt: now,
+			updatedAt: now,
+		});
+		const entryId = await ctx.db.insert("dayEntries", {
+			ownerTokenIdentifier,
+			dayKey: "2026-09-26T00:00:00.000Z",
+			title: "QA Nur heute – Zeitwahl",
+			kind: "Lernen",
+			time: "17:00",
+			durationMinutes: 20,
+			relatedLearningPlanId: planId,
+			relatedLearningPlanSessionId: sessionId,
+		});
+		await ctx.db.patch("learningPlanSessions", sessionId, {
+			dayEntryId: entryId,
+		});
+		return planId;
+	},
+});
+
 /** Replay the synthetic observation case on another device after native undo. */
 export const replayObservation = internalMutation({
 	args: { userId: v.id("users") },

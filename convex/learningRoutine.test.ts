@@ -127,6 +127,74 @@ test("home coaching is voluntary, owner scoped and dismissed for the current day
 	expect(await t.query(api.learningTimes.listMine, {})).toEqual([]);
 });
 
+test.each([
+	"2026-09-24T00:00:00.000Z",
+	"2026-09-23T22:00:00.000Z",
+])("home coaching and only-today support generated ISO day keys: %s", async (dateKey) => {
+	const { t, ids } = await fixture();
+	await t.run(async (ctx) => {
+		await ctx.db.patch("learningPlanSessions", ids.session, { dateKey });
+		await ctx.db.patch("dayEntries", ids.entry, { dayKey: dateKey });
+	});
+	const before = await t.run((ctx) =>
+		ctx.db.get("learningPlanSessions", ids.session),
+	);
+	expect(
+		(
+			await t.query(api.learningTimes.getHomeRoutine, {
+				referenceTime: Date.now(),
+			})
+		)?.session?.id,
+	).toBe(ids.session);
+	await t.mutation(api.learningPlans.moveSessionToday, {
+		sessionId: ids.session,
+		startTime: "18:00",
+		expectedUpdatedAt: 1,
+	});
+	expect(
+		(await t.run((ctx) => ctx.db.get("learningPlanSessions", ids.session)))
+			?.startTime,
+	).toBe("18:00");
+	expect(
+		await t.run((ctx) => ctx.db.get("learningPlanSessions", ids.session)),
+	).toEqual({
+		...before,
+		startTime: "18:00",
+		updatedAt: Date.now(),
+	});
+	expect(
+		(await t.run((ctx) => ctx.db.get("dayEntries", ids.entry)))?.time,
+	).toBe("18:00");
+	expect(await t.query(api.learningTimes.listMine, {})).toEqual([]);
+});
+
+test("only today preserves ordering with an ISO-dated provisional next step", async () => {
+	const { t, ids } = await fixture();
+	await t.run(async (ctx) => {
+		const session = await ctx.db.get("learningPlanSessions", ids.session);
+		if (!session) throw new Error("Missing fixture");
+		const { _id, _creationTime, dayEntryId, ...data } = session;
+		await ctx.db.insert("learningPlanSessions", {
+			...data,
+			dateKey: "2026-09-24T00:00:00.000Z",
+			startTime: "17:30",
+			sortOrder: 1,
+			planningStatus: "provisional",
+		});
+	});
+	await expect(
+		t.mutation(api.learningPlans.moveSessionToday, {
+			sessionId: ids.session,
+			startTime: "18:00",
+			expectedUpdatedAt: 1,
+		}),
+	).rejects.toThrow("überholen");
+	expect(
+		(await t.run((ctx) => ctx.db.get("learningPlanSessions", ids.session)))
+			?.startTime,
+	).toBe("17:00");
+});
+
 test("only today moves the calendar but preserves progress and regular times", async () => {
 	const { t, ids } = await fixture();
 	const before = await t.run((ctx) =>
