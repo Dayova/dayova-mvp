@@ -39,6 +39,23 @@ The captures below compare `ea444fd` before the fix with that source plus the on
 
 29 focused UI tests passed after the repair (sheet frame, exam flow, subject picker).
 
+## iPhone PDF boundary replay — 11:29–11:35 CEST
+
+Combined frontend `e0b84149`, same QA backend and existing grade-11 account. A new, explicitly QA-labelled draft was created natively (ID `k175q3bvcztjts1kfytsavycgh8f4cy6`). Existing accepted plans/progress were not reset. The draft uses the Mathematics preset with an explicit Italian PDF-import test topic; this checks upload mechanics, not subject/content consistency.
+
+- Native Files picker selected the user's original PDF (290,689 bytes) and the metadata-padded exact-limit PDF (26,214,400 bytes). Both were registered and reached `ready`.
+- A separate native selection of 26,214,401 bytes was rejected with the inline maximum-size error. A read-only account-scoped backend query still returned only the two accepted documents; neither was removed or reset.
+- The exact-limit fixture contains the same 52-page Italian content with metadata padding, not 25 MiB of lesson text.
+- Native Continue produced the visible Italian A1–B1 material summary and recognized topics. This demonstrates the upload-to-AI-analysis path. Plan/diagnostic completion is not implied by the analysis screenshot.
+- Confirming the scope then generated the first diagnostic (eight minutes, `notStarted`, content `ready`) and a provisional next step. The diagnostic was not answered in this PDF-only replay.
+- The white warning overlay is development LogBox from the deliberately rejected oversized file, not a blank application validation message. The actual red inline validation message is visible below the files.
+- An initial script used the visual upload heading rather than the accessible action label; those failed locator attempts are not product failures. The topic-step keyboard partially obscured Continue; the native flow eventually advanced after scrolling/tapping, so a clean full-keyboard regression claim for that screen is not made.
+- Android's temporary handwriting setting was restored to its original unset value after the dialog test.
+
+| iPhone size rejection, valid files retained | iPhone AI analysis |
+| --- | --- |
+| <a href="ios-pdf-boundary.png"><img src="ios-pdf-boundary.png" width="180" alt="Exact 25 MiB retained and one-byte-over-limit rejected" /></a> | <a href="ios-pdf-analysis.png"><img src="ios-pdf-analysis.png" width="180" alt="Italian PDF summary produced by QA AI processing" /></a> |
+
 ## Explicit limits
 
-This is combined-build evidence, not an isolated replay of every constituent PR head. Earlier aborted attempts opened the development-client home or an unintended homework route; they are not counted as passes. Fresh before/after recordings and the distinct product-quality review are not yet available for this integration, so it remains Draft. Native PDF boundary coverage, only-today adjustments and notification cancellation/rescheduling are separate remaining acceptance cases; this dialog replay does not close them.
+This is combined-build evidence, not an isolated replay of every constituent PR head. Earlier aborted attempts opened the development-client home or an unintended homework route; they are not counted as passes. Fresh before/after recordings and the distinct product-quality review are not yet available for this integration, so it remains Draft. Only-today adjustments and real notification cancellation/rescheduling are separate remaining acceptance cases; these replays do not close them.
