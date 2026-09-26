@@ -7,6 +7,8 @@ snapshots with its test workers. The real Metro configuration probe for the
 Watchman opt-in runs in the same setup, after the Expo configurations.
 Resolution is deliberately serial so a full test run cannot start several
 memory-heavy configuration processes at once.
+In Vitest watch mode, changes to `app.config.cts` or `metro.config.js` rerun
+these contracts with freshly resolved snapshots.
 
 Each child process has a 60-second timeout, a 20 MiB output bound, and an
 explicit termination signal and a hidden process window on Windows. The timeout

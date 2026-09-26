@@ -55,9 +55,10 @@ type GlobalSetupProject = {
 		key: T,
 		value: ProvidedContext[T],
 	) => void;
+	onTestsRerun: (callback: () => Promise<void>) => void;
 };
 
-export default async function setup(project: GlobalSetupProject) {
+const provideConfigContracts = async (project: GlobalSetupProject) => {
 	const snapshots = {} as ExpoConfigSnapshots;
 	for (const contract of contracts) {
 		const key: ExpoConfigKey = expoConfigKey(contract.variant, contract.type);
@@ -86,4 +87,9 @@ export default async function setup(project: GlobalSetupProject) {
 	);
 	project.provide("expoConfigSnapshots", snapshots);
 	project.provide("metroWatchmanOptIn", useWatchman);
+};
+
+export default async function setup(project: GlobalSetupProject) {
+	await provideConfigContracts(project);
+	project.onTestsRerun(() => provideConfigContracts(project));
 }

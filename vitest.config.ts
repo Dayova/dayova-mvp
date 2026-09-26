@@ -23,6 +23,12 @@ export default defineConfig({
 		},
 	},
 	test: {
+		watchTriggerPatterns: [
+			{
+				pattern: /\/(?:app\.config\.cts|metro\.config\.js)$/,
+				testsToRun: () => expoConfigContractTests,
+			},
+		],
 		projects: [
 			{
 				resolve: {
