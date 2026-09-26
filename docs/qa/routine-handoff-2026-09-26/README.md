@@ -17,15 +17,21 @@ Android reports dismissal after the native picker unmounts.
   consent saved 16:30. Backend and calendar confirmed 20 minutes, not started.
   The original script's final assertion expected the coach to reappear and
   failed: the product intentionally dismisses it for today after success.
-  The checked-in script corrects that assertion; it is not claimed as a full
-  rerun. Native run: `2026-09-26_120502`.
+  The corrected complete script was subsequently rerun successfully at 12:18:
+  `2026-09-26_121853`, on code commit `6b6a61fe`. Earlier run: `2026-09-26_120502`.
 - Android 12:09: 16:30 → 17:00 consent completed, and the coach disappeared.
   Complete Maestro run passed: `2026-09-26_120845`.
 - Android AlarmManager before/after: today's Dayova alarms changed from
   **16:15 and 17:05** to **16:45 and 17:35**; the old times were absent after
   the change. This proves OS scheduling reconciliation, not later delivery.
-- iPhone push switch was off while the move succeeded. iOS native scheduled
-  notifications and eventual delivery remain unverified.
+- iPhone push permission was not yet granted while the first move succeeded.
+  Permission was subsequently granted through the native dialog for this QA
+  test. The 12:18 replay replaced the native pending requests for the same entry:
+  before-event **16:45 → 16:15**, forgotten-event **17:35 → 17:05**.
+  Both request identifiers changed; the previous requests were absent.
+  Read-only evidence came from this app's native `PendingNotifications.plist`,
+  resolving the archived request date plus trigger interval in Europe/Berlin.
+  Actual later delivery is not claimed; this test verifies scheduling.
 
 Fixture `qa-native-only-today-20260926` creates one new plan/session/calendar
 entry only. A separate date-limited internal replay resets only the known QA
