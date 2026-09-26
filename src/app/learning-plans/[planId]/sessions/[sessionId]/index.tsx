@@ -29,13 +29,17 @@ import { getLearningSessionCompletionDestination } from "~/features/learning-pla
 import { FeedbackView } from "~/features/learning-plans/session-feedback";
 import { getLearningSessionBackTarget } from "~/features/learning-plans/session-navigation";
 import {
-	CONTINUE_LEARNING_MINUTES,
 	getLearningSessionCompletionPhase,
 	getLearningSessionItems,
 	getLearningSessionTimerDurationSeconds,
 	getTheoryTopicPosition,
 	isPairedTheoryQuestionItem,
 } from "~/features/learning-plans/session-progress";
+import {
+	captureRepeatAttemptBaseline,
+	getCurrentRunAttempts,
+	type RepeatAttemptBaseline,
+} from "~/features/learning-plans/session-repeat-attempts";
 import { runTheoryTopicPrimaryAction } from "~/features/learning-plans/theory-topic";
 import { TheoryTopicPage } from "~/features/learning-plans/theory-topic-page";
 import type {
@@ -150,6 +154,7 @@ export default function LearningSessionContentScreen() {
 	const insets = useSafeAreaInsets();
 	const params = useLocalSearchParams<{
 		planId?: string;
+		repeat?: string;
 		returnTo?: string;
 		sessionId?: string;
 	}>();
@@ -164,9 +169,6 @@ export default function LearningSessionContentScreen() {
 	);
 	const finishSessionContent = useMutation(
 		api.learningSessionContent.finishSessionContent,
-	);
-	const extendSessionContent = useMutation(
-		api.learningSessionContent.extendSessionContent,
 	);
 	const startSession = useMutation(api.learningPlans.startSession);
 	const recordSessionOutcome = useMutation(
@@ -190,7 +192,9 @@ export default function LearningSessionContentScreen() {
 		LearningSessionContentSnapshot["session"]["phase"] | null
 	>(null);
 	const [repeatingItemId, setRepeatingItemId] = useState<string | null>(null);
-	const [retryStartedAt, setRetryStartedAt] = useState<number | null>(null);
+	const [repeatBaseline, setRepeatBaseline] = useState<RepeatAttemptBaseline>(
+		() => (params.repeat === "1" ? "pending" : null),
+	);
 	const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
 	const remainingSecondsRef = useRef<number | null>(null);
 	const [isContinuation, setIsContinuation] = useState(false);
@@ -211,6 +215,9 @@ export default function LearningSessionContentScreen() {
 		api.learningSessionContent.getSessionContent,
 		user && isConvexAuthenticated && sessionId ? { sessionId } : "skip",
 	) ?? null) as LearningSessionContentSnapshot | null;
+	if (repeatBaseline === "pending" && content) {
+		setRepeatBaseline(captureRepeatAttemptBaseline(content.attempts));
+	}
 	const needsTheoryContentUpgrade = Boolean(
 		content &&
 			content.session.phase === "theory" &&
@@ -247,31 +254,25 @@ export default function LearningSessionContentScreen() {
 			content.attempts.find((attempt) => attempt.itemId === currentItem.id) ??
 			null;
 		if (!attempt) return null;
-		if (retryStartedAt !== null && attempt.createdAt < retryStartedAt)
+		if (repeatBaseline === "pending" || repeatBaseline?.has(attempt.id))
 			return null;
 		return attempt;
-	}, [content, currentItem, repeatingItemId, retryStartedAt]);
+	}, [content, currentItem, repeatingItemId, repeatBaseline]);
 	const visibleAttempt =
 		isPraxisSession || isPreTheoryQuestion
 			? null
 			: localAttempt && currentItem && localAttempt.itemId === currentItem.id
 				? localAttempt
 				: persistedAttempt;
-	const currentRunAttempts = useMemo(() => {
-		const attempts =
-			content?.attempts.filter(
-				(attempt) =>
-					retryStartedAt === null || attempt.createdAt >= retryStartedAt,
-			) ?? [];
-		if (
-			!localAttempt ||
-			(retryStartedAt !== null && localAttempt.createdAt < retryStartedAt) ||
-			attempts.some((attempt) => attempt.id === localAttempt.id)
-		) {
-			return attempts;
-		}
-		return [...attempts, localAttempt];
-	}, [content?.attempts, localAttempt, retryStartedAt]);
+	const currentRunAttempts = useMemo(
+		() =>
+			getCurrentRunAttempts(
+				content?.attempts ?? [],
+				localAttempt,
+				repeatBaseline,
+			),
+		[content?.attempts, localAttempt, repeatBaseline],
+	);
 	const currentRunCorrectCount = currentRunAttempts.filter(
 		(attempt) => attempt.rating === "correct",
 	).length;
@@ -605,33 +606,24 @@ export default function LearningSessionContentScreen() {
 		}
 	};
 
-	const startContinueLearning = async () => {
+	const repeatCurrentSession = () => {
 		if (!content || isBusy) return;
 
-		setIsBusy(true);
+		resetItemState();
 		setErrorMessage(null);
-		try {
-			await recordCompletedOutcome();
-			const extension = await extendSessionContent({
-				sessionId: content.session.id,
-				durationMinutes: CONTINUE_LEARNING_MINUTES,
-			});
-			resetItemState();
-			setRetryStartedAt(Date.now());
-			setCurrentIndex(extension.firstNewItemIndex);
-			setCompletionPhase(null);
-			setIsContinuation(true);
-			didAutoFinishRef.current = false;
-		} catch (error) {
-			setErrorMessage(
-				getErrorMessage(
-					error,
-					"Das Weiterlernen konnte nicht gestartet werden.",
-				),
-			);
-		} finally {
-			setIsBusy(false);
-		}
+		setRepeatBaseline(
+			captureRepeatAttemptBaseline(content.attempts, localAttempt),
+		);
+		setCurrentIndex(0);
+		setCompletionPhase(null);
+		setIsContinuation(false);
+		setRemainingSeconds(null);
+		remainingSecondsRef.current = null;
+		activeStudySecondsRef.current = 0;
+		activeStudyStartedAtRef.current = null;
+		advancedPreTheoryQuestionItemIdRef.current = null;
+		didAutoFinishRef.current = false;
+		contentScrollRef.current?.scrollTo({ y: 0, animated: false });
 	};
 
 	const continueTheory = () => {
@@ -969,7 +961,7 @@ export default function LearningSessionContentScreen() {
 						durationMinutes={content.session.durationMinutes}
 						correctCount={currentRunCorrectCount}
 						attemptCount={currentRunAttempts.length}
-						onContinueLearning={() => void startContinueLearning()}
+						onRepeat={repeatCurrentSession}
 						onPrimary={
 							completionPhase === "theory"
 								? completeAndLeave
