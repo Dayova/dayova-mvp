@@ -38,6 +38,8 @@ parent navigator as well as internal gestures and gesture cancellation.
   parent layout may not receive query parameters. Returning to the same first
   step through native Back keeps the draft. A new request clears the old answers
   and saved exam ID, then resets the nested history to its proper first step.
+  Incoming app links count as new requests even when Expo Router reuses the
+  same route key and query parameters.
   An older save that finishes after a new request cannot redirect or attach its
   exam ID to the new draft.
 - A valid exam availability resume reconstructs Exam type, Subject, Date, and

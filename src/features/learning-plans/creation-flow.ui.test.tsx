@@ -36,6 +36,7 @@ let mockSnapshot:
 let mockPauseVisible = false;
 let mockBackIntentEnabled = false;
 let mockConfirmPause: (() => void) | null = null;
+let mockIncomingLink: ((url: string) => void) | null = null;
 let mockOpenEntry: (
 	params: Record<string, string | string[]>,
 	mode?: "navigate" | "push",
@@ -59,6 +60,23 @@ jest.mock("convex/react", () => ({
 			: mockUpdateEntry;
 	},
 	useAction: () => jest.fn(),
+}));
+jest.mock("expo-linking", () => ({
+	...jest.requireActual<typeof import("expo-linking")>("expo-linking"),
+	parse: (url: string) => {
+		const parsed = new URL(url);
+		return {
+			hostname: parsed.hostname,
+			path: parsed.pathname.replace(/^\//, ""),
+		};
+	},
+	addEventListener: (
+		_type: "url",
+		listener: (event: { url: string }) => void,
+	) => {
+		mockIncomingLink = (url) => listener({ url });
+		return { remove: () => (mockIncomingLink = null) };
+	},
 }));
 jest.mock("expo-router", () => ({
 	useRouter: () => {
@@ -520,6 +538,23 @@ describe("entry native history and shared answers", () => {
 		await fireEvent.press(screen.getByRole("radio", { name: "Klausur" }));
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		await act(() => mockOpenEntry({ type: "exam" }, "push"));
+		expect(screen.getByTestId("entry-history").props.children).toBe("index");
+		expect(
+			screen.getByRole("radio", { name: "Klausur" }).props.accessibilityState
+				.selected,
+		).toBe(false);
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+	});
+
+	test("an incoming link reopens the same route and URL with a clean draft", async () => {
+		mockParams = { type: "exam" };
+		const screen = await render(<NewEntryScreen />);
+		await fireEvent.press(screen.getByRole("radio", { name: "Klausur" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await act(() => {
+			mockIncomingLink?.("de.dayova.app:///entry/new?type=exam");
+			mockOpenEntry({ type: "exam" });
+		});
 		expect(screen.getByTestId("entry-history").props.children).toBe("index");
 		expect(
 			screen.getByRole("radio", { name: "Klausur" }).props.accessibilityState

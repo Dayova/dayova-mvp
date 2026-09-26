@@ -1,8 +1,10 @@
+import * as Linking from "expo-linking";
 import {
 	createContext,
 	type ReactNode,
 	useCallback,
 	useContext,
+	useEffect,
 	useRef,
 	useState,
 } from "react";
@@ -51,12 +53,28 @@ function initialDraft(params: EntryParams): EntryDraft {
 	};
 }
 
+function isEntryStartLink(url: string) {
+	try {
+		const { hostname, path } = Linking.parse(url);
+		return path === "entry/new" || (hostname === "entry" && path === "new");
+	} catch {
+		return false;
+	}
+}
+
 function useDraftState() {
 	// The layout can survive a second entry URL. Only that new request replaces
 	// answers and the saved exam identity; step Back keeps both intact.
 	const [initialParams, setInitialParams] = useState<EntryParams>({});
 	const [draft, setDraft] = useState(() => initialDraft({}));
 	const [initialized, setInitialized] = useState(false);
+	const [incomingEntryLinks, setIncomingEntryLinks] = useState(0);
+	useEffect(() => {
+		const subscription = Linking.addEventListener("url", ({ url }) => {
+			if (isEntryStartLink(url)) setIncomingEntryLinks((count) => count + 1);
+		});
+		return () => subscription.remove();
+	}, []);
 	const savedExamIdRef = useRef<Id<"dayEntries"> | undefined>(undefined);
 	const requestKeyRef = useRef<string | undefined>(undefined);
 	const requestVersionRef = useRef(0);
@@ -85,6 +103,7 @@ function useDraftState() {
 		requestVersionRef,
 		entryCreationGateRef,
 		initialized,
+		incomingEntryLinks,
 		initialize,
 	};
 }

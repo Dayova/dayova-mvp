@@ -18,11 +18,13 @@ export function EntryStartScreen() {
 	const navigation = useNavigation();
 	const route = useRoute();
 	const isFocused = useIsFocused();
-	const { draft, initialized, initialize } = useEntryDraft();
+	const { draft, initialized, incomingEntryLinks, initialize } =
+		useEntryDraft();
 	const params = useLocalSearchParams<EntrySearchParams>();
 	const pendingHistoryRestore = useRef<"fresh" | "resume" | null>(null);
 	const requestKey = JSON.stringify([
 		route.key,
+		incomingEntryLinks,
 		params.type,
 		params.dayKey,
 		params.step,
