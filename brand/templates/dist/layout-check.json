@@ -1,0 +1,87 @@
+{
+  "pdfPages": 20,
+  "officePackages": 3,
+  "opticalLabels": [
+    {
+      "page": 8,
+      "x": 56,
+      "verticalOffsetCanvasPx": 0.167,
+      "horizontalOffsetCanvasPx": -0.667
+    },
+    {
+      "page": 8,
+      "x": 356,
+      "verticalOffsetCanvasPx": -0.167,
+      "horizontalOffsetCanvasPx": 0.167
+    },
+    {
+      "page": 8,
+      "x": 656,
+      "verticalOffsetCanvasPx": 0.0,
+      "horizontalOffsetCanvasPx": -0.167
+    },
+    {
+      "page": 8,
+      "x": 956,
+      "verticalOffsetCanvasPx": 0.0,
+      "horizontalOffsetCanvasPx": 0.0
+    },
+    {
+      "page": 16,
+      "x": 152,
+      "verticalOffsetCanvasPx": 0.0,
+      "horizontalOffsetCanvasPx": 0.167
+    },
+    {
+      "page": 16,
+      "x": 552,
+      "verticalOffsetCanvasPx": 0.0,
+      "horizontalOffsetCanvasPx": 0.167
+    },
+    {
+      "page": 16,
+      "x": 952,
+      "verticalOffsetCanvasPx": 0.0,
+      "horizontalOffsetCanvasPx": 0.167
+    },
+    {
+      "page": 18,
+      "x": 114,
+      "verticalOffsetCanvasPx": 0.0,
+      "horizontalOffsetCanvasPx": -0.167
+    }
+  ],
+  "bulletRows": [
+    {
+      "row": 1,
+      "x": 111,
+      "verticalOffsetCanvasPx": 0.0
+    },
+    {
+      "row": 1,
+      "x": 660,
+      "verticalOffsetCanvasPx": -0.167
+    },
+    {
+      "row": 2,
+      "x": 111,
+      "verticalOffsetCanvasPx": 0.0
+    },
+    {
+      "row": 2,
+      "x": 660,
+      "verticalOffsetCanvasPx": -0.167
+    },
+    {
+      "row": 3,
+      "x": 111,
+      "verticalOffsetCanvasPx": 0.0
+    },
+    {
+      "row": 3,
+      "x": 660,
+      "verticalOffsetCanvasPx": -0.167
+    }
+  ],
+  "nativePowerPointRender": "blocked by window ownership error; not covered by these tests"
+}
