@@ -129,13 +129,13 @@ jest.mock("@gorhom/bottom-sheet", () => {
 		BottomSheetBackdrop: (props: Record<string, unknown>) =>
 			React.createElement("BottomSheetBackdrop", props),
 		BottomSheetModal,
-		BottomSheetFooter: ({ children }: { children?: ReactNode }) =>
-			React.createElement("BottomSheetFooter", {}, children),
 		BottomSheetTextInput: (props: Record<string, unknown>) =>
 			React.createElement("TextInput", {
 				...props,
 				testID: "sheet-native-input",
 			}),
+		BottomSheetFooter: ({ children }: { children?: ReactNode }) =>
+			React.createElement("BottomSheetFooter", {}, children),
 		BottomSheetScrollView: ({ children, ...props }: { children?: ReactNode }) =>
 			React.createElement("BottomSheetScrollView", props, children),
 		BottomSheetView: ({ children, ...props }: { children?: ReactNode }) =>
@@ -144,6 +144,16 @@ jest.mock("@gorhom/bottom-sheet", () => {
 });
 
 describe("DayovaSheetFrame", () => {
+	test("lets interactive sheets offset the Android keyboard instead of expecting a resized container", async () => {
+		const screen = await render(
+			<DayovaSheetFrame visible onClose={() => {}} title="Keyboard test">
+				<Input accessibilityLabel="Name" />
+			</DayovaSheetFrame>,
+		);
+		const sheet = screen.getByTestId("bottom-sheet-modal");
+		expect(sheet.props.android_keyboardInputMode).toBe("adjustPan");
+		expect(sheet.props.keyboardBehavior).toBe("interactive");
+	});
 	test("registers sheet inputs with the keyboard-aware primitive only inside the sheet", async () => {
 		const onChangeText = jest.fn();
 		const screen = await render(
@@ -158,6 +168,7 @@ describe("DayovaSheetFrame", () => {
 			"sheet-native-input",
 		);
 		// The modal correctly hides outside controls from accessibility queries.
+		expect(screen.queryByLabelText("Outside")).toBeNull();
 		expect(
 			screen.getByLabelText("Outside", { includeHiddenElements: true }).props
 				.testID,

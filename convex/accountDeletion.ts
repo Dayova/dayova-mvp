@@ -607,6 +607,21 @@ export const deleteOwnerDataBatch = internalMutation({
 		);
 
 		if (user) {
+			const crmSignups = await ctx.db
+				.query("crmStudentSignups")
+				.withIndex("by_userId", (q) => q.eq("userId", user._id))
+				.take(DELETE_BATCH_SIZE);
+			deletedRecords += await deleteRows(ctx, "crmStudentSignups", crmSignups);
+			const crmLinks = await ctx.db
+				.query("crmStudentLinks")
+				.withIndex("by_userId", (q) => q.eq("userId", user._id))
+				.take(DELETE_BATCH_SIZE);
+			deletedRecords += await deleteRows(ctx, "crmStudentLinks", crmLinks);
+			const crmUpdates = await ctx.db
+				.query("crmStudentUpdates")
+				.withIndex("by_userId", (q) => q.eq("userId", user._id))
+				.take(DELETE_BATCH_SIZE);
+			deletedRecords += await deleteRows(ctx, "crmStudentUpdates", crmUpdates);
 			const userOnboardingAnswers = await ctx.db
 				.query("userOnboardingAnswers")
 				.withIndex("by_userId", (query) => query.eq("userId", user._id))

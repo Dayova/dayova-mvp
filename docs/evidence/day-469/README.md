@@ -25,7 +25,33 @@ paths are covered by the shared component's shadow-free lint boundary.
 
 | Before (reporter, original build unknown) | After (native Android) |
 | --- | --- |
-| <img src="before-reporter.png" alt="Reported Android shadows below both arrow buttons" width="280" /> | Pending native capture; no visual approval claimed. |
+| <img src="before-reporter.png" alt="Reported Android shadows below both arrow buttons" width="280" /> | <img src="after-android-reporter.png" alt="Android after: both learning-plan arrows without gray drop shadows" width="280" /> |
+
+### Evidence correction — 24 September 2026
+
+Philipp supplied the original `Screenshot_1790241056.png` as Android after
+evidence and confirmed that Android testing had taken place. It is copied
+unchanged here as `after-android-reporter.png` (1080 × 2424). Both visible
+learning-plan arrow buttons have no gray drop shadow and sit in their card
+notches. This is still-image evidence, not proof of tapping or other modes.
+The screenshot itself does not identify its exact source commit, APK version,
+device model or Android version; those details are not inferred.
+
+Android execution on the integrated QA branch was already documented in
+[the Android QA report](https://github.com/Dayova/dayova-mvp/blob/1721cd3/docs/evidence/jakob-qa-2026-09-22/android/README.md).
+That report names source `a53ef62`, Android 16, `com.dayova.dev`, and Metro 8095.
+The integration includes #719; `src/components/ui/notched-action-card.tsx`
+is byte-identical between `a53ef62`, later QA source `6aaba8bd`, and this PR's
+pre-evidence head `d4e0339838ba4f06d5bd6b8f915075aebda4029c`.
+This establishes shared-component source equivalence, not an exact-build
+attribution for the newly supplied screenshot or isolated-PR acceptance.
+
+The former blanket statement that no Android execution or after image exists
+is therefore obsolete. The 22 September EAS failure below is historical only.
+Dedicated action-only hit testing, decorative mode and an iOS visual smoke
+test are not established by this screenshot. Jakob's
+[24 September merge hold](https://github.com/Dayova/dayova-mvp/pull/719#issuecomment-5811024470)
+remains until he accepts the evidence; this update does not self-approve it.
 
 Jakob requested adjacent before/after evidence in
 [PR #657](https://github.com/Dayova/dayova-mvp/pull/657#issuecomment-5766118902).
@@ -42,11 +68,12 @@ reporter image as additional original evidence when its state cannot be recreate
 - `git diff --check`: passed.
 
 These checks do not establish native Android stacking, hit testing or appearance.
-Before review approval, verify both learning-plan cards, action-press behavior,
-decorative mode, and an iOS visual smoke test. Keep the PR in draft until the
-native evidence is attached. Jakob/Fabius own approval and merge.
+The after image now documents both learning-plan cards visually. Action-press
+behavior, decorative mode and an iOS visual smoke test remain separate checks.
+The earlier draft-only instruction was superseded by Philipp's explicit review
+handoff on 22 September. Jakob/Fabius own approval and merge.
 
-## Android capture blocker (22 September 2026)
+## Historical Android capture blocker (22 September 2026)
 
 The requested EAS test was attempted using the existing `development` profile
 and source commit `a0b2c1b`. No finished Android development client was available.
@@ -55,6 +82,6 @@ failed in `READ_APP_CONFIG` before native compilation because the development
 environment lacks `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY`.
 
 The remote simulator was not started because there was no usable current build.
-Resume after the Android development environment has its correct RevenueCat
+At that time, the next step was to resume after the Android development environment had its correct RevenueCat
 public SDK key configured, then build the development client and capture the
 comparison. No billing configuration or production environment was modified.

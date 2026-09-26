@@ -212,6 +212,17 @@ test("deletes account data in bounded internal batches and preserves other users
 			createdAt: 1,
 			updatedAt: 1,
 		});
+		for (const [id, status] of [
+			[userId, "pending"],
+			[otherUserId, "review"],
+		] as const)
+			await ctx.db.insert("crmStudentUpdates", {
+				userId: id,
+				revision: 1,
+				status,
+				nextAttemptAt: 1,
+				attempts: 0,
+			});
 	});
 
 	let done = false;
@@ -238,6 +249,7 @@ test("deletes account data in bounded internal batches and preserves other users
 		onboardingAnswers: await ctx.db.query("userOnboardingAnswers").take(100),
 		requests: await ctx.db.query("accountDeletionRequests").take(10),
 		users: await ctx.db.query("users").take(10),
+		crmUpdates: await ctx.db.query("crmStudentUpdates").take(100),
 	}));
 	expect(remaining.generationProgress).toMatchObject([
 		{ ownerTokenIdentifier: otherIdentity.tokenIdentifier },
@@ -252,10 +264,14 @@ test("deletes account data in bounded internal batches and preserves other users
 	expect(remaining.users).toMatchObject([
 		{ tokenIdentifier: otherIdentity.tokenIdentifier },
 	]);
+	expect(remaining.crmUpdates).toMatchObject([
+		{ userId: otherUserId, status: "review" },
+	]);
 	expect(remaining.requests[0]).toMatchObject({
 		status: "completed",
 		stage: "complete",
-		deletedRecords: 36,
+		// Includes the CRM signup intent and the queued CRM update.
+		deletedRecords: 38,
 	});
 	expect(remaining.requests[0]).not.toHaveProperty("ownerTokenIdentifier");
 	expect(remaining.requests[0]).not.toHaveProperty("clerkUserId");

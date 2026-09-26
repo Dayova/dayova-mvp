@@ -218,6 +218,7 @@ const getRollingSessionSchedule = async (
 		durationMinutes: number;
 		excludeSession?: Doc<"learningPlanSessions">;
 		requireFullDuration?: boolean;
+		notBeforeDateKey?: string;
 		preview?: {
 			referenceTime: number;
 			learningTimes: Array<{
@@ -256,6 +257,10 @@ const getRollingSessionSchedule = async (
 	const today = startOfUtcDay(new Date(`${berlinNow.dateKey}T12:00:00Z`));
 	const cursor = Number.isNaN(afterDate.getTime()) ? today : afterDate;
 	if (cursor < today) cursor.setTime(today.getTime());
+	if (args.notBeforeDateKey) {
+		const lowerBound = new Date(`${args.notBeforeDateKey}T12:00:00Z`);
+		if (cursor < lowerBound) cursor.setTime(lowerBound.getTime());
+	}
 	const examDate = new Date(`${args.plan.examDateKey.slice(0, 10)}T12:00:00Z`);
 	if (Number.isNaN(examDate.getTime())) return null;
 	const afterStartMinutes = args.afterSession
@@ -379,8 +384,35 @@ export const computeLearningTimeImpact = async (
 			return { plan, sessions };
 		}),
 	);
+	// A preference change is not a request to rebuild the whole calendar.
+	// Retain existing slots that still fit, including slots on unchanged days.
+	const fitsProposedWindow = (session: Doc<"learningPlanSessions">) => {
+		const plan = plans.find((entry) => entry._id === session.learningPlanId);
+		if (!plan || session.dateKey.slice(0, 10) >= plan.examDateKey.slice(0, 10))
+			return false;
+		const day =
+			new Date(`${session.dateKey.slice(0, 10)}T12:00:00Z`).getUTCDay() || 7;
+		const start = parseTimeMinutes(session.startTime);
+		return (
+			start !== null &&
+			learningTimes.some((window) => {
+				const windowStart = parseTimeMinutes(window.startTime);
+				const end = parseLearningWindowEnd(window.startTime, window.endTime);
+				return (
+					window.dayOfWeek === day &&
+					windowStart !== null &&
+					end !== null &&
+					start >= windowStart &&
+					start + session.durationMinutes <= end
+				);
+			})
+		);
+	};
 	const pending = groups.flatMap(({ sessions }) =>
-		sessions.filter((s) => getSessionExecutionStatus(s) === "notStarted"),
+		sessions.filter(
+			(s) =>
+				getSessionExecutionStatus(s) === "notStarted" && !fitsProposedWindow(s),
+		),
 	);
 	const preview = {
 		referenceTime,
@@ -416,6 +448,31 @@ export const computeLearningTimeImpact = async (
 		for (const session of sessions.filter(
 			(s) => getSessionExecutionStatus(s) === "notStarted",
 		)) {
+			if (fitsProposedWindow(session)) {
+				const previousStart = previous
+					? parseTimeMinutes(previous.startTime)
+					: null;
+				const currentStart = parseTimeMinutes(session.startTime);
+				if (
+					blocked ||
+					(previous &&
+						getSessionExecutionStatus(previous) !== "completed" &&
+						(previous.dateKey > session.dateKey ||
+							(previous.dateKey === session.dateKey &&
+								previousStart !== null &&
+								currentStart !== null &&
+								previousStart + previous.durationMinutes > currentStart)))
+				) {
+					blocked = true;
+					conflicts.push({
+						sessionId: session._id,
+						title: session.title,
+						examDateKey: plan.examDateKey,
+					});
+				}
+				previous = session;
+				continue;
+			}
 			const schedule = blocked
 				? null
 				: await getRollingSessionSchedule(ctx, {
@@ -425,6 +482,7 @@ export const computeLearningTimeImpact = async (
 						durationMinutes: session.durationMinutes,
 						excludeSession: session,
 						requireFullDuration: true,
+						notBeforeDateKey: session.dateKey.slice(0, 10),
 						preview,
 					});
 			if (!schedule) {

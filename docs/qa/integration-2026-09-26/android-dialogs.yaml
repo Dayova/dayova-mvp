@@ -1,0 +1,34 @@
+appId: com.dayova.dev
+name: Combined QA exam and subject keyboard replay
+---
+- extendedWaitUntil:
+    visible: Prüfungsart hinzufügen
+    timeout: 60000
+- tapOn: Test
+- tapOn: Prüfungsart hinzufügen
+- tapOn: Name der Prüfungsart
+- inputText: QA Vokabeltest
+- takeScreenshot: exam-keyboard
+- scrollUntilVisible:
+    element: Abbrechen
+    direction: DOWN
+- tapOn: Abbrechen
+- assertNotVisible: Name der Prüfungsart
+- assertVisible:
+    text: Weiter
+    enabled: true
+- tapOn: Weiter
+- assertVisible: Welches Fach ist es?
+- tapOn: Mathematik
+- scrollUntilVisible:
+    element: Fach hinzufügen
+    direction: DOWN
+- tapOn: Fach hinzufügen
+- tapOn: Name des Fachs
+- inputText: QA Dialogvergleich
+- takeScreenshot: subject-keyboard
+- tapOn: Fach hinzufügen schließen
+- assertNotVisible: Name des Fachs
+- assertVisible:
+    text: Weiter
+    enabled: true

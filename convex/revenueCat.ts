@@ -27,6 +27,7 @@ const revenueCatSubscriberResponseSchema = z.object({
 				expires_date: optionalRevenueCatDate,
 				grace_period_expires_date: optionalRevenueCatDate,
 				store: z.string().optional(),
+				period_type: z.string().optional(),
 				unsubscribe_detected_at: optionalRevenueCatDate,
 			}),
 		),
@@ -117,6 +118,9 @@ const fetchSubscriberSnapshot = async (
 				? { graceExpiresAt }
 				: {}),
 			...(isNativeSubscription && productId ? { productId } : {}),
+			...(isNativeSubscription && subscription?.period_type
+				? { periodType: subscription.period_type }
+				: {}),
 			...(isNativeSubscription && subscription?.store
 				? { store: subscription.store }
 				: {}),
