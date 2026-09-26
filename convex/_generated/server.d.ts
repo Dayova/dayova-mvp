@@ -27,12 +27,12 @@ import type { DataModel } from "./dataModel.js";
 type Env = {
   readonly CLERK_SECRET_KEY: string | undefined;
   readonly DAYOVA_DEPLOYMENT_ENVIRONMENT: string | undefined;
-  readonly POSTHOG_API_HOST: string | undefined;
-  readonly POSTHOG_PERSONAL_API_KEY: string | undefined;
-  readonly POSTHOG_PROJECT_ID: string | undefined;
   readonly NOTION_CRM_DATA_SOURCE_ID: string | undefined;
   readonly NOTION_CRM_MODE: "off" | "dry-run" | "live" | undefined;
   readonly NOTION_CRM_TOKEN: string | undefined;
+  readonly POSTHOG_API_HOST: string | undefined;
+  readonly POSTHOG_PERSONAL_API_KEY: string | undefined;
+  readonly POSTHOG_PROJECT_ID: string | undefined;
   readonly REVENUECAT_SECRET_API_KEY: string | undefined;
   readonly REVENUECAT_WEBHOOK_AUTHORIZATION: string | undefined;
 };

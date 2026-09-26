@@ -415,7 +415,9 @@ function DayovaSheetFrame({
 			ref={sheetRef}
 			containerComponent={SheetModalContainer}
 			accessible={false}
-			android_keyboardInputMode="adjustResize"
+			// Edge-to-edge Android does not resize the sheet container for the IME.
+			// Let Gorhom's interactive mode apply the keyboard offset itself.
+			android_keyboardInputMode="adjustPan"
 			backgroundComponent={renderBackground}
 			backgroundStyle={{ backgroundColor: colors.surface }}
 			backdropComponent={renderBackdrop}
