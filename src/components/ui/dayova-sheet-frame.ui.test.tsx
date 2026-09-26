@@ -129,13 +129,13 @@ jest.mock("@gorhom/bottom-sheet", () => {
 		BottomSheetBackdrop: (props: Record<string, unknown>) =>
 			React.createElement("BottomSheetBackdrop", props),
 		BottomSheetModal,
-		BottomSheetFooter: ({ children }: { children?: ReactNode }) =>
-			React.createElement("BottomSheetFooter", {}, children),
 		BottomSheetTextInput: (props: Record<string, unknown>) =>
 			React.createElement("TextInput", {
 				...props,
 				testID: "sheet-native-input",
 			}),
+		BottomSheetFooter: ({ children }: { children?: ReactNode }) =>
+			React.createElement("BottomSheetFooter", {}, children),
 		BottomSheetScrollView: ({ children, ...props }: { children?: ReactNode }) =>
 			React.createElement("BottomSheetScrollView", props, children),
 		BottomSheetView: ({ children, ...props }: { children?: ReactNode }) =>
@@ -158,6 +158,7 @@ describe("DayovaSheetFrame", () => {
 			"sheet-native-input",
 		);
 		// The modal correctly hides outside controls from accessibility queries.
+		expect(screen.queryByLabelText("Outside")).toBeNull();
 		expect(
 			screen.getByLabelText("Outside", { includeHiddenElements: true }).props
 				.testID,

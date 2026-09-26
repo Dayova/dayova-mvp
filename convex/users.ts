@@ -9,10 +9,13 @@ import {
 	normalizeLegacySchoolType,
 	SCHOOL_TYPE_VALUES,
 } from "../src/lib/school-types";
-import type { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
+import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { mutation, query } from "./_generated/server";
+import { env, mutation, query } from "./_generated/server";
 import { assertAccountActive } from "./accountDeletion";
+import { operatingSystem } from "./crmContract";
+import { enqueueCrmUpdate } from "./crmUpdates";
 import { throwUserFacingError } from "./errors";
 import {
 	deriveOnboardingLearningTimes,
@@ -386,8 +389,29 @@ const sanitizeLegacyOnboardingSchoolType = async (
 	}
 };
 
+async function scheduleCrmProfileSync(
+	ctx: MutationCtx,
+	previous: Doc<"users">,
+	patch: Partial<Doc<"users">>,
+) {
+	if (
+		(
+			[
+				"email",
+				"name",
+				"grade",
+				"state",
+				"schoolType",
+				"operatingSystems",
+			] as const
+		).some((key) => Object.hasOwn(patch, key) && patch[key] !== previous[key])
+	)
+		await enqueueCrmUpdate(ctx, previous._id);
+}
+
 export const syncCurrentUser = mutation({
 	args: {
+		operatingSystem: v.optional(operatingSystem),
 		name: v.optional(v.string()),
 		phone: v.optional(v.string()),
 		birthDate: v.optional(v.string()),
@@ -397,6 +421,7 @@ export const syncCurrentUser = mutation({
 		avatarUrl: v.optional(v.string()),
 		validationStudentCode: v.optional(v.string()),
 	},
+	returns: v.id("users"),
 	handler: async (ctx, args) => {
 		const identity = await requireIdentity(ctx);
 
@@ -419,6 +444,16 @@ export const syncCurrentUser = mutation({
 			email,
 			name: args.name ?? identity.name,
 			...profileFields(args),
+			// Only patch on a new observation; omitted/older clients preserve history.
+			...(args.operatingSystem &&
+			!existingUser?.operatingSystems?.includes(args.operatingSystem)
+				? {
+						operatingSystems: [
+							...(existingUser?.operatingSystems ?? []),
+							args.operatingSystem,
+						],
+					}
+				: {}),
 		};
 
 		let userId: Id<"users">;
@@ -431,6 +466,7 @@ export const syncCurrentUser = mutation({
 				...user,
 				schoolType,
 			});
+			await scheduleCrmProfileSync(ctx, existingUser, { ...user, schoolType });
 			await sanitizeLegacyOnboardingSchoolType(ctx, existingUser._id);
 			userId = existingUser._id;
 		} else {
@@ -438,6 +474,11 @@ export const syncCurrentUser = mutation({
 				...user,
 				firstPlanPromptStatus: "awaitingOnboarding",
 			});
+			// Persist with signup; an unavailable CRM must not lose the delivery intent.
+			await ctx.db.insert("crmStudentSignups", { userId, status: "pending" });
+			if (env.NOTION_CRM_MODE === "live") {
+				await ctx.scheduler.runAfter(0, internal.crmSync.reconcile, {});
+			}
 		}
 
 		await backfillLegacyLearningTimes(ctx, {
@@ -471,7 +512,12 @@ export const updateProfile = mutation({
 			throwUserFacingError("Der Nutzer konnte nicht gefunden werden.");
 		}
 
-		await ctx.db.patch("users", user._id, profileFields(args));
+		const patch = profileFields(args);
+		// Clerk owns email verification. Older clients may still send an email,
+		// but only syncCurrentUser can persist the primary address from its JWT.
+		delete patch.email;
+		await ctx.db.patch("users", user._id, patch);
+		await scheduleCrmProfileSync(ctx, user, patch);
 		return { success: true };
 	},
 });
