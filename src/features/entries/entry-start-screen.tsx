@@ -3,6 +3,7 @@ import {
 	CommonActions,
 	useIsFocused,
 	useNavigation,
+	useRoute,
 } from "expo-router/react-navigation";
 import { useLayoutEffect, useRef } from "react";
 import { useEntryDraft } from "./entry-draft";
@@ -15,28 +16,48 @@ import { EntryStepScreen } from "./entry-step-screen";
 
 export function EntryStartScreen() {
 	const navigation = useNavigation();
+	const route = useRoute();
 	const isFocused = useIsFocused();
 	const { draft, initialized, initialize } = useEntryDraft();
 	const params = useLocalSearchParams<EntrySearchParams>();
-	const pendingHistoryRestore = useRef(false);
+	const pendingHistoryRestore = useRef<"fresh" | "resume" | null>(null);
+	const requestKey = JSON.stringify([
+		route.key,
+		params.type,
+		params.dayKey,
+		params.step,
+		params.subject,
+		params.examTypeLabel,
+		params.examDayEntryId,
+		params.durationMinutes,
+		params.topicDescription,
+	]);
 	useLayoutEffect(() => {
-		if (initialized) return;
+		if (!isFocused) return;
 		const entry = resolveEntryStartParams(params);
-		if (!initialize(entry.params)) return;
-		pendingHistoryRestore.current = entry.restoreExamHistory;
-	}, [params, initialized, initialize]);
+		if (!initialize(entry.params, requestKey)) return;
+		pendingHistoryRestore.current = entry.restoreExamHistory
+			? "resume"
+			: initialized
+				? "fresh"
+				: null;
+	}, [params, requestKey, initialized, isFocused, initialize]);
 	useLayoutEffect(() => {
-		if (!initialized || !isFocused || !pendingHistoryRestore.current) return;
-		pendingHistoryRestore.current = false;
+		const history = pendingHistoryRestore.current;
+		if (!initialized || !isFocused || !history) return;
+		pendingHistoryRestore.current = null;
 		// A cold link can mount this leaf before its native navigator has settled.
 		// Restore history after initialization and focus, not during initialization.
+		const routes = history === "resume" ? EXAM_RESUME_ROUTES : ["index"];
 		navigation.dispatch(
 			CommonActions.reset({
-				index: EXAM_RESUME_ROUTES.length - 1,
-				routes: EXAM_RESUME_ROUTES.map((name) => ({ name })),
+				index: routes.length - 1,
+				routes: routes.map((name) =>
+					name === "index" ? { name, key: route.key, params } : { name },
+				),
 			}),
 		);
-	}, [initialized, isFocused, navigation]);
+	}, [initialized, isFocused, navigation, route.key, params]);
 	if (!initialized) return null;
 	return (
 		<EntryStepScreen step={draft.type === "homework" ? "basics" : "examType"} />

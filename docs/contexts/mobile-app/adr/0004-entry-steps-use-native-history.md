@@ -19,7 +19,8 @@ Native transitions replace the form's redundant content fade.
 
 `EntryDraftProvider` belongs to the entry layout. It owns answers, the saved exam
 identity, and the shared synchronous mutation gate. Popping a step preserves
-answers; leaving the entry navigator discards the in-memory draft. Saving or
+answers; a second entry URL starts a clean request even when the layout remains
+mounted. Leaving the entry navigator also discards the in-memory draft. Saving or
 continuing to topics replaces the entire entry navigator, removing its completed
 steps from Back history.
 
@@ -33,8 +34,12 @@ parent navigator as well as internal gestures and gesture cancellation.
 ## Entry, resume, and learning times
 
 - `/entry/new` remains the public entry and resume URL. Initialization reads its
-  leaf parameters exactly once, including on cold links where a parent layout
-  may not receive query parameters.
+  leaf parameters on each new route request, including on cold links where a
+  parent layout may not receive query parameters. Returning to the same first
+  step through native Back keeps the draft. A new request clears the old answers
+  and saved exam ID, then resets the nested history to its proper first step.
+  An older save that finishes after a new request cannot redirect or attach its
+  exam ID to the new draft.
 - A valid exam availability resume reconstructs Exam type, Subject, Date, and
   Availability in native history, retaining the existing exam ID and answers.
   It requires a saved exam ID, subject, exam type, canonical day key, and bounded
@@ -53,6 +58,7 @@ parent navigator as well as internal gestures and gesture cancellation.
   resume links retain their contract; no backend/schema migration is involved.
 
 Tests exercise rendered answers and actual stack state, including resume,
-validation, backwards edits, fresh-draft isolation, and duplicate/failed saves.
+validation, backwards edits, re-entry while the layout is retained, fresh-draft
+isolation, and duplicate/failed saves.
 Native recordings are required for intermediate gesture visuals and cancellation;
 asserting only the final destination is insufficient.

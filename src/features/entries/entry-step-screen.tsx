@@ -299,6 +299,7 @@ function EntryStepContent({ step }: { step: EntryStep }) {
 		updateDraft,
 		initialParams: params,
 		savedExamIdRef,
+		requestVersionRef,
 		entryCreationGateRef,
 	} = useEntryDraft();
 	const isHomework = draft.type === "homework";
@@ -525,6 +526,7 @@ function EntryStepContent({ step }: { step: EntryStep }) {
 	} = {}) => {
 		if (isHomework && !canCreateHomework) return;
 		if (!isHomework && !canCreateExam) return;
+		const requestVersion = requestVersionRef.current;
 		const resolvedDurationMinutes = scheduledDurationMinutes;
 		if (!canWriteEntries || isCreating) return;
 
@@ -568,8 +570,10 @@ function EntryStepContent({ step }: { step: EntryStep }) {
 				createdEntryId = savedExamId;
 			} else {
 				createdEntryId = await createDayEntry(entryFields);
-				if (!isHomework) savedExamIdRef.current = createdEntryId;
+				if (!isHomework && requestVersionRef.current === requestVersion)
+					savedExamIdRef.current = createdEntryId;
 			}
+			if (requestVersionRef.current !== requestVersion) return;
 			if (isHomework) {
 				void capture("homework_created", {
 					day_entry_id: createdEntryId,
@@ -586,9 +590,13 @@ function EntryStepContent({ step }: { step: EntryStep }) {
 				});
 			}
 		} catch (error) {
-			setErrorMessage(
-				getErrorMessage(error, "Der Eintrag konnte nicht gespeichert werden."),
-			);
+			if (requestVersionRef.current === requestVersion)
+				setErrorMessage(
+					getErrorMessage(
+						error,
+						"Der Eintrag konnte nicht gespeichert werden.",
+					),
+				);
 			return;
 		} finally {
 			setIsCreating(false);
@@ -634,6 +642,7 @@ function EntryStepContent({ step }: { step: EntryStep }) {
 		) {
 			return;
 		}
+		const requestVersion = requestVersionRef.current;
 
 		await entryCreationGateRef.current.run(async () => {
 			setIsCheckingLearningPlanAvailability(true);
@@ -648,6 +657,7 @@ function EntryStepContent({ step }: { step: EntryStep }) {
 						examDateKey: getDayKey(plannedDate),
 					},
 				);
+				if (requestVersionRef.current !== requestVersion) return;
 				if (latestAvailability.status !== "available") {
 					setAvailabilityCheckTime(latestCheckTime);
 					goToStep("learningAvailability");
@@ -657,6 +667,7 @@ function EntryStepContent({ step }: { step: EntryStep }) {
 				const createdExam = await createEntryWithinGate({
 					redirectToHome: false,
 				});
+				if (requestVersionRef.current !== requestVersion) return;
 				if (!createdExam?.createdEntryId) return;
 
 				const query = [
@@ -673,12 +684,13 @@ function EntryStepContent({ step }: { step: EntryStep }) {
 					.join("&");
 				router.replace(`${ROUTES.createLearningPlan}?${query}`);
 			} catch (error) {
-				setErrorMessage(
-					getErrorMessage(
-						error,
-						"Deine freie Lernzeit konnte nicht geprüft werden. Bitte versuche es erneut.",
-					),
-				);
+				if (requestVersionRef.current === requestVersion)
+					setErrorMessage(
+						getErrorMessage(
+							error,
+							"Deine freie Lernzeit konnte nicht geprüft werden. Bitte versuche es erneut.",
+						),
+					);
 			} finally {
 				setIsCheckingLearningPlanAvailability(false);
 			}

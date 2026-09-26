@@ -52,16 +52,18 @@ function initialDraft(params: EntryParams): EntryDraft {
 }
 
 function useDraftState() {
-	// This layout lives for one entry flow, including trips to learning-time settings.
-	// Screen unmounts never own or discard the answers or the saved exam identity.
+	// The layout can survive a second entry URL. Only that new request replaces
+	// answers and the saved exam identity; step Back keeps both intact.
 	const [initialParams, setInitialParams] = useState<EntryParams>({});
 	const [draft, setDraft] = useState(() => initialDraft({}));
 	const [initialized, setInitialized] = useState(false);
 	const savedExamIdRef = useRef<Id<"dayEntries"> | undefined>(undefined);
-	const initializedRef = useRef(false);
-	const initialize = useCallback((params: EntryParams) => {
-		if (initializedRef.current) return false;
-		initializedRef.current = true;
+	const requestKeyRef = useRef<string | undefined>(undefined);
+	const requestVersionRef = useRef(0);
+	const initialize = useCallback((params: EntryParams, requestKey: string) => {
+		if (requestKeyRef.current === requestKey) return false;
+		requestKeyRef.current = requestKey;
+		requestVersionRef.current += 1;
 		savedExamIdRef.current =
 			params.type === "exam"
 				? (params.examDayEntryId as Id<"dayEntries"> | undefined)
@@ -80,6 +82,7 @@ function useDraftState() {
 		updateDraft,
 		initialParams,
 		savedExamIdRef,
+		requestVersionRef,
 		entryCreationGateRef,
 		initialized,
 		initialize,

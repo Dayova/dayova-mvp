@@ -1,13 +1,15 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render } from "@testing-library/react-native";
 import {
+	CommonActions,
 	createNavigatorFactory,
 	NavigationContainer,
 	type NavigatorScreenParams,
+	StackActions,
 	StackRouter,
 	useNavigationBuilder,
 } from "expo-router/react-navigation";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { Text, View } from "react-native";
 import NewLearningPlanScreen from "~/app/(creation)/learning-plans/new";
 import { EntryDraftProvider } from "~/features/entries/entry-draft";
@@ -34,6 +36,10 @@ let mockSnapshot:
 let mockPauseVisible = false;
 let mockBackIntentEnabled = false;
 let mockConfirmPause: (() => void) | null = null;
+let mockOpenEntry: (
+	params: Record<string, string | string[]>,
+	mode?: "navigate" | "push",
+) => void;
 jest.mock("convex/react", () => ({
 	useConvexAuth: () => ({ isAuthenticated: true }),
 	useConvex: () => ({ query: async () => mockAvailability }),
@@ -169,10 +175,18 @@ jest.mock("~/lib/theme", () => ({
 }));
 
 function EntryTestNavigator({ children }: { children: ReactNode }) {
-	const { state, descriptors, NavigationContent } = useNavigationBuilder(
-		StackRouter,
-		{ children },
-	);
+	const { state, navigation, descriptors, NavigationContent } =
+		useNavigationBuilder(StackRouter, { children });
+	useEffect(() => {
+		mockOpenEntry = (params, mode = "navigate") => {
+			mockParams = params;
+			navigation.dispatch(
+				mode === "push"
+					? StackActions.push("index", params)
+					: CommonActions.navigate({ name: "index", params }),
+			);
+		};
+	}, [navigation]);
 	return (
 		<NavigationContent>
 			<Text testID="entry-history">
@@ -486,6 +500,68 @@ describe("entry native history and shared answers", () => {
 				.selected,
 		).toBe(false);
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+	});
+
+	test("a second entry URL clears the retained exam and its native history", async () => {
+		mockParams = { type: "exam" };
+		const screen = await render(<NewEntryScreen />);
+		await fireEvent.press(screen.getByRole("radio", { name: "Klausur" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(screen.getByRole("radio", { name: "Chemie" }));
+		await act(() => mockOpenEntry({ type: "homework" }));
+		expect(screen.getByTestId("entry-history").props.children).toBe("index");
+		expect(screen.getByText("Hausaufgabe eintragen")).toBeOnTheScreen();
+		expect(screen.queryByText("Welche Art von Prüfung ist es?")).toBeNull();
+	});
+
+	test("a new route for the same entry URL starts a clean draft", async () => {
+		mockParams = { type: "exam" };
+		const screen = await render(<NewEntryScreen />);
+		await fireEvent.press(screen.getByRole("radio", { name: "Klausur" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await act(() => mockOpenEntry({ type: "exam" }, "push"));
+		expect(screen.getByTestId("entry-history").props.children).toBe("index");
+		expect(
+			screen.getByRole("radio", { name: "Klausur" }).props.accessibilityState
+				.selected,
+		).toBe(false);
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+	});
+
+	test("a fresh entry after a saved resume cannot update that exam", async () => {
+		const screen = await render(<NewEntryScreen />);
+		expect(screen.getByTestId("entry-history").props.children).toBe(
+			"index,subject,date,availability",
+		);
+		await act(() => mockOpenEntry({ type: "exam" }));
+		expect(screen.getByTestId("entry-history").props.children).toBe("index");
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+		await fireEvent.press(screen.getByRole("radio", { name: "Klausur" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(screen.getByRole("radio", { name: "Chemie" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(mockCreateEntry).toHaveBeenCalledTimes(1);
+		expect(mockUpdateEntry).not.toHaveBeenCalled();
+	});
+
+	test("an old save finishing after a new entry URL cannot redirect the new flow", async () => {
+		let finishSave: () => void = () => {};
+		mockUpdateEntry.mockImplementationOnce(
+			() =>
+				new Promise<void>((resolve) => {
+					finishSave = resolve;
+				}),
+		);
+		const screen = await render(<NewEntryScreen />);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(mockUpdateEntry).toHaveBeenCalledTimes(1);
+		await act(() => mockOpenEntry({ type: "homework" }));
+		expect(screen.getByTestId("entry-history").props.children).toBe("index");
+		await act(() => finishSave());
+		expect(mockRouter.replace).not.toHaveBeenCalled();
+		expect(screen.getByText("Hausaufgabe eintragen")).toBeOnTheScreen();
 	});
 
 	test("keeps homework answers and native history across its planning step", async () => {
