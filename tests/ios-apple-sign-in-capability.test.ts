@@ -1,7 +1,7 @@
-import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { readExpoConfigSnapshot } from "./helpers/expo-config-contract";
 
 const IOS_ENTITLEMENTS_PATH = resolve(
 	process.cwd(),
@@ -9,21 +9,7 @@ const IOS_ENTITLEMENTS_PATH = resolve(
 );
 
 const readFinalExpoIosConfig = (variant: "development" | "production") => {
-	const output = execFileSync(
-		"npx",
-		["expo", "config", "--type", "introspect", "--json"],
-		{
-			cwd: process.cwd(),
-			encoding: "utf8",
-			env: {
-				...process.env,
-				APP_VARIANT: variant,
-				JITI_REBUILD_FS_CACHE: "true",
-			},
-		},
-	);
-
-	return JSON.parse(output).ios ?? {};
+	return readExpoConfigSnapshot(variant, "introspect").ios ?? {};
 };
 
 describe("iOS Apple sign-in capability", () => {
@@ -41,7 +27,6 @@ describe("iOS Apple sign-in capability", () => {
 				"com.apple.developer.applesignin",
 			);
 		},
-		20_000,
 	);
 
 	it("keeps Apple sign-in absent from generated native entitlements when present", () => {
