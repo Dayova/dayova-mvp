@@ -64,6 +64,12 @@ const parseTimeToMinutes = (time: string) => {
 	return (hours || 0) * 60 + (minutes || 0);
 };
 
+const parseEndTimeToMinutes = (startTime: string, endTime: string) => {
+	const startMinutes = parseTimeToMinutes(startTime);
+	const endMinutes = parseTimeToMinutes(endTime);
+	return endMinutes === 0 && startMinutes > 0 ? 24 * 60 : endMinutes;
+};
+
 export default function LearningTimesScreen() {
 	const router = useRouter();
 	const params = useLocalSearchParams<{
@@ -134,7 +140,7 @@ export default function LearningTimesScreen() {
 	};
 
 	const hasValidTimeRange =
-		parseTimeToMinutes(endTime) > parseTimeToMinutes(startTime);
+		parseEndTimeToMinutes(startTime, endTime) > parseTimeToMinutes(startTime);
 	const hasChanges =
 		!isEditingExisting ||
 		selectedDayValue !== selectedEntry?.dayOfWeek ||

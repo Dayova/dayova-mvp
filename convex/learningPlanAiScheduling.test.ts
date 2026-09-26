@@ -183,6 +183,42 @@ describe("learning plan AI scheduling", () => {
 		]);
 	});
 
+	test("uses a safe proposed window when the exam is today", () => {
+		const result = __testOnlyLearningPlanAi.normalizeSessions(
+			"2026-06-01",
+			0,
+			[
+				{
+					phase: "practice",
+					title: germanText("Direkt starten"),
+					dayOffsetBeforeExam: 0,
+					startTime: "17:00",
+					durationMinutes: 20,
+					goal: germanText("Prüfe die wichtigsten Grundlagen."),
+					tasks: [germanText("Bearbeite eine kurze Aufgabe.")],
+					expectedOutcome: germanText("Die wichtigste Lücke ist klar."),
+				},
+			],
+			[
+				{
+					dayOfWeek: 1,
+					startTime: "17:00",
+					endTime: "17:30",
+					preferenceStatus: "systemDefault",
+				},
+			],
+			[],
+			20,
+		);
+
+		expect(result.sessions).toHaveLength(1);
+		expect(result.sessions[0]).toMatchObject({
+			dateKey: "2026-06-01T00:00:00.000Z",
+			startTime: "17:00",
+			durationMinutes: 20,
+		});
+	});
+
 	test("aligns visible duration references when a Praxis session is shortened", () => {
 		const result = __testOnlyLearningPlanAi.normalizeSessions(
 			"2026-06-05",

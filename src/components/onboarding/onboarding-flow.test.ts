@@ -123,26 +123,24 @@ describe("onboarding flow decisions", () => {
 		).toContain("vor Mitternacht");
 	});
 
-	test("maps the visible schedule to the backend's operational fields", () => {
+	test("persists only the profile fields required during onboarding", () => {
 		expect(getOnboardingPersistenceAnswers(answers())).toEqual({
-			dailySchoolTime: "30 min",
-			studyDays: "Montag, Donnerstag, Samstag",
-			learningTime: "16:30",
 			state: "Sachsen",
 			schoolType: "gymnasium",
 			grade: "9",
 		});
 	});
 
-	test.each([
-		"",
-		"abc",
-		"30 min",
-		"37",
-	])("rejects invalid duration %j at the durable persistence boundary", (studyTime) => {
-		expect(() =>
-			getOnboardingPersistenceAnswers(answers({ studyTime })),
-		).toThrow("Bitte wähle deine Lerndauer aus.");
+	test("does not require or persist learning-time answers", () => {
+		expect(
+			getOnboardingPersistenceAnswers(
+				answers({ studyTime: "", studyDays: "", learningTime: "" }),
+			),
+		).toEqual({
+			state: "Sachsen",
+			schoolType: "gymnasium",
+			grade: "9",
+		});
 	});
 
 	test("registers only from a valid password step", () => {

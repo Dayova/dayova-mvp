@@ -85,6 +85,33 @@ const createMemoryStorage = () => {
 };
 
 describe("pending onboarding sync outbox", () => {
+	it("stages new onboarding answers without requiring learning-time fields", async () => {
+		const { storage } = createMemoryStorage();
+		const outbox = createPendingOnboardingSyncOutbox({ storage });
+		const profileOnlyAnswers = {
+			state: "Sachsen",
+			schoolType: "gymnasium",
+			grade: "10",
+		};
+
+		await outbox.stage({
+			registrationAttemptId: "signup_profile_only",
+			accountFingerprint: ACCOUNT_FINGERPRINT,
+			answers: profileOnlyAnswers,
+		});
+
+		await expect(
+			outbox.resume({
+				clerkUserId: "user_123",
+				accountFingerprint: ACCOUNT_FINGERPRINT,
+				registrationAttemptId: "signup_profile_only",
+			}),
+		).resolves.toEqual({
+			status: "pending",
+			answers: profileOnlyAnswers,
+		});
+	});
+
 	it("serializes staging and binding for the same account", async () => {
 		const values = new Map<string, string>();
 		let releaseFirstRead: (value: string | null) => void = () => undefined;

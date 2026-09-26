@@ -1127,7 +1127,7 @@ describe("OnboardingScreen", () => {
 			}),
 		).toBeOnTheScreen();
 		expect(
-			screen.getByText("Danach 11 kurze, bewusste Schritte · etwa 2 Minuten"),
+			screen.getByText("Danach 6 kurze, bewusste Schritte · etwa 2 Minuten"),
 		).toBeOnTheScreen();
 
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
@@ -1181,12 +1181,12 @@ describe("OnboardingScreen", () => {
 		const screen = await render(<OnboardingStepScreen stepId="name" />);
 
 		expect(screen.getByTestId("onboarding-name-input")).toBeOnTheScreen();
-		expect(screen.getByText("1 von 11")).toBeOnTheScreen();
+		expect(screen.getByText("1 von 6")).toBeOnTheScreen();
 		expect(screen.getByRole("progressbar")).toBeOnTheScreen();
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 
-		expect(mockVisitOnboardingStep).toHaveBeenCalledWith("studyTime");
-		expect(mockRouter.push).toHaveBeenCalledWith("/onboarding/studyTime");
+		expect(mockVisitOnboardingStep).toHaveBeenCalledWith("grade");
+		expect(mockRouter.push).toHaveBeenCalledWith("/onboarding/grade");
 	});
 
 	test("keeps intro indicators coupled to live pager scroll progress", async () => {
@@ -1591,9 +1591,6 @@ describe("OnboardingScreen", () => {
 			screen.getByRole("button", { name: "Konto erstellen" }),
 		);
 		expect(mockStageOnboardingRecovery).toHaveBeenCalledWith({
-			dailySchoolTime: "30 min",
-			studyDays: "Montag, Donnerstag, Samstag",
-			learningTime: "16:30",
 			state: "Sachsen",
 			schoolType: "prefer_not_to_say",
 			grade: "9",

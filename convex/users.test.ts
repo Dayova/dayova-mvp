@@ -701,7 +701,7 @@ test("profile and onboarding writes reject grades outside the product vocabulary
 
 	await t.mutation(api.users.syncCurrentUser, { grade: "9" });
 	await expect(
-		t.mutation(api.users.updateProfile, { grade: "5" }),
+		t.mutation(api.users.updateProfile, { grade: "4" }),
 	).rejects.toThrow("Klassenstufe");
 	await expect(
 		t.mutation(api.users.saveOnboardingAnswers, {
