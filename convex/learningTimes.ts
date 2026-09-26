@@ -5,6 +5,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { assertAccountActive } from "./accountDeletion";
 import { computeLearningTimeImpact } from "./adaptiveLearningPlan";
+import { getBerlinDayKey, getDayKeyQueryVariants } from "./dayKeyVariants";
 import { throwUserFacingError } from "./errors";
 import { deriveProposedLearningTimes } from "./learningTimeAvailability";
 import {
@@ -267,14 +268,22 @@ export const getHomeRoutine = query({
 				user.behavioralLearningTimeSuggestionDismissedFingerprint
 				? suggestion
 				: null;
-		const entries = await ctx.db
-			.query("dayEntries")
-			.withIndex("by_ownerTokenIdentifier_and_dayKey", (q) =>
-				q
-					.eq("ownerTokenIdentifier", identity.tokenIdentifier)
-					.eq("dayKey", dateKey),
+		// Generated/legacy calendar entries can use an ISO midnight instead of
+		// YYYY-MM-DD. Use the same bounded variants as the calendar itself.
+		const entries = (
+			await Promise.all(
+				getDayKeyQueryVariants(dateKey).map((dayKey) =>
+					ctx.db
+						.query("dayEntries")
+						.withIndex("by_ownerTokenIdentifier_and_dayKey", (q) =>
+							q
+								.eq("ownerTokenIdentifier", identity.tokenIdentifier)
+								.eq("dayKey", dayKey),
+						)
+						.take(100),
+				),
 			)
-			.take(100);
+		).flat();
 		for (const entry of entries.sort((a, b) =>
 			(a.time ?? "").localeCompare(b.time ?? ""),
 		)) {
@@ -289,7 +298,7 @@ export const getHomeRoutine = query({
 				session.completed ||
 				(session.executionStatus && session.executionStatus !== "notStarted") ||
 				session.planningStatus === "provisional" ||
-				session.dateKey !== dateKey
+				getBerlinDayKey(session.dateKey) !== dateKey
 			)
 				continue;
 			const plan = await ctx.db.get("learningPlans", session.learningPlanId);
