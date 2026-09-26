@@ -833,6 +833,7 @@ export default function LearningPlansScreen() {
 	return (
 		<SafeAreaView
 			edges={{ bottom: true }}
+			// The native safe area needs the current theme color at runtime.
 			style={{ flex: 1, backgroundColor: colors.background }}
 		>
 			<ThemedStatusBar />

@@ -723,7 +723,7 @@ export function DashboardScreen() {
 
 	return (
 		<SafeAreaView
-			// This native safe area includes the tab bar on both platforms.
+			// The native safe area includes tabs; its background uses the runtime theme color.
 			edges={{ bottom: true }}
 			style={{ flex: 1, backgroundColor: colors.background }}
 		>
