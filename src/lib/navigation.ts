@@ -1,4 +1,9 @@
-import { useFocusEffect, useNavigation } from "expo-router/react-navigation";
+import {
+	useFocusEffect,
+	useIsFocused,
+	useNavigation,
+	usePreventRemove,
+} from "expo-router/react-navigation";
 import { useCallback, useRef } from "react";
 import { BackHandler, Platform } from "react-native";
 
@@ -31,40 +36,48 @@ const useAndroidBackHandler = (enabled: boolean, onBack: () => boolean) => {
 	);
 };
 
-export const useBackIntent = (enabled: boolean, onBack: () => boolean) => {
+export const useBackIntent = (
+	enabled: boolean,
+	onBack: () => boolean,
+	{ allowRouteRemoval = false }: { allowRouteRemoval?: boolean } = {},
+) => {
 	const navigation = useNavigation();
+	const isFocused = useIsFocused();
 	const isHandlingNativeBackRef = useRef(false);
-	const invokeBack = useCallback(() => {
-		if (isHandlingNativeBackRef.current) return false;
+
+	const runBackIntent = useCallback(() => {
+		if (isHandlingNativeBackRef.current) return true;
 
 		isHandlingNativeBackRef.current = true;
-		const handled = onBack();
+		let handled: boolean;
+		try {
+			handled = onBack();
+		} catch (error) {
+			isHandlingNativeBackRef.current = false;
+			throw error;
+		}
+		if (!handled) {
+			isHandlingNativeBackRef.current = false;
+			return false;
+		}
+
 		requestAnimationFrame(() => {
 			isHandlingNativeBackRef.current = false;
 		});
-		return handled;
+		return true;
 	}, [onBack]);
 
-	useAndroidBackHandler(enabled, invokeBack);
+	useAndroidBackHandler(enabled, runBackIntent);
 
-	useFocusEffect(
-		useCallback(() => {
-			if (!enabled) return undefined;
+	// Register prevention with the native stack as well as JS. A raw
+	// beforeRemove listener runs too late to undo an iOS swipe dismissal.
+	usePreventRemove(enabled && isFocused && !allowRouteRemoval, ({ data }) => {
+		if (!isBackRemovalAction({ data }) || !runBackIntent()) {
+			// Reuse the original action so React Navigation can skip this guard
+			// when resuming a replacement or an unhandled removal.
+			navigation.dispatch(data.action);
+		}
+	});
 
-			const unsubscribe = navigation.addListener("beforeRemove", (event) => {
-				if (!isBackRemovalAction(event)) return;
-
-				if (isHandlingNativeBackRef.current) return;
-
-				const handled = invokeBack();
-				if (!handled) return;
-
-				event.preventDefault();
-			});
-
-			return unsubscribe;
-		}, [enabled, invokeBack, navigation]),
-	);
-
-	return invokeBack;
+	return runBackIntent;
 };

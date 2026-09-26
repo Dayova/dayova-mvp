@@ -1,10 +1,9 @@
 import "~/global.css";
-import { ClerkProvider, useAuth as useClerkAuth } from "@clerk/expo";
+import { ClerkProvider } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { PortalHost } from "@rn-primitives/portal";
-import { ConvexReactClient } from "convex/react";
-import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
 import { Stack } from "expo-router";
 import { ThemeProvider } from "expo-router/react-navigation";
 import * as SystemUI from "expo-system-ui";
@@ -22,6 +21,7 @@ import {
 	SheetAccessibilityProvider,
 	useSheetAccessibility,
 } from "~/components/ui/sheet-accessibility";
+import { SheetSafeAreaProvider } from "~/components/ui/sheet-safe-area";
 import { AccessProvider } from "~/context/AccessContext";
 import { AiConsentProvider } from "~/context/AiConsentContext";
 import { AuthProvider } from "~/context/AuthContext";
@@ -32,6 +32,7 @@ import {
 	postHogHost,
 	validationAnalyticsBeforeSend,
 } from "~/lib/analytics";
+import { useClerkConvexAuth } from "~/lib/clerk-convex-auth";
 import { env, missingPublicRuntimeConfig } from "~/lib/runtime-config";
 import { DayovaThemeProvider, NAV_THEMES, useDayovaTheme } from "~/lib/theme";
 import { DARK_THEME_VARIABLES } from "~/lib/theme-variables";
@@ -179,27 +180,29 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 							}
 							tokenCache={tokenCache}
 						>
-							<ConvexProviderWithClerk
+							<ConvexProviderWithAuth
 								client={convexClient}
-								useAuth={useClerkAuth}
+								useAuth={useClerkConvexAuth}
 							>
 								<ThemeProvider value={NAV_THEMES[resolvedTheme]}>
-									<BottomSheetModalProvider>
-										<SheetAccessibilityProvider>
-											<OnboardingProvider>
-												<AuthProvider>
-													<AccessProvider>
-														<AiConsentProvider>
-															<AnalyticsIdentity />
-															<AppNavigator />
-														</AiConsentProvider>
-													</AccessProvider>
-												</AuthProvider>
-											</OnboardingProvider>
-										</SheetAccessibilityProvider>
-									</BottomSheetModalProvider>
+									<SheetSafeAreaProvider>
+										<BottomSheetModalProvider>
+											<SheetAccessibilityProvider>
+												<OnboardingProvider>
+													<AuthProvider>
+														<AccessProvider>
+															<AiConsentProvider>
+																<AnalyticsIdentity />
+																<AppNavigator />
+															</AiConsentProvider>
+														</AccessProvider>
+													</AuthProvider>
+												</OnboardingProvider>
+											</SheetAccessibilityProvider>
+										</BottomSheetModalProvider>
+									</SheetSafeAreaProvider>
 								</ThemeProvider>
-							</ConvexProviderWithClerk>
+							</ConvexProviderWithAuth>
 						</ClerkProvider>
 					</PostHogProvider>
 				</KeyboardProvider>
