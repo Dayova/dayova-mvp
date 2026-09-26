@@ -10,13 +10,16 @@ export const getLearningPlanCreationBackIntent = ({
 	step,
 	hasSavedDraft,
 	isPauseConfirmationVisible,
+	openedFromPlans = false,
 }: {
 	step: LearningPlanSetupStep;
 	hasSavedDraft: boolean;
 	isPauseConfirmationVisible: boolean;
+	openedFromPlans?: boolean;
 }): LearningPlanCreationBackIntent => {
 	if (isPauseConfirmationVisible) return { kind: "ignore" };
 	if (step === "materialUpload") {
+		if (openedFromPlans) return { kind: "exit" };
 		return { kind: "previousStep", step: "requiredTopics" };
 	}
 	if (hasSavedDraft) return { kind: "confirmPause" };

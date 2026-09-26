@@ -1,0 +1,16 @@
+Running on DAY-169 iPhone 16 - iOS 26.5 - 0D8A5A07-FCA7-414F-B61A-BE572AB2DA55
+ > Flow dayova-pr698-cold-resume-expected
+Assert that "Ist genug Lernzeit eingeplant?" is visible... FAILED
+
+Assertion is false: "Ist genug Lernzeit eingeplant?" is visible
+
+Assertion '"Ist genug Lernzeit eingeplant?" is visible' failed. Check the UI hierarchy in debug artifacts to verify the element state and properties.
+
+Possible causes:
+- Element selector may be incorrect - check if there are similar elements with slightly different names/properties.
+- Element may be temporarily unavailable due to loading state
+- This could be a real regression that needs to be addressed
+
+==== Debug output (logs & screenshots) ====
+
+/Users/jakobroessner/.maestro/tests/2026-09-25_163010

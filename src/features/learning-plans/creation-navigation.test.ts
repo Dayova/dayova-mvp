@@ -12,6 +12,17 @@ describe("learning plan creation back intent", () => {
 		).toEqual({ kind: "previousStep", step: "requiredTopics" });
 	});
 
+	test("exits material opened from the Plans list", () => {
+		expect(
+			getLearningPlanCreationBackIntent({
+				step: "materialUpload",
+				hasSavedDraft: true,
+				isPauseConfirmationVisible: false,
+				openedFromPlans: true,
+			}),
+		).toEqual({ kind: "exit" });
+	});
+
 	test("confirms before pausing a saved draft from the first step", () => {
 		expect(
 			getLearningPlanCreationBackIntent({

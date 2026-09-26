@@ -1,0 +1,71 @@
+Running on DAY-169 iPhone 16 - iOS 26.5 - 0D8A5A07-FCA7-414F-B61A-BE572AB2DA55
+ > Flow ios-native-stack
+Open exp+dayova://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8094%3FdisableOnboarding%3D1... COMPLETED
+Assert that "Entry native stack verification" is visible... COMPLETED
+Tap on "Open exam"... COMPLETED
+Tap on "Klausur"... COMPLETED
+Tap on "Weiter"... COMPLETED
+Assert that "Welches Fach ist es?" is visible... COMPLETED
+Tap on "Chemie"... COMPLETED
+Swipe from (1%, 50%) to (20%, 50%) in 1500 ms... COMPLETED
+Assert that "Welches Fach ist es?" is visible... COMPLETED
+Assert that "Entry native stack verification" is not visible... COMPLETED
+Swipe from (1%, 50%) to (95%, 50%) in 650 ms... COMPLETED
+Assert that "Welche Art von Prüfung ist es?" is visible... COMPLETED
+Assert that "Entry native stack verification" is not visible... COMPLETED
+Tap on "Weiter"... COMPLETED
+Assert that "Welches Fach ist es?" is visible... COMPLETED
+Tap on "Weiter"... COMPLETED
+Assert that "Wann findet die Prüfung statt?" is visible... COMPLETED
+Swipe from (1%, 50%) to (95%, 50%) in 650 ms... COMPLETED
+Assert that "Welches Fach ist es?" is visible... COMPLETED
+Tap on "Weiter"... COMPLETED
+Tap on "Weiter"... COMPLETED
+Assert that "Ist genug Lernzeit eingeplant?" is visible... COMPLETED
+Swipe from (1%, 50%) to (95%, 50%) in 650 ms... COMPLETED
+Assert that "Wann findet die Prüfung statt?" is visible... COMPLETED
+Tap on "Zurück"... COMPLETED
+Assert that "Welches Fach ist es?" is visible... COMPLETED
+Tap on "Zurück"... COMPLETED
+Assert that "Welche Art von Prüfung ist es?" is visible... COMPLETED
+Swipe from (1%, 50%) to (95%, 50%) in 650 ms... COMPLETED
+Assert that "Entry native stack verification" is visible... COMPLETED
+Tap on "Resume exam"... COMPLETED
+Assert that "Ist genug Lernzeit eingeplant?" is visible... COMPLETED
+Swipe from (1%, 50%) to (95%, 50%) in 650 ms... COMPLETED
+Assert that "Wann findet die Prüfung statt?" is visible... COMPLETED
+Assert that "30. September 2026" is visible... COMPLETED
+Tap on "Zurück"... COMPLETED
+Assert that "Welches Fach ist es?" is visible... COMPLETED
+Tap on "Weiter"... COMPLETED
+Tap on "Weiter"... COMPLETED
+Assert that "Ist genug Lernzeit eingeplant?" is visible... COMPLETED
+Tap on "Weiter"... COMPLETED
+Assert that "Topics destination fixture" is visible... COMPLETED
+Tap on "Return to exam"... COMPLETED
+Assert that "Ist genug Lernzeit eingeplant?" is visible... COMPLETED
+Tap on "Weiter"... COMPLETED
+Assert that "Topics destination fixture" is visible... COMPLETED
+Tap on "Native back"... COMPLETED
+Assert that "Entry native stack verification" is visible... COMPLETED
+Tap on "Open missing times"... COMPLETED
+Tap on "Klausur"... COMPLETED
+Tap on "Weiter"... COMPLETED
+Tap on "Chemie"... COMPLETED
+Tap on "Weiter"... COMPLETED
+Tap on "Weiter"... COMPLETED
+Assert that "Noch nicht genug Lernzeit" is visible... COMPLETED
+Tap on "Lernzeit eintragen"... COMPLETED
+Assert that "Lernzeiten" is visible... COMPLETED
+Tap on "Zurück"... COMPLETED
+Assert that "Ist genug Lernzeit eingeplant?" is visible... COMPLETED
+Tap on "Zurück"... COMPLETED
+Assert that "Wann findet die Prüfung statt?" is visible... COMPLETED
+Tap on "Zurück"... COMPLETED
+Assert that "Welches Fach ist es?" is visible... COMPLETED
+Tap on "Weiter"... COMPLETED
+Tap on "Weiter"... COMPLETED
+Tap on "Ohne Lernplan speichern"... COMPLETED
+Assert that "Saved exam destination fixture" is visible... COMPLETED
+Tap on "Native back"... COMPLETED
+Assert that "Entry native stack verification" is visible... COMPLETED

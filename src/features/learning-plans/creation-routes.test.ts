@@ -47,6 +47,11 @@ test("resumes creation without routing through a separate question screen", () =
 	expect(learningPlanResumePath(learningPlanId, "draft")).toBe(
 		"/learning-plans/new?learningPlanId=learning-plan-id&step=material",
 	);
+	expect(
+		learningPlanResumePath(learningPlanId, "draft", undefined, "learningPlans"),
+	).toBe(
+		"/learning-plans/new?learningPlanId=learning-plan-id&step=material&origin=learningPlans",
+	);
 	expect(learningPlanResumePath(learningPlanId, "questionsReady")).toBe(
 		"/learning-plans/learning-plan-id/analysis",
 	);

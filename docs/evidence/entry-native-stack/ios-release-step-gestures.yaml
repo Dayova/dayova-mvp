@@ -1,0 +1,46 @@
+appId: de.dayova.app
+---
+- launchApp
+- extendedWaitUntil:
+    visible: Pläne
+    timeout: 30000
+- tapOn: Pläne
+- assertVisible: Deine Pläne
+- tapOn: Neuen Eintrag erstellen.
+- tapOn: Neue Prüfung.*
+- assertVisible: Welche Art von Prüfung ist es?
+- tapOn: Klausur
+- tapOn: Weiter
+- assertVisible: Welches Fach ist es?
+- tapOn: Chemie
+- swipe:
+    start: 1%, 50%
+    end: 95%, 50%
+    duration: 650
+- assertVisible: Welche Art von Prüfung ist es?
+- tapOn: Weiter
+- assertVisible: Welches Fach ist es?
+- tapOn: Weiter
+- assertVisible: Wann findet die Prüfung statt?
+- tapOn: Weiter
+- assertVisible: Ist genug Lernzeit eingeplant?
+- swipe:
+    start: 1%, 50%
+    end: 95%, 50%
+    duration: 650
+- assertVisible: Wann findet die Prüfung statt?
+- swipe:
+    start: 1%, 50%
+    end: 95%, 50%
+    duration: 650
+- assertVisible: Welches Fach ist es?
+- swipe:
+    start: 1%, 50%
+    end: 95%, 50%
+    duration: 650
+- assertVisible: Welche Art von Prüfung ist es?
+- swipe:
+    start: 1%, 50%
+    end: 95%, 50%
+    duration: 650
+- assertVisible: Deine Pläne
