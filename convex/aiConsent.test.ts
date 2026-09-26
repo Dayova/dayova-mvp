@@ -3,6 +3,7 @@
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
 import { AI_CONSENT_VERSION } from "../src/lib/ai-consent";
+import { AI_CONSENT_REQUIRED_ERROR_CODE } from "../src/lib/user-facing-error-contract";
 import { api, internal } from "./_generated/api";
 import schema from "./schema";
 
@@ -27,7 +28,14 @@ test("requires a current explicit consent before AI processing", async () => {
 	});
 	await expect(
 		backend.query(internal.aiConsent.requireCurrentConsent, {}),
-	).rejects.toThrow("Bestätige zuerst die KI-Datenverarbeitung");
+	).rejects.toMatchObject({
+		data: expect.objectContaining({
+			code: AI_CONSENT_REQUIRED_ERROR_CODE,
+			message: expect.stringContaining(
+				"Bestätige zuerst die KI-Datenverarbeitung",
+			),
+		}),
+	});
 
 	const granted = await backend.mutation(api.aiConsent.setDecision, {
 		decision: "granted",
