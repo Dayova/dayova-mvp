@@ -549,7 +549,10 @@ export function OnboardingScreen() {
 	);
 
 	const handleIntroBack = useCallback(() => {
-		if (activeIntroIndex === 0) return false;
+		if (activeIntroIndex === 0) {
+			goBackOrReplace(router, "/");
+			return true;
+		}
 		updateIntroIndex(Math.max(activeIntroIndex - 1, 0));
 		return true;
 	}, [activeIntroIndex, updateIntroIndex]);
@@ -575,6 +578,7 @@ export function OnboardingScreen() {
 				topInset={insets.top}
 				bottomInset={insets.bottom}
 				onActiveIndexChange={updateIntroIndex}
+				onBack={handleIntroBack}
 				onNext={continueFromIntro}
 			/>
 		</View>
@@ -967,12 +971,14 @@ function IntroStepView({
 	topInset,
 	bottomInset,
 	onActiveIndexChange,
+	onBack,
 	onNext,
 }: {
 	activeIndex: number;
 	topInset: number;
 	bottomInset: number;
 	onActiveIndexChange: (index: number) => void;
+	onBack: () => boolean;
 	onNext: () => void;
 }) {
 	const { colors: COLORS } = useDayovaTheme();
@@ -1047,6 +1053,16 @@ function IntroStepView({
 						paddingHorizontal: contentSizeLayout.horizontalPadding,
 					}}
 				>
+					<View className="w-full pb-4">
+						<BackButton
+							accessibilityHint={
+								introIndex === 0
+									? "Zurück zur Anmeldung"
+									: "Zur vorherigen Einführungsseite"
+							}
+							onPress={() => onBack()}
+						/>
+					</View>
 					<View className="w-full">
 						<IntroArtwork accessibleLayout item={item} />
 					</View>
@@ -1098,13 +1114,23 @@ function IntroStepView({
 				paddingBottom: Math.max(bottomInset + 20, 28),
 			}}
 		>
-			<View className="items-center px-6">
+			<View className="flex-row items-center px-6">
+				<BackButton
+					accessibilityHint={
+						introIndex === 0
+							? "Zurück zur Anmeldung"
+							: "Zur vorherigen Einführungsseite"
+					}
+					onPress={() => onBack()}
+				/>
+				<View className="flex-1" />
 				<View className="flex-row items-center gap-2 rounded-full bg-primary/10 px-4 py-2">
 					<Route2 size={16} color={COLORS.primary} strokeWidth={2.2} />
 					<Text className="font-poppins font-semibold text-body-5 text-primary">
 						SO FUNKTIONIERT DAYOVA
 					</Text>
 				</View>
+				<View className="w-11" />
 			</View>
 
 			<Animated.FlatList
