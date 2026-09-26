@@ -1,12 +1,16 @@
 import { NativeTabs } from "expo-router/unstable-native-tabs";
+import { Platform } from "react-native";
 import { useDayovaTheme } from "~/lib/theme";
 
 export default function AppLayout() {
 	const { colors } = useDayovaTheme();
 
+	// Android's native fallback can retain the old theme until the next tab change.
+	// Keep iOS's adaptive glass background while explicitly updating Android.
 	return (
 		<NativeTabs
 			backBehavior="history"
+			backgroundColor={Platform.OS === "android" ? colors.surface : undefined}
 			iconColor={{
 				default: colors.secondaryText,
 				selected: colors.primaryStrong,
