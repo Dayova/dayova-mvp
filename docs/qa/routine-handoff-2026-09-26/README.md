@@ -5,11 +5,36 @@ Metro 8092; dev backend `trustworthy-skunk-257`. No production deployment.
 
 ## Defect and fix
 
-On iPhone, confirming the native time picker dismissed the following consent
-sheet during the picker-to-sheet transition. Reproduction: the 11:59 native run
-could select a time but never reached `Nur heute übernehmen`. The follow-up
+The initial iPhone run did not reach `Nur heute übernehmen` after confirming
+the picker. The original attribution to the modal transition is **not a
+deterministically reproduced native defect**: the clean parent retest below
+also reaches consent. Earlier runs were affected by a development warning
+overlay and must not be presented as conclusive before-failure evidence. The follow-up
 dialog now opens after the picker dismissal callback, not during dismissal.
 Android reports dismissal after the native picker unmounts.
+
+## Parent comparison and review qualification
+
+The unmodified parent `be6d76e2a1679303d55ff06ac0280d1109bb405d`
+was loaded through Metro 8094 on the same iPhone. In
+[the complete parent recording](ios-parent-retest.mp4), the warning overlay
+is dismissed at 00:14.5, the picker is visible at 00:21–22, and consent
+appears at 00:23–24.5. The view returns home at 00:25 after the test ends;
+this recording alone does not establish the reason for that dismissal.
+A second parent run also passed an assertion after `waitForAnimationToEnd`.
+
+Coverage: 28.05-second video; 56 full-timeline frames sampled at 2 fps (0.5-second interval); 4 contact sheet(s); no audio stream.
+
+All four contact sheets were inspected. Source SHA-256:
+`675e96857413d832080030e8cc1df2f68721b66416899566f407d0d248633cf6`.
+The 0.5-second sampling cannot resolve every transition frame.
+This is a transparent baseline comparison, **not** a proven failing-before/
+passing-after pair. Review #761 as explicit dismissal sequencing with passing
+current-build native tests, not as a deterministically reproduced fix.
+
+Current-build recording and real OS reminder delivery are documented in
+[the delivery report](delivery.md). The independently reproduced iOS delivery
+timestamp defect is fixed separately in [#762](https://github.com/Dayova/dayova-mvp/pull/762).
 
 ## Observations (26 September 2026, Europe/Berlin)
 
@@ -52,4 +77,5 @@ for the native observations above.
 <a href="android-preview.png"><img src="android-preview.png" width="180" alt="Android explicit consent"/></a>
 <a href="android-after.png"><img src="android-after.png" width="180" alt="Android after consent"/></a>
 
-Still images only; no recording or full product-quality acceptance is claimed.
+The thumbnails are still images; recordings have separate coverage reports.
+No full product-quality acceptance is claimed.
