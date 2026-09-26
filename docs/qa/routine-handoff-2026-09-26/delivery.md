@@ -56,16 +56,21 @@ All four sheets and the consent frame were inspected. Sub-half-second events
 and sound are not covered. Earlier failed attempts were contaminated by a
 development warning over the picker button and a navigation-bar hit during
 scrolling. They are not accepted as proof of a product regression. The parent
-recording has the same warning contamination and is not a clean before/after
-comparison; that comparison remains outstanding.
+recording from the first attempt has the same warning contamination. A later
+[parent retest](README.md#parent-comparison-and-review-qualification) also
+reached consent. It is not a deterministic failing-before/passing-after pair.
 
 ### Separate notification reconciliation finding
 
 After opening the parent build for the subsequent comparison, the client logged
 `notifications:recordDeliveredNotification` → `Ungültige Mitteilung` at the
-backend timestamp validation. The root cause is not yet established. OS delivery
-does not prove successful in-app delivery reconciliation. Do not mark that path
-as accepted on the strength of these screenshots.
+backend timestamp validation. Subsequently reproduced and fixed separately in
+[#762](https://github.com/Dayova/dayova-mvp/pull/762): iOS provides seconds,
+Android milliseconds. The isolated regression and full 902-test suite pass.
+Reopening both clients on combined source `e601a45e` (Metro 8093) produced four
+successful reconciliation calls. See the
+[timestamp verification report](https://github.com/Dayova/dayova-mvp/blob/59184de1/docs/qa/notification-timestamp-2026-09-26.md).
+The original delivery screenshots alone were not used to accept reconciliation.
 
 The QA session remains at 13:42, unstarted. No completed progress was reset.
 These observations do not prove absence of a duplicate at all former future
