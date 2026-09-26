@@ -33,6 +33,12 @@
           "evidence": "release/ota-activation-2026-09-16.md#reviewed-native-equivalence — EAS source comparison: only Maestro test commands and artifact ignore entry differ; all other native input hashes unchanged",
           "sourceSha": "2700b541066c6cf50a27db25e54ca015d4564a2f",
           "fingerprint": "f92f0379d721a5c3c2bcee935878412d7d559857"
+        },
+        {
+          "buildFingerprint": "1b690a3f1a0c5ac4d73873da35ab9c2ca695d807",
+          "evidence": "release/ota-equivalence-pr-662-2026-09-26.md — EAS source comparison: only the Maestro artifact ignore rule and developer-invoked test scripts differ",
+          "sourceSha": "2e3ccd579d170887f6c88980e419ca6a44b7e024",
+          "fingerprint": "0d4d8c27e554a284c2e5cbdbfc8b169737cd3965"
         }
       ]
     },
@@ -63,6 +69,12 @@
           "evidence": "release/ota-activation-2026-09-16.md#reviewed-native-equivalence — EAS source comparison: only Maestro test commands and artifact ignore entry differ; all other native input hashes unchanged",
           "sourceSha": "2700b541066c6cf50a27db25e54ca015d4564a2f",
           "fingerprint": "df6aacec11591f424f52decf30d1522c3fe90820"
+        },
+        {
+          "buildFingerprint": "d91ab0f33529c36e5e7a76ef4e9a0a3bb66f26a1",
+          "evidence": "release/ota-equivalence-pr-662-2026-09-26.md — EAS source comparison: only the Maestro artifact ignore rule and developer-invoked test scripts differ",
+          "sourceSha": "2e3ccd579d170887f6c88980e419ca6a44b7e024",
+          "fingerprint": "392680bd43db4eae74d334e9b1a8ff6e4da14517"
         }
       ]
     }
