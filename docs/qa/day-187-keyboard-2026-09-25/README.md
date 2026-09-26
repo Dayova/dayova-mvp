@@ -1,5 +1,13 @@
 # DAY-187 keyboard regression
 
+## Current integration status — 26 September 2026
+
+Commit `53a3638d` integrates `main` at `165e1da1` and resolves the PR's merge conflicts. Main's dynamic sheet sizing, footer handling, accessibility behavior and navigation guards are retained; the keyboard-aware input provider and top safe-area inset are retained from this PR. Obsolete fixed-size props were removed from the subject and exam-type dialogs.
+
+Validation on this integration: 907 Vitest tests and 306 Jest tests (71 suites) passed; TypeScript, targeted ESLint and diff checks passed. The screenshots below document the earlier explicitly identified source, **not** a native replay of `53a3638d`. A native replay of the merged dynamic-sizing implementation remains required before declaring device acceptance complete.
+
+## Historical native verification
+
 Base: PR #655, `6dbd96107f8a804e6764b3581d57adbcc03f9a8f`.
 Environment: iOS 26.4 simulator `47731F12-CE91-4857-8F3A-799040A0DCA3`, existing development client `de.dayova.app-dev`, light appearance, dedicated Metro port 8091.
 
