@@ -5,6 +5,7 @@ import { ReleaseInformationSheet } from "~/components/release-information-sheet"
 import { ErrorMessage } from "~/components/ui/error-message";
 import {
 	Bell,
+	BookOpen,
 	Computer,
 	CreditCard,
 	Globe,
@@ -29,6 +30,7 @@ import {
 } from "~/features/settings/settings-list";
 import { ThemePreferenceToggle } from "~/features/settings/theme-preference-toggle";
 import { openExternalUrl } from "~/lib/open-external-url";
+import { ROUTES } from "~/lib/routes";
 import { env } from "~/lib/runtime-config";
 import { getNativeSubscriptionManagementUrl } from "~/lib/store-subscription";
 import { useDayovaTheme } from "~/lib/theme";
@@ -111,6 +113,12 @@ export default function SettingsScreen() {
 								icon={Timer}
 								label="Lernzeiten"
 								onPress={() => router.push("/learning-times")}
+							/>
+							<SettingsDivider />
+							<SettingsRow
+								icon={BookOpen}
+								label="Persönliche Fächer"
+								onPress={() => router.push(ROUTES.personalSubjects)}
 							/>
 						</SettingsSection>
 

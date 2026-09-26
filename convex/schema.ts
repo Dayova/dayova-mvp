@@ -365,6 +365,7 @@ export default defineSchema({
 		title: v.string(),
 		// Keep entries written by adaptive exam-planning builds schema-compatible.
 		subject: v.optional(v.string()),
+		personalSubjectId: v.optional(v.id("personalSubjects")),
 		time: v.optional(v.string()),
 		kind: v.optional(v.string()),
 		notes: v.optional(v.string()),
@@ -384,6 +385,10 @@ export default defineSchema({
 		relatedLearningPlanSessionId: v.optional(v.id("learningPlanSessions")),
 	})
 		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
+		.index("by_ownerTokenIdentifier_and_personalSubjectId", [
+			"ownerTokenIdentifier",
+			"personalSubjectId",
+		])
 		.index("by_ownerTokenIdentifier_and_dayKey", [
 			"ownerTokenIdentifier",
 			"dayKey",
@@ -426,6 +431,8 @@ export default defineSchema({
 		timetableId: v.id("timetables"),
 		dayOfWeek: v.number(),
 		subject: v.string(),
+		personalSubjectId: v.optional(v.id("personalSubjects")),
+		subjectIsOneTime: v.optional(v.boolean()),
 		startTime: v.string(),
 		endTime: v.string(),
 		room: v.optional(v.string()),
@@ -438,10 +445,15 @@ export default defineSchema({
 			"dayOfWeek",
 			"startTime",
 		])
-		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
+		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
+		.index("by_ownerTokenIdentifier_and_personalSubjectId", [
+			"ownerTokenIdentifier",
+			"personalSubjectId",
+		]),
 	learningPlans: defineTable({
 		ownerTokenIdentifier: v.string(),
 		subject: v.string(),
+		personalSubjectId: v.optional(v.id("personalSubjects")),
 		examTypeLabel: v.string(),
 		examDateKey: v.string(),
 		examDateLabel: v.string(),
@@ -485,10 +497,24 @@ export default defineSchema({
 		updatedAt: v.number(),
 	})
 		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
+		.index("by_ownerTokenIdentifier_and_personalSubjectId", [
+			"ownerTokenIdentifier",
+			"personalSubjectId",
+		])
 		.index("by_ownerTokenIdentifier_and_status", [
 			"ownerTokenIdentifier",
 			"status",
 		]),
+	personalSubjects: defineTable({
+		ownerTokenIdentifier: v.string(),
+		name: v.string(),
+		normalizedName: v.string(),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	}).index("by_ownerTokenIdentifier_and_normalizedName", [
+		"ownerTokenIdentifier",
+		"normalizedName",
+	]),
 	learningPlanDocuments: defineTable({
 		ownerTokenIdentifier: v.string(),
 		learningPlanId: v.id("learningPlans"),
