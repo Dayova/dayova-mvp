@@ -3,7 +3,7 @@ import {
 	Host,
 	TimePickerDialog,
 } from "@expo/ui/jetpack-compose";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
 import {
@@ -106,6 +106,12 @@ function VisibleDateTimePickerSheet({
 }
 
 function DateTimePickerSheet(props: DateTimePickerSheetProps) {
+	const { visible, onDismiss } = props;
+	const wasVisible = useRef(false);
+	useEffect(() => {
+		if (wasVisible.current && !visible) onDismiss?.();
+		wasVisible.current = visible;
+	}, [visible, onDismiss]);
 	if (!props.visible) return null;
 	return <VisibleDateTimePickerSheet key={props.mode} {...props} />;
 }

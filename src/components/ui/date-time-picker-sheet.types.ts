@@ -29,6 +29,7 @@ type DateTimePickerSheetProps = {
 	doneLabel?: ReactNode;
 	onChange: (event: DateTimePickerSheetEvent, selectedDate?: Date) => void;
 	onClose: () => void;
+	onDismiss?: () => void;
 	onConfirm?: (selectedDate: Date) => void;
 };
 

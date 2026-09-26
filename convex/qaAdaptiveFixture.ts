@@ -3,6 +3,42 @@ import { internalMutation } from "./_generated/server";
 
 const MARKER = "qa-native-adaptive-20260925";
 
+/** Re-enable only today's QA prompt after a successful native move. */
+export const replayTodayPrompt = internalMutation({
+	args: { userId: v.id("users") },
+	returns: v.null(),
+	handler: async (ctx, { userId }) => {
+		if (
+			process.env.CONVEX_CLOUD_URL !==
+			"https://trustworthy-skunk-257.eu-west-1.convex.cloud"
+		)
+			throw new Error("Designated QA deployment required");
+		if (
+			Date.now() < Date.parse("2026-09-26T00:00:00Z") ||
+			Date.now() >= Date.parse("2026-09-26T20:00:00Z")
+		)
+			throw new Error("Fixture expired");
+		const user = await ctx.db.get("users", userId);
+		if (
+			user?.name !== "Philipp QA Elf" ||
+			user.learningRoutineDismissedDateKey !== "2026-09-26"
+		)
+			throw new Error("Expected QA prompt after native move");
+		const plans = await ctx.db
+			.query("learningPlans")
+			.withIndex("by_ownerTokenIdentifier", (q) =>
+				q.eq("ownerTokenIdentifier", user.tokenIdentifier),
+			)
+			.take(100);
+		if (!plans.some((p) => p.notes === "qa-native-only-today-20260926"))
+			throw new Error("Fixture required");
+		await ctx.db.patch("users", userId, {
+			learningRoutineDismissedDateKey: undefined,
+		});
+		return null;
+	},
+});
+
 /** Dated, insert-only fixture for native only-today acceptance. */
 export const createToday = internalMutation({
 	args: { userId: v.id("users") },

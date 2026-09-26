@@ -31,6 +31,7 @@ function DateTimePickerSheet({
 	doneLabel = "Fertig",
 	onChange,
 	onClose,
+	onDismiss,
 	onConfirm,
 }: DateTimePickerSheetProps) {
 	const { width } = useWindowDimensions();
@@ -60,6 +61,7 @@ function DateTimePickerSheet({
 			accessibilityLabel={accessibilityLabel}
 			visible={visible}
 			onClose={onClose}
+			onDismiss={onDismiss}
 			showCloseButton={false}
 			closeAccessibilityLabel="Auswahl schließen"
 			footer={
