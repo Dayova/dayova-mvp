@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { Button } from "~/components/ui/button";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 import { WarningBanner } from "~/components/ui/warning-banner";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
@@ -25,7 +26,6 @@ type ConfirmationSheetProps = {
 	actionLayout?: ConfirmationActionLayout;
 	maxWidth?: number;
 	scrollable?: boolean;
-	size?: "content" | "medium";
 };
 
 function ConfirmationSheet({
@@ -40,12 +40,15 @@ function ConfirmationSheet({
 	errorMessage,
 	confirmTone = "destructive",
 	closeAccessibilityLabel = "Bestätigung schließen",
-	actionLayout = "inline",
+	actionLayout: requestedActionLayout = "inline",
 	maxWidth,
-	scrollable = false,
-	size = "content",
+	scrollable = true,
 }: ConfirmationSheetProps) {
 	const { colors } = useDayovaTheme();
+	const { shouldStackInlineContent } = useContentSizeLayout();
+	const actionLayout = shouldStackInlineContent
+		? "stacked"
+		: requestedActionLayout;
 	const safeClose = () => {
 		if (!isBusy) onClose();
 	};
@@ -70,7 +73,7 @@ function ConfirmationSheet({
 					}
 				/>
 			) : (
-				<Text>{confirmLabel}</Text>
+				<Text className="shrink text-center">{confirmLabel}</Text>
 			)}
 		</Button>
 	);
@@ -85,7 +88,7 @@ function ConfirmationSheet({
 			onPress={safeClose}
 			variant="neutral"
 		>
-			<Text>{cancelLabel}</Text>
+			<Text className="shrink text-center">{cancelLabel}</Text>
 		</Button>
 	);
 	const actions = (
@@ -116,7 +119,6 @@ function ConfirmationSheet({
 			footer={scrollable ? actions : undefined}
 			maxWidth={maxWidth}
 			scrollable={scrollable}
-			size={size}
 		>
 			{scrollable ? (
 				<Text className="font-poppins text-body-3 text-secondary-text">

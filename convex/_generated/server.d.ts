@@ -25,6 +25,9 @@ import type { DataModel } from "./dataModel.js";
  * Typesafe environment variables declared in `convex.config.ts`.
  */
 type Env = {
+  readonly NOTION_CRM_DATA_SOURCE_ID: string | undefined;
+  readonly NOTION_CRM_MODE: "off" | "dry-run" | "live" | undefined;
+  readonly NOTION_CRM_TOKEN: string | undefined;
   readonly REVENUECAT_SECRET_API_KEY: string | undefined;
   readonly REVENUECAT_WEBHOOK_AUTHORIZATION: string | undefined;
 };
