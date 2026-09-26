@@ -1,0 +1,26 @@
+appId: de.dayova.app-dev
+name: Only today native confirmation
+---
+- scrollUntilVisible:
+    element: Lieber früher
+    direction: DOWN
+- takeScreenshot: routine-before
+- tapOn: Lieber früher
+- extendedWaitUntil:
+    visible: Auswahl prüfen
+    timeout: 15000
+- tapOn: Auswahl prüfen
+- extendedWaitUntil:
+    visible: Nur heute übernehmen
+    timeout: 15000
+- takeScreenshot: routine-preview
+- tapOn: Abbrechen
+- assertVisible: Passt dir heute 17:00 Uhr?
+- tapOn: Lieber früher
+- tapOn: Auswahl prüfen
+- tapOn: Nur heute übernehmen
+- extendedWaitUntil:
+    notVisible: Nur heute übernehmen
+    timeout: 15000
+- assertNotVisible: Lieber früher
+- takeScreenshot: routine-after

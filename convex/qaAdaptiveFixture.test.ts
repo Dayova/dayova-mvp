@@ -24,6 +24,21 @@ test("today fixture is insert-only, idempotent and supplies ISO home coaching", 
 		}),
 	).toMatchObject({ session: { planId, startTime: "17:00" } });
 	expect(await client.query(api.learningTimes.listMine, {})).toEqual([]);
+	const replay = makeFunctionReference<"mutation">(
+		"qaAdaptiveFixture:replayTodayPrompt",
+	);
+	vi.stubEnv(
+		"CONVEX_CLOUD_URL",
+		"https://trustworthy-skunk-257.eu-west-1.convex.cloud",
+	);
+	await expect(t.mutation(replay, { userId })).rejects.toThrow("Expected QA");
+	await t.run((ctx) =>
+		ctx.db.patch("users", userId, {
+			learningRoutineDismissedDateKey: "2026-09-26",
+		}),
+	);
+	await t.mutation(replay, { userId });
+	expect(await t.run((ctx) => ctx.db.get("users", userId))).toEqual(before);
 	vi.stubEnv("CONVEX_CLOUD_URL", "https://production.convex.cloud");
 	await expect(t.mutation(ref, { userId })).rejects.toThrow("QA deployment");
 	vi.stubEnv("CONVEX_CLOUD_URL", "https://trustworthy-skunk-257.convex.cloud");

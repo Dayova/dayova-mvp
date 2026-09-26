@@ -1,0 +1,22 @@
+appId: com.dayova.dev
+name: Android only-today later
+---
+- scrollUntilVisible:
+    element: Lieber später
+    direction: DOWN
+- takeScreenshot: android-routine-before
+- tapOn: Lieber später
+- extendedWaitUntil:
+    visible: Auswahl prüfen
+    timeout: 15000
+- tapOn: Auswahl prüfen
+- extendedWaitUntil:
+    visible: Nur heute übernehmen
+    timeout: 15000
+- takeScreenshot: android-routine-preview
+- tapOn: Nur heute übernehmen
+- extendedWaitUntil:
+    notVisible: Nur heute übernehmen
+    timeout: 15000
+- assertNotVisible: Lieber später
+- takeScreenshot: android-routine-after

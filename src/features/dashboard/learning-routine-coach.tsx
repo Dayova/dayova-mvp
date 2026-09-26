@@ -33,6 +33,7 @@ export function LearningRoutineCoach({
 	const [picker, setPicker] = useState(false);
 	const [time, setTime] = useState(new Date());
 	const [selected, setSelected] = useState<string | null>(null);
+	const pendingSelection = useRef<string | null>(null);
 	const [chosenSession, setChosenSession] = useState<NonNullable<
 		NonNullable<typeof routine>["session"]
 	> | null>(null);
@@ -63,6 +64,7 @@ export function LearningRoutineCoach({
 		value.setHours(hour, minute + offset, 0, 0);
 		setTime(value);
 		setSelected(null);
+		pendingSelection.current = null;
 		setError(null);
 		setPicker(true);
 	};
@@ -144,11 +146,13 @@ export function LearningRoutineCoach({
 					if (date) setTime(date);
 				}}
 				onClose={() => setPicker(false)}
-				onConfirm={(date) =>
-					setSelected(
-						`${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`,
-					)
-				}
+				onConfirm={(date) => {
+					pendingSelection.current = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+				}}
+				onDismiss={() => {
+					setSelected(pendingSelection.current);
+					pendingSelection.current = null;
+				}}
 			/>
 			<DayovaSheetFrame
 				visible={selected !== null && !!chosenSession}

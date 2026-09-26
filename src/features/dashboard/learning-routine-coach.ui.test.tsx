@@ -1,10 +1,11 @@
 import { beforeEach, expect, jest, test } from "@jest/globals";
-import { fireEvent, render } from "@testing-library/react-native";
+import { act, fireEvent, render } from "@testing-library/react-native";
 import { LearningRoutineCoach } from "./learning-routine-coach";
 
 const mockMove = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const mockDismiss = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const mockPush = jest.fn();
+let mockPickerDismiss: (() => void) | undefined;
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
 jest.mock("~/components/ui/icon", () => ({
 	ArrowLeft: () => null,
@@ -66,10 +67,12 @@ jest.mock("~/components/ui/date-time-picker-sheet", () => {
 			visible,
 			onConfirm,
 			onClose,
+			onDismiss,
 		}: {
 			visible: boolean;
 			onConfirm: (date: Date) => void;
 			onClose: () => void;
+			onDismiss?: () => void;
 		}) =>
 			visible
 				? React.createElement(
@@ -82,6 +85,7 @@ jest.mock("~/components/ui/date-time-picker-sheet", () => {
 								d.setHours(18, 0);
 								onConfirm(d);
 								onClose();
+								mockPickerDismiss = onDismiss;
 							},
 						},
 						React.createElement(Native.Text, null, "Testzeit wählen"),
@@ -90,6 +94,7 @@ jest.mock("~/components/ui/date-time-picker-sheet", () => {
 	};
 });
 beforeEach(() => {
+	mockPickerDismiss = undefined;
 	mockMove.mockReset();
 	mockMove.mockResolvedValue(null);
 	mockDismiss.mockReset();
@@ -114,6 +119,8 @@ test("earlier/later selection changes nothing until only-today consent", async (
 		screen.getByRole("button", { name: "Testzeit wählen" }),
 	);
 	expect(mockMove).not.toHaveBeenCalled();
+	expect(screen.queryByText("Nur heute übernehmen")).toBeNull();
+	await act(async () => mockPickerDismiss?.());
 	await fireEvent.press(
 		screen.getByRole("button", { name: "Nur heute übernehmen" }),
 	);
@@ -129,6 +136,7 @@ test("regular changes open the settings instead of silently persisting the one-o
 	await fireEvent.press(
 		screen.getByRole("button", { name: "Testzeit wählen" }),
 	);
+	await act(async () => mockPickerDismiss?.());
 	await fireEvent.press(
 		screen.getByRole("button", { name: "Regelmäßige Zeiten einstellen" }),
 	);
