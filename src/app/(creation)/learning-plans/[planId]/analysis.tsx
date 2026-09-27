@@ -12,19 +12,21 @@ import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
-import { learningPlanMaterialPath } from "~/features/learning-plans/creation-routes";
+import {
+	learningPlanMaterialPath,
+	learningPlanTopicsPath,
+} from "~/features/learning-plans/creation-routes";
+import {
+	getLearningPlanGenerationFailure,
+	type LearningPlanGenerationFailure,
+} from "~/features/learning-plans/generation-recovery";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
+import { logDiagnosticError } from "~/lib/diagnostics";
 import {
 	dismissToOrReplace,
 	goBackOrReplace,
 	useBackIntent,
 } from "~/lib/navigation";
-import { logDiagnosticError } from "~/lib/diagnostics";
-import {
-	getLearningPlanGenerationFailure,
-	type LearningPlanGenerationFailure,
-} from "~/features/learning-plans/generation-recovery";
-import { learningPlanTopicsPath } from "~/features/learning-plans/creation-routes";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
@@ -151,18 +153,32 @@ export default function LearningPlanAnalysisScreen() {
 				}}
 				showsVerticalScrollIndicator={false}
 			>
-				<View className="min-h-[620px] flex-1 items-center justify-center pb-20">
-					<View className="mb-12">
-						<AnimatedFlowerLoader />
-					</View>
-					<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
-						Wir ordnen deine Schulunterlagen.
-					</Text>
-					<Text className="mt-3 max-w-[320px] text-center font-poppins text-body-3 text-secondary-text">
-						Dayova trennt wahrscheinlichen Prüfungsstoff von zusätzlichem
-						Material und bereitet den Wissenscheck für deinen ersten Lerntermin
-						vor.
-					</Text>
+				<View
+					className={
+						failure
+							? "items-center pt-8"
+							: "min-h-[620px] flex-1 items-center justify-center pb-20"
+					}
+				>
+					{failure ? (
+						<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
+							Das hat noch nicht geklappt.
+						</Text>
+					) : (
+						<>
+							<View className="mb-12">
+								<AnimatedFlowerLoader />
+							</View>
+							<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
+								Wir ordnen deine Schulunterlagen.
+							</Text>
+							<Text className="mt-3 max-w-[320px] text-center font-poppins text-body-3 text-secondary-text">
+								Dayova trennt wahrscheinlichen Prüfungsstoff von zusätzlichem
+								Material und bereitet den Wissenscheck für deinen ersten
+								Lerntermin vor.
+							</Text>
+						</>
+					)}
 					{failure ? (
 						<>
 							<ErrorMessage className="mt-6 text-center">

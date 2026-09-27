@@ -13,13 +13,13 @@ import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
+import { learningPlanMaterialPath } from "~/features/learning-plans/creation-routes";
 import { getGenerationProgressPresentation } from "~/features/learning-plans/generation-progress";
 import {
 	getLearningPlanGenerationFailure,
 	type LearningPlanGenerationFailure,
 } from "~/features/learning-plans/generation-recovery";
 import { generatePlanWithAnalytics } from "~/features/learning-plans/plan-generation-analytics";
-import { learningPlanMaterialPath } from "~/features/learning-plans/creation-routes";
 import {
 	calculateAvailableStudyMinutes,
 	getAutomaticLearningPreparation,
@@ -118,6 +118,11 @@ export default function LearningPlanGeneratingScreen() {
 					snapshot.plan.contentGeneration.failureReason,
 				)
 			: null);
+	const hasRecovery = Boolean(
+		displayedFailure ||
+			progressPresentation.canRetryFailedSessions ||
+			canRecoverStalledGeneration,
+	);
 
 	useEffect(() => {
 		const generation = snapshot?.plan.contentGeneration;
@@ -321,23 +326,35 @@ export default function LearningPlanGeneratingScreen() {
 				}}
 				showsVerticalScrollIndicator={false}
 			>
-				<View className="min-h-[620px] flex-1 items-center justify-center pb-20">
-					<View className="mb-12">
-						<AnimatedFlowerLoader />
-					</View>
-					<Text className="text-center font-poppins font-semibold text-heading-2 text-text/70">
-						Wir bereiten deinen nächsten Lernschritt vor.
-					</Text>
-					<Text className="mt-4 text-center font-poppins text-body-3 text-secondary-text">
-						{progressPresentation.label}
-					</Text>
-					<FlowProgressBar
-						className="mt-5 w-full max-w-[360px]"
-						progress={progressPresentation.progress}
-					/>
-					{displayedFailure ||
-					progressPresentation.canRetryFailedSessions ||
-					canRecoverStalledGeneration ? (
+				<View
+					className={
+						hasRecovery
+							? "items-center pt-8"
+							: "min-h-[620px] flex-1 items-center justify-center pb-20"
+					}
+				>
+					{hasRecovery ? (
+						<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
+							Dein Lernweg braucht noch einen Schritt.
+						</Text>
+					) : (
+						<>
+							<View className="mb-12">
+								<AnimatedFlowerLoader />
+							</View>
+							<Text className="text-center font-poppins font-semibold text-heading-2 text-text/70">
+								Wir bereiten deinen nächsten Lernschritt vor.
+							</Text>
+							<Text className="mt-4 text-center font-poppins text-body-3 text-secondary-text">
+								{progressPresentation.label}
+							</Text>
+							<FlowProgressBar
+								className="mt-5 w-full max-w-[360px]"
+								progress={progressPresentation.progress}
+							/>
+						</>
+					)}
+					{hasRecovery ? (
 						<>
 							{displayedFailure ? (
 								<Text className="mt-6 text-center font-poppins text-body-4 text-destructive">
