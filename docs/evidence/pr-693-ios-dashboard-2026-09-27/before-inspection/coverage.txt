@@ -1,0 +1,1 @@
+Coverage: 22.63-second video; 45 full-timeline frames sampled at 2 fps (0.5-second interval); 3 contact sheet(s); 8 additional frames from 00:00:04.000 to 00:00:05.600 at 5 fps; 8 additional frames from 00:00:21.000 to 00:00:22.600 at 5 fps; no audio stream.
