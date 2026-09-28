@@ -129,7 +129,7 @@ individual screens. Non-heading text keeps unrestricted system scaling.
 Non-destructive light-mode pill buttons have two visual appearances: the light-mode
 gradient button and the black button using the primary text color `#1A1A1A`.
 The Today hero is an explicit exception: its shared Button `soft` variant uses
-a theme-derived blue tint without a gradient; the Today caller uses white action
+a theme-derived blue tint without a gradient; the Today caller uses dark on-primary action
 text per the visual review. A 40px
 primaryStrong circle highlights the white action icon inside the 56px button.
 Other screens retain the existing appearances. Both
