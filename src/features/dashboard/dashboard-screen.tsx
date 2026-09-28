@@ -427,7 +427,7 @@ export function DashboardScreen() {
 						onOpenFallback={openNextStepFallback}
 						onOpenItem={(item) => openItem(item, ROUTES.home)}
 					/>
-					<View className="h-1" accessible={false} />
+					<View className="h-6" accessible={false} />
 				</View>
 				<LearningRoutineCoach referenceTime={now.getTime()} />
 				<View className="px-6" testID="dashboard-calendar">
