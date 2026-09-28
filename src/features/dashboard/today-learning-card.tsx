@@ -197,9 +197,11 @@ export function TodayLearningCard({
 					shouldStackInlineContent ? "mt-6 min-h-12" : "mt-auto h-12",
 				)}
 			>
-				<Text className="font-poppins font-semibold text-body-3 text-text">
-					{buttonLabel}
-				</Text>
+				{!item || isLoading ? (
+					<Text className="font-poppins font-semibold text-body-3 text-text">
+						{buttonLabel}
+					</Text>
+				) : null}
 			</View>
 		</NotchedActionCard>
 	);

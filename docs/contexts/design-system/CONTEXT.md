@@ -234,8 +234,10 @@ view switching, another creation control, or a redesigned week slider (DAY-490).
 
 The Today hero combines the shared NotchedActionCard with a smaller native study
 illustration on the right (DAY-490, Philipp's mixed-reference follow-up).
-Title and short supporting copy are left-aligned. At the bottom, the action label
-aligns with the 48px circular primary-gradient action in the notch: outlined
+Title and short supporting copy are left-aligned. Active lessons omit the visible
+footer label; their accessible action still names starting or continuing. Empty
+states retain their explicit footer label. The 48px circular primary-gradient
+action in the notch uses outlined
 Hugeicons Play for lessons, Plus for plan creation and ArrowRightStraight for
 existing plans. The whole card is one accessible action; there is no nested
 button, full-width CTA, time badge or decorative loop. Started sessions retain

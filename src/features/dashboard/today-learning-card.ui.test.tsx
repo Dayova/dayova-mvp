@@ -116,6 +116,7 @@ describe("TodayLearningCard", () => {
 		expect(screen.queryByText(/Klassenarbeit/)).toBeNull();
 		expect(screen.getByText("Gleichungen mit Klammern lösen")).toBeTruthy();
 		expect(screen.queryByText("17 Minuten")).toBeNull();
+		expect(screen.queryByText("Lernsession starten")).toBeNull();
 		expect(screen.queryByTestId("today-subject-icon")).toBeNull();
 		expect(
 			screen.getByText("Gleichungen mit Klammern lösen").props.className,
@@ -209,6 +210,7 @@ describe("TodayLearningCard", () => {
 		const screen = await render(
 			<TodayLearningCard {...props} item={started} />,
 		);
+		expect(screen.queryByText("Weiterlernen")).toBeNull();
 		await fireEvent.press(
 			screen.getByRole("button", { name: /^Weiterlernen/ }),
 		);
