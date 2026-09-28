@@ -15,6 +15,11 @@ jest.mock("~/components/ui/icon", () => {
 		BookOpen: icon,
 		CalendarDays: icon,
 		Clock3: icon,
+		Play: icon,
+		Calculator: (props: Record<string, unknown>) =>
+			React.createElement("Icon", { ...props, name: "calculator" }),
+		Pencil: (props: Record<string, unknown>) =>
+			React.createElement("Icon", { ...props, name: "pencil" }),
 	};
 });
 jest.mock("~/components/ui/portrait-content", () => ({
@@ -59,7 +64,20 @@ describe("TodayLearningCard", () => {
 		expect(screen.getByText("Mathematik")).toBeTruthy();
 		expect(screen.queryByText(/Klassenarbeit/)).toBeNull();
 		expect(screen.getByText("Gleichungen mit Klammern lösen")).toBeTruthy();
-		expect(screen.getByText("17 Min.")).toBeTruthy();
+		expect(screen.getByText("17 min")).toBeTruthy();
+		expect(screen.getByTestId("today-subject-icon").props.name).toBe(
+			"calculator",
+		);
+		expect(screen.getByText("Mathematik").props.className).toContain(
+			"font-semibold",
+		);
+		expect(
+			screen.getByText("Gleichungen mit Klammern lösen").props.className,
+		).toContain("text-body-1");
+		expect(
+			screen.getByTestId("today-learning-play", { includeHiddenElements: true })
+				.props.strokeWidth,
+		).toBe(2.5);
 		expect(screen.queryByText(/ca\./)).toBeNull();
 		expect(screen.getAllByRole("button")).toHaveLength(1);
 		await fireEvent.press(
@@ -82,6 +100,10 @@ describe("TodayLearningCard", () => {
 			"Wissenscheck",
 		);
 		expect(screen.getByText(currentSession.goal)).toBeTruthy();
+		expect(screen.getByText(currentSession.goal).props.numberOfLines).toBe(2);
+		expect(screen.getByRole("button").props.accessibilityLabel).toContain(
+			currentSession.goal,
+		);
 		await screen.rerender(
 			<TodayLearningCard
 				{...props}

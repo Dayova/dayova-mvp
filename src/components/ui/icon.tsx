@@ -46,6 +46,7 @@ import {
 	PaintBrush01Icon,
 	PencilIcon,
 	Plant04Icon,
+	PlayIcon,
 	PlusSignIcon,
 	PropertyEditIcon,
 	RepeatIcon,
@@ -126,6 +127,7 @@ export const Palette = createIcon(PaintBoardIcon);
 export const PaintBrush = createIcon(PaintBrush01Icon);
 export const Pencil = createIcon(PencilIcon);
 export const Plant = createIcon(Plant04Icon);
+export const Play = createIcon(PlayIcon);
 export const Plus = createIcon(PlusSignIcon);
 export const PropertyEdit = createIcon(PropertyEditIcon);
 export const Repeat = createIcon(RepeatIcon);

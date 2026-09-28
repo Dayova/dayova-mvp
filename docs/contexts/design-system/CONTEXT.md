@@ -214,11 +214,16 @@ stack the row. This simplified Apple Calendar reference does not introduce searc
 view switching, another creation control, or a redesigned week slider (DAY-490).
 
 The Today learning card follows Philipp's full course-card reference (28 September):
-a bordered `ActionSurface` with `system-subtle` fill, a white book circle and subject
-at top left, duration without “ca.” at top right, title and description, actual completion
-counts at bottom left and a white arrow circle at bottom right. A cyan completion
-ring surrounds that arrow; the unfilled track represents remaining steps. Its
-counts and remaining amount are included in the card accessibility label. The arrow is a
+a bordered `ActionSurface` with `system-subtle` fill, a white subject-icon circle and
+semibold subject at top left. Icons use the shared subject catalog (book fallback
+for unknown custom subjects). The duration uses the shared learning-plan status
+badge, with a fine border on Today to distinguish its identical fill from the card.
+The task title uses body-1 semibold, and the secondary description is limited to
+two lines with tail ellipsis (unclamped at large content sizes, complete in the
+card accessibility label). Actual completion counts sit at bottom left and a white
+circle with a filled, heavy Hugeicons Play glyph at bottom right. A cyan completion
+ring surrounds that play glyph; the unfilled track represents remaining steps. Its
+counts and remaining amount are included in the card accessibility label. The play glyph is a
 decorative affordance inside the single accessible card action, not a new pill-button
 variant. Missing progress uses the existing action label, never invented numbers.
 The cropped cyan background loop is an explicit DAY-490 custom-SVG exception:

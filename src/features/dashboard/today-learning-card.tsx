@@ -1,16 +1,14 @@
-import { useState } from "react";
+import { createElement, useState } from "react";
 import { View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 import { Button } from "~/components/ui/button";
-import {
-	ArrowUpRight,
-	BookOpen,
-	CalendarDays,
-	Clock3,
-} from "~/components/ui/icon";
+import { CalendarDays, Play } from "~/components/ui/icon";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { ActionSurface, Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
+import { LearningPlanStatusBadge } from "~/features/learning-plans/learning-plan-status-badge";
+import { getSubjectIcon } from "~/features/subjects/subject-catalog";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
@@ -106,7 +104,7 @@ export function TodayLearningCard({
 			: null;
 	const ringCircumference = 2 * Math.PI * 23;
 	const durationLabel =
-		duration != null && duration > 0 ? `${duration} Min.` : null;
+		duration != null && duration > 0 ? `${duration} min` : null;
 	if (!item && !isLoading) {
 		const hasNoPlan =
 			fallbackAction.route === EMPTY_DASHBOARD_PRIMARY_ACTION.route;
@@ -239,29 +237,41 @@ export function TodayLearningCard({
 						)}
 					>
 						<View className="h-12 w-12 items-center justify-center rounded-full bg-card">
-							<BookOpen size={24} color={colors.text} strokeWidth={1.9} />
+							{createElement(getSubjectIcon(subject), {
+								testID: "today-subject-icon",
+								size: 24,
+								color: colors.text,
+								strokeWidth: 1.9,
+							})}
 						</View>
-						<Text className="min-w-0 flex-1 font-poppins text-body-2 text-primary-strong">
+						<Text className="min-w-0 flex-1 font-poppins font-semibold text-body-2 text-primary-strong">
 							{item && !isLoading ? subject : "Lernplan"}
 						</Text>
 					</View>
 					{durationLabel && !isLoading ? (
-						<View className="min-h-11 shrink-0 flex-row items-center gap-2 rounded-full bg-card px-3 py-2">
-							<Clock3 size={18} color={colors.text} strokeWidth={1.9} />
-							<Text className="font-poppins font-semibold text-body-5 text-text">
-								{durationLabel}
-							</Text>
-						</View>
+						<LearningPlanStatusBadge
+							className="border border-border"
+							fixedTextScale={false}
+							status={{
+								label: durationLabel,
+								background: DAYOVA_DESIGN_SYSTEM.colors.systemSubtle,
+								foreground: DAYOVA_DESIGN_SYSTEM.colors.primary,
+							}}
+						/>
 					) : null}
 				</View>
 				<Text
 					accessibilityRole="header"
-					className="font-poppins font-semibold text-body-2 text-text"
+					className="font-poppins font-semibold text-body-1 text-text"
 				>
 					{title}
 				</Text>
 				{description && !isLoading ? (
-					<Text className="font-poppins text-body-3 text-text">
+					<Text
+						numberOfLines={shouldStackInlineContent ? undefined : 2}
+						ellipsizeMode="tail"
+						className="font-poppins text-body-3 text-secondary-text"
+					>
 						{description}
 					</Text>
 				) : null}
@@ -310,7 +320,13 @@ export function TodayLearningCard({
 							) : null}
 						</Svg>
 					) : null}
-					<ArrowUpRight size={24} color={colors.text} strokeWidth={1.9} />
+					<Play
+						testID="today-learning-play"
+						size={26}
+						color={colors.text}
+						fill={colors.text}
+						strokeWidth={2.5}
+					/>
 				</View>
 			</View>
 		</ActionSurface>
