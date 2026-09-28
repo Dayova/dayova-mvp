@@ -51,7 +51,7 @@ describe("TodayLearningCard", () => {
 	});
 	test("shows context, topic and duration with one learning action", async () => {
 		const screen = await render(<TodayLearningCard {...props} />);
-		expect(screen.getByText("Mathematik · Lernen")).toBeTruthy();
+		expect(screen.getByText("Lernen")).toBeTruthy();
 		expect(screen.queryByText(/Klassenarbeit/)).toBeNull();
 		expect(screen.getByText("Gleichungen mit Klammern lösen")).toBeTruthy();
 		expect(screen.getByText("ca. 17 Min.")).toBeTruthy();
@@ -71,7 +71,7 @@ describe("TodayLearningCard", () => {
 		const screen = await render(
 			<TodayLearningCard {...props} plan={{ ...plan, currentSession }} />,
 		);
-		expect(screen.getByText("Mathematik · Wissenscheck")).toBeTruthy();
+		expect(screen.getByText("Wissenscheck")).toBeTruthy();
 		expect(screen.getByText(currentSession.goal)).toBeTruthy();
 		await screen.rerender(
 			<TodayLearningCard
@@ -83,7 +83,21 @@ describe("TodayLearningCard", () => {
 			/>,
 		);
 		expect(screen.queryByText(currentSession.goal)).toBeNull();
-		expect(screen.getByText("Mathematik · Lernen")).toBeTruthy();
+		expect(screen.getByText("Lernen")).toBeTruthy();
+	});
+	test("shows actual completion counts instead of invented reference numbers", async () => {
+		const screen = await render(
+			<TodayLearningCard
+				{...props}
+				plan={{ ...plan, completedCount: 2, sessionCount: 7 }}
+			/>,
+		);
+		expect(screen.getByText("2 von 7 Lernschritten")).toBeTruthy();
+		expect(screen.queryByText(/9 von 12/)).toBeNull();
+		await fireEvent.press(
+			screen.getByRole("button", { name: /^Jetzt lernen/ }),
+		);
+		expect(props.onOpenItem).toHaveBeenCalledWith(item);
 	});
 	test("continues the existing started session", async () => {
 		const started = {

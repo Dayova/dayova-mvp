@@ -204,13 +204,17 @@ acknowledges a real transition without becoming recurring friction.
 
 ## Product-surface previews
 
-The Today learning card follows Philipp's approved course-card reference:
-a closed `ActionSurface` with `system-subtle` fill, subject/learning context
-at top left, duration at top right, a prominent topic and an optional distinct
-goal from the matching session. The footer holds “Jetzt lernen” / “Fortsetzen”
-and the Dayova gradient arrow inside the card. It intentionally supersedes the
-earlier notched plan-card shell on Today only. Its minimum height is 211 points
-and grows with content; exam date, plan progress and decorative loops are omitted.
+The Today learning card follows Philipp's full course-card reference (28 September):
+a closed `ActionSurface` with `system-subtle` fill, a white book circle and learning
+kind at top left, duration at top right, title and description, actual completion
+counts at bottom left and a white arrow circle at bottom right. The arrow is a
+decorative affordance inside the single accessible card action, not a new pill-button
+variant. Missing progress uses the existing action label, never invented numbers.
+The cropped cyan background loop is an explicit DAY-490 custom-SVG exception:
+it reproduces reference artwork, which an interface glyph from Hugeicons cannot.
+It is non-interactive and hidden from accessibility. This supersedes the earlier
+gradient-arrow and no-decoration choices on Today only. The reference ratio (1.36)
+sets minimum height; text remains free to grow. No arbitrary beginner level is shown.
 Calendar, external spacing and agenda remain separate and unchanged.
 This scoped follow-up is tracked in [DAY-490](https://linear.app/dayova/issue/DAY-490).
 

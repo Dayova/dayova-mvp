@@ -1,10 +1,10 @@
-import { LinearGradient } from "expo-linear-gradient";
+import { useState } from "react";
 import { View } from "react-native";
+import Svg, { Path } from "react-native-svg";
 import { ArrowUpRight, BookOpen, Clock3 } from "~/components/ui/icon";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
-import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
@@ -18,6 +18,8 @@ type Props = {
 	item: DashboardAgendaItem | undefined;
 	plan?: {
 		subject: string;
+		completedCount?: number;
+		sessionCount?: number;
 		currentSession?: {
 			id: string;
 			goal?: string;
@@ -40,6 +42,7 @@ export function TodayLearningCard({
 	onOpenFallback,
 }: Props) {
 	const { colors } = useDayovaTheme();
+	const [cardLayout, setCardLayout] = useState({ width: 354, height: 260 });
 	const { shouldStackInlineContent } = useContentSizeLayout();
 	const subject = formatGermanUiText(
 		plan?.subject ?? item?.entry.subject ?? "Dein Lernplan",
@@ -65,9 +68,16 @@ export function TodayLearningCard({
 	const context = `${subject} · ${learningKind}`;
 	const goal = session?.goal ? formatGermanUiText(session.goal).trim() : "";
 	const description =
-		goal &&
-		!goal.toLocaleLowerCase("de-DE").includes(topic.toLocaleLowerCase("de-DE"))
-			? goal
+		goal ||
+		(item
+			? `${subject} · Dein nächster Lernschritt`
+			: "Erstelle einen Lernplan für deine nächste Prüfung.");
+	const progress =
+		item &&
+		plan?.completedCount != null &&
+		plan.sessionCount != null &&
+		plan.sessionCount > 0
+			? `${plan.completedCount} von ${plan.sessionCount} Lernschritten`
 			: null;
 	const action = isLoading
 		? "Wird geladen …"
@@ -81,7 +91,17 @@ export function TodayLearningCard({
 		duration != null && duration > 0 ? `ca. ${duration} Min.` : null;
 	return (
 		<ActionSurface
-			className="min-h-[211px] border border-border bg-system-subtle p-6"
+			className="overflow-hidden bg-system-subtle p-5"
+			onLayout={(event) => {
+				const { width, height } = event.nativeEvent.layout;
+				setCardLayout((previous) =>
+					previous.width === width && previous.height === height
+						? previous
+						: { width, height },
+				);
+			}}
+			// Reference aspect ratio is a minimum; scaled/long text can grow vertically.
+			style={{ minHeight: cardLayout.width / 1.36 }}
 			accessible
 			accessibilityRole="button"
 			disabled={isLoading}
@@ -92,6 +112,7 @@ export function TodayLearningCard({
 				title,
 				!isLoading ? description : null,
 				!isLoading ? durationLabel : null,
+				!isLoading && progress ? `${progress} abgeschlossen` : null,
 			]
 				.filter(Boolean)
 				.join(". ")}
@@ -106,7 +127,29 @@ export function TodayLearningCard({
 			}}
 			testID="today-learning-card"
 		>
-			<View className="gap-4">
+			{/* DAY-490: reference-specific decorative loop, not an interface icon.
+			    Hugeicons cannot reproduce this cropped background composition. */}
+			<Svg
+				width={cardLayout.width}
+				height={cardLayout.height}
+				viewBox="0 0 354 260"
+				preserveAspectRatio="none"
+				pointerEvents="none"
+				accessible={false}
+				accessibilityElementsHidden
+				importantForAccessibility="no-hide-descendants"
+				// SVG background positioning uses its native geometry API.
+				style={{ position: "absolute", top: 0, left: 0 }}
+			>
+				<Path
+					d="M 377 77 C 301 72 245 108 291 158 C 339 212 383 211 369 186 C 348 150 295 171 269 188 C 229 213 201 240 185 270"
+					fill="none"
+					stroke={colors.primary}
+					strokeOpacity={0.22}
+					strokeWidth={17}
+				/>
+			</Svg>
+			<View className="gap-5">
 				<View
 					className={cn(
 						"items-start justify-between gap-3",
@@ -120,24 +163,16 @@ export function TodayLearningCard({
 							!shouldStackInlineContent && "flex-1",
 						)}
 					>
-						<View className="h-8 w-8 items-center justify-center rounded-full bg-card">
-							<BookOpen
-								size={18}
-								color={colors.primaryStrong}
-								strokeWidth={1.9}
-							/>
+						<View className="h-12 w-12 items-center justify-center rounded-full bg-card">
+							<BookOpen size={24} color={colors.text} strokeWidth={1.9} />
 						</View>
-						<Text className="min-w-0 flex-1 font-poppins font-semibold text-body-4 text-primary-strong">
-							{item && !isLoading ? context : "Nächster Lernschritt"}
+						<Text className="min-w-0 flex-1 font-poppins text-body-2 text-primary-strong">
+							{item && !isLoading ? learningKind : "Lernplan"}
 						</Text>
 					</View>
 					{durationLabel && !isLoading ? (
-						<View className="min-h-8 shrink-0 flex-row items-center gap-1 rounded-full bg-card px-3 py-1">
-							<Clock3
-								size={14}
-								color={colors.secondaryText}
-								strokeWidth={1.9}
-							/>
+						<View className="min-h-11 shrink-0 flex-row items-center gap-2 rounded-full bg-card px-3 py-2">
+							<Clock3 size={18} color={colors.text} strokeWidth={1.9} />
 							<Text className="font-poppins font-semibold text-body-5 text-text">
 								{durationLabel}
 							</Text>
@@ -146,39 +181,27 @@ export function TodayLearningCard({
 				</View>
 				<Text
 					accessibilityRole="header"
-					className="font-poppins font-semibold text-body-1 text-text"
+					className="font-poppins font-semibold text-body-2 text-text"
 				>
 					{title}
 				</Text>
 				{description && !isLoading ? (
-					<Text className="font-poppins text-body-3 text-secondary-text">
+					<Text className="font-poppins text-body-3 text-text">
 						{description}
 					</Text>
 				) : null}
 			</View>
-			<View className="mt-auto flex-row items-center justify-between gap-4 pt-3">
-				<Text className="flex-1 font-poppins font-semibold text-body-3 text-text">
-					{action}
+			<View className="mt-auto flex-row items-center justify-between gap-4 pt-6">
+				<Text className="flex-1 font-poppins text-body-3 text-text">
+					{!isLoading && progress ? progress : action}
 				</Text>
 				<View
 					accessible={false}
 					accessibilityElementsHidden
 					importantForAccessibility="no-hide-descendants"
-					className="h-12 w-12 overflow-hidden rounded-full"
+					className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
 				>
-					<LinearGradient
-						colors={DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.colors}
-						start={DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.start}
-						end={DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.end}
-						// Expo's native gradient requires native geometry styles.
-						style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
-					>
-						<ArrowUpRight
-							size={24}
-							color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-							strokeWidth={1.9}
-						/>
-					</LinearGradient>
+					<ArrowUpRight size={24} color={colors.text} strokeWidth={1.9} />
 				</View>
 			</View>
 		</ActionSurface>
