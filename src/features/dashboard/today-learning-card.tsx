@@ -148,7 +148,7 @@ export function TodayLearningCard({
 			pressType="card"
 			cardHeight={144}
 			fillColor={colors.systemSubtle}
-			contentClassName="gap-6 p-5"
+			contentClassName="gap-6 px-6 py-8"
 			cardDisabled={isLoading}
 			actionIcon={
 				<Play

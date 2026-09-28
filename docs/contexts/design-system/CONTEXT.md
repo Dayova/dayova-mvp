@@ -243,7 +243,8 @@ The cropped cyan background loop is an explicit DAY-490 custom-SVG exception:
 it reproduces reference artwork, which an interface glyph from Hugeicons cannot.
 It is non-interactive and hidden from accessibility. This supersedes the earlier
 gradient-arrow and no-decoration choices on Today only. Content determines height
-with 20px inner padding and a compact 144px minimum, replacing the old aspect-ratio
+with 24px horizontal and 32px vertical padding and a compact 144px minimum,
+giving content clearance from the rounded corners while replacing the old aspect-ratio
 minimum and vertically centered empty space. No arbitrary beginner level is shown.
 Calendar, external spacing and agenda remain separate and unchanged.
 When no actionable lesson exists, the same blue bordered card uses Philipp's
