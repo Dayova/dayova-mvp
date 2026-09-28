@@ -9,6 +9,7 @@
 import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AddIcon } from "~/components/ui/add-icon";
 import { Button } from "~/components/ui/button";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
 import {
@@ -16,14 +17,17 @@ import {
 	BookOpen,
 	Check,
 	Clock3,
+	Dumbbell,
 	Home,
-	Plus,
 	Settings,
 } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
+import type { DayEntry } from "~/types/dayEntries";
+import { EMPTY_DASHBOARD_PRIMARY_ACTION } from "./dashboard-empty-state";
+import { DashboardNextStepCard } from "./dashboard-product-cards";
 
 const STATES = [
 	"Bereit",
@@ -197,64 +201,95 @@ export function TodayDecisionPrototype() {
 							</Text>
 							<Text
 								accessibilityRole="header"
-								className="font-semibold text-heading-1"
+								className="font-semibold text-heading-2"
 							>
 								{tab}
 							</Text>
 						</View>
 						{tab !== "Einstellungen" && (
-							<Button
-								variant="ghost"
-								className="px-2 shadow-none"
+							<Pressable
+								accessibilityRole="button"
+								className="min-h-12 flex-row items-center gap-2 active:opacity-80"
 								accessibilityLabel="Neuen Lernplan erstellen"
 								onPress={() => setModal("create")}
 							>
-								<Plus size={18} color={colors.text} />
-								<Text className="text-body-3 text-text">Lernplan</Text>
-							</Button>
+								<Text className="text-body-4 text-secondary-text">
+									Lernplan
+								</Text>
+								<AddIcon outlinedGradient />
+							</Pressable>
 						)}
 					</View>
 					{tab === "Heute" ? (
 						<>
-							<View className="gap-4 rounded-card border border-border bg-surface p-6">
-								<View className="flex-row items-center gap-2">
-									<BookOpen size={18} color={colors.primaryStrong} />
-									<Text className="font-semibold text-body-3 text-primary-strong">
-										{noPlan
-											? "Dein Einstieg"
-											: finished
-												? "Heute erledigt"
-												: "Dein nächster Lernschritt"}
-									</Text>
-								</View>
-								{hasPlan && !finished && !resting && state !== "Fehler" && (
-									<Text className="text-body-3 text-secondary-text">
-										{next?.subject}
-									</Text>
-								)}
-								<Text
-									accessibilityRole="header"
-									className="font-semibold text-heading-2"
-								>
-									{heroTitle}
-								</Text>
-								<Text className="text-body-3 text-secondary-text">
-									{heroCopy}
-								</Text>
-								{hasPlan && !finished && state !== "Fehler" && (
+							{next &&
+							hasPlan &&
+							!finished &&
+							!resting &&
+							state !== "Fehler" ? (
+								<DashboardNextStepCard
+									mode="screen"
+									layout="stacked"
+									isLoading={false}
+									todayKey="2026-09-28"
+									item={{
+										dayKey: `2026-09-${28 + next.day}`,
+										kind: "learningSession",
+										startMinutes: null,
+										endMinutes: null,
+										entry: {
+											id: next.id as DayEntry["id"],
+											title: `${next.subject}: ${next.title}`,
+											durationMinutes: next.minutes,
+											executionStatus:
+												state === "Fortsetzen" ? "started" : "notStarted",
+										},
+									}}
+									fallbackAction={EMPTY_DASHBOARD_PRIMARY_ACTION}
+									onOpenFallback={() => setModal("create")}
+									onOpenItem={() => begin(next)}
+								/>
+							) : (
+								<View className="gap-4 rounded-card border border-border bg-system-subtle p-6">
 									<View className="flex-row items-center gap-2">
-										<Clock3 size={16} color={colors.secondaryText} />
-										<Text className="text-body-3 text-secondary-text">
-											Etwa {next?.minutes} Minuten
-											{state === "Fortsetzen" ? " · Schon begonnen" : ""}
+										<BookOpen size={18} color={colors.primaryStrong} />
+										<Text className="font-semibold text-body-3 text-primary-strong">
+											{noPlan
+												? "Dein Einstieg"
+												: finished
+													? "Heute erledigt"
+													: "Dein nächster Lernschritt"}
 										</Text>
 									</View>
-								)}
-								<Button onPress={act}>
-									<Text>{heroAction}</Text>
-									<ArrowRight size={20} color="white" />
-								</Button>
-							</View>
+									{hasPlan && !finished && !resting && state !== "Fehler" && (
+										<Text className="text-body-3 text-secondary-text">
+											{next?.subject}
+										</Text>
+									)}
+									<Text
+										accessibilityRole="header"
+										className="font-semibold text-heading-2"
+									>
+										{heroTitle}
+									</Text>
+									<Text className="text-body-3 text-secondary-text">
+										{heroCopy}
+									</Text>
+									{hasPlan && !finished && state !== "Fehler" && (
+										<View className="flex-row items-center gap-2">
+											<Clock3 size={16} color={colors.secondaryText} />
+											<Text className="text-body-3 text-secondary-text">
+												Etwa {next?.minutes} Minuten
+												{state === "Fortsetzen" ? " · Schon begonnen" : ""}
+											</Text>
+										</View>
+									)}
+									<Button onPress={act}>
+										<Text>{heroAction}</Text>
+										<ArrowRight size={20} color="white" />
+									</Button>
+								</View>
+							)}
 							{hasPlan && state !== "Fehler" && (
 								<View className="gap-4">
 									<Text
@@ -271,29 +306,32 @@ export function TodayDecisionPrototype() {
 												accessibilityLabel={`${label}, ${DATES[index]}. ${index < 3 ? "September" : "Oktober"}`}
 												accessibilityState={{ selected: day === index }}
 												onPress={() => setDay(index)}
-												className={cn(
-													"min-h-16 flex-1 items-center justify-center gap-1 rounded-info",
-													day === index ? "bg-primary" : "bg-surface",
-												)}
+												className="min-h-20 flex-1 items-center justify-start gap-2"
 											>
 												<Text
-													className={cn(
-														"text-body-4",
-														day === index
-															? "text-on-primary"
-															: "text-secondary-text",
-													)}
+													className={cn("text-body-4", "text-secondary-text")}
 												>
 													{label}
 												</Text>
-												<Text
+												<View
 													className={cn(
-														"font-semibold text-body-2",
-														day === index ? "text-on-primary" : "text-text",
+														"min-h-11 min-w-11 items-center justify-center rounded-full border",
+														day === index
+															? "border-primary-strong/30 bg-system-subtle"
+															: "border-transparent",
 													)}
 												>
-													{DATES[index]}
-												</Text>
+													<Text
+														className={cn(
+															"font-semibold text-body-1",
+															day === index
+																? "text-primary-strong"
+																: "text-text",
+														)}
+													>
+														{DATES[index]}
+													</Text>
+												</View>
 											</Pressable>
 										))}
 									</View>
@@ -310,8 +348,11 @@ export function TodayDecisionPrototype() {
 												accessibilityRole="button"
 												accessibilityLabel={`${block.subject}: ${block.title}, ${block.minutes} Minuten, öffnen`}
 												onPress={() => begin(block)}
-												className="flex-row items-center gap-3 rounded-info border border-border bg-surface p-4"
+												className="flex-row items-center gap-3 rounded-3xl border border-border bg-card p-4"
 											>
+												<View className="h-10 w-10 items-center justify-center rounded-full bg-ueben-subtle">
+													<Dumbbell size={20} color={colors.ueben} />
+												</View>
 												<View className="flex-1 gap-1">
 													<Text className="text-body-4 text-secondary-text">
 														{block.subject} · {block.minutes} Min.
@@ -379,10 +420,10 @@ export function TodayDecisionPrototype() {
 				</View>
 			</ScrollView>
 			<View
-				className="border-border border-t bg-surface px-6"
+				className="bg-background px-6 pt-2"
 				style={{ paddingBottom: insets.bottom }}
 			>
-				<View className="flex-row">
+				<View className="mx-auto w-full max-w-xl flex-row rounded-full border border-border bg-card p-1">
 					{[
 						{ name: "Heute", icon: Home },
 						{ name: "Pläne", icon: BookOpen },
@@ -393,13 +434,14 @@ export function TodayDecisionPrototype() {
 							onPress={() => setTab(name)}
 							accessibilityRole="tab"
 							accessibilityState={{ selected: tab === name }}
-							className="min-h-16 flex-1 items-center justify-center gap-1"
+							className={cn(
+								"min-h-16 flex-1 items-center justify-center rounded-full py-2",
+								tab === name && "bg-muted",
+							)}
 						>
 							<Icon
-								size={24}
-								color={
-									tab === name ? colors.primaryStrong : colors.secondaryText
-								}
+								size={28}
+								color={tab === name ? colors.primaryStrong : colors.text}
 							/>
 							<Text
 								className={cn(

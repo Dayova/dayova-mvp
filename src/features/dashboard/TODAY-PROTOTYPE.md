@@ -31,6 +31,14 @@ Primary action: create/finish a first plan, otherwise start/resume learning.
 Friction removed: large greeting/calendar, carousel and duplicate next-step row.
 Choice: retain Today and Plans as distinct jobs; keep secondary creation compact.
 
+Visual follow-up: use the production `DashboardNextStepCard` for active learning
+and the shared `AddIcon` for creation. Week selection follows the existing
+dashboard's outlined date circles. Rows use 24px corners, semantic practice
+colors and Hugeicons; typography and surfaces use existing Dayova tokens.
+The isolated entry's tab strip is still a demo control styled after the reference,
+not the production Expo Router NativeTabs navigator or its native glass rendering.
+No production component or global token is changed.
+
 ## Try
 
 The bottom **Demo · … · Zustand wechseln** control selects ready, new, unfinished
