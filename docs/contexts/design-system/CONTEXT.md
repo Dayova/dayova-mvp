@@ -205,9 +205,11 @@ acknowledges a real transition without becoming recurring friction.
 ## Product-surface previews
 
 The Today learning card follows Philipp's full course-card reference (28 September):
-a closed `ActionSurface` with `system-subtle` fill, a white book circle and learning
-kind at top left, duration at top right, title and description, actual completion
-counts at bottom left and a white arrow circle at bottom right. The arrow is a
+a bordered `ActionSurface` with `system-subtle` fill, a white book circle and subject
+at top left, duration without “ca.” at top right, title and description, actual completion
+counts at bottom left and a white arrow circle at bottom right. A cyan completion
+ring surrounds that arrow; the unfilled track represents remaining steps. Its
+counts and remaining amount are included in the card accessibility label. The arrow is a
 decorative affordance inside the single accessible card action, not a new pill-button
 variant. Missing progress uses the existing action label, never invented numbers.
 The cropped cyan background loop is an explicit DAY-490 custom-SVG exception:

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { View } from "react-native";
-import Svg, { Path } from "react-native-svg";
+import Svg, { Circle, Path } from "react-native-svg";
 import { ArrowUpRight, BookOpen, Clock3 } from "~/components/ui/icon";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { ActionSurface } from "~/components/ui/surface";
@@ -87,11 +87,20 @@ export function TodayLearningCard({
 				: "Jetzt lernen"
 			: fallbackAction.label;
 	const duration = item?.entry.durationMinutes;
+	const completedFraction =
+		progress && plan?.sessionCount
+			? Math.max(0, Math.min(1, (plan.completedCount ?? 0) / plan.sessionCount))
+			: null;
+	const remaining =
+		progress && plan?.sessionCount != null
+			? Math.max(0, plan.sessionCount - (plan.completedCount ?? 0))
+			: null;
+	const ringCircumference = 2 * Math.PI * 23;
 	const durationLabel =
-		duration != null && duration > 0 ? `ca. ${duration} Min.` : null;
+		duration != null && duration > 0 ? `${duration} Min.` : null;
 	return (
 		<ActionSurface
-			className="overflow-hidden bg-system-subtle p-5"
+			className="overflow-hidden border border-border bg-system-subtle p-5"
 			onLayout={(event) => {
 				const { width, height } = event.nativeEvent.layout;
 				setCardLayout((previous) =>
@@ -113,6 +122,9 @@ export function TodayLearningCard({
 				!isLoading ? description : null,
 				!isLoading ? durationLabel : null,
 				!isLoading && progress ? `${progress} abgeschlossen` : null,
+				!isLoading && remaining != null
+					? `${remaining} Lernschritte noch offen`
+					: null,
 			]
 				.filter(Boolean)
 				.join(". ")}
@@ -167,7 +179,7 @@ export function TodayLearningCard({
 							<BookOpen size={24} color={colors.text} strokeWidth={1.9} />
 						</View>
 						<Text className="min-w-0 flex-1 font-poppins text-body-2 text-primary-strong">
-							{item && !isLoading ? learningKind : "Lernplan"}
+							{item && !isLoading ? subject : "Lernplan"}
 						</Text>
 					</View>
 					{durationLabel && !isLoading ? (
@@ -201,6 +213,40 @@ export function TodayLearningCard({
 					importantForAccessibility="no-hide-descendants"
 					className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
 				>
+					{completedFraction != null && !isLoading ? (
+						<Svg
+							width={48}
+							height={48}
+							viewBox="0 0 48 48"
+							pointerEvents="none"
+							// The ring overlays the existing 48-point action visual.
+							style={{ position: "absolute", top: -1, left: -1 }}
+						>
+							<Circle
+								cx={24}
+								cy={24}
+								r={23}
+								fill="none"
+								stroke={colors.border}
+								strokeWidth={2}
+							/>
+							{completedFraction > 0 ? (
+								<Circle
+									testID="today-learning-progress-ring"
+									cx={24}
+									cy={24}
+									r={23}
+									fill="none"
+									stroke={colors.primaryStrong}
+									strokeWidth={2}
+									strokeDasharray={[ringCircumference, ringCircumference]}
+									strokeDashoffset={ringCircumference * (1 - completedFraction)}
+									rotation={-90}
+									origin="24, 24"
+								/>
+							) : null}
+						</Svg>
+					) : null}
 					<ArrowUpRight size={24} color={colors.text} strokeWidth={1.9} />
 				</View>
 			</View>

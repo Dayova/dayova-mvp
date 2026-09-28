@@ -51,10 +51,11 @@ describe("TodayLearningCard", () => {
 	});
 	test("shows context, topic and duration with one learning action", async () => {
 		const screen = await render(<TodayLearningCard {...props} />);
-		expect(screen.getByText("Lernen")).toBeTruthy();
+		expect(screen.getByText("Mathematik")).toBeTruthy();
 		expect(screen.queryByText(/Klassenarbeit/)).toBeNull();
 		expect(screen.getByText("Gleichungen mit Klammern lösen")).toBeTruthy();
-		expect(screen.getByText("ca. 17 Min.")).toBeTruthy();
+		expect(screen.getByText("17 Min.")).toBeTruthy();
+		expect(screen.queryByText(/ca\./)).toBeNull();
 		expect(screen.getAllByRole("button")).toHaveLength(1);
 		await fireEvent.press(
 			screen.getByRole("button", { name: /^Jetzt lernen/ }),
@@ -71,7 +72,10 @@ describe("TodayLearningCard", () => {
 		const screen = await render(
 			<TodayLearningCard {...props} plan={{ ...plan, currentSession }} />,
 		);
-		expect(screen.getByText("Wissenscheck")).toBeTruthy();
+		expect(screen.getByText("Mathematik")).toBeTruthy();
+		expect(screen.getByRole("button").props.accessibilityLabel).toContain(
+			"Wissenscheck",
+		);
 		expect(screen.getByText(currentSession.goal)).toBeTruthy();
 		await screen.rerender(
 			<TodayLearningCard
@@ -83,7 +87,7 @@ describe("TodayLearningCard", () => {
 			/>,
 		);
 		expect(screen.queryByText(currentSession.goal)).toBeNull();
-		expect(screen.getByText("Lernen")).toBeTruthy();
+		expect(screen.getByText("Mathematik")).toBeTruthy();
 	});
 	test("shows actual completion counts instead of invented reference numbers", async () => {
 		const screen = await render(
@@ -93,6 +97,14 @@ describe("TodayLearningCard", () => {
 			/>,
 		);
 		expect(screen.getByText("2 von 7 Lernschritten")).toBeTruthy();
+		expect(screen.getByRole("button").props.accessibilityLabel).toContain(
+			"5 Lernschritte noch offen",
+		);
+		expect(
+			screen.getByTestId("today-learning-progress-ring", {
+				includeHiddenElements: true,
+			}).props.strokeDashoffset,
+		).toBeCloseTo(2 * Math.PI * 23 * (1 - 2 / 7));
 		expect(screen.queryByText(/9 von 12/)).toBeNull();
 		await fireEvent.press(
 			screen.getByRole("button", { name: /^Jetzt lernen/ }),
