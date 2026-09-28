@@ -46,10 +46,15 @@ the existing production onboarding popup are outside this decision demo.
 ## Validation and verdict
 
 TypeScript and targeted lint/format checks plus an iOS Metro bundle are checked
-as part of the demo handoff. Actual simulator interaction remains pending: the
-native client is installed, but iOS is waiting for **In Dayova öffnen?** and the
-Device Hub automation times out. This is not evidence of successful usability
-testing. Android, VoiceOver, large-text and dark-mode visual checks are pending.
+as part of the demo handoff. The initial Today screen now renders on the native
+simulator (28 September 2026). The initial startup failure was an address mismatch:
+Metro listened on IPv6 localhost but advertised an unreachable IPv4 127.0.0.1
+bundle URL. The demo command now explicitly advertises localhost, verified in
+the Expo manifest and by relaunching the app and inspecting its screenshot.
+The first-run Expo developer-menu hint still needs closing with Continue or X.
+Device Hub automation times out, so actual interaction testing remains pending.
+This is not evidence of successful usability testing. Android, VoiceOver,
+large-text and dark-mode visual checks are pending.
 
 Verdict: proposed design implemented for discussion; no product decision validated
 yet. Ask learners what they would tap first, where tomorrow's work is, and where
