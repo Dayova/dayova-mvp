@@ -343,7 +343,7 @@ export function DashboardScreen() {
 	}, [selectedWeekPageIndex]);
 
 	const openItem = useCallback(
-		(item: DashboardAgendaItem) => {
+		(item: DashboardAgendaItem, returnTo?: string) => {
 			if (item.kind === "schoolLesson") return;
 			trackFeature("home.entry_opened", "performed", item.entry.id);
 			const itemDate = parseDayKey(item.dayKey) ?? parseDayKey(selectedDayKey);
@@ -353,7 +353,9 @@ export function DashboardScreen() {
 				day: "numeric",
 				month: "long",
 			}).format(itemDate);
-			router.push(getEntryUrl(item.entry, itemDayLabel));
+			router.push(
+				withReturnTo(getEntryUrl(item.entry, itemDayLabel), returnTo),
+			);
 		},
 		[router, selectedDayKey, trackFeature],
 	);
@@ -414,7 +416,7 @@ export function DashboardScreen() {
 							entriesByDay === undefined || learningPlans === undefined
 						}
 						onOpenFallback={openNextStepFallback}
-						onOpenItem={openItem}
+						onOpenItem={(item) => openItem(item, ROUTES.home)}
 					/>
 				</View>
 				<LearningRoutineCoach referenceTime={now.getTime()} />
