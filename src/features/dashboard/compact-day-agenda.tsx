@@ -1,0 +1,169 @@
+import { createElement } from "react";
+import { View } from "react-native";
+import { Check } from "~/components/ui/icon";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
+import { ActionSurface, Surface } from "~/components/ui/surface";
+import { Text } from "~/components/ui/text";
+import { getSubjectIcon } from "~/features/subjects/subject-catalog";
+import { formatGermanUiText } from "~/lib/german-ui-text";
+import { useDayovaTheme } from "~/lib/theme";
+import {
+	type DashboardAgendaItem,
+	getAgendaEntryTitle,
+} from "./dashboard-agenda";
+
+function AgendaRow({
+	item,
+	onOpenItem,
+}: {
+	item: DashboardAgendaItem;
+	onOpenItem: (item: DashboardAgendaItem) => void;
+}) {
+	const { colors } = useDayovaTheme();
+	const { shouldStackInlineContent } = useContentSizeLayout();
+	const subject = formatGermanUiText(item.entry.subject ?? "").trim();
+	const fullTitle = formatGermanUiText(getAgendaEntryTitle(item.entry))
+		.replace(/\s+/g, " ")
+		.trim();
+	const topic =
+		subject && (fullTitle === subject || fullTitle.startsWith(`${subject} `))
+			? fullTitle.slice(subject.length).trim()
+			: fullTitle;
+	const completed = item.entry.executionStatus
+		? item.entry.executionStatus === "completed"
+		: item.entry.completed === true;
+	const time =
+		item.startMinutes === null
+			? "Ganztägig"
+			: `${Math.floor(item.startMinutes / 60)
+					.toString()
+					.padStart(
+						2,
+						"0",
+					)}:${(item.startMinutes % 60).toString().padStart(2, "0")}`;
+	const duration = item.entry.durationMinutes;
+	const kindLabel =
+		item.kind === "schoolLesson"
+			? "Schule"
+			: item.kind === "exam"
+				? "Prüfung"
+				: item.kind === "homework"
+					? "Hausaufgabe"
+					: null;
+	const metadata = [
+		time,
+		duration != null && duration > 0 ? `${duration} min` : null,
+		kindLabel,
+	]
+		.filter(Boolean)
+		.join(" · ");
+	const label = [
+		subject,
+		topic,
+		metadata,
+		completed
+			? "Erledigt"
+			: item.entry.executionStatus === "started"
+				? "Begonnen"
+				: null,
+	]
+		.filter(Boolean)
+		.join(". ");
+	const content = (
+		<View className="flex-row items-center gap-3">
+			<View
+				accessible={false}
+				accessibilityElementsHidden
+				importantForAccessibility="no-hide-descendants"
+				className="h-10 w-10 items-center justify-center rounded-full bg-system-subtle"
+			>
+				{createElement(getSubjectIcon(subject), {
+					size: 20,
+					color: colors.primaryStrong,
+					strokeWidth: 1.9,
+				})}
+			</View>
+			<View className="min-w-0 flex-1 gap-1">
+				<Text
+					className="font-poppins font-semibold text-body-3 text-text"
+					numberOfLines={shouldStackInlineContent ? undefined : 2}
+					ellipsizeMode="tail"
+				>
+					{subject || topic}
+				</Text>
+				{subject && topic ? (
+					<Text
+						className="font-poppins text-body-3 text-text"
+						numberOfLines={shouldStackInlineContent ? undefined : 2}
+						ellipsizeMode="tail"
+					>
+						{topic}
+					</Text>
+				) : null}
+				<Text className="font-poppins text-body-4 text-secondary-text">
+					{metadata}
+				</Text>
+			</View>
+			{completed ? (
+				<View
+					testID="agenda-completed"
+					accessible={false}
+					accessibilityElementsHidden
+					importantForAccessibility="no-hide-descendants"
+				>
+					<Check size={20} color={colors.primaryStrong} strokeWidth={2} />
+				</View>
+			) : null}
+		</View>
+	);
+	const className = "border border-border bg-card px-4 py-3";
+	return item.kind === "schoolLesson" ? (
+		<Surface className={className} accessible accessibilityLabel={label}>
+			{content}
+		</Surface>
+	) : (
+		<ActionSurface
+			className={className}
+			accessible
+			accessibilityRole="button"
+			accessibilityLabel={label}
+			accessibilityHint="Öffnet diesen Eintrag."
+			onPress={() => onOpenItem(item)}
+		>
+			{content}
+		</ActionSurface>
+	);
+}
+
+export function CompactDayAgenda({
+	items,
+	isLoading,
+	onOpenItem,
+}: {
+	items: DashboardAgendaItem[];
+	isLoading: boolean;
+	onOpenItem: (item: DashboardAgendaItem) => void;
+}) {
+	if (isLoading)
+		return (
+			<Text
+				accessibilityRole="progressbar"
+				className="py-4 text-center font-poppins text-body-3 text-secondary-text"
+			>
+				Dein Tag wird geladen …
+			</Text>
+		);
+	if (!items.length)
+		return (
+			<Text className="py-4 text-center font-poppins text-body-3 text-secondary-text">
+				Für diesen Tag ist nichts geplant.
+			</Text>
+		);
+	return (
+		<View className="gap-3">
+			{items.map((item) => (
+				<AgendaRow key={item.entry.id} item={item} onOpenItem={onOpenItem} />
+			))}
+		</View>
+	);
+}

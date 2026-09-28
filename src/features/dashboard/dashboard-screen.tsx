@@ -17,7 +17,6 @@ import { SafeAreaView } from "react-native-screens/experimental";
 import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import { CreateEntryButton } from "~/components/create-entry-button";
-import { BookOpen, CalendarDays, Dumbbell } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
@@ -27,7 +26,6 @@ import {
 	parseDayKey,
 	useCurrentLocalDay,
 } from "~/lib/day-key";
-import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { ROUTES, withReturnTo } from "~/lib/routes";
 import { triggerSelectionHaptic } from "~/lib/safe-haptics";
@@ -35,6 +33,7 @@ import { useDayovaTheme } from "~/lib/theme";
 import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { cn } from "~/lib/utils";
 import type { DayEntry } from "~/types/dayEntries";
+import { CompactDayAgenda } from "./compact-day-agenda";
 import {
 	type DashboardAgendaItem,
 	findNextActionableAgendaItem,
@@ -43,13 +42,11 @@ import {
 	getDashboardRelevantDayKeys,
 	getDashboardWeekDayKeys,
 	getVisibleDashboardEntries,
-	isDashboardAgendaItemPast,
 	sortDashboardAgendaItems,
 	toDashboardAgendaItem,
 } from "./dashboard-agenda";
 import { DashboardCalendarHeader } from "./dashboard-calendar-header";
 import { getDashboardNextStepFallbackAction } from "./dashboard-empty-state";
-import { DashboardAgendaEntryCard } from "./dashboard-product-cards";
 import { LearningRoutineCoach } from "./learning-routine-coach";
 import { TodayLearningCard } from "./today-learning-card";
 
@@ -76,10 +73,6 @@ type CalendarDay = {
 	isToday: boolean;
 };
 
-type AgendaDay = CalendarDay & {
-	items: DashboardAgendaItem[];
-};
-
 const toCalendarDay = ({
 	dayKey,
 	todayKey,
@@ -102,20 +95,6 @@ const toCalendarDay = ({
 		dayOfMonth: date.getDate().toString(),
 		isToday: dayKey === todayKey,
 	};
-};
-
-const formatMinutes = (minutes: number) => {
-	const hours = Math.floor(minutes / 60)
-		.toString()
-		.padStart(2, "0");
-	const remainder = (minutes % 60).toString().padStart(2, "0");
-	return `${hours}:${remainder}`;
-};
-
-const getTimeLabel = (item: DashboardAgendaItem) => {
-	if (item.startMinutes === null) return "Ganztägig";
-	if (item.endMinutes === null) return formatMinutes(item.startMinutes);
-	return `${formatMinutes(item.startMinutes)}–${formatMinutes(item.endMinutes)}`;
 };
 
 const getEntryUrl = (entry: DayEntry, selectedDayLabel: string) => {
@@ -207,332 +186,6 @@ function WeekCalendar({
 	);
 }
 
-function TimelineRail({
-	isFirst,
-	isLast,
-	isPast,
-	isPrimary,
-}: {
-	isFirst: boolean;
-	isLast: boolean;
-	isPast: boolean;
-	isPrimary: boolean;
-}) {
-	return (
-		<View className="w-5 items-center justify-center self-stretch">
-			<View
-				className={cn(
-					"w-px flex-1",
-					!isFirst && (isPast ? "bg-path-1/60" : "bg-path-1"),
-				)}
-			/>
-			<View
-				className={cn(
-					"z-10 h-3 w-3 rounded-full border-2",
-					isPrimary
-						? "border-primary bg-primary"
-						: isPast
-							? "border-path-2 bg-background"
-							: "border-path-3 bg-background",
-				)}
-			/>
-			<View
-				className={cn(
-					"w-px flex-1",
-					!isLast && (isPast ? "bg-path-1/60" : "bg-path-1"),
-				)}
-			/>
-		</View>
-	);
-}
-
-function SchoolLessonCard({
-	item,
-	isPast,
-}: {
-	item: DashboardAgendaItem;
-	isPast: boolean;
-}) {
-	const { colors } = useDayovaTheme();
-	return (
-		<View
-			accessible
-			accessibilityLabel={`Schulstunde: ${formatGermanUiText(getAgendaEntryTitle(item.entry))}, ${getTimeLabel(item)}`}
-			className={cn(
-				"min-h-20 flex-row items-center rounded-3xl border border-border bg-light-2 px-4 py-3",
-				isPast && "opacity-55",
-			)}
-			style={continuousBorderStyle}
-		>
-			<View className="h-10 w-10 items-center justify-center rounded-full bg-card">
-				<BookOpen size={19} color={colors.secondaryText} strokeWidth={1.9} />
-			</View>
-			<View className="ml-3 flex-1">
-				<Text className="font-poppins text-body-5 text-secondary-text">
-					Schule
-				</Text>
-				<Text
-					className="font-poppins font-semibold text-body-3 text-text"
-					numberOfLines={1}
-				>
-					{formatGermanUiText(getAgendaEntryTitle(item.entry))}
-				</Text>
-			</View>
-		</View>
-	);
-}
-
-function LearningSessionCard({
-	item,
-	isPast,
-	onPress,
-}: {
-	item: DashboardAgendaItem;
-	isPast: boolean;
-	onPress: () => void;
-}) {
-	const isStarted = item.entry.executionStatus === "started";
-
-	return (
-		<TouchableOpacity
-			activeOpacity={0.86}
-			accessibilityRole="button"
-			accessibilityLabel={`${isStarted ? "Weiterlernen" : "Lernsession starten"}: ${formatGermanUiText(getAgendaEntryTitle(item.entry))}`}
-			onPress={onPress}
-			className={cn(
-				"min-h-24 overflow-hidden rounded-card border border-border bg-card",
-				isPast && "opacity-55",
-			)}
-			style={continuousBorderStyle}
-		>
-			<View className="min-h-24 justify-center px-5 py-4">
-				<View className="flex-row items-center">
-					<View className="h-10 w-10 items-center justify-center rounded-full bg-ueben-subtle">
-						<Dumbbell
-							size={19}
-							color={DAYOVA_DESIGN_SYSTEM.colors.ueben}
-							strokeWidth={2}
-						/>
-					</View>
-					<View className="ml-3 flex-1">
-						<View className="mb-1 flex-row items-center justify-between gap-2">
-							<Text className="font-poppins font-semibold text-body-5 text-ueben">
-								Dein Lernschritt
-							</Text>
-							{!isPast ? (
-								<View className="h-7 justify-center rounded-full bg-light-2 px-3">
-									<Text className="font-poppins font-semibold text-body-5 text-secondary-text">
-										{`${item.entry.durationMinutes ?? 45} min`}
-									</Text>
-								</View>
-							) : null}
-						</View>
-						<Text
-							className="font-poppins font-semibold text-body-2 text-text"
-							numberOfLines={2}
-						>
-							{formatGermanUiText(getAgendaEntryTitle(item.entry))}
-						</Text>
-					</View>
-				</View>
-			</View>
-		</TouchableOpacity>
-	);
-}
-
-function AgendaItemRow({
-	item,
-	isFirst,
-	isLast,
-	isPast,
-	isPrimary,
-	onPress,
-}: {
-	item: DashboardAgendaItem;
-	isFirst: boolean;
-	isLast: boolean;
-	isPast: boolean;
-	isPrimary: boolean;
-	onPress: () => void;
-}) {
-	return (
-		<View>
-			<View className="flex-row">
-				<View className="w-16 justify-center pr-1">
-					<Text
-						className={cn(
-							"text-right font-poppins text-body-5",
-							isPast ? "text-secondary-text/55" : "text-secondary-text",
-						)}
-						style={tabularNumberStyle}
-					>
-						{item.startMinutes === null
-							? "ganztägig"
-							: formatMinutes(item.startMinutes)}
-					</Text>
-				</View>
-				<TimelineRail
-					isFirst={isFirst}
-					isLast={isLast}
-					isPast={isPast}
-					isPrimary={isPrimary}
-				/>
-				<View className="flex-1 pl-1">
-					{item.kind === "schoolLesson" ? (
-						<SchoolLessonCard item={item} isPast={isPast} />
-					) : item.kind === "learningSession" ? (
-						<LearningSessionCard
-							item={item}
-							isPast={isPast}
-							onPress={onPress}
-						/>
-					) : (
-						<DashboardAgendaEntryCard
-							mode="screen"
-							item={item}
-							isPast={isPast}
-							onPress={onPress}
-						/>
-					)}
-				</View>
-			</View>
-			<View className="h-5 flex-row">
-				<View className="w-16" />
-				<View className="w-5 items-center">
-					{!isLast ? (
-						<View
-							className={cn(
-								"w-px flex-1",
-								isPast ? "bg-path-1/60" : "bg-path-1",
-							)}
-						/>
-					) : null}
-				</View>
-			</View>
-		</View>
-	);
-}
-
-function EmptyAgendaDay() {
-	return (
-		<View
-			className="items-center rounded-card border border-border bg-card px-6 py-10"
-			style={continuousBorderStyle}
-		>
-			<View className="h-14 w-14 items-center justify-center rounded-full bg-system-subtle">
-				<CalendarDays
-					size={24}
-					color={DAYOVA_DESIGN_SYSTEM.colors.primaryStrong}
-					strokeWidth={1.9}
-				/>
-			</View>
-			<Text className="mt-5 font-poppins font-semibold text-body-1 text-text">
-				Noch nichts geplant
-			</Text>
-			<Text className="mt-1 max-w-64 text-center font-poppins text-body-4 text-secondary-text">
-				Für diesen Tag sind noch keine Termine geplant.
-			</Text>
-		</View>
-	);
-}
-
-function AgendaTimeline({
-	days,
-	todayKey,
-	currentMinutes,
-	nextActionableId,
-	onOpenItem,
-}: {
-	days: AgendaDay[];
-	todayKey: string;
-	currentMinutes: number;
-	nextActionableId: DayEntry["id"] | undefined;
-	onOpenItem: (item: DashboardAgendaItem) => void;
-}) {
-	return (
-		<View>
-			{days.map((day) => (
-				<View key={day.key}>
-					{day.items.length === 0 ? (
-						<EmptyAgendaDay />
-					) : (
-						day.items.map((item, itemIndex) => {
-							const isPast = isDashboardAgendaItemPast({
-								item,
-								todayKey,
-								currentMinutes,
-							});
-							return (
-								<AgendaItemRow
-									key={`${day.key}-${item.entry.id}`}
-									item={item}
-									isFirst={itemIndex === 0}
-									isLast={itemIndex === day.items.length - 1}
-									isPast={isPast}
-									isPrimary={item.entry.id === nextActionableId}
-									onPress={() => onOpenItem(item)}
-								/>
-							);
-						})
-					)}
-				</View>
-			))}
-		</View>
-	);
-}
-
-function AgendaDayPage({
-	dayKey,
-	todayKey,
-	entries,
-	isLoading,
-	currentMinutes,
-	nextActionableId,
-	onOpenItem,
-}: {
-	dayKey: string;
-	todayKey: string;
-	entries: DayEntry[] | undefined;
-	isLoading: boolean;
-	currentMinutes: number;
-	nextActionableId: DayEntry["id"] | undefined;
-	onOpenItem: (item: DashboardAgendaItem) => void;
-}) {
-	const calendarDay = toCalendarDay({ dayKey, todayKey });
-	const agendaDay = calendarDay
-		? {
-				...calendarDay,
-				items: sortDashboardAgendaItems(
-					(entries ?? []).map((entry) => toDashboardAgendaItem(dayKey, entry)),
-				),
-			}
-		: null;
-
-	return (
-		<View className="px-6 pt-6">
-			{isLoading || !agendaDay ? (
-				<View
-					accessibilityRole="progressbar"
-					className="items-center rounded-card border-border border-hairline bg-card px-6 py-10"
-					style={continuousBorderStyle}
-				>
-					<Text className="font-poppins text-body-3 text-secondary-text">
-						Dein Tag wird geladen …
-					</Text>
-				</View>
-			) : (
-				<AgendaTimeline
-					days={[agendaDay]}
-					todayKey={todayKey}
-					currentMinutes={currentMinutes}
-					nextActionableId={nextActionableId}
-					onOpenItem={onOpenItem}
-				/>
-			)}
-		</View>
-	);
-}
-
 export function DashboardScreen() {
 	const { colors } = useDayovaTheme();
 	const router = useRouter();
@@ -614,13 +267,9 @@ export function DashboardScreen() {
 		todayKey,
 		currentMinutes,
 	});
-	const nextActionableId = nextLearningStep?.entry.id;
 	const nextStepFallbackAction = getDashboardNextStepFallbackAction({
 		hasLearningPlans: Boolean(learningPlans?.length),
 	});
-	const selectedWeekday = formatGermanUiText(
-		new Intl.DateTimeFormat("de-DE", { weekday: "long" }).format(selectedDate),
-	);
 	const firstName =
 		typeof user?.name === "string" && user.name.trim().length > 0
 			? user.name.trim().split(/\s+/)[0]
@@ -674,12 +323,14 @@ export function DashboardScreen() {
 		(nextPageIndex: number) => {
 			const weekDelta = nextPageIndex - selectedWeekPageIndex;
 			if (weekDelta === 0) return;
-			const nextDayKey = getDayKey(addDays(selectedDate, weekDelta * 7));
+			const date = parseDayKey(selectedDayKey);
+			if (!date) return;
+			const nextDayKey = getDayKey(addDays(date, weekDelta * 7));
 			if (!dayPagerKeys.includes(nextDayKey)) return;
 			commitSelectedDay(nextDayKey);
 			triggerDaySelectionHaptic();
 		},
-		[commitSelectedDay, dayPagerKeys, selectedDate, selectedWeekPageIndex],
+		[commitSelectedDay, dayPagerKeys, selectedDayKey, selectedWeekPageIndex],
 	);
 
 	useEffect(() => {
@@ -695,7 +346,8 @@ export function DashboardScreen() {
 		(item: DashboardAgendaItem) => {
 			if (item.kind === "schoolLesson") return;
 			trackFeature("home.entry_opened", "performed", item.entry.id);
-			const itemDate = parseDayKey(item.dayKey) ?? selectedDate;
+			const itemDate = parseDayKey(item.dayKey) ?? parseDayKey(selectedDayKey);
+			if (!itemDate) return;
 			const itemDayLabel = new Intl.DateTimeFormat("de-DE", {
 				weekday: "long",
 				day: "numeric",
@@ -703,7 +355,7 @@ export function DashboardScreen() {
 			}).format(itemDate);
 			router.push(getEntryUrl(item.entry, itemDayLabel));
 		},
-		[router, selectedDate, trackFeature],
+		[router, selectedDayKey, trackFeature],
 	);
 
 	const openNextStepFallback = useCallback(
@@ -836,28 +488,25 @@ export function DashboardScreen() {
 				</View>
 
 				<GestureDetector gesture={daySwipeGesture}>
-					<View
-						accessible
-						accessibilityActions={[
-							{ name: "increment", label: "Nächsten Tag anzeigen" },
-							{ name: "decrement", label: "Vorherigen Tag anzeigen" },
-						]}
-						accessibilityLabel={`Tagesagenda für ${selectedWeekday}`}
-						accessibilityRole="adjustable"
-						onAccessibilityAction={({ nativeEvent }) => {
-							if (nativeEvent.actionName === "increment") adjustSelectedDay(1);
-							if (nativeEvent.actionName === "decrement") adjustSelectedDay(-1);
-						}}
-					>
-						<AgendaDayPage
-							dayKey={selectedDayKey}
-							todayKey={todayKey}
-							entries={entriesByDay?.[selectedDayKey]}
-							isLoading={entriesByDay === undefined}
-							currentMinutes={currentMinutes}
-							nextActionableId={nextActionableId}
-							onOpenItem={openItem}
-						/>
+					<View>
+						<View className="px-6 pt-6">
+							<CompactDayAgenda
+								items={sortDashboardAgendaItems(
+									(entriesByDay?.[selectedDayKey] ?? []).map((entry) =>
+										toDashboardAgendaItem(selectedDayKey, {
+											...entry,
+											subject:
+												entry.subject ??
+												learningPlans?.find(
+													(plan) => plan.id === entry.relatedLearningPlanId,
+												)?.subject,
+										}),
+									),
+								)}
+								isLoading={entriesByDay === undefined}
+								onOpenItem={openItem}
+							/>
+						</View>
 					</View>
 				</GestureDetector>
 			</ScrollView>

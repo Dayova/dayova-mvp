@@ -204,6 +204,15 @@ acknowledges a real transition without becoming recurring friction.
 
 ## Product-surface previews
 
+Today's selected-day agenda is a compact full-width list (DAY-490): subject-catalog
+icon, semibold subject, two-line topic, secondary time/duration. Large text may
+expand vertically; complete copy is in each entry's accessibility label. Only
+explicit completion earns a checkmark, never elapsed time; rows retain contrast.
+The side timeline, repeated “Dein Lernschritt” label, and extra start controls are
+removed. Existing entry navigation remains; school lessons stay non-interactive.
+Empty days use only “Für diesen Tag ist nichts geplant.” The list container does
+not group away accessible row actions; calendar day buttons provide day selection.
+
 The Today calendar adds a compact orientation row above the existing week slider:
 selected month and year on the left, a shared ghost “Heute” button on the right.
 Per Philipp's follow-up, this compact calendar control has a visible card-colored
