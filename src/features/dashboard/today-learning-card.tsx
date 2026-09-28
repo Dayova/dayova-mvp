@@ -52,8 +52,8 @@ export function TodayLearningCard({
 }: Props) {
 	const { shouldStackInlineContent } = useContentSizeLayout();
 	const { colors } = useDayovaTheme();
-	// Blend existing theme tokens; the opaque result also anchors the illustration fade.
-	const heroFill = `#${[1, 3, 5]
+	// Theme-derived blue tint for the quieter inset action.
+	const actionFill = `#${[1, 3, 5]
 		.map((offset) =>
 			Math.round(
 				Number.parseInt(colors.systemSubtle.slice(offset, offset + 2), 16) *
@@ -145,7 +145,7 @@ export function TodayLearningCard({
 			className="rounded-button border border-border bg-system-subtle px-6 pt-6 pb-4"
 			// Standard height is fixed; larger content sizes release it for vertical reflow.
 			style={{
-				backgroundColor: heroFill,
+				backgroundColor: colors.systemSubtle,
 				minHeight: 240,
 				height: shouldStackInlineContent ? undefined : 240,
 			}}
@@ -206,14 +206,16 @@ export function TodayLearningCard({
 				</View>
 				<LearningCardIllustration
 					subject={item ? subject : undefined}
-					backgroundColor={heroFill}
+					backgroundColor={colors.systemSubtle}
 				/>
 			</View>
 			<Button
-				variant="light"
-				size="sm"
+				variant="soft"
+				size="default"
+				// Opaque blend of the active theme's semantic colors.
+				style={{ backgroundColor: actionFill }}
 				className={cn(
-					"mt-2 w-full justify-between",
+					"mt-2 w-full justify-between py-2 pr-2 pl-4",
 					shouldStackInlineContent && "mt-6",
 				)}
 				disabled={isLoading}
@@ -239,13 +241,18 @@ export function TodayLearningCard({
 				<Text className="flex-1 font-poppins font-semibold text-body-2 text-primary-strong">
 					{buttonLabel}
 				</Text>
-				{createElement(ActionIcon, {
-					size: 22,
-					color: colors.primaryStrong,
-					strokeWidth: 2,
-					testID: "today-learning-action-icon",
-					accessible: false,
-				})}
+				<View
+					className="h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-strong"
+					accessible={false}
+				>
+					{createElement(ActionIcon, {
+						size: 22,
+						color: DAYOVA_DESIGN_SYSTEM.colors.light1,
+						strokeWidth: 2,
+						testID: "today-learning-action-icon",
+						accessible: false,
+					})}
+				</View>
 			</Button>
 		</Surface>
 	);

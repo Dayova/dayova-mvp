@@ -128,10 +128,10 @@ individual screens. Non-heading text keeps unrestricted system scaling.
 
 Non-destructive light-mode pill buttons have two visual appearances: the light-mode
 gradient button and the black button using the primary text color `#1A1A1A`.
-The Today hero is an explicit exception: its shared Button `light` variant uses
-a white fill and dark onPrimary text by default; the Today caller overrides text
-and Play to primaryStrong blue, without a gradient, to keep the action calm
-inside the blue card. Other screens retain the existing appearances. Both
+The Today hero is an explicit exception: its shared Button `soft` variant uses
+a theme-derived blue tint and primaryStrong text without a gradient. A 40px
+primaryStrong circle highlights the white action icon inside the 56px button.
+Other screens retain the existing appearances. Both
 appearances are 56px tall with a 44px radius and a 0.3px inside stroke: gradient
 buttons use the vertical light-mode gradient `#00A0E6` top to `#4FD8FF` bottom
 with a white stroke, and black buttons use the light border token `#DCE6EE`.
@@ -237,10 +237,11 @@ view switching, another creation control, or a redesigned week slider (DAY-490).
 
 The Today hero combines the shared Surface with a smaller native study
 illustration on the right (DAY-490, Philipp's mixed-reference follow-up).
-Title and short supporting copy are left-aligned. A shared white `light` Button
+Title and short supporting copy are left-aligned. A shared blue-tinted `soft` Button
 sits inside the card at the bottom, spanning the content width, with “Jetzt lernen”
-or “Weiterlernen” in body-2 SemiBold on the left and blue Hugeicons Play on the right.
-The hero fill blends 12% theme primary into systemSubtle; the illustration's lower
+or “Weiterlernen” in body-2 SemiBold on the left and white Hugeicons Play in a
+40px primaryStrong circle on the right. The 56px action fill blends 12% theme
+primary into systemSubtle. The hero uses systemSubtle; the illustration's lower
 fade uses this same opaque fill so it has no contrasting edge. The card has a
 continuous 44px outline without a notch and is not itself pressable: the button
 is the only action. Empty states use the same inset action with their existing

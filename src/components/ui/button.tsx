@@ -24,6 +24,7 @@ const buttonVariants = cva(
 		variants: {
 			variant: {
 				light: "border-border border-hairline bg-white active:opacity-80",
+				soft: "bg-primary/10 active:opacity-80",
 				cancel: "border border-border bg-card active:bg-muted",
 				default: cn(
 					"border-hairline border-white bg-primary active:opacity-90",
@@ -83,6 +84,7 @@ const buttonTextVariants = cva(
 		variants: {
 			variant: {
 				light: "text-on-primary",
+				soft: "text-primary-strong",
 				cancel: "text-text",
 				default: "text-white",
 				neutral: "text-background",
