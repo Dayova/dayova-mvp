@@ -1,13 +1,13 @@
-import { useState } from "react";
 import { View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { Button } from "~/components/ui/button";
-import { CalendarDays, Play } from "~/components/ui/icon";
+import { ArrowRightStraight, Play } from "~/components/ui/icon";
 import { NotchedActionCard } from "~/components/ui/notched-action-card";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { LearningPlanStatusBadge } from "~/features/learning-plans/learning-plan-status-badge";
+import { addDays, getDayKey, parseDayKey } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { useDayovaTheme } from "~/lib/theme";
@@ -22,6 +22,7 @@ import {
 } from "./dashboard-empty-state";
 
 type Props = {
+	todayKey?: string;
 	item: DashboardAgendaItem | undefined;
 	plan?: {
 		subject: string;
@@ -41,6 +42,7 @@ type Props = {
 
 /** Reference-inspired learning card, using Dayova surfaces and one learning action. */
 export function TodayLearningCard({
+	todayKey = getDayKey(new Date()),
 	item,
 	plan,
 	isLoading,
@@ -49,7 +51,6 @@ export function TodayLearningCard({
 	onOpenFallback,
 }: Props) {
 	const { colors } = useDayovaTheme();
-	const [cardLayout, setCardLayout] = useState({ width: 354, height: 260 });
 	const { shouldStackInlineContent } = useContentSizeLayout();
 	const subject = formatGermanUiText(
 		plan?.subject ?? item?.entry.subject ?? "Dein Lernplan",
@@ -65,7 +66,7 @@ export function TodayLearningCard({
 		? "Dein nächster Lernschritt wird geladen …"
 		: item
 			? topic
-			: "Noch kein Lernschritt geplant";
+			: "Kein Lernschritt geplant";
 	const session =
 		plan?.currentSession?.id === item?.entry.relatedLearningPlanSessionId
 			? plan?.currentSession
@@ -74,11 +75,14 @@ export function TodayLearningCard({
 		session?.sessionPurpose === "diagnostic" ? "Wissenscheck" : "Lernen";
 	const context = `${subject} · ${learningKind}`;
 	const goal = session?.goal ? formatGermanUiText(session.goal).trim() : "";
+	const hasNoPlan =
+		fallbackAction.route === EMPTY_DASHBOARD_PRIMARY_ACTION.route;
+	const isEmptyPlan = !item && !isLoading && !hasNoPlan;
 	const description =
 		goal ||
 		(item
 			? "Dein nächster Lernschritt"
-			: "Erstelle einen Lernplan für deine nächste Prüfung.");
+			: "Hier findest du deine bestehenden Lernpläne.");
 	const action = isLoading
 		? "Wird geladen …"
 		: item
@@ -89,47 +93,40 @@ export function TodayLearningCard({
 	const duration = item?.entry.durationMinutes;
 	const durationLabel =
 		duration != null && duration > 0 ? `${duration} min` : null;
-	if (!item && !isLoading) {
-		const hasNoPlan =
-			fallbackAction.route === EMPTY_DASHBOARD_PRIMARY_ACTION.route;
-		const emptyAction = hasNoPlan
-			? "Jetzt Lernplan erstellen"
-			: "Lernpläne öffnen";
+	const stepDate = parseDayKey(item?.dayKey);
+	const todayDate = parseDayKey(todayKey);
+	const dayLabel =
+		item && stepDate && todayDate
+			? item.dayKey === todayKey
+				? "Heute"
+				: item.dayKey === getDayKey(addDays(todayDate, 1))
+					? "Morgen"
+					: new Intl.DateTimeFormat("de-DE", {
+							day: "numeric",
+							month: "short",
+						}).format(stepDate)
+			: null;
+	if (!item && !isLoading && hasNoPlan) {
+		const emptyAction = "Jetzt Lernplan erstellen";
 		return (
 			<Surface
 				className="items-center justify-center gap-6 border border-border bg-system-subtle p-6"
-				// Keep the learning card's measured minimum ratio; content can grow.
-				style={{ minHeight: cardLayout.width / 1.36 }}
-				onLayout={({ nativeEvent: { layout } }) => {
-					setCardLayout((previous) =>
-						previous.width === layout.width ? previous : layout,
-					);
+				// Match the native notched-card geometry, releasing height at runtime for large text.
+				style={{
+					minHeight: 224,
+					height: shouldStackInlineContent ? undefined : 224,
 				}}
 				testID="today-learning-card"
 			>
-				<View
-					accessible={false}
-					accessibilityElementsHidden
-					importantForAccessibility="no-hide-descendants"
-					className="h-16 w-16 items-center justify-center rounded-full bg-card"
-				>
-					<CalendarDays
-						size={28}
-						color={colors.primaryStrong}
-						strokeWidth={1.9}
-					/>
-				</View>
 				<View className="gap-3">
 					<Text
 						accessibilityRole="header"
 						className="text-center font-poppins font-semibold text-body-1 text-text"
 					>
-						{hasNoPlan ? "Noch kein Lernplan" : "Kein Lernschritt geplant"}
+						Noch kein Lernplan
 					</Text>
 					<Text className="text-center font-poppins text-body-3 text-secondary-text">
-						{hasNoPlan
-							? "Erstelle deinen ersten Lernplan und finde heraus, was du als Nächstes lernen kannst."
-							: "Aktuell steht kein weiterer Lernschritt an. In deinen Lernplänen findest du deine Übersicht."}
+						Plane deine nächste Prüfung. Dayova hilft dir beim Lernen.
 					</Text>
 				</View>
 				<Button
@@ -149,16 +146,28 @@ export function TodayLearningCard({
 			cardHeight={224}
 			fillColor={colors.systemSubtle}
 			className={cn(!shouldStackInlineContent && "h-56")}
-			contentClassName="gap-6 px-6 py-8"
+			contentClassName={
+				isEmptyPlan
+					? cn("px-6 pt-8 pb-0", !shouldStackInlineContent && "h-56")
+					: "gap-6 px-6 py-8"
+			}
 			cardDisabled={isLoading}
 			actionIcon={
-				<Play
-					testID="today-learning-play"
-					size={26}
-					color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-					fill="none"
-					strokeWidth={2}
-				/>
+				isEmptyPlan ? (
+					<ArrowRightStraight
+						size={26}
+						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+						strokeWidth={2}
+					/>
+				) : (
+					<Play
+						testID="today-learning-play"
+						size={26}
+						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+						fill="none"
+						strokeWidth={2}
+					/>
+				)
 			}
 			backgroundArtwork={
 				<>
@@ -190,6 +199,7 @@ export function TodayLearningCard({
 				title,
 				!isLoading ? description : null,
 				!isLoading ? durationLabel : null,
+				!isLoading ? dayLabel : null,
 			]
 				.filter(Boolean)
 				.join(". ")}
@@ -222,27 +232,50 @@ export function TodayLearningCard({
 				>
 					{title}
 				</Text>
-				{durationLabel && !isLoading ? (
-					<LearningPlanStatusBadge
-						className="shrink-0 border border-border"
-						fixedTextScale={false}
-						status={{
-							label: durationLabel,
-							background: DAYOVA_DESIGN_SYSTEM.colors.systemSubtle,
-							foreground: DAYOVA_DESIGN_SYSTEM.colors.primary,
-						}}
-					/>
+				{!isLoading && item ? (
+					<View className="items-end gap-1">
+						{durationLabel && (
+							<LearningPlanStatusBadge
+								className="shrink-0 border border-border"
+								fixedTextScale={false}
+								status={{
+									label: durationLabel,
+									background: DAYOVA_DESIGN_SYSTEM.colors.systemSubtle,
+									foreground: DAYOVA_DESIGN_SYSTEM.colors.primary,
+								}}
+							/>
+						)}
+						<Text className="font-poppins text-body-4 text-secondary-text">
+							{dayLabel}
+						</Text>
+					</View>
 				) : null}
 			</View>
 			{!isLoading ? (
-				<Text
-					numberOfLines={shouldStackInlineContent ? undefined : 3}
-					ellipsizeMode="tail"
-					className="pr-14 font-poppins text-body-3 text-secondary-text"
-				>
-					{description}
-				</Text>
+				<View className={isEmptyPlan ? "mt-6" : "gap-3"}>
+					<Text
+						numberOfLines={
+							shouldStackInlineContent ? undefined : isEmptyPlan ? 2 : 3
+						}
+						ellipsizeMode="tail"
+						className="pr-14 font-poppins text-body-3 text-secondary-text"
+					>
+						{description}
+					</Text>
+				</View>
 			) : null}
+			{isEmptyPlan && (
+				<View
+					className={cn(
+						"justify-center pr-14",
+						shouldStackInlineContent ? "mt-6 min-h-12" : "mt-auto h-12",
+					)}
+				>
+					<Text className="font-poppins font-semibold text-body-3 text-text">
+						Lernpläne ansehen
+					</Text>
+				</View>
+			)}
 		</NotchedActionCard>
 	);
 }

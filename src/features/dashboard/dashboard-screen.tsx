@@ -255,9 +255,17 @@ export function DashboardScreen() {
 		api.learningPlans.listOverview,
 		user && isConvexAuthenticated ? {} : "skip",
 	);
-	const allRelevantAgendaItems = entriesByDay
-		? queriedDayKeys.flatMap((dayKey) =>
-				(entriesByDay[dayKey] ?? []).map((entry) =>
+	// Calendar browsing must not change the hero's candidates or loading state.
+	const heroDayKeys = Array.from({ length: 31 }, (_, offset) =>
+		getDayKey(addDays(today, offset)),
+	);
+	const heroEntries = useQuery(
+		api.dayEntries.listByDayKeys,
+		user && isConvexAuthenticated ? { dayKeys: heroDayKeys } : "skip",
+	);
+	const allRelevantAgendaItems = heroEntries
+		? heroDayKeys.flatMap((dayKey) =>
+				getVisibleDashboardEntries(heroEntries[dayKey] ?? []).map((entry) =>
 					toDashboardAgendaItem(dayKey, entry),
 				),
 			)
@@ -407,15 +415,14 @@ export function DashboardScreen() {
 			>
 				<View className="px-6 pt-8 pb-6" testID="dashboard-next-step">
 					<TodayLearningCard
+						todayKey={todayKey}
 						plan={learningPlans?.find(
 							(plan) =>
 								plan.id === nextLearningStep?.entry.relatedLearningPlanId,
 						)}
 						fallbackAction={nextStepFallbackAction}
 						item={nextLearningStep}
-						isLoading={
-							entriesByDay === undefined || learningPlans === undefined
-						}
+						isLoading={heroEntries === undefined || learningPlans === undefined}
 						onOpenFallback={openNextStepFallback}
 						onOpenItem={(item) => openItem(item, ROUTES.home)}
 					/>

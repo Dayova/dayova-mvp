@@ -5,6 +5,7 @@ import {
 	ArrowDown01Icon,
 	ArrowLeft01Icon,
 	ArrowRight01Icon,
+	ArrowRight02Icon,
 	ArrowUpRight01Icon,
 	Atom02Icon,
 	Attachment01Icon,
@@ -83,6 +84,7 @@ export const ArrowDataTransferHorizontal = createIcon(
 export const Atom = createIcon(Atom02Icon);
 export const ArrowLeft = createIcon(ArrowLeft01Icon);
 export const ArrowRight = createIcon(ArrowRight01Icon);
+export const ArrowRightStraight = createIcon(ArrowRight02Icon);
 export const ArrowUpRight = createIcon(ArrowUpRight01Icon);
 export const Backpack = createIcon(Backpack03Icon);
 export const Bell = createIcon(Notification01Icon);

@@ -254,11 +254,20 @@ truncate after two lines at standard content sizes; the full title stays accessi
 Large content sizes remove the fixed height and title limit, retaining a 224px
 minimum so content can grow without clipping. No arbitrary beginner level is shown.
 Calendar, external spacing and agenda remain separate and unchanged.
-When no actionable lesson exists, the same blue bordered card uses Philipp's
-centered empty-state reference: a decorative calendar circle, heading, short
-explanation and one full-width shared Button below the copy. Without a plan the
-action is “Jetzt Lernplan erstellen”; with existing plans it is “Lernpläne öffnen”.
-The empty card itself is a non-interactive Surface, avoiding nested buttons.
+The hero prioritizes today's unfinished learning sessions, including sessions whose
+scheduled time has passed. Explicitly completed sessions are excluded. When today
+has no open session, the earliest upcoming session is shown with “Morgen” or its
+date below the duration; today's sessions are labeled “Heute”. Its today-based
+31-day query window is independent of calendar selection. Past-day sessions are
+not promoted. The calendar stays visible in all states.
+Without a plan, the blue bordered card has a centered heading, short explanation
+and full-width “Jetzt Lernplan erstellen” Button, without the large calendar icon.
+It has the same 224px standard height; large text can grow. The container is a
+non-interactive Surface, avoiding nested buttons. With existing plans but no next
+session in the window, reuse the notched card: “Kein Lernschritt geplant”, neutral
+copy and “Lernpläne ansehen” aligned to the straight right arrow at the bottom.
+This does not claim all work is finished or encourage duplicate plans; the plans
+overview remains the place to inspect incomplete or completed plans.
 Loading never flashes a creation prompt; an available future lesson retains the
 normal next-step card. No duration or progress is invented for empty states.
 This scoped follow-up is tracked in [DAY-490](https://linear.app/dayova/issue/DAY-490).

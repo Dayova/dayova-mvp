@@ -12,6 +12,7 @@ jest.mock("~/components/ui/icon", () => {
 		React.createElement("Icon", props);
 	return {
 		ArrowUpRight: icon,
+		ArrowRightStraight: icon,
 		BookOpen: icon,
 		CalendarDays: icon,
 		Clock3: icon,
@@ -44,6 +45,7 @@ const plan = {
 	examDateLabel: "5. Oktober 2026",
 };
 const props = {
+	todayKey: "2026-09-28",
 	item,
 	plan,
 	isLoading: false,
@@ -195,19 +197,33 @@ describe("TodayLearningCard", () => {
 			),
 		).toBeTruthy();
 		expect(screen.getAllByRole("button")).toHaveLength(1);
-		expect(screen.getByTestId("today-learning-card").props.className).toContain(
-			"bg-system-subtle",
-		);
+		if (!hasLearningPlans)
+			expect(
+				screen.getByTestId("today-learning-card").props.className,
+			).toContain("bg-system-subtle");
 		expect(screen.queryByText(/Min\./)).toBeNull();
 		expect(screen.queryByTestId("today-learning-progress-ring")).toBeNull();
 		await fireEvent.press(screen.getByRole("button"));
 		expect(
 			screen.getByText(
-				hasLearningPlans ? "Lernpläne öffnen" : "Jetzt Lernplan erstellen",
+				hasLearningPlans ? "Lernpläne ansehen" : "Jetzt Lernplan erstellen",
 			),
 		).toBeTruthy();
 		expect(props.onOpenFallback).toHaveBeenCalledTimes(1);
 		expect(props.onOpenItem).not.toHaveBeenCalled();
+	});
+	test.each([
+		["2026-09-28", "Heute"],
+		["2026-09-29", "Morgen"],
+		["2026-10-01", "1. Okt."],
+	])("labels the actual learning day %s", async (dayKey, label) => {
+		const screen = await render(
+			<TodayLearningCard {...props} item={{ ...item, dayKey }} />,
+		);
+		expect(screen.getByText(label)).toBeTruthy();
+		expect(screen.getByRole("button").props.accessibilityLabel).toContain(
+			label,
+		);
 	});
 	test("does not flash the no-plan prompt before data loads", async () => {
 		const screen = await render(

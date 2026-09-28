@@ -24,6 +24,42 @@ const entry = (overrides: Partial<DayEntry>): DayEntry =>
 	}) as DayEntry;
 
 describe("dashboard agenda", () => {
+	it("keeps today's overdue open step ahead of tomorrow and skips completed steps", () => {
+		const today = toDashboardAgendaItem(
+			"2026-09-28",
+			entry({ kind: "Lernen", time: "08:00", executionStatus: "started" }),
+		);
+		const tomorrow = toDashboardAgendaItem(
+			"2026-09-29",
+			entry({ kind: "Lernen", time: "09:00" }),
+		);
+		const select = (items: (typeof today)[]) =>
+			findNextActionableAgendaItem({
+				items,
+				todayKey: "2026-09-28",
+				currentMinutes: 20 * 60,
+			});
+		expect(select([tomorrow, today])).toBe(today);
+		expect(
+			select([
+				tomorrow,
+				{ ...today, entry: { ...today.entry, executionStatus: "completed" } },
+			]),
+		).toBe(tomorrow);
+		expect(
+			select([
+				{
+					...today,
+					entry: {
+						...today.entry,
+						executionStatus: undefined,
+						completed: true,
+					},
+				},
+			]),
+		).toBeUndefined();
+		expect(select([{ ...today, dayKey: "2026-09-27" }])).toBeUndefined();
+	});
 	it("omits unavailable date and time details from the next-step announcement", () => {
 		expect(
 			getNextLearningStepAccessibilityLabel({

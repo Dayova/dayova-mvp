@@ -257,7 +257,6 @@ export const findNextActionableAgendaItemId = ({
 export const findNextActionableAgendaItem = ({
 	items,
 	todayKey,
-	currentMinutes,
 }: {
 	items: DashboardAgendaItem[];
 	todayKey: string;
@@ -273,7 +272,10 @@ export const findNextActionableAgendaItem = ({
 		.find(
 			(item) =>
 				item.kind === "learningSession" &&
-				!isDashboardAgendaItemPast({ item, todayKey, currentMinutes }),
+				item.dayKey >= todayKey &&
+				(item.entry.executionStatus
+					? item.entry.executionStatus !== "completed"
+					: item.entry.completed !== true),
 		);
 
 // Filter by origin, not subject/title: homework and exams must stay visible.
