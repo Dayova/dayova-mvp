@@ -112,37 +112,42 @@ export function TodayLearningCard({
 	const visibleTitle =
 		!item && !isLoading && hasNoPlan ? "Noch kein Lernplan" : title;
 	const supportingCopy = item
-		? metadata
+		? goal && goal.length <= 70
+			? goal
+			: session?.sessionPurpose === "diagnostic"
+				? "Zeige mit kurzen Aufgaben, was du bereits sicher kannst."
+				: "Festige dein Wissen mit passenden Aufgaben zu diesem Thema."
 		: isLoading
 			? ""
 			: hasNoPlan
-				? "Plane deine nächste Prüfung mit Dayova."
+				? "Lege deinen ersten Lernplan an, um Fächer, Lernziele und Termine an einem Ort zu organisieren."
 				: "Hier findest du deine bestehenden Lernpläne.";
 	return (
 		<Surface
-			className="justify-between overflow-hidden rounded-card border border-border bg-system-subtle p-6"
+			className="justify-between gap-1 overflow-hidden rounded-card border border-border bg-system-subtle p-5"
 			// Runtime content-size mode releases the common illustrated-card height.
 			style={{
-				minHeight: 352,
-				height: shouldStackInlineContent ? undefined : 352,
+				minHeight: 320,
+				height: shouldStackInlineContent ? undefined : 320,
 			}}
 			testID="today-learning-card"
 		>
 			<LinearGradient
 				colors={
 					isDark
-						? [colors.systemSubtle, colors.background]
-						: [colors.surface, colors.systemSubtle]
+						? [colors.systemSubtle, colors.systemSubtle, colors.background]
+						: [colors.systemSubtle, colors.systemSubtle, colors.surface]
 				}
-				start={{ x: 1, y: 0 }}
-				end={{ x: 0, y: 1 }}
+				locations={[0, 0.48, 1]}
+				start={{ x: 0.5, y: 0 }}
+				end={{ x: 0.5, y: 1 }}
 				// Native gradient API requires absolute geometry and runtime theme colors.
 				style={StyleSheet.absoluteFill}
 				pointerEvents="none"
 				accessible={false}
 			/>
 			<LearningCardIllustration subject={item ? subject : undefined} />
-			<View className="gap-3 py-4" testID="today-learning-card-context">
+			<View className="gap-1" testID="today-learning-card-context">
 				<Text
 					accessibilityRole="header"
 					numberOfLines={shouldStackInlineContent ? undefined : 2}
@@ -152,7 +157,11 @@ export function TodayLearningCard({
 					{visibleTitle}
 				</Text>
 				{supportingCopy ? (
-					<Text className="text-center font-poppins text-body-3 text-secondary-text">
+					<Text
+						numberOfLines={shouldStackInlineContent ? undefined : item ? 2 : 3}
+						ellipsizeMode="tail"
+						className="text-center font-poppins text-body-3 text-secondary-text"
+					>
 						{supportingCopy}
 					</Text>
 				) : null}

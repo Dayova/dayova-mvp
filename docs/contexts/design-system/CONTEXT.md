@@ -238,17 +238,21 @@ subject catalog for active lessons and GraduationCap when no lesson is available
 Unknown subjects use the catalog's BookOpen fallback. The artwork is hidden from
 accessibility and is not interactive. Theme-derived gradients give the card depth
 without a separate palette; the rounded-card radius and border token are retained.
-Below it sit a centered body-1 task title, plain secondary time/date metadata and
-the shared full-width primary-gradient Button. Active lessons have no visible
-description or badge. Started sessions say “Weiterlernen”. Only the Button acts.
-All states share a 352px standard height; large text releases it to natural height.
+Below it sit a centered body-1 task title, secondary description and
+the shared full-width primary-gradient Button. Per the reference follow-up,
+time/date metadata and badges are hidden; date/duration remain accessible.
+Short matching session goals are shown; long goals use a concise purpose-specific
+summary while the original stays accessible. Started sessions say “Weiterlernen”.
+Only the Button acts. The native artwork fans backwards and fades into the
+matching hero-top color at its bottom edge, using same-hue transparent gradient stops.
+All states share a 320px standard height; large text releases it to natural height.
 Titles truncate at two lines only at standard sizing; complete context remains
 in the button's accessible label. Loading disables the action.
 The hero prioritizes today's unfinished learning sessions, including sessions whose
 scheduled time has passed. Explicitly completed sessions are excluded. When today
-has no open session, the earliest upcoming session is shown with “Morgen” or its
-date in the metadata line; today's sessions have no visible day label (the day stays
-in the accessibility label). Its today-based
+has no open session, the earliest upcoming session is shown. Its day stays
+in the accessibility label; visible date orientation is deferred by this visual
+review and remains a product-review limitation. Its today-based
 31-day query window is independent of calendar selection. Past-day sessions are
 not promoted. The calendar stays visible in all states.
 Without a plan, the same illustrated card shows “Noch kein Lernplan”, a short

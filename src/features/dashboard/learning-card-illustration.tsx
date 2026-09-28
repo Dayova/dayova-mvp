@@ -38,13 +38,17 @@ export function LearningCardIllustration({ subject }: { subject?: string }) {
 					style={StyleSheet.absoluteFill}
 				/>
 				{createElement(SubjectIcon, {
-					size: 40,
+					size: 36,
 					color: colors.primaryStrong,
 					strokeWidth: 1.8,
 					testID: "learning-illustration-icon",
 				})}
 				<View className="rounded-full bg-primary" style={art.wideLine} />
 				<View className="self-start rounded-full bg-primary" style={art.line} />
+				<View
+					className="self-start rounded-full bg-primary"
+					style={art.shortLine}
+				/>
 			</View>
 			<View style={art.starLeft}>
 				<Sparkles size={23} color={colors.primary} />
@@ -52,39 +56,49 @@ export function LearningCardIllustration({ subject }: { subject?: string }) {
 			<View style={art.starRight}>
 				<Sparkles size={17} color={colors.primaryStrong} />
 			</View>
+			{/* Native gradient fades all card edges into the identical hero-top color. */}
+			<LinearGradient
+				colors={[`${colors.systemSubtle}00`, colors.systemSubtle]}
+				locations={[0, 1]}
+				style={art.fade}
+			/>
 		</View>
 	);
 }
 
 // Fixed decorative artboard geometry, not content layout (docs/styling.md).
 const art = StyleSheet.create({
-	board: { width: 208, height: 116, alignSelf: "center" },
+	board: { width: 208, height: 100, alignSelf: "center", overflow: "hidden" },
 	back: {
 		position: "absolute",
-		width: 80,
-		height: 92,
-		left: 85,
-		top: 15,
+		width: 76,
+		height: 88,
+		left: 91,
+		top: 30,
+		opacity: 0.45,
 		transform: [{ rotate: "18deg" }],
 	},
 	middle: {
 		position: "absolute",
-		width: 80,
-		height: 96,
-		left: 73,
+		width: 76,
+		height: 88,
+		left: 77,
 		top: 5,
-		transform: [{ rotate: "10deg" }],
+		opacity: 0.75,
+		transform: [{ rotate: "12deg" }],
 	},
 	front: {
 		position: "absolute",
-		width: 80,
-		height: 96,
+		width: 76,
+		height: 92,
 		left: 56,
 		top: 14,
-		transform: [{ rotate: "-10deg" }],
+		transform: [{ rotate: "12deg" }],
 	},
 	wideLine: { width: 48, height: 4, opacity: 0.25 },
 	line: { marginLeft: 16, width: 32, height: 4, opacity: 0.2 },
+	shortLine: { marginLeft: 16, width: 28, height: 4, opacity: 0.15 },
+	fade: { position: "absolute", left: 0, right: 0, bottom: 0, height: 48 },
 	starLeft: { position: "absolute", left: 18, top: 27 },
 	starRight: { position: "absolute", right: 10, bottom: 22 },
 });

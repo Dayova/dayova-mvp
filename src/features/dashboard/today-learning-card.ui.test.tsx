@@ -74,13 +74,13 @@ describe("TodayLearningCard", () => {
 				/>,
 			);
 			const card = screen.getByTestId("today-learning-card");
-			expect(card).toHaveStyle({ minHeight: 352 });
-			expect(card).toHaveStyle({ height: 352 });
+			expect(card).toHaveStyle({ minHeight: 320 });
+			expect(card).toHaveStyle({ height: 320 });
 			expect(screen.getByText(title).props.numberOfLines).toBe(2);
 		}
 		await screen.rerender(<TodayLearningCard {...props} isLoading />);
 		expect(screen.getByTestId("today-learning-card")).toHaveStyle({
-			height: 352,
+			height: 320,
 		});
 	});
 	test("chooses the subject glyph and graduation cap for creation", async () => {
@@ -107,12 +107,12 @@ describe("TodayLearningCard", () => {
 			}).props.name,
 		).toBe("graduation-cap");
 	});
-	test("shows context, topic and duration with one learning action", async () => {
+	test("shows topic and description without visible duration, with one action", async () => {
 		const screen = await render(<TodayLearningCard {...props} />);
 		expect(screen.queryByText("Mathematik")).toBeNull();
 		expect(screen.queryByText(/Klassenarbeit/)).toBeNull();
 		expect(screen.getByText("Gleichungen mit Klammern lösen")).toBeTruthy();
-		expect(screen.getByText("17 Minuten")).toBeTruthy();
+		expect(screen.queryByText("17 Minuten")).toBeNull();
 		expect(screen.queryByTestId("today-subject-icon")).toBeNull();
 		expect(
 			screen.getByText("Gleichungen mit Klammern lösen").props.className,
@@ -125,6 +125,23 @@ describe("TodayLearningCard", () => {
 		);
 		expect(props.onOpenItem).toHaveBeenCalledWith(item);
 		expect(props.onOpenFallback).not.toHaveBeenCalled();
+	});
+	test("summarizes long goals while keeping the full goal accessible", async () => {
+		const goal =
+			"Löse Aufgaben zu Gleichungen mit Klammern lösen mit einer passenden Strategie.";
+		const screen = await render(
+			<TodayLearningCard
+				{...props}
+				plan={{ ...plan, currentSession: { id: "session-1", goal } }}
+			/>,
+		);
+		expect(
+			screen.getByText(
+				"Festige dein Wissen mit passenden Aufgaben zu diesem Thema.",
+			),
+		).toBeTruthy();
+		expect(screen.queryByText(goal)).toBeNull();
+		expect(screen.getByRole("button").props.accessibilityLabel).toContain(goal);
 	});
 	test("shows a goal and diagnostic label only for the matching session", async () => {
 		const currentSession = {
@@ -139,7 +156,7 @@ describe("TodayLearningCard", () => {
 		expect(screen.getByRole("button").props.accessibilityLabel).toContain(
 			"Wissenscheck",
 		);
-		expect(screen.queryByText(currentSession.goal)).toBeNull();
+		expect(screen.getByText(currentSession.goal)).toBeTruthy();
 		expect(screen.getByRole("button").props.accessibilityLabel).toContain(
 			currentSession.goal,
 		);
@@ -242,7 +259,7 @@ describe("TodayLearningCard", () => {
 			<TodayLearningCard {...props} item={{ ...item, dayKey }} />,
 		);
 		if (dayKey === props.todayKey) expect(screen.queryByText(label)).toBeNull();
-		else expect(screen.getByText(`${label} · 17 Minuten`)).toBeTruthy();
+		else expect(screen.queryByText(`${label} · 17 Minuten`)).toBeNull();
 		expect(screen.getByRole("button").props.accessibilityLabel).toContain(
 			label,
 		);
@@ -281,7 +298,7 @@ describe("TodayLearningCard", () => {
 		).not.toContain("h-56");
 		expect(
 			screen.getByTestId("today-learning-card-context").props.className,
-		).toContain("gap-3");
+		).toContain("gap-1");
 		expect(screen.queryByText(/Min\./)).toBeNull();
 		expect(screen.queryByText(/Klassenarbeit/)).toBeNull();
 	});
