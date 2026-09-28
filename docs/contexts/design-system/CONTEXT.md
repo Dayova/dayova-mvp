@@ -240,7 +240,10 @@ or “Weiterlernen” on the left and Hugeicons Play on the right. The card has 
 continuous 44px outline without a notch and is not itself pressable: the button
 is the only action. Empty states use the same inset action with their existing
 labels and Plus/ArrowRightStraight icons. Loading disables the button. There is
-no separate footer label, time badge or decorative loop.
+no separate footer label or decorative loop. Active lessons show duration and
+Heute/Morgen/date above the title using LearningPlanStatusBadge exactly as on
+learning plans, adding a border-border outline on the matching subtle card fill;
+missing duration and loading/empty-state badges are omitted.
 The illustration uses filled blue, backward-fanned study cards with theme-derived
 gradients and a soft lower fade into the card fill. The front card has an opaque
 base so rear borders cannot show through it. Icons come from the subject catalog
@@ -249,7 +252,7 @@ decorative, accessibility-hidden and non-interactive.
 All states share a 240px standard height, with 36px outer spacing above and 56px
 below the card. Large text releases the height, stacks
 the illustration below the copy and keeps the inset action below the content.
-Standard titles truncate at two lines and descriptions at three; full title,
+Standard titles and descriptions truncate at two lines; full title,
 subject, original goal and day/duration remain in the accessible action label.
 Short matching goals are shown; long goals use a concise purpose-specific summary.
 The hero prioritizes today's unfinished learning sessions, including sessions whose

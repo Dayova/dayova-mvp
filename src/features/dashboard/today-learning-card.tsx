@@ -5,6 +5,7 @@ import { ArrowRightStraight, Play, Plus } from "~/components/ui/icon";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
+import { LearningPlanStatusBadge } from "~/features/learning-plans/learning-plan-status-badge";
 import { addDays, getDayKey, parseDayKey } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
@@ -127,7 +128,7 @@ export function TodayLearningCard({
 		item || isLoading ? Play : hasNoPlan ? Plus : ArrowRightStraight;
 	return (
 		<Surface
-			className="rounded-button border border-border bg-system-subtle px-6 pt-8 pb-4"
+			className="rounded-button border border-border bg-system-subtle px-6 pt-6 pb-4"
 			// Standard height is fixed; larger content sizes release it for vertical reflow.
 			style={{
 				minHeight: 240,
@@ -143,9 +144,33 @@ export function TodayLearningCard({
 				)}
 			>
 				<View
-					className={cn("gap-3", !shouldStackInlineContent && "flex-1")}
+					className={cn("gap-2", !shouldStackInlineContent && "flex-1")}
 					testID="today-learning-card-context"
 				>
+					{item && !isLoading ? (
+						<View
+							className="flex-row flex-wrap gap-2"
+							testID="today-learning-badges"
+						>
+							{[
+								duration != null && duration > 0 ? `${duration} min` : null,
+								dayLabel,
+							]
+								.filter((label): label is string => Boolean(label))
+								.map((label) => (
+									<LearningPlanStatusBadge
+										key={label}
+										className="border border-border"
+										fixedTextScale={false}
+										status={{
+											label,
+											background: DAYOVA_DESIGN_SYSTEM.colors.systemSubtle,
+											foreground: DAYOVA_DESIGN_SYSTEM.colors.primary,
+										}}
+									/>
+								))}
+						</View>
+					) : null}
 					<Text
 						accessibilityRole="header"
 						numberOfLines={shouldStackInlineContent ? undefined : 2}
@@ -156,7 +181,7 @@ export function TodayLearningCard({
 					</Text>
 					{supportingCopy ? (
 						<Text
-							numberOfLines={shouldStackInlineContent ? undefined : 3}
+							numberOfLines={shouldStackInlineContent ? undefined : 2}
 							ellipsizeMode="tail"
 							className="font-poppins text-body-3 text-secondary-text"
 						>

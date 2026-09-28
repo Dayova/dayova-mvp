@@ -277,8 +277,8 @@ describe("TodayLearningCard", () => {
 		const screen = await render(
 			<TodayLearningCard {...props} item={{ ...item, dayKey }} />,
 		);
-		if (dayKey === props.todayKey) expect(screen.queryByText(label)).toBeNull();
-		else expect(screen.queryByText(`${label} · 17 Minuten`)).toBeNull();
+		expect(screen.getByText(label)).toBeTruthy();
+		expect(screen.getByText("17 min")).toBeTruthy();
 		expect(screen.getByRole("button").props.accessibilityLabel).toContain(
 			label,
 		);
@@ -317,7 +317,7 @@ describe("TodayLearningCard", () => {
 		).not.toContain("h-56");
 		expect(
 			screen.getByTestId("today-learning-card-context").props.className,
-		).toContain("gap-3");
+		).toContain("gap-2");
 		expect(screen.queryByText(/Min\./)).toBeNull();
 		expect(screen.queryByText(/Klassenarbeit/)).toBeNull();
 	});
