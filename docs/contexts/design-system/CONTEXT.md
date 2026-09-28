@@ -248,10 +248,11 @@ The Play glyph is decorative inside the single accessible card action.
 The cropped cyan background loop is an explicit DAY-490 custom-SVG exception:
 it reproduces reference artwork, which an interface glyph from Hugeicons cannot.
 It is non-interactive and hidden from accessibility. This supersedes the earlier
-gradient-arrow and no-decoration choices on Today only. Content determines height
-with 24px horizontal and 32px vertical padding and a compact 144px minimum,
-giving content clearance from the rounded corners while replacing the old aspect-ratio
-minimum and vertically centered empty space. No arbitrary beginner level is shown.
+gradient-arrow and no-decoration choices on Today only. Active and loading cards
+use a stable 224px height with 24px horizontal and 32px vertical padding. Titles
+truncate after two lines at standard content sizes; the full title stays accessible.
+Large content sizes remove the fixed height and title limit, retaining a 224px
+minimum so content can grow without clipping. No arbitrary beginner level is shown.
 Calendar, external spacing and agenda remain separate and unchanged.
 When no actionable lesson exists, the same blue bordered card uses Philipp's
 centered empty-state reference: a decorative calendar circle, heading, short

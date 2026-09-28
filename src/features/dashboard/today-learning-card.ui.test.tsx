@@ -59,6 +59,25 @@ describe("TodayLearningCard", () => {
 		jest.clearAllMocks();
 		mockStack = false;
 	});
+	test("keeps short, long and loading cards at the same standard height", async () => {
+		const screen = await render(<TodayLearningCard {...props} />);
+		for (const title of ["Wissenscheck", "Gleichungen mit Klammern lösen"]) {
+			await screen.rerender(
+				<TodayLearningCard
+					{...props}
+					item={{ ...item, entry: { ...item.entry, title } }}
+				/>,
+			);
+			const card = screen.getByTestId("today-learning-card");
+			expect(card).toHaveStyle({ minHeight: 224 });
+			expect(card.props.className).toContain("h-56");
+			expect(screen.getByText(title).props.numberOfLines).toBe(2);
+		}
+		await screen.rerender(<TodayLearningCard {...props} isLoading />);
+		expect(screen.getByTestId("today-learning-card").props.className).toContain(
+			"h-56",
+		);
+	});
 	test("shows context, topic and duration with one learning action", async () => {
 		const screen = await render(<TodayLearningCard {...props} />);
 		expect(screen.queryByText("Mathematik")).toBeNull();
@@ -219,6 +238,9 @@ describe("TodayLearningCard", () => {
 			/>,
 		);
 		expect(screen.getByText(title).props.numberOfLines).toBeUndefined();
+		expect(
+			screen.getByTestId("today-learning-card").props.className,
+		).not.toContain("h-56");
 		expect(
 			screen.getByTestId("today-learning-card-context").props.className,
 		).toContain("flex-col");

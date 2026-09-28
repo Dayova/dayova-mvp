@@ -146,8 +146,9 @@ export function TodayLearningCard({
 	return (
 		<NotchedActionCard
 			pressType="card"
-			cardHeight={144}
+			cardHeight={224}
 			fillColor={colors.systemSubtle}
+			className={cn(!shouldStackInlineContent && "h-56")}
 			contentClassName="gap-6 px-6 py-8"
 			cardDisabled={isLoading}
 			actionIcon={
@@ -212,6 +213,8 @@ export function TodayLearningCard({
 			>
 				<Text
 					accessibilityRole="header"
+					numberOfLines={shouldStackInlineContent ? undefined : 2}
+					ellipsizeMode="tail"
 					className={cn(
 						"font-poppins font-semibold text-body-1 text-text",
 						!shouldStackInlineContent && "min-w-0 flex-1",
