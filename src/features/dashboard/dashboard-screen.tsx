@@ -48,11 +48,9 @@ import {
 	toDashboardAgendaItem,
 } from "./dashboard-agenda";
 import { getDashboardNextStepFallbackAction } from "./dashboard-empty-state";
-import {
-	DashboardAgendaEntryCard,
-	DashboardNextStepCard,
-} from "./dashboard-product-cards";
+import { DashboardAgendaEntryCard } from "./dashboard-product-cards";
 import { LearningRoutineCoach } from "./learning-routine-coach";
+import { TodayLearningCard } from "./today-learning-card";
 
 const triggerDaySelectionHaptic = () => {
 	void triggerSelectionHaptic({
@@ -752,15 +750,16 @@ export function DashboardScreen() {
 				contentContainerClassName="pb-6"
 			>
 				<View className="px-6 pt-6 pb-6" testID="dashboard-next-step">
-					<DashboardNextStepCard
-						mode="screen"
-						layout="stacked"
+					<TodayLearningCard
+						plan={learningPlans?.find(
+							(plan) =>
+								plan.id === nextLearningStep?.entry.relatedLearningPlanId,
+						)}
 						fallbackAction={nextStepFallbackAction}
 						item={nextLearningStep}
 						isLoading={
 							entriesByDay === undefined || learningPlans === undefined
 						}
-						todayKey={todayKey}
 						onOpenFallback={openNextStepFallback}
 						onOpenItem={openItem}
 					/>

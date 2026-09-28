@@ -204,6 +204,13 @@ acknowledges a real transition without becoming recurring friction.
 
 ## Product-surface previews
 
+The Today learning card uses the same `NotchedActionCard` shell as the learning
+plan overview, but prioritizes one next learning action: small subject/exam
+context, a prominent topic, duration and “Jetzt lernen” / “Fortsetzen”. Its
+height grows with content; it does not repeat plan progress or the large empty
+area of the former dashboard highlight. Calendar and agenda remain separate.
+This scoped follow-up is tracked in [DAY-490](https://linear.app/dayova/issue/DAY-490).
+
 Onboarding artwork or other explanatory UI that depicts a live Dayova product
 surface must render the same shared presentation module through an explicit
 screen/artwork contract. Do not recreate the product card, learning path,
