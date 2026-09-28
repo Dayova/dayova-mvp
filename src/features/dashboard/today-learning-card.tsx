@@ -1,13 +1,12 @@
-import { createElement, useState } from "react";
+import { useState } from "react";
 import { View } from "react-native";
-import Svg, { Circle, Path } from "react-native-svg";
+import Svg, { Path } from "react-native-svg";
 import { Button } from "~/components/ui/button";
 import { CalendarDays, Play } from "~/components/ui/icon";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { ActionSurface, Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { LearningPlanStatusBadge } from "~/features/learning-plans/learning-plan-status-badge";
-import { getSubjectIcon } from "~/features/subjects/subject-catalog";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { useDayovaTheme } from "~/lib/theme";
@@ -57,7 +56,7 @@ export function TodayLearningCard({
 	const fullTitle = item
 		? formatGermanUiText(getAgendaEntryTitle(item.entry))
 		: "";
-	// Agenda titles include the subject; it already has its own context line here.
+	// Keep the visible title focused on the task; subject remains accessible.
 	const topic = fullTitle.startsWith(`${subject} `)
 		? fullTitle.slice(subject.length + 1)
 		: fullTitle;
@@ -77,15 +76,8 @@ export function TodayLearningCard({
 	const description =
 		goal ||
 		(item
-			? `${subject} · Dein nächster Lernschritt`
+			? "Dein nächster Lernschritt"
 			: "Erstelle einen Lernplan für deine nächste Prüfung.");
-	const progress =
-		item &&
-		plan?.completedCount != null &&
-		plan.sessionCount != null &&
-		plan.sessionCount > 0
-			? `${plan.completedCount} von ${plan.sessionCount} Lernschritten`
-			: null;
 	const action = isLoading
 		? "Wird geladen …"
 		: item
@@ -94,15 +86,6 @@ export function TodayLearningCard({
 				: "Jetzt lernen"
 			: fallbackAction.label;
 	const duration = item?.entry.durationMinutes;
-	const completedFraction =
-		progress && plan?.sessionCount
-			? Math.max(0, Math.min(1, (plan.completedCount ?? 0) / plan.sessionCount))
-			: null;
-	const remaining =
-		progress && plan?.sessionCount != null
-			? Math.max(0, plan.sessionCount - (plan.completedCount ?? 0))
-			: null;
-	const ringCircumference = 2 * Math.PI * 23;
 	const durationLabel =
 		duration != null && duration > 0 ? `${duration} min` : null;
 	if (!item && !isLoading) {
@@ -161,7 +144,7 @@ export function TodayLearningCard({
 	}
 	return (
 		<ActionSurface
-			className="overflow-hidden border border-border bg-system-subtle p-5"
+			className="justify-center gap-6 overflow-hidden border border-border bg-system-subtle p-5"
 			onLayout={(event) => {
 				const { width, height } = event.nativeEvent.layout;
 				setCardLayout((previous) =>
@@ -182,10 +165,6 @@ export function TodayLearningCard({
 				title,
 				!isLoading ? description : null,
 				!isLoading ? durationLabel : null,
-				!isLoading && progress ? `${progress} abgeschlossen` : null,
-				!isLoading && remaining != null
-					? `${remaining} Lernschritte noch offen`
-					: null,
 			]
 				.filter(Boolean)
 				.join(". ")}
@@ -222,113 +201,67 @@ export function TodayLearningCard({
 					strokeWidth={17}
 				/>
 			</Svg>
-			<View className="gap-5">
-				<View
-					className={cn(
-						"items-start justify-between gap-3",
-						shouldStackInlineContent ? "flex-col" : "flex-row",
-					)}
-					testID="today-learning-card-context"
-				>
-					<View
-						className={cn(
-							"flex-row items-center gap-2",
-							!shouldStackInlineContent && "flex-1",
-						)}
-					>
-						<View className="h-12 w-12 items-center justify-center rounded-full bg-card">
-							{createElement(getSubjectIcon(subject), {
-								testID: "today-subject-icon",
-								size: 24,
-								color: colors.text,
-								strokeWidth: 1.9,
-							})}
-						</View>
-						<Text className="min-w-0 flex-1 font-poppins font-semibold text-body-2 text-primary-strong">
-							{item && !isLoading ? subject : "Lernplan"}
-						</Text>
-					</View>
-					{durationLabel && !isLoading ? (
-						<LearningPlanStatusBadge
-							className="border border-border"
-							fixedTextScale={false}
-							status={{
-								label: durationLabel,
-								background: DAYOVA_DESIGN_SYSTEM.colors.systemSubtle,
-								foreground: DAYOVA_DESIGN_SYSTEM.colors.primary,
-							}}
-						/>
-					) : null}
-				</View>
+			<View
+				className={cn(
+					"items-start justify-between gap-3",
+					shouldStackInlineContent ? "flex-col" : "flex-row",
+				)}
+				testID="today-learning-card-context"
+			>
 				<Text
 					accessibilityRole="header"
-					className="font-poppins font-semibold text-body-1 text-text"
+					className={cn(
+						"font-poppins font-semibold text-body-1 text-text",
+						!shouldStackInlineContent && "min-w-0 flex-1",
+					)}
 				>
 					{title}
 				</Text>
-				{description && !isLoading ? (
+				{durationLabel && !isLoading ? (
+					<LearningPlanStatusBadge
+						className="shrink-0 border border-border"
+						fixedTextScale={false}
+						status={{
+							label: durationLabel,
+							background: DAYOVA_DESIGN_SYSTEM.colors.systemSubtle,
+							foreground: DAYOVA_DESIGN_SYSTEM.colors.primary,
+						}}
+					/>
+				) : null}
+			</View>
+			{!isLoading ? (
+				<View
+					className={cn(
+						"gap-6",
+						shouldStackInlineContent ? "items-start" : "flex-row items-center",
+					)}
+				>
 					<Text
-						numberOfLines={shouldStackInlineContent ? undefined : 2}
+						numberOfLines={shouldStackInlineContent ? undefined : 3}
 						ellipsizeMode="tail"
-						className="font-poppins text-body-3 text-secondary-text"
+						className={cn(
+							"font-poppins text-body-3 text-secondary-text",
+							!shouldStackInlineContent && "min-w-0 flex-1",
+						)}
 					>
 						{description}
 					</Text>
-				) : null}
-			</View>
-			<View className="mt-auto flex-row items-center justify-between gap-4 pt-6">
-				<Text className="flex-1 font-poppins text-body-3 text-text">
-					{!isLoading && progress ? progress : action}
-				</Text>
-				<View
-					accessible={false}
-					accessibilityElementsHidden
-					importantForAccessibility="no-hide-descendants"
-					className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
-				>
-					{completedFraction != null && !isLoading ? (
-						<Svg
-							width={48}
-							height={48}
-							viewBox="0 0 48 48"
-							pointerEvents="none"
-							// The ring overlays the existing 48-point action visual.
-							style={{ position: "absolute", top: -1, left: -1 }}
-						>
-							<Circle
-								cx={24}
-								cy={24}
-								r={23}
-								fill="none"
-								stroke={colors.border}
-								strokeWidth={2}
-							/>
-							{completedFraction > 0 ? (
-								<Circle
-									testID="today-learning-progress-ring"
-									cx={24}
-									cy={24}
-									r={23}
-									fill="none"
-									stroke={colors.primaryStrong}
-									strokeWidth={2}
-									strokeDasharray={[ringCircumference, ringCircumference]}
-									strokeDashoffset={ringCircumference * (1 - completedFraction)}
-									rotation={-90}
-									origin="24, 24"
-								/>
-							) : null}
-						</Svg>
-					) : null}
-					<Play
-						testID="today-learning-play"
-						size={26}
-						color={colors.text}
-						fill="none"
-						strokeWidth={2}
-					/>
+					<View
+						accessible={false}
+						accessibilityElementsHidden
+						importantForAccessibility="no-hide-descendants"
+						className="h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border bg-card"
+					>
+						<Play
+							testID="today-learning-play"
+							size={26}
+							color={colors.text}
+							fill="none"
+							strokeWidth={2}
+						/>
+					</View>
 				</View>
-			</View>
+			) : null}
 		</ActionSurface>
 	);
 }

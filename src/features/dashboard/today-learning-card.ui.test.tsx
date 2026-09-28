@@ -61,16 +61,11 @@ describe("TodayLearningCard", () => {
 	});
 	test("shows context, topic and duration with one learning action", async () => {
 		const screen = await render(<TodayLearningCard {...props} />);
-		expect(screen.getByText("Mathematik")).toBeTruthy();
+		expect(screen.queryByText("Mathematik")).toBeNull();
 		expect(screen.queryByText(/Klassenarbeit/)).toBeNull();
 		expect(screen.getByText("Gleichungen mit Klammern lösen")).toBeTruthy();
 		expect(screen.getByText("17 min")).toBeTruthy();
-		expect(screen.getByTestId("today-subject-icon").props.name).toBe(
-			"calculator",
-		);
-		expect(screen.getByText("Mathematik").props.className).toContain(
-			"font-semibold",
-		);
+		expect(screen.queryByTestId("today-subject-icon")).toBeNull();
 		expect(
 			screen.getByText("Gleichungen mit Klammern lösen").props.className,
 		).toContain("text-body-1");
@@ -99,12 +94,12 @@ describe("TodayLearningCard", () => {
 		const screen = await render(
 			<TodayLearningCard {...props} plan={{ ...plan, currentSession }} />,
 		);
-		expect(screen.getByText("Mathematik")).toBeTruthy();
+		expect(screen.queryByText("Mathematik")).toBeNull();
 		expect(screen.getByRole("button").props.accessibilityLabel).toContain(
 			"Wissenscheck",
 		);
 		expect(screen.getByText(currentSession.goal)).toBeTruthy();
-		expect(screen.getByText(currentSession.goal).props.numberOfLines).toBe(2);
+		expect(screen.getByText(currentSession.goal).props.numberOfLines).toBe(3);
 		expect(screen.getByRole("button").props.accessibilityLabel).toContain(
 			currentSession.goal,
 		);
@@ -118,24 +113,24 @@ describe("TodayLearningCard", () => {
 			/>,
 		);
 		expect(screen.queryByText(currentSession.goal)).toBeNull();
-		expect(screen.getByText("Mathematik")).toBeTruthy();
+		expect(screen.queryByText("Mathematik")).toBeNull();
 	});
-	test("shows actual completion counts instead of invented reference numbers", async () => {
+	test("omits completion counts and ring while preserving the learning action", async () => {
 		const screen = await render(
 			<TodayLearningCard
 				{...props}
 				plan={{ ...plan, completedCount: 2, sessionCount: 7 }}
 			/>,
 		);
-		expect(screen.getByText("2 von 7 Lernschritten")).toBeTruthy();
-		expect(screen.getByRole("button").props.accessibilityLabel).toContain(
-			"5 Lernschritte noch offen",
+		expect(screen.queryByText("2 von 7 Lernschritten")).toBeNull();
+		expect(screen.getByRole("button").props.accessibilityLabel).not.toContain(
+			"Lernschritte noch offen",
 		);
 		expect(
-			screen.getByTestId("today-learning-progress-ring", {
+			screen.queryByTestId("today-learning-progress-ring", {
 				includeHiddenElements: true,
-			}).props.strokeDashoffset,
-		).toBeCloseTo(2 * Math.PI * 23 * (1 - 2 / 7));
+			}),
+		).toBeNull();
 		expect(screen.queryByText(/9 von 12/)).toBeNull();
 		await fireEvent.press(
 			screen.getByRole("button", { name: /^Jetzt lernen/ }),

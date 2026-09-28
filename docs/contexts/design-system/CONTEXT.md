@@ -225,19 +225,16 @@ The action selects today's date and brings its week into view. Large content siz
 stack the row. This simplified Apple Calendar reference does not introduce search,
 view switching, another creation control, or a redesigned week slider (DAY-490).
 
-The Today learning card follows Philipp's full course-card reference (28 September):
-a bordered `ActionSurface` with `system-subtle` fill, a white subject-icon circle and
-semibold subject at top left. Icons use the shared subject catalog (book fallback
-for unknown custom subjects). The duration uses the shared learning-plan status
-badge, with a fine border on Today to distinguish its identical fill from the card.
-The task title uses body-1 semibold, and the secondary description is limited to
-two lines with tail ellipsis (unclamped at large content sizes, complete in the
-card accessibility label). Actual completion counts sit at bottom left and a white
-circle with an unfilled Hugeicons Play outline (2px stroke) at bottom right. A cyan completion
-ring surrounds that play glyph; the unfilled track represents remaining steps. Its
-counts and remaining amount are included in the card accessibility label. The play glyph is a
-decorative affordance inside the single accessible card action, not a new pill-button
-variant. Missing progress uses the existing action label, never invented numbers.
+The Today learning card uses a bordered `ActionSurface` with `system-subtle`
+fill. Its simplified layout (DAY-490, 28 September) contains only the task title,
+description, duration and Play affordance. Subject/icon and completion counts/ring
+are removed. The subject remains in the accessible label for context.
+The body-1 semibold title sits left of the shared learning-plan duration badge
+(with a fine border). Below, the secondary description occupies a narrower left
+column, limited to three lines with tail ellipsis; a white circle with an unfilled
+Hugeicons Play outline (2px stroke) sits to its right. Large content sizes stack
+both rows and uncap the description; the complete text is always accessible.
+The Play glyph is decorative inside the single accessible card action.
 The cropped cyan background loop is an explicit DAY-490 custom-SVG exception:
 it reproduces reference artwork, which an interface glyph from Hugeicons cannot.
 It is non-interactive and hidden from accessibility. This supersedes the earlier
