@@ -207,7 +207,8 @@ acknowledges a real transition without becoming recurring friction.
 The Today calendar adds a compact orientation row above the existing week slider:
 selected month and year on the left, a shared ghost “Heute” button on the right.
 Per Philipp's follow-up, this compact calendar control has a visible card-colored
-pill surface and border, like the header control, with primary-strong text.
+pill surface and border. Its quiet treatment uses regular body-3 secondary text,
+36px minimum visual height and 6px hit slop; the row retains 48px minimum height.
 The action selects today's date and brings its week into view. Large content sizes
 stack the row. This simplified Apple Calendar reference does not introduce search,
 view switching, another creation control, or a redesigned week slider (DAY-490).

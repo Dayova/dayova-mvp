@@ -16,7 +16,7 @@ export function DashboardCalendarHeader({
 	return (
 		<View
 			className={cn(
-				"mb-4 justify-between gap-3",
+				"mb-4 min-h-12 justify-between gap-3",
 				shouldStackInlineContent ? "items-start" : "flex-row items-center",
 			)}
 			testID="dashboard-calendar-header"
@@ -35,13 +35,16 @@ export function DashboardCalendarHeader({
 			</Text>
 			<Button
 				variant="ghost"
-				className="border border-border bg-card"
+				className="min-h-9 border border-border bg-card px-3 py-1"
 				size="sm"
+				hitSlop={6}
 				onPress={onToday}
 				accessibilityLabel="Heute"
 				accessibilityHint="Zeigt den heutigen Tag und die aktuelle Woche an."
 			>
-				<Text className="text-primary-strong">Heute</Text>
+				<Text className="font-normal text-body-3 text-secondary-text group-active:text-secondary-text">
+					Heute
+				</Text>
 			</Button>
 		</View>
 	);
