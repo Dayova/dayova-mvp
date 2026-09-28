@@ -125,10 +125,10 @@ describe("TodayLearningCard", () => {
 			screen.getByText("Jetzt lernen", { includeHiddenElements: true }),
 		).toBeTruthy();
 		expect(
-			screen.queryByTestId("today-learning-action-icon", {
+			screen.getByTestId("today-learning-action-icon", {
 				includeHiddenElements: true,
-			}),
-		).toBeNull();
+			}).props.name,
+		).toBe("play");
 		expect(screen.queryByText(/ca\./)).toBeNull();
 		expect(screen.getAllByRole("button")).toHaveLength(1);
 		await fireEvent.press(

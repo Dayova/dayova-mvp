@@ -1,13 +1,13 @@
 import { createElement } from "react";
-import { useWindowDimensions, View } from "react-native";
+import { View } from "react-native";
+import { Button } from "~/components/ui/button";
 import { ArrowRightStraight, Play, Plus } from "~/components/ui/icon";
-import { NotchedActionCard } from "~/components/ui/notched-action-card";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
+import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { addDays, getDayKey, parseDayKey } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
-import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 import {
 	type DashboardAgendaItem,
@@ -48,10 +48,7 @@ export function TodayLearningCard({
 	onOpenItem,
 	onOpenFallback,
 }: Props) {
-	const { colors } = useDayovaTheme();
 	const { shouldStackInlineContent } = useContentSizeLayout();
-	const { fontScale, width } = useWindowDimensions();
-	const hasTextAction = Boolean(item) && !isLoading;
 	const subject = formatGermanUiText(
 		plan?.subject ?? item?.entry.subject ?? "Dein Lernplan",
 	);
@@ -129,55 +126,19 @@ export function TodayLearningCard({
 	const ActionIcon =
 		item || isLoading ? Play : hasNoPlan ? Plus : ArrowRightStraight;
 	return (
-		<NotchedActionCard
-			pressType="card"
-			cardHeight={240}
-			actionSize={hasTextAction ? 48 * Math.max(1, fontScale) : 48}
-			actionWidth={
-				hasTextAction ? Math.min(width - 96, 144 * Math.max(1, fontScale)) : 48
-			}
-			fillColor={colors.systemSubtle}
-			contentClassName="px-6 pt-8 pb-0"
+		<Surface
+			className="rounded-button border border-border bg-system-subtle px-6 pt-8 pb-4"
 			// Standard height is fixed; larger content sizes release it for vertical reflow.
-			cardStyle={{ height: shouldStackInlineContent ? undefined : 240 }}
-			style={{ height: shouldStackInlineContent ? undefined : 240 }}
-			actionIcon={
-				hasTextAction ? (
-					<Text className="px-3 text-center font-poppins font-semibold text-body-3 text-white">
-						{buttonLabel}
-					</Text>
-				) : (
-					createElement(ActionIcon, {
-						size: 26,
-						color: DAYOVA_DESIGN_SYSTEM.colors.light1,
-						strokeWidth: 2,
-						testID: "today-learning-action-icon",
-					})
-				)
-			}
-			cardDisabled={isLoading}
-			cardAccessibilityLabel={
-				item
-					? [buttonLabel, context, title, description, dayLabel, metadata]
-							.filter(Boolean)
-							.join(". ")
-					: [buttonLabel, visibleTitle, supportingCopy]
-							.filter(Boolean)
-							.join(". ")
-			}
-			cardAccessibilityHint={
-				item ? "Öffnet diesen Lernschritt." : fallbackAction.accessibilityHint
-			}
-			onPress={() => {
-				if (isLoading) return;
-				if (item) onOpenItem(item);
-				else onOpenFallback();
+			style={{
+				minHeight: 240,
+				height: shouldStackInlineContent ? undefined : 240,
 			}}
 			testID="today-learning-card"
 		>
 			<View
 				className={cn(
 					"gap-2",
+					!shouldStackInlineContent && "flex-1",
 					shouldStackInlineContent ? "flex-col" : "flex-row items-start",
 				)}
 			>
@@ -205,24 +166,43 @@ export function TodayLearningCard({
 				</View>
 				<LearningCardIllustration subject={item ? subject : undefined} />
 			</View>
-			<View
-				// Reserve the measured text-action height when system text grows.
-				style={
-					hasTextAction && shouldStackInlineContent
-						? { minHeight: 48 * Math.max(1, fontScale) }
-						: undefined
-				}
+			<Button
+				size="sm"
 				className={cn(
-					"justify-center pr-14",
-					shouldStackInlineContent ? "mt-6 min-h-12" : "mt-auto h-12",
+					"mt-2 w-full justify-between",
+					shouldStackInlineContent && "mt-6",
 				)}
+				disabled={isLoading}
+				accessibilityLabel={[
+					buttonLabel,
+					item ? context : visibleTitle,
+					title,
+					description,
+					dayLabel,
+					metadata,
+				]
+					.filter(Boolean)
+					.join(". ")}
+				accessibilityHint={
+					item ? "Öffnet diesen Lernschritt." : fallbackAction.accessibilityHint
+				}
+				onPress={() => {
+					if (isLoading) return;
+					if (item) onOpenItem(item);
+					else onOpenFallback();
+				}}
 			>
-				{!item || isLoading ? (
-					<Text className="font-poppins font-semibold text-body-3 text-text">
-						{buttonLabel}
-					</Text>
-				) : null}
-			</View>
-		</NotchedActionCard>
+				<Text className="flex-1 font-poppins font-semibold text-body-3 text-white">
+					{buttonLabel}
+				</Text>
+				{createElement(ActionIcon, {
+					size: 22,
+					color: DAYOVA_DESIGN_SYSTEM.colors.light1,
+					strokeWidth: 2,
+					testID: "today-learning-action-icon",
+					accessible: false,
+				})}
+			</Button>
+		</Surface>
 	);
 }

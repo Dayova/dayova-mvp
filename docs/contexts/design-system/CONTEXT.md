@@ -232,17 +232,15 @@ The action selects today's date and brings its week into view. Large content siz
 stack the row. This simplified Apple Calendar reference does not introduce search,
 view switching, another creation control, or a redesigned week slider (DAY-490).
 
-The Today hero combines the shared NotchedActionCard with a smaller native study
+The Today hero combines the shared Surface with a smaller native study
 illustration on the right (DAY-490, Philipp's mixed-reference follow-up).
-Title and short supporting copy are left-aligned. Active lessons omit the visible
-footer label; their 144×48px primary-gradient pill in the bottom-right notch
-shows “Jetzt lernen” or “Weiterlernen” without an icon. The shared card's optional
-actionWidth widens both the action and its notch, preserving circular defaults.
-Text scaling expands the pill and its reserved clearance. Empty states retain
-their explicit footer label and 48px circular action with Hugeicons Plus for plan
-creation and ArrowRightStraight for existing plans. The whole card is one accessible action; there is no nested
-button, full-width CTA, time badge or decorative loop. Started sessions retain
-“Weiterlernen”; loading disables the card.
+Title and short supporting copy are left-aligned. A shared primary-gradient Button
+sits inside the card at the bottom, spanning the content width, with “Jetzt lernen”
+or “Weiterlernen” on the left and Hugeicons Play on the right. The card has a
+continuous 44px outline without a notch and is not itself pressable: the button
+is the only action. Empty states use the same inset action with their existing
+labels and Plus/ArrowRightStraight icons. Loading disables the button. There is
+no separate footer label, time badge or decorative loop.
 The illustration uses filled blue, backward-fanned study cards with theme-derived
 gradients and a soft lower fade into the card fill. The front card has an opaque
 base so rear borders cannot show through it. Icons come from the subject catalog
@@ -250,7 +248,7 @@ base so rear borders cannot show through it. Icons come from the subject catalog
 decorative, accessibility-hidden and non-interactive.
 All states share a 240px standard height, with 36px outer spacing above and 56px
 below the card. Large text releases the height, stacks
-the illustration below the copy and keeps the action clear of the notch.
+the illustration below the copy and keeps the inset action below the content.
 Standard titles truncate at two lines and descriptions at three; full title,
 subject, original goal and day/duration remain in the accessible action label.
 Short matching goals are shown; long goals use a concise purpose-specific summary.
