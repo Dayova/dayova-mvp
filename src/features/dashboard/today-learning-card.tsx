@@ -2,7 +2,7 @@ import { useState } from "react";
 import { View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { Button } from "~/components/ui/button";
-import { ArrowUpRight, CalendarDays, Play } from "~/components/ui/icon";
+import { ArrowRightStraight, CalendarDays, Play } from "~/components/ui/icon";
 import { NotchedActionCard } from "~/components/ui/notched-action-card";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Surface } from "~/components/ui/surface";
@@ -152,11 +152,15 @@ export function TodayLearningCard({
 			cardHeight={224}
 			fillColor={colors.systemSubtle}
 			className={cn(!shouldStackInlineContent && "h-56")}
-			contentClassName="gap-6 px-6 py-8"
+			contentClassName={
+				isEmptyPlan
+					? cn("px-6 pt-8 pb-0", !shouldStackInlineContent && "h-56")
+					: "gap-6 px-6 py-8"
+			}
 			cardDisabled={isLoading}
 			actionIcon={
 				isEmptyPlan ? (
-					<ArrowUpRight
+					<ArrowRightStraight
 						size={26}
 						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
 						strokeWidth={2}
@@ -246,7 +250,7 @@ export function TodayLearningCard({
 				) : null}
 			</View>
 			{!isLoading ? (
-				<View className="gap-3">
+				<View className={isEmptyPlan ? "mt-6" : "gap-3"}>
 					<Text
 						numberOfLines={
 							shouldStackInlineContent ? undefined : isEmptyPlan ? 2 : 3
@@ -256,13 +260,20 @@ export function TodayLearningCard({
 					>
 						{description}
 					</Text>
-					{isEmptyPlan && (
-						<Text className="pr-14 font-poppins font-semibold text-body-3 text-text">
-							Lernpläne ansehen
-						</Text>
-					)}
 				</View>
 			) : null}
+			{isEmptyPlan && (
+				<View
+					className={cn(
+						"justify-center pr-14",
+						shouldStackInlineContent ? "mt-6 min-h-12" : "mt-auto h-12",
+					)}
+				>
+					<Text className="font-poppins font-semibold text-body-3 text-text">
+						Lernpläne ansehen
+					</Text>
+				</View>
+			)}
 		</NotchedActionCard>
 	);
 }
