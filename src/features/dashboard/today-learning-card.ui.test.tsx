@@ -72,36 +72,29 @@ describe("TodayLearningCard", () => {
 			);
 			const card = screen.getByTestId("today-learning-card");
 			expect(card).toHaveStyle({ minHeight: 224 });
-			expect(card.props.className).toContain("h-56");
+			expect(card).toHaveStyle({ height: 224 });
 			expect(screen.getByText(title).props.numberOfLines).toBe(2);
 		}
 		await screen.rerender(<TodayLearningCard {...props} isLoading />);
-		expect(screen.getByTestId("today-learning-card").props.className).toContain(
-			"h-56",
-		);
+		expect(screen.getByTestId("today-learning-card")).toHaveStyle({
+			height: 224,
+		});
 	});
 	test("shows context, topic and duration with one learning action", async () => {
 		const screen = await render(<TodayLearningCard {...props} />);
 		expect(screen.queryByText("Mathematik")).toBeNull();
 		expect(screen.queryByText(/Klassenarbeit/)).toBeNull();
 		expect(screen.getByText("Gleichungen mit Klammern lösen")).toBeTruthy();
-		expect(screen.getByText("17 min")).toBeTruthy();
+		expect(screen.getByText("17 Minuten")).toBeTruthy();
 		expect(screen.queryByTestId("today-subject-icon")).toBeNull();
 		expect(
 			screen.getByText("Gleichungen mit Klammern lösen").props.className,
 		).toContain("text-body-1");
-		expect(
-			screen.getByTestId("today-learning-play", { includeHiddenElements: true })
-				.props.strokeWidth,
-		).toBe(2);
-		expect(
-			screen.getByTestId("today-learning-play", { includeHiddenElements: true })
-				.props.fill,
-		).toBe("none");
+		expect(screen.queryByTestId("today-learning-play")).toBeNull();
 		expect(screen.queryByText(/ca\./)).toBeNull();
 		expect(screen.getAllByRole("button")).toHaveLength(1);
 		await fireEvent.press(
-			screen.getByRole("button", { name: /^Jetzt lernen/ }),
+			screen.getByRole("button", { name: /^Lernsession starten/ }),
 		);
 		expect(props.onOpenItem).toHaveBeenCalledWith(item);
 		expect(props.onOpenFallback).not.toHaveBeenCalled();
@@ -119,8 +112,7 @@ describe("TodayLearningCard", () => {
 		expect(screen.getByRole("button").props.accessibilityLabel).toContain(
 			"Wissenscheck",
 		);
-		expect(screen.getByText(currentSession.goal)).toBeTruthy();
-		expect(screen.getByText(currentSession.goal).props.numberOfLines).toBe(3);
+		expect(screen.queryByText(currentSession.goal)).toBeNull();
 		expect(screen.getByRole("button").props.accessibilityLabel).toContain(
 			currentSession.goal,
 		);
@@ -154,7 +146,7 @@ describe("TodayLearningCard", () => {
 		).toBeNull();
 		expect(screen.queryByText(/9 von 12/)).toBeNull();
 		await fireEvent.press(
-			screen.getByRole("button", { name: /^Jetzt lernen/ }),
+			screen.getByRole("button", { name: /^Lernsession starten/ }),
 		);
 		expect(props.onOpenItem).toHaveBeenCalledWith(item);
 	});
@@ -166,7 +158,9 @@ describe("TodayLearningCard", () => {
 		const screen = await render(
 			<TodayLearningCard {...props} item={started} />,
 		);
-		await fireEvent.press(screen.getByRole("button", { name: /^Fortsetzen/ }));
+		await fireEvent.press(
+			screen.getByRole("button", { name: /^Weiterlernen/ }),
+		);
 		expect(props.onOpenItem).toHaveBeenCalledWith(started);
 	});
 	test("disables navigation while loading", async () => {
@@ -221,7 +215,7 @@ describe("TodayLearningCard", () => {
 			<TodayLearningCard {...props} item={{ ...item, dayKey }} />,
 		);
 		if (dayKey === props.todayKey) expect(screen.queryByText(label)).toBeNull();
-		else expect(screen.getByText(`${label} · 17 min`)).toBeTruthy();
+		else expect(screen.getByText(`${label} · 17 Minuten`)).toBeTruthy();
 		expect(screen.getByRole("button").props.accessibilityLabel).toContain(
 			label,
 		);
@@ -260,7 +254,7 @@ describe("TodayLearningCard", () => {
 		).not.toContain("h-56");
 		expect(
 			screen.getByTestId("today-learning-card-context").props.className,
-		).toContain("flex-col");
+		).toContain("gap-3");
 		expect(screen.queryByText(/Min\./)).toBeNull();
 		expect(screen.queryByText(/Klassenarbeit/)).toBeNull();
 	});

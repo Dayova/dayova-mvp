@@ -1,12 +1,11 @@
 import { View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { Button } from "~/components/ui/button";
-import { ArrowRightStraight, Play } from "~/components/ui/icon";
+import { ArrowRightStraight } from "~/components/ui/icon";
 import { NotchedActionCard } from "~/components/ui/notched-action-card";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
-import { LearningPlanStatusBadge } from "~/features/learning-plans/learning-plan-status-badge";
 import { addDays, getDayKey, parseDayKey } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
@@ -77,22 +76,12 @@ export function TodayLearningCard({
 	const goal = session?.goal ? formatGermanUiText(session.goal).trim() : "";
 	const hasNoPlan =
 		fallbackAction.route === EMPTY_DASHBOARD_PRIMARY_ACTION.route;
-	const isEmptyPlan = !item && !isLoading && !hasNoPlan;
 	const description =
 		goal ||
 		(item
 			? "Dein nächster Lernschritt"
 			: "Hier findest du deine bestehenden Lernpläne.");
-	const action = isLoading
-		? "Wird geladen …"
-		: item
-			? item.entry.executionStatus === "started"
-				? "Fortsetzen"
-				: "Jetzt lernen"
-			: fallbackAction.label;
 	const duration = item?.entry.durationMinutes;
-	const durationLabel =
-		duration != null && duration > 0 ? `${duration} min` : null;
 	const stepDate = parseDayKey(item?.dayKey);
 	const todayDate = parseDayKey(todayKey);
 	const dayLabel =
@@ -106,6 +95,68 @@ export function TodayLearningCard({
 							month: "short",
 						}).format(stepDate)
 			: null;
+	if (item || isLoading) {
+		const buttonLabel = isLoading
+			? "Wird geladen …"
+			: item?.entry.executionStatus === "started"
+				? "Weiterlernen"
+				: "Lernsession starten";
+		const metadata = [
+			item?.dayKey !== todayKey ? dayLabel : null,
+			duration != null && duration > 0
+				? `${duration} ${duration === 1 ? "Minute" : "Minuten"}`
+				: null,
+		]
+			.filter(Boolean)
+			.join(" · ");
+		return (
+			<Surface
+				className="justify-between gap-6 border border-border bg-system-subtle p-6"
+				// Runtime content-size mode releases the common card height for accessibility.
+				style={{
+					minHeight: 224,
+					height: shouldStackInlineContent ? undefined : 224,
+				}}
+				testID="today-learning-card"
+			>
+				<View className="gap-3" testID="today-learning-card-context">
+					<Text
+						accessibilityRole="header"
+						numberOfLines={shouldStackInlineContent ? undefined : 2}
+						ellipsizeMode="tail"
+						className="font-poppins font-semibold text-body-1 text-text"
+					>
+						{title}
+					</Text>
+					{!isLoading && metadata ? (
+						<Text className="font-poppins text-body-3 text-secondary-text">
+							{metadata}
+						</Text>
+					) : null}
+				</View>
+				<Button
+					className="w-full"
+					disabled={isLoading}
+					accessibilityLabel={[
+						buttonLabel,
+						context,
+						title,
+						!isLoading ? description : null,
+						!isLoading ? dayLabel : null,
+						!isLoading ? metadata : null,
+					]
+						.filter(Boolean)
+						.join(". ")}
+					accessibilityHint="Öffnet diesen Lernschritt."
+					onPress={() => {
+						if (item && !isLoading) onOpenItem(item);
+					}}
+				>
+					<Text className="text-center">{buttonLabel}</Text>
+				</Button>
+			</Surface>
+		);
+	}
 	if (!item && !isLoading && hasNoPlan) {
 		const emptyAction = "Jetzt Lernplan erstellen";
 		return (
@@ -146,127 +197,66 @@ export function TodayLearningCard({
 			cardHeight={224}
 			fillColor={colors.systemSubtle}
 			className={cn(!shouldStackInlineContent && "h-56")}
-			contentClassName={
-				isEmptyPlan
-					? cn("px-6 pt-8 pb-0", !shouldStackInlineContent && "h-56")
-					: "gap-3 p-6"
-			}
-			cardDisabled={isLoading}
+			contentClassName={cn(
+				"px-6 pt-8 pb-0",
+				!shouldStackInlineContent && "h-56",
+			)}
 			actionIcon={
-				isEmptyPlan ? (
-					<ArrowRightStraight
-						size={26}
-						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-						strokeWidth={2}
-					/>
-				) : (
-					<Play
-						testID="today-learning-play"
-						size={26}
-						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-						fill="none"
-						strokeWidth={2}
-					/>
-				)
+				<ArrowRightStraight
+					size={26}
+					color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+					strokeWidth={2}
+				/>
 			}
 			backgroundArtwork={
-				<>
-					{/* DAY-490: reference-specific decorative loop, not an interface icon.
-			    Hugeicons cannot reproduce this cropped background composition. */}
-					<Svg
-						width="100%"
-						height="100%"
-						viewBox="0 0 354 260"
-						preserveAspectRatio="none"
-						pointerEvents="none"
-						accessible={false}
-						accessibilityElementsHidden
-						importantForAccessibility="no-hide-descendants"
-					>
-						<Path
-							d="M 377 77 C 301 72 245 108 291 158 C 339 212 383 211 369 186 C 348 150 295 171 269 188 C 229 213 201 240 185 270"
-							fill="none"
-							stroke={colors.primary}
-							strokeOpacity={0.22}
-							strokeWidth={17}
-						/>
-					</Svg>
-				</>
+				// DAY-490: decorative reference artwork, not an interface icon.
+				<Svg
+					width="100%"
+					height="100%"
+					viewBox="0 0 354 260"
+					preserveAspectRatio="none"
+					pointerEvents="none"
+					accessible={false}
+				>
+					<Path
+						d="M 377 77 C 301 72 245 108 291 158 C 339 212 383 211 369 186 C 348 150 295 171 269 188 C 229 213 201 240 185 270"
+						fill="none"
+						stroke={colors.primary}
+						strokeOpacity={0.22}
+						strokeWidth={17}
+					/>
+				</Svg>
 			}
-			cardAccessibilityLabel={[
-				action,
-				item && !isLoading ? context : null,
-				title,
-				!isLoading ? description : null,
-				!isLoading ? durationLabel : null,
-				!isLoading ? dayLabel : null,
-			]
-				.filter(Boolean)
-				.join(". ")}
-			cardAccessibilityHint={
-				item ? "Öffnet diesen Lernschritt." : fallbackAction.accessibilityHint
-			}
-			onPress={() => {
-				if (!isLoading) {
-					if (item) onOpenItem(item);
-					else onOpenFallback();
-				}
-			}}
+			cardAccessibilityLabel={["Lernpläne ansehen", title, description].join(
+				". ",
+			)}
+			cardAccessibilityHint={fallbackAction.accessibilityHint}
+			onPress={onOpenFallback}
 			testID="today-learning-card"
 		>
-			<View
-				className="flex-col items-start gap-3"
-				testID="today-learning-card-context"
+			<Text
+				accessibilityRole="header"
+				numberOfLines={shouldStackInlineContent ? undefined : 2}
+				className="font-poppins font-semibold text-body-1 text-text"
 			>
-				{!isLoading &&
-				item &&
-				(durationLabel || (item.dayKey !== todayKey && dayLabel)) ? (
-					<LearningPlanStatusBadge
-						className="self-start border border-border"
-						fixedTextScale={false}
-						status={{
-							label: [item.dayKey !== todayKey ? dayLabel : null, durationLabel]
-								.filter(Boolean)
-								.join(" · "),
-							background: colors.surface,
-							foreground: colors.primaryStrong,
-						}}
-					/>
-				) : null}
-				<Text
-					accessibilityRole="header"
-					numberOfLines={shouldStackInlineContent ? undefined : 2}
-					ellipsizeMode="tail"
-					className="w-full font-poppins font-semibold text-body-1 text-text"
-				>
-					{title}
+				{title}
+			</Text>
+			<Text
+				numberOfLines={shouldStackInlineContent ? undefined : 2}
+				className="mt-6 pr-14 font-poppins text-body-3 text-secondary-text"
+			>
+				{description}
+			</Text>
+			<View
+				className={cn(
+					"justify-center pr-14",
+					shouldStackInlineContent ? "mt-6 min-h-12" : "mt-auto h-12",
+				)}
+			>
+				<Text className="font-poppins font-semibold text-body-3 text-text">
+					Lernpläne ansehen
 				</Text>
 			</View>
-			{!isLoading ? (
-				<View className={isEmptyPlan ? "mt-6" : "gap-3"}>
-					<Text
-						numberOfLines={
-							shouldStackInlineContent ? undefined : isEmptyPlan ? 2 : 3
-						}
-						ellipsizeMode="tail"
-						className="pr-14 font-poppins text-body-3 text-secondary-text"
-					>
-						{description}
-					</Text>
-				</View>
-			) : null}
-			{isEmptyPlan && (
-				<View
-					className={cn(
-						"justify-center pr-14",
-						shouldStackInlineContent ? "mt-6 min-h-12" : "mt-auto h-12",
-					)}
-				>
-					<Text className="font-poppins font-semibold text-body-3 text-text">
-						Lernpläne ansehen
-					</Text>
-				</View>
-			)}
 		</NotchedActionCard>
 	);
 }
