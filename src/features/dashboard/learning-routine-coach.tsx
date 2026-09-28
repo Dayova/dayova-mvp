@@ -1,18 +1,18 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
-import { useRouter } from "expo-router";
-import { useRef, useState } from "react";
+import { useFocusEffect, useIsFocused, useRouter } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import { api } from "#convex/_generated/api";
 import { Button } from "~/components/ui/button";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
-import { Surface } from "~/components/ui/surface";
+import { useSheetAccessibility } from "~/components/ui/sheet-accessibility";
 import { Text } from "~/components/ui/text";
 import { LearningTimeImpactSheet } from "~/features/learning-plans/learning-time-impact-sheet";
 import { LearningTimeSuggestionCard } from "~/features/learning-plans/learning-time-suggestion-card";
 import { ROUTES } from "~/lib/routes";
 
-/** Inline, voluntary coaching. It never opens a modal automatically. */
+/** One short daily check-in; actual schedule changes still require consent. */
 export function LearningRoutineCoach({
 	referenceTime,
 }: {
@@ -20,6 +20,8 @@ export function LearningRoutineCoach({
 }) {
 	const { isAuthenticated } = useConvexAuth();
 	const router = useRouter();
+	const focused = useIsFocused();
+	const hasOpenSheet = useSheetAccessibility()?.hasOpenSheet ?? false;
 	const routine = useQuery(
 		api.learningTimes.getHomeRoutine,
 		isAuthenticated ? { referenceTime } : "skip",
@@ -38,6 +40,76 @@ export function LearningRoutineCoach({
 	> | null>(null);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [promptOpen, setPromptOpen] = useState(false);
+	const shownDay = useRef<string | null>(null);
+	const pendingPicker = useRef(false);
+	const dismissalSaved = useRef<Promise<unknown> | null>(null);
+	useFocusEffect(
+		useCallback(
+			() => () => {
+				// Leaving Today must not reopen an already shown prompt when returning.
+				pendingPicker.current = false;
+				setPromptOpen(false);
+				setPicker(false);
+				setSelected(null);
+			},
+			[],
+		),
+	);
+	const berlinDay = new Intl.DateTimeFormat("en-CA", {
+		timeZone: "Europe/Berlin",
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+	}).format(referenceTime);
+	const berlinTime = new Intl.DateTimeFormat("en-GB", {
+		timeZone: "Europe/Berlin",
+		hour: "2-digit",
+		minute: "2-digit",
+		hourCycle: "h23",
+	}).format(referenceTime);
+	useEffect(() => {
+		if (
+			!focused ||
+			!isAuthenticated ||
+			hasOpenSheet ||
+			promptOpen ||
+			picker ||
+			selected ||
+			routine?.behavioral ||
+			!routine?.session ||
+			routine.session.startTime < berlinTime ||
+			shownDay.current === berlinDay
+		)
+			return;
+		// Let other app sheets claim presentation first; cancel when focus or data changes.
+		const timer = setTimeout(() => {
+			shownDay.current = berlinDay;
+			dismissalSaved.current = null;
+			setChosenSession(routine.session);
+			setPromptOpen(true);
+		}, 400);
+		return () => clearTimeout(timer);
+	}, [
+		focused,
+		isAuthenticated,
+		hasOpenSheet,
+		promptOpen,
+		picker,
+		selected,
+		routine,
+		berlinDay,
+		berlinTime,
+	]);
+	const rememberToday = () => {
+		if (!dismissalSaved.current) {
+			dismissalSaved.current = dismiss({}).catch((cause: unknown) => {
+				dismissalSaved.current = null;
+				throw cause;
+			});
+		}
+		return dismissalSaved.current;
+	};
 	const gate = useRef(false);
 	const run = async (action: () => Promise<unknown>) => {
 		if (gate.current) return;
@@ -55,86 +127,96 @@ export function LearningRoutineCoach({
 			setBusy(false);
 		}
 	};
-	const choose = (offset: number) => {
-		if (!routine?.session) return;
-		setChosenSession(routine.session);
-		const [hour, minute] = routine.session.startTime.split(":").map(Number);
+	const choose = () => {
+		if (!chosenSession) return;
+		const [hour, minute] = chosenSession.startTime.split(":").map(Number);
 		const value = new Date();
-		value.setHours(hour, minute + offset, 0, 0);
+		value.setHours(hour, minute, 0, 0);
 		setTime(value);
 		setSelected(null);
 		setError(null);
-		setPicker(true);
+		pendingPicker.current = true;
+		setPromptOpen(false);
 	};
-	if (!routine) return null;
-	const session = routine.session;
-	const suggestion = routine.behavioral;
+	const suggestion = routine?.behavioral;
 	return (
-		<View className="gap-4 px-6 py-4">
+		<>
 			{suggestion ? (
-				<LearningTimeSuggestionCard
-					variant="behavioral"
-					entries={suggestion.entries}
-					evidenceSessionCount={suggestion.evidenceSessionCount}
-					isBusy={busy}
-					onConfirm={() => setImpactFingerprint(suggestion.fingerprint)}
-					onAdjust={() => router.push(ROUTES.learningTimes)}
-					onKeep={() =>
-						void run(() =>
-							respond({
-								fingerprint: suggestion.fingerprint,
-								response: "keep",
-							}),
-						)
-					}
-					onContinue={() =>
-						void run(() =>
-							respond({
-								fingerprint: suggestion.fingerprint,
-								response: "later",
-							}),
-						)
-					}
-				/>
-			) : session ? (
-				<Surface variant="soft" className="gap-3 rounded-[28px] p-5">
-					<Text
-						accessibilityRole="header"
-						className="font-semibold text-body-2 text-text"
-					>
-						Passt dir heute {session.startTime} Uhr?
-					</Text>
-					<Text className="text-body-3 text-secondary-text">
-						Für „{session.title}“ sind {session.durationMinutes} Minuten
-						geplant. Du kannst jederzeit lernen. Eine feste Zeit kann dir
-						helfen, regelmäßig dranzubleiben.
-					</Text>
-					<Button
-						disabled={busy}
-						onPress={() =>
-							router.push(
-								`/learning-plans/${session.planId}/sessions/${session.id}`,
+				<View className="gap-4 px-6 py-4">
+					<LearningTimeSuggestionCard
+						variant="behavioral"
+						entries={suggestion.entries}
+						evidenceSessionCount={suggestion.evidenceSessionCount}
+						isBusy={busy}
+						onConfirm={() => setImpactFingerprint(suggestion.fingerprint)}
+						onAdjust={() => router.push(ROUTES.learningTimes)}
+						onKeep={() =>
+							void run(() =>
+								respond({
+									fingerprint: suggestion.fingerprint,
+									response: "keep",
+								}),
 							)
 						}
-					>
-						<Text>Jetzt lernen</Text>
-					</Button>
-					<Button variant="neutral" disabled={busy} onPress={() => choose(-30)}>
-						<Text>Lieber früher</Text>
-					</Button>
-					<Button variant="neutral" disabled={busy} onPress={() => choose(30)}>
-						<Text>Lieber später</Text>
-					</Button>
-					<Button
-						variant="neutral"
-						disabled={busy}
-						onPress={() => void run(() => dismiss({}))}
-					>
-						<Text>Heute nicht nachfragen</Text>
-					</Button>
-				</Surface>
+						onContinue={() =>
+							void run(() =>
+								respond({
+									fingerprint: suggestion.fingerprint,
+									response: "later",
+								}),
+							)
+						}
+					/>
+					{error ? <Text accessibilityRole="alert">{error}</Text> : null}
+				</View>
 			) : null}
-			{error ? <Text accessibilityRole="alert">{error}</Text> : null}
+			<DayovaSheetFrame
+				visible={promptOpen && focused && isAuthenticated}
+				title={`Passt dir heute ${chosenSession?.startTime ?? ""} Uhr zum Lernen?`}
+				description={`${chosenSession?.title ?? ""} · ${chosenSession?.durationMinutes ?? ""} Minuten`}
+				closeAccessibilityLabel="Für heute überspringen"
+				dismissible={!busy}
+				onPresented={() => void run(rememberToday)}
+				onClose={() => {
+					setPromptOpen(false);
+					void run(rememberToday);
+				}}
+				onDismiss={() => {
+					if (pendingPicker.current) {
+						pendingPicker.current = false;
+						if (focused) setPicker(true);
+					}
+				}}
+				footer={
+					<View className="gap-3">
+						<Button
+							disabled={busy}
+							onPress={() =>
+								void run(async () => {
+									await rememberToday();
+									setPromptOpen(false);
+								})
+							}
+						>
+							<Text>Ja, passt</Text>
+						</Button>
+						<Button
+							variant="neutral"
+							disabled={busy}
+							onPress={() =>
+								void run(async () => {
+									await rememberToday();
+									choose();
+								})
+							}
+						>
+							<Text>Andere Uhrzeit</Text>
+						</Button>
+					</View>
+				}
+			>
+				{error ? <Text accessibilityRole="alert">{error}</Text> : null}
+			</DayovaSheetFrame>
 			<DateTimePickerSheet
 				visible={picker}
 				mode="time"
@@ -206,6 +288,6 @@ export function LearningRoutineCoach({
 				referenceTime={referenceTime}
 				onClose={() => setImpactFingerprint(null)}
 			/>
-		</View>
+		</>
 	);
 }

@@ -31,11 +31,17 @@ Product requirements and remaining acceptance work live in
   plans and refuses deadline conflicts or stale consent. Started/completed
   sessions are not rescheduled. This covers the existing rolling horizon, **not**
   a guarantee that every future topic will fit before the exam.
-- Home coaching is inline and voluntary. Earlier/later opens a time picker and
+- The daily time check-in uses the shared popup with “Ja, passt” and “Andere
+  Uhrzeit”, replacing the inline four-action card. It waits for the focused Today
+  screen and other sheets to close, and only appears for an upcoming session.
+  Presentation records today's dismissal; a local guard prevents repeat prompts
+  within the same day even while persistence is pending. Closing skips today
+  without changing the plan; confirming the time does not start or move learning.
+  “Andere Uhrzeit” opens the existing time picker after the popup has closed and
   an explicit choice: move only today's unstarted committed step, or open regular
   learning-time settings. The one-off mutation preserves content/progress and
   checks ownership, revision, overlaps, date boundaries and next-step ordering.
-  Dismissal hides coaching for the day; the global behavioral snooze also applies.
+  Behavioral suggestions remain inline; the global behavioral snooze also applies.
 - Local start/forgotten reminders are no longer planned for started, completed,
   partially completed, missed or adjusted sessions. Notification permission and
   preferences remain independent.
@@ -70,9 +76,16 @@ combined QA backend with the narrower PR #651 branch.
   preservation, stale/started/overlapping rejection and read-only slot reservation.
 - `learning-time-impact-sheet.ui.test.tsx`: no automatic acceptance, cancellation,
   revision-bound acceptance and disabled loading/stale/conflicting previews.
-- `learning-routine-coach.ui.test.tsx`: voluntary home prompt, one-off consent and
-  a separate route for regular preferences.
+- `learning-routine-coach.ui.test.tsx`: two-action popup, daily repeat guard,
+  focus/sheet coordination, persistence retry, one-off consent and a separate
+  route for regular preferences.
 - `notification-planner.test.ts`: terminal/started learning states do not retain
   future start/forgotten notifications.
 
 These use fixtures and mocked clocks, not multi-week observations on devices.
+
+The popup follow-up was visually checked in the Dayova Jakob Review iPhone
+simulator on 2026-09-28. Its component tests and the existing first-plan prompt
+and shared sheet tests pass (36 tests across three suites). Native tap/gesture
+flows, Android, dark mode, large text and VoiceOver were not verified in this
+follow-up; the broader release gates above remain open. No backend was deployed.
