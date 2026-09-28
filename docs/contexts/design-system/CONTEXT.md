@@ -204,11 +204,14 @@ acknowledges a real transition without becoming recurring friction.
 
 ## Product-surface previews
 
-The Today learning card uses the same `NotchedActionCard` shell as the learning
-plan overview, but prioritizes one next learning action: small subject/exam
-context, a prominent topic, duration and “Jetzt lernen” / “Fortsetzen”. Its
-height grows with content; it does not repeat plan progress or the large empty
-area of the former dashboard highlight. Calendar and agenda remain separate.
+The Today learning card follows Philipp's approved course-card reference:
+a closed `ActionSurface` with `system-subtle` fill, subject/learning context
+at top left, duration at top right, a prominent topic and an optional distinct
+goal from the matching session. The footer holds “Jetzt lernen” / “Fortsetzen”
+and the Dayova gradient arrow inside the card. It intentionally supersedes the
+earlier notched plan-card shell on Today only. Its minimum height is 211 points
+and grows with content; exam date, plan progress and decorative loops are omitted.
+Calendar, external spacing and agenda remain separate and unchanged.
 This scoped follow-up is tracked in [DAY-490](https://linear.app/dayova/issue/DAY-490).
 
 Onboarding artwork or other explanatory UI that depicts a live Dayova product

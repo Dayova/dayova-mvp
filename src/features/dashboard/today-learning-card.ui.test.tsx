@@ -10,7 +10,7 @@ jest.mock("~/components/ui/icon", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
 	const icon = (props: Record<string, unknown>) =>
 		React.createElement("Icon", props);
-	return { ArrowUpRight: icon, GraduationCap: icon };
+	return { ArrowUpRight: icon, BookOpen: icon, Clock3: icon };
 });
 jest.mock("~/components/ui/portrait-content", () => ({
 	useContentSizeLayout: () => ({ shouldStackInlineContent: mockStack }),
@@ -51,8 +51,8 @@ describe("TodayLearningCard", () => {
 	});
 	test("shows context, topic and duration with one learning action", async () => {
 		const screen = await render(<TodayLearningCard {...props} />);
-		expect(screen.getByText("Mathematik")).toBeTruthy();
-		expect(screen.getByText("Klassenarbeit · 5. Oktober 2026")).toBeTruthy();
+		expect(screen.getByText("Mathematik · Lernen")).toBeTruthy();
+		expect(screen.queryByText(/Klassenarbeit/)).toBeNull();
 		expect(screen.getByText("Gleichungen mit Klammern lösen")).toBeTruthy();
 		expect(screen.getByText("ca. 17 Min.")).toBeTruthy();
 		expect(screen.getAllByRole("button")).toHaveLength(1);
@@ -61,6 +61,29 @@ describe("TodayLearningCard", () => {
 		);
 		expect(props.onOpenItem).toHaveBeenCalledWith(item);
 		expect(props.onOpenFallback).not.toHaveBeenCalled();
+	});
+	test("shows a goal and diagnostic label only for the matching session", async () => {
+		const currentSession = {
+			id: "session-1",
+			sessionPurpose: "diagnostic" as const,
+			goal: "Finde heraus, was du schon kannst.",
+		};
+		const screen = await render(
+			<TodayLearningCard {...props} plan={{ ...plan, currentSession }} />,
+		);
+		expect(screen.getByText("Mathematik · Wissenscheck")).toBeTruthy();
+		expect(screen.getByText(currentSession.goal)).toBeTruthy();
+		await screen.rerender(
+			<TodayLearningCard
+				{...props}
+				plan={{
+					...plan,
+					currentSession: { ...currentSession, id: "other-session" },
+				}}
+			/>,
+		);
+		expect(screen.queryByText(currentSession.goal)).toBeNull();
+		expect(screen.getByText("Mathematik · Lernen")).toBeTruthy();
 	});
 	test("continues the existing started session", async () => {
 		const started = {
