@@ -39,6 +39,23 @@ function findVectorBackground(node: unknown): {
 }
 
 describe("NotchedActionCard", () => {
+	test("widens the notch for a pill without changing card height or action semantics", async () => {
+		const screen = await render(
+			<NotchedActionCard
+				pressType="card"
+				cardHeight={240}
+				actionSize={48}
+				actionWidth={144}
+				actionIcon={<View />}
+				cardAccessibilityLabel="Jetzt lernen"
+				onPress={() => undefined}
+				testID="pill-card"
+			/>,
+		);
+		expect(screen.getByTestId("pill-card")).toHaveStyle({ minHeight: 240 });
+		expect(screen.getAllByRole("button")).toHaveLength(1);
+		expect(JSON.stringify(screen.toJSON())).toContain("H248");
+	});
 	test("clips optional artwork independently for each card without adding actions", async () => {
 		const screen = await render(
 			<View>

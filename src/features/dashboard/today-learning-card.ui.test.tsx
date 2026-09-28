@@ -122,14 +122,17 @@ describe("TodayLearningCard", () => {
 			screen.getByText("Gleichungen mit Klammern lösen").props.className,
 		).toContain("text-body-1");
 		expect(
-			screen.getByTestId("today-learning-action-icon", {
+			screen.getByText("Jetzt lernen", { includeHiddenElements: true }),
+		).toBeTruthy();
+		expect(
+			screen.queryByTestId("today-learning-action-icon", {
 				includeHiddenElements: true,
-			}).props.name,
-		).toBe("play");
+			}),
+		).toBeNull();
 		expect(screen.queryByText(/ca\./)).toBeNull();
 		expect(screen.getAllByRole("button")).toHaveLength(1);
 		await fireEvent.press(
-			screen.getByRole("button", { name: /^Lernsession starten/ }),
+			screen.getByRole("button", { name: /^Jetzt lernen/ }),
 		);
 		expect(props.onOpenItem).toHaveBeenCalledWith(item);
 		expect(props.onOpenFallback).not.toHaveBeenCalled();
@@ -198,7 +201,7 @@ describe("TodayLearningCard", () => {
 		).toBeNull();
 		expect(screen.queryByText(/9 von 12/)).toBeNull();
 		await fireEvent.press(
-			screen.getByRole("button", { name: /^Lernsession starten/ }),
+			screen.getByRole("button", { name: /^Jetzt lernen/ }),
 		);
 		expect(props.onOpenItem).toHaveBeenCalledWith(item);
 	});
@@ -210,7 +213,9 @@ describe("TodayLearningCard", () => {
 		const screen = await render(
 			<TodayLearningCard {...props} item={started} />,
 		);
-		expect(screen.queryByText("Weiterlernen")).toBeNull();
+		expect(
+			screen.getByText("Weiterlernen", { includeHiddenElements: true }),
+		).toBeTruthy();
 		await fireEvent.press(
 			screen.getByRole("button", { name: /^Weiterlernen/ }),
 		);

@@ -1,5 +1,5 @@
 import { createElement } from "react";
-import { View } from "react-native";
+import { useWindowDimensions, View } from "react-native";
 import { ArrowRightStraight, Play, Plus } from "~/components/ui/icon";
 import { NotchedActionCard } from "~/components/ui/notched-action-card";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
@@ -50,6 +50,8 @@ export function TodayLearningCard({
 }: Props) {
 	const { colors } = useDayovaTheme();
 	const { shouldStackInlineContent } = useContentSizeLayout();
+	const { fontScale, width } = useWindowDimensions();
+	const hasTextAction = Boolean(item) && !isLoading;
 	const subject = formatGermanUiText(
 		plan?.subject ?? item?.entry.subject ?? "Dein Lernplan",
 	);
@@ -99,7 +101,7 @@ export function TodayLearningCard({
 		: item
 			? item.entry.executionStatus === "started"
 				? "Weiterlernen"
-				: "Lernsession starten"
+				: "Jetzt lernen"
 			: hasNoPlan
 				? "Lernplan erstellen"
 				: "Lernpläne ansehen";
@@ -130,17 +132,29 @@ export function TodayLearningCard({
 		<NotchedActionCard
 			pressType="card"
 			cardHeight={240}
+			actionSize={hasTextAction ? 48 * Math.max(1, fontScale) : 48}
+			actionWidth={
+				hasTextAction ? Math.min(width - 96, 144 * Math.max(1, fontScale)) : 48
+			}
 			fillColor={colors.systemSubtle}
 			contentClassName="px-6 pt-8 pb-0"
 			// Standard height is fixed; larger content sizes release it for vertical reflow.
 			cardStyle={{ height: shouldStackInlineContent ? undefined : 240 }}
 			style={{ height: shouldStackInlineContent ? undefined : 240 }}
-			actionIcon={createElement(ActionIcon, {
-				size: 26,
-				color: DAYOVA_DESIGN_SYSTEM.colors.light1,
-				strokeWidth: 2,
-				testID: "today-learning-action-icon",
-			})}
+			actionIcon={
+				hasTextAction ? (
+					<Text className="px-3 text-center font-poppins font-semibold text-body-3 text-white">
+						{buttonLabel}
+					</Text>
+				) : (
+					createElement(ActionIcon, {
+						size: 26,
+						color: DAYOVA_DESIGN_SYSTEM.colors.light1,
+						strokeWidth: 2,
+						testID: "today-learning-action-icon",
+					})
+				)
+			}
 			cardDisabled={isLoading}
 			cardAccessibilityLabel={
 				item
@@ -192,6 +206,12 @@ export function TodayLearningCard({
 				<LearningCardIllustration subject={item ? subject : undefined} />
 			</View>
 			<View
+				// Reserve the measured text-action height when system text grows.
+				style={
+					hasTextAction && shouldStackInlineContent
+						? { minHeight: 48 * Math.max(1, fontScale) }
+						: undefined
+				}
 				className={cn(
 					"justify-center pr-14",
 					shouldStackInlineContent ? "mt-6 min-h-12" : "mt-auto h-12",

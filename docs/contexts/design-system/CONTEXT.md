@@ -235,11 +235,12 @@ view switching, another creation control, or a redesigned week slider (DAY-490).
 The Today hero combines the shared NotchedActionCard with a smaller native study
 illustration on the right (DAY-490, Philipp's mixed-reference follow-up).
 Title and short supporting copy are left-aligned. Active lessons omit the visible
-footer label; their accessible action still names starting or continuing. Empty
-states retain their explicit footer label. The 48px circular primary-gradient
-action in the notch uses outlined
-Hugeicons Play for lessons, Plus for plan creation and ArrowRightStraight for
-existing plans. The whole card is one accessible action; there is no nested
+footer label; their 144×48px primary-gradient pill in the bottom-right notch
+shows “Jetzt lernen” or “Weiterlernen” without an icon. The shared card's optional
+actionWidth widens both the action and its notch, preserving circular defaults.
+Text scaling expands the pill and its reserved clearance. Empty states retain
+their explicit footer label and 48px circular action with Hugeicons Plus for plan
+creation and ArrowRightStraight for existing plans. The whole card is one accessible action; there is no nested
 button, full-width CTA, time badge or decorative loop. Started sessions retain
 “Weiterlernen”; loading disables the card.
 The illustration uses filled blue, backward-fanned study cards with theme-derived

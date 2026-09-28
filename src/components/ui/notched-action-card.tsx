@@ -26,6 +26,8 @@ type CommonProps = Omit<
 	actionOffsetBottom?: number;
 	actionOffsetRight?: number;
 	actionSize?: number;
+	/** Pill width; defaults to the circular action size. */
+	actionWidth?: number;
 	cardHeight?: number;
 	cardPath?: string;
 	cardStyle?: ViewStyle;
@@ -105,12 +107,14 @@ function buildNotchedCardPath({
 	actionOffsetBottom,
 	actionOffsetRight,
 	actionSize,
+	actionWidth = actionSize,
 	height,
 	width,
 }: {
 	actionOffsetBottom: number;
 	actionOffsetRight: number;
 	actionSize: number;
+	actionWidth?: number;
 	height: number;
 	width: number;
 }) {
@@ -131,7 +135,9 @@ function buildNotchedCardPath({
 	const buttonCenterY = height - actionOffsetBottom - buttonRadius;
 	const notchRadius = buttonRadius + ACTION_CLEARANCE;
 	const notchTopY = buttonCenterY - notchRadius;
-	const notchLeftX = buttonCenterX - notchRadius;
+	const leftButtonCenterX =
+		width - actionOffsetRight - actionWidth + buttonRadius;
+	const notchLeftX = leftButtonCenterX - notchRadius;
 
 	const rightJoinRadius = Math.max(
 		0,
@@ -161,7 +167,8 @@ function buildNotchedCardPath({
 		`C${p(right - cornerRadius + cornerRadius * CUBIC_ARC)} ${p(top)} ${p(right)} ${p(top + cornerRadius - cornerRadius * CUBIC_ARC)} ${p(right)} ${p(top + cornerRadius)}`,
 		`V${p(rightJoinStartY)}`,
 		`C${p(right)} ${p(rightJoinStartY + rightJoinRadius * CUBIC_ARC)} ${p(buttonCenterX + rightJoinRadius * CUBIC_ARC)} ${p(notchTopY)} ${p(buttonCenterX)} ${p(notchTopY)}`,
-		`C${p(buttonCenterX - notchRadius * CUBIC_ARC)} ${p(notchTopY)} ${p(notchLeftX)} ${p(buttonCenterY - notchRadius * CUBIC_ARC)} ${p(notchLeftX)} ${p(buttonCenterY)}`,
+		`H${p(leftButtonCenterX)}`,
+		`C${p(leftButtonCenterX - notchRadius * CUBIC_ARC)} ${p(notchTopY)} ${p(notchLeftX)} ${p(buttonCenterY - notchRadius * CUBIC_ARC)} ${p(notchLeftX)} ${p(buttonCenterY)}`,
 		`C${p(notchLeftX)} ${p(buttonCenterY + bottomJoinRadius * CUBIC_ARC)} ${p(bottomJoinEndX + bottomJoinRadius * CUBIC_ARC)} ${p(bottom)} ${p(bottomJoinEndX)} ${p(bottom)}`,
 		`H${p(left + cornerRadius)}`,
 		`C${p(left + cornerRadius - cornerRadius * CUBIC_ARC)} ${p(bottom)} ${p(left)} ${p(bottom - cornerRadius + cornerRadius * CUBIC_ARC)} ${p(left)} ${p(bottom - cornerRadius)}`,
@@ -176,11 +183,13 @@ function DecorativeAction({
 	actionOffsetBottom,
 	actionOffsetRight,
 	actionSize,
+	actionWidth,
 }: {
 	actionIcon: ReactNode;
 	actionOffsetBottom: number;
 	actionOffsetRight: number;
 	actionSize: number;
+	actionWidth?: number;
 }) {
 	return (
 		<ActionFrame
@@ -191,6 +200,7 @@ function DecorativeAction({
 			actionOffsetBottom={actionOffsetBottom}
 			actionOffsetRight={actionOffsetRight}
 			actionSize={actionSize}
+			actionWidth={actionWidth}
 		>
 			<ActionGradient>{actionIcon}</ActionGradient>
 		</ActionFrame>
@@ -201,12 +211,14 @@ function ActionFrame({
 	actionOffsetBottom,
 	actionOffsetRight,
 	actionSize,
+	actionWidth = actionSize,
 	children,
 	...props
 }: ViewProps & {
 	actionOffsetBottom: number;
 	actionOffsetRight: number;
 	actionSize: number;
+	actionWidth?: number;
 }) {
 	return (
 		<View
@@ -217,7 +229,7 @@ function ActionFrame({
 					position: "absolute",
 					right: actionOffsetRight,
 					bottom: actionOffsetBottom,
-					width: actionSize,
+					width: actionWidth,
 					height: actionSize,
 					borderRadius: actionSize / 2,
 					zIndex: 20,
@@ -239,6 +251,7 @@ function ActionPressableFrame({
 	actionOffsetBottom,
 	actionOffsetRight,
 	actionSize,
+	actionWidth = actionSize,
 	onPress,
 }: {
 	actionAccessibilityHint?: string;
@@ -248,6 +261,7 @@ function ActionPressableFrame({
 	actionOffsetBottom: number;
 	actionOffsetRight: number;
 	actionSize: number;
+	actionWidth?: number;
 	onPress: NonNullable<PressableProps["onPress"]>;
 }) {
 	const [pressed, setPressed] = useState(false);
@@ -266,6 +280,7 @@ function ActionPressableFrame({
 				actionOffsetBottom={actionOffsetBottom}
 				actionOffsetRight={actionOffsetRight}
 				actionSize={actionSize}
+				actionWidth={actionWidth}
 				style={pressed && !actionDisabled ? { opacity: 0.72 } : null}
 			>
 				<ActionGradient>{actionIcon}</ActionGradient>
@@ -286,7 +301,7 @@ function ActionPressableFrame({
 					position: "absolute",
 					right: actionOffsetRight,
 					bottom: actionOffsetBottom,
-					width: actionSize,
+					width: actionWidth,
 					height: actionSize,
 					borderRadius: actionSize / 2,
 					zIndex: 30,
@@ -319,6 +334,7 @@ export function NotchedActionCard({
 	actionOffsetBottom = 0,
 	actionOffsetRight = DEFAULT_ACTION_OFFSET_RIGHT,
 	actionSize = DEFAULT_ACTION_SIZE,
+	actionWidth = actionSize,
 	cardHeight = DEFAULT_CARD_HEIGHT,
 	cardPath,
 	cardStyle,
@@ -361,7 +377,7 @@ export function NotchedActionCard({
 	const resolvedCardHeight = Math.max(cardHeight, cardLayout.height);
 	const resolvedCardWidth = Math.max(
 		cardLayout.width,
-		actionSize + actionOffsetRight,
+		actionWidth + actionOffsetRight,
 	);
 
 	const resolvedCardPath = useMemo(
@@ -371,6 +387,7 @@ export function NotchedActionCard({
 				actionOffsetBottom,
 				actionOffsetRight,
 				actionSize,
+				actionWidth,
 				height: resolvedCardHeight,
 				width: resolvedCardWidth,
 			}),
@@ -378,6 +395,7 @@ export function NotchedActionCard({
 			actionOffsetBottom,
 			actionOffsetRight,
 			actionSize,
+			actionWidth,
 			cardPath,
 			resolvedCardHeight,
 			resolvedCardWidth,
@@ -478,6 +496,7 @@ export function NotchedActionCard({
 					actionOffsetBottom={actionOffsetBottom}
 					actionOffsetRight={actionOffsetRight}
 					actionSize={actionSize}
+					actionWidth={actionWidth}
 				/>
 			</Pressable>
 		);
@@ -505,6 +524,7 @@ export function NotchedActionCard({
 					actionOffsetBottom={actionOffsetBottom}
 					actionOffsetRight={actionOffsetRight}
 					actionSize={actionSize}
+					actionWidth={actionWidth}
 				/>
 			</View>
 		);
@@ -537,6 +557,7 @@ export function NotchedActionCard({
 				actionOffsetBottom={actionOffsetBottom}
 				actionOffsetRight={actionOffsetRight}
 				actionSize={actionSize}
+				actionWidth={actionWidth}
 				onPress={onPress}
 			/>
 		</View>
