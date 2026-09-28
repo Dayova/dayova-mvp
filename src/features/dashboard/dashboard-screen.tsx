@@ -33,6 +33,7 @@ import { useDayovaTheme } from "~/lib/theme";
 import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { cn } from "~/lib/utils";
 import type { DayEntry } from "~/types/dayEntries";
+import { getAgendaPlanRoute } from "./agenda-plan-route";
 import { CompactDayAgenda } from "./compact-day-agenda";
 import {
 	type DashboardAgendaItem,
@@ -506,7 +507,19 @@ export function DashboardScreen() {
 									),
 								)}
 								isLoading={entriesByDay === undefined}
-								onOpenItem={openItem}
+								onOpenItem={(item) => {
+									const planRoute = getAgendaPlanRoute(item.entry);
+									if (planRoute) {
+										trackFeature(
+											"home.entry_opened",
+											"performed",
+											item.entry.id,
+										);
+										router.push(planRoute);
+									} else {
+										openItem(item);
+									}
+								}}
 							/>
 						</View>
 					</View>

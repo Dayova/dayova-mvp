@@ -209,7 +209,10 @@ icon, semibold subject, two-line topic, secondary time/duration. Large text may
 expand vertically; complete copy is in each entry's accessibility label. Only
 explicit completion earns a checkmark, never elapsed time; rows retain contrast.
 The side timeline, repeated “Dein Lernschritt” label, and extra start controls are
-removed. Existing entry navigation remains; school lessons stay non-interactive.
+removed. Open interactive rows show a small neutral Hugeicons right arrow; completed
+rows show only the completion check. The whole row opens its associated learning
+plan, falling back to entry details when no plan exists. School lessons stay
+non-interactive without an arrow. The upper card retains direct session entry.
 Empty days use only “Für diesen Tag ist nichts geplant.” The list container does
 not group away accessible row actions; calendar day buttons provide day selection.
 

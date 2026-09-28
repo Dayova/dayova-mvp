@@ -4,7 +4,10 @@ import type { Id } from "#convex/_generated/dataModel";
 import { CompactDayAgenda } from "./compact-day-agenda";
 import { toDashboardAgendaItem } from "./dashboard-agenda";
 
-jest.mock("~/components/ui/icon", () => ({ Check: () => null }));
+jest.mock("~/components/ui/icon", () => ({
+	Check: () => null,
+	ArrowRight: () => null,
+}));
 jest.mock("~/features/subjects/subject-catalog", () => ({
 	getSubjectIcon: () => () => null,
 }));
@@ -38,6 +41,9 @@ describe("CompactDayAgenda", () => {
 		).toBeNull();
 		await fireEvent.press(screen.getByRole("button"));
 		expect(open).toHaveBeenCalledWith(item);
+		expect(
+			screen.getByTestId("agenda-open-arrow", { includeHiddenElements: true }),
+		).toBeTruthy();
 	});
 	test.each([
 		"completed",
@@ -60,6 +66,13 @@ describe("CompactDayAgenda", () => {
 				}),
 			),
 		).toBe(executionStatus === "completed");
+		expect(
+			Boolean(
+				screen.queryByTestId("agenda-open-arrow", {
+					includeHiddenElements: true,
+				}),
+			),
+		).toBe(executionStatus !== "completed");
 	});
 	test("uses quiet empty copy and does not flash it while loading", async () => {
 		const screen = await render(

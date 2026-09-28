@@ -1,6 +1,6 @@
 import { createElement } from "react";
 import { View } from "react-native";
-import { Check } from "~/components/ui/icon";
+import { ArrowRight, Check } from "~/components/ui/icon";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { ActionSurface, Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
@@ -113,6 +113,19 @@ function AgendaRow({
 				>
 					<Check size={20} color={colors.primaryStrong} strokeWidth={2} />
 				</View>
+			) : item.kind !== "schoolLesson" ? (
+				<View
+					testID="agenda-open-arrow"
+					accessible={false}
+					accessibilityElementsHidden
+					importantForAccessibility="no-hide-descendants"
+				>
+					<ArrowRight
+						size={18}
+						color={colors.secondaryText}
+						strokeWidth={1.9}
+					/>
+				</View>
 			) : null}
 		</View>
 	);
@@ -127,7 +140,11 @@ function AgendaRow({
 			accessible
 			accessibilityRole="button"
 			accessibilityLabel={label}
-			accessibilityHint="Öffnet diesen Eintrag."
+			accessibilityHint={
+				item.entry.relatedLearningPlanId
+					? "Öffnet den zugehörigen Lernplan."
+					: "Öffnet diesen Eintrag."
+			}
 			onPress={() => onOpenItem(item)}
 		>
 			{content}
