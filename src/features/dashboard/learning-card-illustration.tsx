@@ -6,8 +6,15 @@ import { getSubjectIcon } from "~/features/subjects/subject-catalog";
 import { useDayovaTheme } from "~/lib/theme";
 
 /** DAY-490: decorative, theme-aware study cards; all glyphs come from Hugeicons. */
-export function LearningCardIllustration({ subject }: { subject?: string }) {
+export function LearningCardIllustration({
+	subject,
+	backgroundColor,
+}: {
+	subject?: string;
+	backgroundColor?: string;
+}) {
 	const { colors, isDark } = useDayovaTheme();
+	const fadeColor = backgroundColor ?? colors.systemSubtle;
 	const SubjectIcon = subject ? getSubjectIcon(subject) : GraduationCap;
 	return (
 		<View
@@ -68,7 +75,7 @@ export function LearningCardIllustration({ subject }: { subject?: string }) {
 			</View>
 			{/* Native gradient fades all card edges into the identical hero-top color. */}
 			<LinearGradient
-				colors={[`${colors.systemSubtle}00`, colors.systemSubtle]}
+				colors={[`${fadeColor}00`, fadeColor]}
 				locations={[0, 1]}
 				style={art.fade}
 			/>

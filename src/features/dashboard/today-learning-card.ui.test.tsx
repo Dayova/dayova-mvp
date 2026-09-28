@@ -34,7 +34,14 @@ jest.mock("~/components/ui/portrait-content", () => ({
 }));
 jest.mock("~/lib/theme", () => ({
 	useDayovaTheme: () => ({
-		colors: { border: "#DCE6EE", surface: "#FFFFFF", secondaryText: "#697586" },
+		colors: {
+			border: "#DCE6EE",
+			surface: "#FFFFFF",
+			secondaryText: "#697586",
+			systemSubtle: "#F1F7FB",
+			primary: "#00BAFF",
+			primaryStrong: "#00A0E6",
+		},
 	}),
 }));
 

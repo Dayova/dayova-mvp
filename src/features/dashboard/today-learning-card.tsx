@@ -9,6 +9,7 @@ import { LearningPlanStatusBadge } from "~/features/learning-plans/learning-plan
 import { addDays, getDayKey, parseDayKey } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
+import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 import {
 	type DashboardAgendaItem,
@@ -50,6 +51,19 @@ export function TodayLearningCard({
 	onOpenFallback,
 }: Props) {
 	const { shouldStackInlineContent } = useContentSizeLayout();
+	const { colors } = useDayovaTheme();
+	// Blend existing theme tokens; the opaque result also anchors the illustration fade.
+	const heroFill = `#${[1, 3, 5]
+		.map((offset) =>
+			Math.round(
+				Number.parseInt(colors.systemSubtle.slice(offset, offset + 2), 16) *
+					0.88 +
+					Number.parseInt(colors.primary.slice(offset, offset + 2), 16) * 0.12,
+			)
+				.toString(16)
+				.padStart(2, "0"),
+		)
+		.join("")}`;
 	const subject = formatGermanUiText(
 		plan?.subject ?? item?.entry.subject ?? "Dein Lernplan",
 	);
@@ -131,6 +145,7 @@ export function TodayLearningCard({
 			className="rounded-button border border-border bg-system-subtle px-6 pt-6 pb-4"
 			// Standard height is fixed; larger content sizes release it for vertical reflow.
 			style={{
+				backgroundColor: heroFill,
 				minHeight: 240,
 				height: shouldStackInlineContent ? undefined : 240,
 			}}
@@ -189,7 +204,10 @@ export function TodayLearningCard({
 						</Text>
 					) : null}
 				</View>
-				<LearningCardIllustration subject={item ? subject : undefined} />
+				<LearningCardIllustration
+					subject={item ? subject : undefined}
+					backgroundColor={heroFill}
+				/>
 			</View>
 			<Button
 				variant="light"
@@ -218,12 +236,12 @@ export function TodayLearningCard({
 					else onOpenFallback();
 				}}
 			>
-				<Text className="flex-1 font-poppins font-semibold text-body-2">
+				<Text className="flex-1 font-poppins font-semibold text-body-2 text-primary-strong">
 					{buttonLabel}
 				</Text>
 				{createElement(ActionIcon, {
 					size: 22,
-					color: DAYOVA_DESIGN_SYSTEM.colors.text,
+					color: colors.primaryStrong,
 					strokeWidth: 2,
 					testID: "today-learning-action-icon",
 					accessible: false,
