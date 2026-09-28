@@ -77,13 +77,13 @@ describe("TodayLearningCard", () => {
 				/>,
 			);
 			const card = screen.getByTestId("today-learning-card");
-			expect(card).toHaveStyle({ minHeight: 240 });
-			expect(card).toHaveStyle({ height: 240 });
+			expect(card).toHaveStyle({ minHeight: 280 });
+			expect(card).toHaveStyle({ height: 280 });
 			expect(screen.getByText(title).props.numberOfLines).toBe(2);
 		}
 		await screen.rerender(<TodayLearningCard {...props} isLoading />);
 		expect(screen.getByTestId("today-learning-card")).toHaveStyle({
-			height: 240,
+			height: 280,
 		});
 	});
 	test("chooses the subject glyph and graduation cap for creation", async () => {
@@ -245,7 +245,7 @@ describe("TodayLearningCard", () => {
 		).toBeTruthy();
 		expect(screen.getAllByRole("button")).toHaveLength(1);
 		expect(screen.getByTestId("today-learning-card")).toHaveStyle({
-			height: 240,
+			height: 280,
 		});
 		if (!hasLearningPlans)
 			expect(
