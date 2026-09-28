@@ -86,21 +86,16 @@ function AgendaRow({
 			<View className="min-w-0 flex-1 gap-1">
 				<Text
 					className="font-poppins font-semibold text-body-3 text-text"
-					numberOfLines={shouldStackInlineContent ? undefined : 2}
+					numberOfLines={shouldStackInlineContent ? undefined : 1}
 					ellipsizeMode="tail"
 				>
-					{subject || topic}
+					{[subject, topic].filter(Boolean).join(" · ")}
 				</Text>
-				{subject && topic ? (
-					<Text
-						className="font-poppins text-body-3 text-text"
-						numberOfLines={shouldStackInlineContent ? undefined : 2}
-						ellipsizeMode="tail"
-					>
-						{topic}
-					</Text>
-				) : null}
-				<Text className="font-poppins text-body-4 text-secondary-text">
+				<Text
+					className="font-poppins text-body-4 text-secondary-text"
+					numberOfLines={shouldStackInlineContent ? undefined : 1}
+					ellipsizeMode="tail"
+				>
 					{metadata}
 				</Text>
 			</View>

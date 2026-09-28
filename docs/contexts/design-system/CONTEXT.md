@@ -205,7 +205,8 @@ acknowledges a real transition without becoming recurring friction.
 ## Product-surface previews
 
 Today's selected-day agenda is a compact full-width list (DAY-490): subject-catalog
-icon, semibold subject, two-line topic, secondary time/duration. Large text may
+icon, one semibold line combining subject and topic, then secondary time/duration
+on a second line. Both lines truncate with ellipsis at standard text sizes. Large text may
 expand vertically; complete copy is in each entry's accessibility label. Only
 explicit completion earns a checkmark, never elapsed time; rows retain contrast.
 The side timeline, repeated “Dein Lernschritt” label, and extra start controls are

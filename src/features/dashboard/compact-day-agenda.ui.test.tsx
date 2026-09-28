@@ -32,9 +32,13 @@ describe("CompactDayAgenda", () => {
 		const screen = await render(
 			<CompactDayAgenda items={[item]} isLoading={false} onOpenItem={open} />,
 		);
-		expect(screen.getByText("Mathematik")).toBeTruthy();
-		expect(screen.getByText("Gleichungen lösen").props.numberOfLines).toBe(2);
-		expect(screen.getByText("17:00 · 17 min")).toBeTruthy();
+		expect(
+			screen.getByText("Mathematik · Gleichungen lösen").props.numberOfLines,
+		).toBe(1);
+		expect(screen.getByText("17:00 · 17 min").props.numberOfLines).toBe(1);
+		expect(screen.getByRole("button").props.accessibilityLabel).toContain(
+			"Gleichungen lösen",
+		);
 		expect(screen.queryByText("Dein Lernschritt")).toBeNull();
 		expect(
 			screen.queryByTestId("agenda-completed", { includeHiddenElements: true }),
