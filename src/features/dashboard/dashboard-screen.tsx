@@ -137,7 +137,7 @@ function WeekCalendar({
 	onSelectDay: (day: CalendarDay) => void;
 }) {
 	return (
-		<View className="flex-row border-border border-b pb-5">
+		<View className="flex-row border-border border-b pb-2">
 			{days.map((day) => {
 				const selected = day.key === selectedDayKey;
 				return (
@@ -500,7 +500,7 @@ export function DashboardScreen() {
 
 				<GestureDetector gesture={daySwipeGesture}>
 					<View>
-						<View className="px-6 pt-6">
+						<View className="px-6 pt-3">
 							<CompactDayAgenda
 								items={sortDashboardAgendaItems(
 									(entriesByDay?.[selectedDayKey] ?? []).map((entry) =>
