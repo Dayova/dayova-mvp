@@ -499,7 +499,7 @@ export function DashboardScreen() {
 
 				<GestureDetector gesture={daySwipeGesture}>
 					<View>
-						<View className="px-6 pt-3">
+						<View className="px-6 pt-4">
 							<CompactDayAgenda
 								items={sortDashboardAgendaItems(
 									(entriesByDay?.[selectedDayKey] ?? []).map((entry) =>
