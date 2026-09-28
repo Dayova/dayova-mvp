@@ -238,7 +238,7 @@ export function TodayLearningCard({
 					else onOpenFallback();
 				}}
 			>
-				<Text className="flex-1 font-poppins font-semibold text-body-2 text-primary-strong">
+				<Text className="flex-1 font-poppins font-semibold text-body-2 text-white">
 					{buttonLabel}
 				</Text>
 				<View
