@@ -192,6 +192,7 @@ export function TodayLearningCard({
 				<LearningCardIllustration subject={item ? subject : undefined} />
 			</View>
 			<Button
+				variant="light"
 				size="sm"
 				className={cn(
 					"mt-2 w-full justify-between",
@@ -217,12 +218,12 @@ export function TodayLearningCard({
 					else onOpenFallback();
 				}}
 			>
-				<Text className="flex-1 font-poppins font-semibold text-body-3 text-white">
+				<Text className="flex-1 font-poppins font-semibold text-body-2">
 					{buttonLabel}
 				</Text>
 				{createElement(ActionIcon, {
 					size: 22,
-					color: DAYOVA_DESIGN_SYSTEM.colors.light1,
+					color: DAYOVA_DESIGN_SYSTEM.colors.text,
 					strokeWidth: 2,
 					testID: "today-learning-action-icon",
 					accessible: false,
