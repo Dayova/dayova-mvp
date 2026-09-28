@@ -232,30 +232,28 @@ The action selects today's date and brings its week into view. Large content siz
 stack the row. This simplified Apple Calendar reference does not introduce search,
 view switching, another creation control, or a redesigned week slider (DAY-490).
 
-The active Today learning card uses a plain blue bordered Surface (DAY-490).
-It contains only a left-aligned body-1 semibold task title, a plain secondary
-metadata line (for example “Morgen · 17 Minuten”), and a full-width centered
-“Lernsession starten” Button. Started sessions say “Weiterlernen”. Today displays
-only duration. No badge, visible description, decorative loop, notch or icon-only
-Play action is shown in this state. The surface is non-interactive; only the
-Button starts the session. The complete title, subject and goal remain accessible.
-The common standard height is 224px with 24px padding; large text can grow.
-Standard titles truncate at two lines. Loading disables the action.
-The existing-plan empty state retains its previously approved notched card and
-DAY-490 decorative loop (a reference-artwork exception, not an interface icon).
+The Today hero uses a centered illustrated Surface (DAY-490, Philipp's reference
+follow-up). A decorative stack of native study cards uses the shared Hugeicons
+subject catalog for active lessons and GraduationCap when no lesson is available.
+Unknown subjects use the catalog's BookOpen fallback. The artwork is hidden from
+accessibility and is not interactive. Theme-derived gradients give the card depth
+without a separate palette; the rounded-card radius and border token are retained.
+Below it sit a centered body-1 task title, plain secondary time/date metadata and
+the shared full-width primary-gradient Button. Active lessons have no visible
+description or badge. Started sessions say “Weiterlernen”. Only the Button acts.
+All states share a 352px standard height; large text releases it to natural height.
+Titles truncate at two lines only at standard sizing; complete context remains
+in the button's accessible label. Loading disables the action.
 The hero prioritizes today's unfinished learning sessions, including sessions whose
 scheduled time has passed. Explicitly completed sessions are excluded. When today
 has no open session, the earliest upcoming session is shown with “Morgen” or its
-date inside the duration badge; today's sessions have no visible day label (the day stays
+date in the metadata line; today's sessions have no visible day label (the day stays
 in the accessibility label). Its today-based
 31-day query window is independent of calendar selection. Past-day sessions are
 not promoted. The calendar stays visible in all states.
-Without a plan, the blue bordered card has a centered heading, short explanation
-and full-width “Jetzt Lernplan erstellen” Button, without the large calendar icon.
-It has the same 224px standard height; large text can grow. The container is a
-non-interactive Surface, avoiding nested buttons. With existing plans but no next
-session in the window, reuse the notched card: “Kein Lernschritt geplant”, neutral
-copy and “Lernpläne ansehen” aligned to the straight right arrow at the bottom.
+Without a plan, the same illustrated card shows “Noch kein Lernplan”, a short
+explanation and “Jetzt Lernplan erstellen”. With existing plans but no next
+session, it shows “Kein Lernschritt geplant” and “Lernpläne ansehen”.
 This does not claim all work is finished or encourage duplicate plans; the plans
 overview remains the place to inspect incomplete or completed plans.
 Loading never flashes a creation prompt; an available future lesson retains the

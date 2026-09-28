@@ -12,6 +12,9 @@ jest.mock("~/components/ui/icon", () => {
 		React.createElement("Icon", props);
 	return {
 		ArrowUpRight: icon,
+		GraduationCap: (props: Record<string, unknown>) =>
+			React.createElement("Icon", { ...props, name: "graduation-cap" }),
+		Sparkles: icon,
 		ArrowRightStraight: icon,
 		BookOpen: icon,
 		CalendarDays: icon,
@@ -71,14 +74,38 @@ describe("TodayLearningCard", () => {
 				/>,
 			);
 			const card = screen.getByTestId("today-learning-card");
-			expect(card).toHaveStyle({ minHeight: 224 });
-			expect(card).toHaveStyle({ height: 224 });
+			expect(card).toHaveStyle({ minHeight: 352 });
+			expect(card).toHaveStyle({ height: 352 });
 			expect(screen.getByText(title).props.numberOfLines).toBe(2);
 		}
 		await screen.rerender(<TodayLearningCard {...props} isLoading />);
 		expect(screen.getByTestId("today-learning-card")).toHaveStyle({
-			height: 224,
+			height: 352,
 		});
+	});
+	test("chooses the subject glyph and graduation cap for creation", async () => {
+		const screen = await render(<TodayLearningCard {...props} />);
+		expect(
+			screen.getByTestId("learning-illustration-icon", {
+				includeHiddenElements: true,
+			}).props.name,
+		).toBe("calculator");
+		await screen.rerender(
+			<TodayLearningCard {...props} plan={{ subject: "Deutsch" }} />,
+		);
+		expect(
+			screen.getByTestId("learning-illustration-icon", {
+				includeHiddenElements: true,
+			}).props.name,
+		).toBe("pencil");
+		await screen.rerender(
+			<TodayLearningCard {...props} item={undefined} plan={undefined} />,
+		);
+		expect(
+			screen.getByTestId("learning-illustration-icon", {
+				includeHiddenElements: true,
+			}).props.name,
+		).toBe("graduation-cap");
 	});
 	test("shows context, topic and duration with one learning action", async () => {
 		const screen = await render(<TodayLearningCard {...props} />);

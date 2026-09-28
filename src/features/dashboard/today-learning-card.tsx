@@ -1,16 +1,12 @@
-import { View } from "react-native";
-import Svg, { Path } from "react-native-svg";
+import { LinearGradient } from "expo-linear-gradient";
+import { StyleSheet, View } from "react-native";
 import { Button } from "~/components/ui/button";
-import { ArrowRightStraight } from "~/components/ui/icon";
-import { NotchedActionCard } from "~/components/ui/notched-action-card";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { addDays, getDayKey, parseDayKey } from "~/lib/day-key";
-import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { useDayovaTheme } from "~/lib/theme";
-import { cn } from "~/lib/utils";
 import {
 	type DashboardAgendaItem,
 	getAgendaEntryTitle,
@@ -19,6 +15,7 @@ import {
 	type DashboardNextStepFallbackAction,
 	EMPTY_DASHBOARD_PRIMARY_ACTION,
 } from "./dashboard-empty-state";
+import { LearningCardIllustration } from "./learning-card-illustration";
 
 type Props = {
 	todayKey?: string;
@@ -49,7 +46,7 @@ export function TodayLearningCard({
 	onOpenItem,
 	onOpenFallback,
 }: Props) {
-	const { colors } = useDayovaTheme();
+	const { colors, isDark } = useDayovaTheme();
 	const { shouldStackInlineContent } = useContentSizeLayout();
 	const subject = formatGermanUiText(
 		plan?.subject ?? item?.entry.subject ?? "Dein Lernplan",
@@ -95,168 +92,92 @@ export function TodayLearningCard({
 							month: "short",
 						}).format(stepDate)
 			: null;
-	if (item || isLoading) {
-		const buttonLabel = isLoading
-			? "Wird geladen …"
-			: item?.entry.executionStatus === "started"
+	const buttonLabel = isLoading
+		? "Wird geladen …"
+		: item
+			? item.entry.executionStatus === "started"
 				? "Weiterlernen"
-				: "Lernsession starten";
-		const metadata = [
-			item?.dayKey !== todayKey ? dayLabel : null,
-			duration != null && duration > 0
-				? `${duration} ${duration === 1 ? "Minute" : "Minuten"}`
-				: null,
-		]
-			.filter(Boolean)
-			.join(" · ");
-		return (
-			<Surface
-				className="justify-between gap-6 border border-border bg-system-subtle p-6"
-				// Runtime content-size mode releases the common card height for accessibility.
-				style={{
-					minHeight: 224,
-					height: shouldStackInlineContent ? undefined : 224,
-				}}
-				testID="today-learning-card"
-			>
-				<View className="gap-3" testID="today-learning-card-context">
-					<Text
-						accessibilityRole="header"
-						numberOfLines={shouldStackInlineContent ? undefined : 2}
-						ellipsizeMode="tail"
-						className="font-poppins font-semibold text-body-1 text-text"
-					>
-						{title}
-					</Text>
-					{!isLoading && metadata ? (
-						<Text className="font-poppins text-body-3 text-secondary-text">
-							{metadata}
-						</Text>
-					) : null}
-				</View>
-				<Button
-					className="w-full"
-					disabled={isLoading}
-					accessibilityLabel={[
-						buttonLabel,
-						context,
-						title,
-						!isLoading ? description : null,
-						!isLoading ? dayLabel : null,
-						!isLoading ? metadata : null,
-					]
-						.filter(Boolean)
-						.join(". ")}
-					accessibilityHint="Öffnet diesen Lernschritt."
-					onPress={() => {
-						if (item && !isLoading) onOpenItem(item);
-					}}
-				>
-					<Text className="text-center">{buttonLabel}</Text>
-				</Button>
-			</Surface>
-		);
-	}
-	if (!item && !isLoading && hasNoPlan) {
-		const emptyAction = "Jetzt Lernplan erstellen";
-		return (
-			<Surface
-				className="items-center justify-center gap-6 border border-border bg-system-subtle p-6"
-				// Match the native notched-card geometry, releasing height at runtime for large text.
-				style={{
-					minHeight: 224,
-					height: shouldStackInlineContent ? undefined : 224,
-				}}
-				testID="today-learning-card"
-			>
-				<View className="gap-3">
-					<Text
-						accessibilityRole="header"
-						className="text-center font-poppins font-semibold text-body-1 text-text"
-					>
-						Noch kein Lernplan
-					</Text>
-					<Text className="text-center font-poppins text-body-3 text-secondary-text">
-						Plane deine nächste Prüfung. Dayova hilft dir beim Lernen.
-					</Text>
-				</View>
-				<Button
-					className="w-full"
-					accessibilityLabel={emptyAction}
-					accessibilityHint={fallbackAction.accessibilityHint}
-					onPress={onOpenFallback}
-				>
-					<Text className="text-center">{emptyAction}</Text>
-				</Button>
-			</Surface>
-		);
-	}
+				: "Lernsession starten"
+			: hasNoPlan
+				? "Jetzt Lernplan erstellen"
+				: "Lernpläne ansehen";
+	const metadata = [
+		item?.dayKey !== todayKey ? dayLabel : null,
+		duration != null && duration > 0
+			? `${duration} ${duration === 1 ? "Minute" : "Minuten"}`
+			: null,
+	]
+		.filter(Boolean)
+		.join(" · ");
+	const visibleTitle =
+		!item && !isLoading && hasNoPlan ? "Noch kein Lernplan" : title;
+	const supportingCopy = item
+		? metadata
+		: isLoading
+			? ""
+			: hasNoPlan
+				? "Plane deine nächste Prüfung mit Dayova."
+				: "Hier findest du deine bestehenden Lernpläne.";
 	return (
-		<NotchedActionCard
-			pressType="card"
-			cardHeight={224}
-			fillColor={colors.systemSubtle}
-			className={cn(!shouldStackInlineContent && "h-56")}
-			contentClassName={cn(
-				"px-6 pt-8 pb-0",
-				!shouldStackInlineContent && "h-56",
-			)}
-			actionIcon={
-				<ArrowRightStraight
-					size={26}
-					color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-					strokeWidth={2}
-				/>
-			}
-			backgroundArtwork={
-				// DAY-490: decorative reference artwork, not an interface icon.
-				<Svg
-					width="100%"
-					height="100%"
-					viewBox="0 0 354 260"
-					preserveAspectRatio="none"
-					pointerEvents="none"
-					accessible={false}
-				>
-					<Path
-						d="M 377 77 C 301 72 245 108 291 158 C 339 212 383 211 369 186 C 348 150 295 171 269 188 C 229 213 201 240 185 270"
-						fill="none"
-						stroke={colors.primary}
-						strokeOpacity={0.22}
-						strokeWidth={17}
-					/>
-				</Svg>
-			}
-			cardAccessibilityLabel={["Lernpläne ansehen", title, description].join(
-				". ",
-			)}
-			cardAccessibilityHint={fallbackAction.accessibilityHint}
-			onPress={onOpenFallback}
+		<Surface
+			className="justify-between overflow-hidden rounded-card border border-border bg-system-subtle p-6"
+			// Runtime content-size mode releases the common illustrated-card height.
+			style={{
+				minHeight: 352,
+				height: shouldStackInlineContent ? undefined : 352,
+			}}
 			testID="today-learning-card"
 		>
-			<Text
-				accessibilityRole="header"
-				numberOfLines={shouldStackInlineContent ? undefined : 2}
-				className="font-poppins font-semibold text-body-1 text-text"
-			>
-				{title}
-			</Text>
-			<Text
-				numberOfLines={shouldStackInlineContent ? undefined : 2}
-				className="mt-6 pr-14 font-poppins text-body-3 text-secondary-text"
-			>
-				{description}
-			</Text>
-			<View
-				className={cn(
-					"justify-center pr-14",
-					shouldStackInlineContent ? "mt-6 min-h-12" : "mt-auto h-12",
-				)}
-			>
-				<Text className="font-poppins font-semibold text-body-3 text-text">
-					Lernpläne ansehen
+			<LinearGradient
+				colors={
+					isDark
+						? [colors.systemSubtle, colors.background]
+						: [colors.surface, colors.systemSubtle]
+				}
+				start={{ x: 1, y: 0 }}
+				end={{ x: 0, y: 1 }}
+				// Native gradient API requires absolute geometry and runtime theme colors.
+				style={StyleSheet.absoluteFill}
+				pointerEvents="none"
+				accessible={false}
+			/>
+			<LearningCardIllustration subject={item ? subject : undefined} />
+			<View className="gap-3 py-4" testID="today-learning-card-context">
+				<Text
+					accessibilityRole="header"
+					numberOfLines={shouldStackInlineContent ? undefined : 2}
+					ellipsizeMode="tail"
+					className="text-center font-poppins font-semibold text-body-1 text-text"
+				>
+					{visibleTitle}
 				</Text>
+				{supportingCopy ? (
+					<Text className="text-center font-poppins text-body-3 text-secondary-text">
+						{supportingCopy}
+					</Text>
+				) : null}
 			</View>
-		</NotchedActionCard>
+			<Button
+				className="w-full"
+				disabled={isLoading}
+				accessibilityLabel={
+					item
+						? [buttonLabel, context, title, description, dayLabel, metadata]
+								.filter(Boolean)
+								.join(". ")
+						: buttonLabel
+				}
+				accessibilityHint={
+					item ? "Öffnet diesen Lernschritt." : fallbackAction.accessibilityHint
+				}
+				onPress={() => {
+					if (isLoading) return;
+					if (item) onOpenItem(item);
+					else onOpenFallback();
+				}}
+			>
+				<Text className="text-center">{buttonLabel}</Text>
+			</Button>
+		</Surface>
 	);
 }
