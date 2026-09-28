@@ -35,6 +35,7 @@ export function DashboardCalendarHeader({
 			</Text>
 			<Button
 				variant="ghost"
+				className="border border-border bg-card"
 				size="sm"
 				onPress={onToday}
 				accessibilityLabel="Heute"
