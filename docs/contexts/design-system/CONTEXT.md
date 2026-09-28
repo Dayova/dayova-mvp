@@ -218,6 +218,13 @@ It is non-interactive and hidden from accessibility. This supersedes the earlier
 gradient-arrow and no-decoration choices on Today only. The reference ratio (1.36)
 sets minimum height; text remains free to grow. No arbitrary beginner level is shown.
 Calendar, external spacing and agenda remain separate and unchanged.
+When no actionable lesson exists, the same blue bordered card uses Philipp's
+centered empty-state reference: a decorative calendar circle, heading, short
+explanation and one full-width shared Button below the copy. Without a plan the
+action is “Jetzt Lernplan erstellen”; with existing plans it is “Lernpläne öffnen”.
+The empty card itself is a non-interactive Surface, avoiding nested buttons.
+Loading never flashes a creation prompt; an available future lesson retains the
+normal next-step card. No duration or progress is invented for empty states.
 This scoped follow-up is tracked in [DAY-490](https://linear.app/dayova/issue/DAY-490).
 
 Onboarding artwork or other explanatory UI that depicts a live Dayova product

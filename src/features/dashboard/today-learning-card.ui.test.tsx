@@ -10,7 +10,12 @@ jest.mock("~/components/ui/icon", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
 	const icon = (props: Record<string, unknown>) =>
 		React.createElement("Icon", props);
-	return { ArrowUpRight: icon, BookOpen: icon, Clock3: icon };
+	return {
+		ArrowUpRight: icon,
+		BookOpen: icon,
+		CalendarDays: icon,
+		Clock3: icon,
+	};
 });
 jest.mock("~/components/ui/portrait-content", () => ({
 	useContentSizeLayout: () => ({ shouldStackInlineContent: mockStack }),
@@ -144,10 +149,39 @@ describe("TodayLearningCard", () => {
 				fallbackAction={fallbackAction}
 			/>,
 		);
-		expect(screen.getByText("Noch kein Lernschritt geplant")).toBeTruthy();
+		expect(
+			screen.getByText(
+				hasLearningPlans ? "Kein Lernschritt geplant" : "Noch kein Lernplan",
+			),
+		).toBeTruthy();
+		expect(screen.getAllByRole("button")).toHaveLength(1);
+		expect(screen.getByTestId("today-learning-card").props.className).toContain(
+			"bg-system-subtle",
+		);
+		expect(screen.queryByText(/Min\./)).toBeNull();
+		expect(screen.queryByTestId("today-learning-progress-ring")).toBeNull();
 		await fireEvent.press(screen.getByRole("button"));
-		expect(screen.getByText(fallbackAction.label)).toBeTruthy();
+		expect(
+			screen.getByText(
+				hasLearningPlans ? "Lernpläne öffnen" : "Jetzt Lernplan erstellen",
+			),
+		).toBeTruthy();
 		expect(props.onOpenFallback).toHaveBeenCalledTimes(1);
+		expect(props.onOpenItem).not.toHaveBeenCalled();
+	});
+	test("does not flash the no-plan prompt before data loads", async () => {
+		const screen = await render(
+			<TodayLearningCard
+				{...props}
+				item={undefined}
+				plan={undefined}
+				isLoading
+			/>,
+		);
+		expect(screen.queryByText("Jetzt Lernplan erstellen")).toBeNull();
+		expect(screen.getByRole("button").props.accessibilityState.disabled).toBe(
+			true,
+		);
 	});
 	test("reflows long content and does not invent missing metadata", async () => {
 		mockStack = true;

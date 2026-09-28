@@ -1,9 +1,15 @@
 import { useState } from "react";
 import { View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
-import { ArrowUpRight, BookOpen, Clock3 } from "~/components/ui/icon";
+import { Button } from "~/components/ui/button";
+import {
+	ArrowUpRight,
+	BookOpen,
+	CalendarDays,
+	Clock3,
+} from "~/components/ui/icon";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
-import { ActionSurface } from "~/components/ui/surface";
+import { ActionSurface, Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { useDayovaTheme } from "~/lib/theme";
@@ -12,7 +18,10 @@ import {
 	type DashboardAgendaItem,
 	getAgendaEntryTitle,
 } from "./dashboard-agenda";
-import type { DashboardNextStepFallbackAction } from "./dashboard-empty-state";
+import {
+	type DashboardNextStepFallbackAction,
+	EMPTY_DASHBOARD_PRIMARY_ACTION,
+} from "./dashboard-empty-state";
 
 type Props = {
 	item: DashboardAgendaItem | undefined;
@@ -98,6 +107,60 @@ export function TodayLearningCard({
 	const ringCircumference = 2 * Math.PI * 23;
 	const durationLabel =
 		duration != null && duration > 0 ? `${duration} Min.` : null;
+	if (!item && !isLoading) {
+		const hasNoPlan =
+			fallbackAction.route === EMPTY_DASHBOARD_PRIMARY_ACTION.route;
+		const emptyAction = hasNoPlan
+			? "Jetzt Lernplan erstellen"
+			: "Lernpläne öffnen";
+		return (
+			<Surface
+				className="items-center justify-center gap-6 border border-border bg-system-subtle p-6"
+				// Keep the learning card's measured minimum ratio; content can grow.
+				style={{ minHeight: cardLayout.width / 1.36 }}
+				onLayout={({ nativeEvent: { layout } }) => {
+					setCardLayout((previous) =>
+						previous.width === layout.width ? previous : layout,
+					);
+				}}
+				testID="today-learning-card"
+			>
+				<View
+					accessible={false}
+					accessibilityElementsHidden
+					importantForAccessibility="no-hide-descendants"
+					className="h-16 w-16 items-center justify-center rounded-full bg-card"
+				>
+					<CalendarDays
+						size={28}
+						color={colors.primaryStrong}
+						strokeWidth={1.9}
+					/>
+				</View>
+				<View className="gap-3">
+					<Text
+						accessibilityRole="header"
+						className="text-center font-poppins font-semibold text-body-1 text-text"
+					>
+						{hasNoPlan ? "Noch kein Lernplan" : "Kein Lernschritt geplant"}
+					</Text>
+					<Text className="text-center font-poppins text-body-3 text-secondary-text">
+						{hasNoPlan
+							? "Erstelle deinen ersten Lernplan und finde heraus, was du als Nächstes lernen kannst."
+							: "Aktuell steht kein weiterer Lernschritt an. In deinen Lernplänen findest du deine Übersicht."}
+					</Text>
+				</View>
+				<Button
+					className="w-full"
+					accessibilityLabel={emptyAction}
+					accessibilityHint={fallbackAction.accessibilityHint}
+					onPress={onOpenFallback}
+				>
+					<Text className="text-center">{emptyAction}</Text>
+				</Button>
+			</Surface>
+		);
+	}
 	return (
 		<ActionSurface
 			className="overflow-hidden border border-border bg-system-subtle p-5"
