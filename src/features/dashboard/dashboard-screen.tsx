@@ -749,7 +749,7 @@ export function DashboardScreen() {
 				// The native safe area reserves the tab bar; padding adds breathing room.
 				contentContainerClassName="pb-6"
 			>
-				<View className="px-6 pt-8 pb-16" testID="dashboard-next-step">
+				<View className="px-6 pt-8 pb-20" testID="dashboard-next-step">
 					<TodayLearningCard
 						plan={learningPlans?.find(
 							(plan) =>
