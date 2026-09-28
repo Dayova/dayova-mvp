@@ -17,7 +17,6 @@ import { SafeAreaView } from "react-native-screens/experimental";
 import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import { CreateEntryButton } from "~/components/create-entry-button";
-import { NotificationButton } from "~/components/notification-button";
 import { BookOpen, CalendarDays, Dumbbell } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
@@ -43,19 +42,15 @@ import {
 	getDashboardCalendarDayKeys,
 	getDashboardRelevantDayKeys,
 	getDashboardWeekDayKeys,
-	getDashboardWeekProgress,
 	getVisibleDashboardEntries,
 	isDashboardAgendaItemPast,
 	sortDashboardAgendaItems,
 	toDashboardAgendaItem,
 } from "./dashboard-agenda";
 import { getDashboardNextStepFallbackAction } from "./dashboard-empty-state";
-import { DashboardHighlightCarousel } from "./dashboard-highlight-carousel";
-import { getDashboardScreenLayout } from "./dashboard-layout";
 import {
 	DashboardAgendaEntryCard,
 	DashboardNextStepCard,
-	DashboardWeeklyProgressCard,
 } from "./dashboard-product-cards";
 import { LearningRoutineCoach } from "./learning-routine-coach";
 
@@ -152,14 +147,6 @@ const getEntryUrl = (entry: DayEntry, selectedDayLabel: string) => {
 		.join("&");
 	return `/entry/${encodeURIComponent(entry.id)}?${query}`;
 };
-
-const getMonthHeading = (date: Date) =>
-	formatGermanUiText(
-		new Intl.DateTimeFormat("de-DE", {
-			month: "long",
-			year: "numeric",
-		}).format(date),
-	);
 
 function WeekCalendar({
 	days,
@@ -553,7 +540,7 @@ export function DashboardScreen() {
 	const trackFeature = useFeatureAnalytics();
 	const params = useLocalSearchParams<{ dayKey?: string }>();
 	const insets = useSafeAreaInsets();
-	const { fontScale, width } = useWindowDimensions();
+	const { width } = useWindowDimensions();
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const today = useCurrentLocalDay();
@@ -628,10 +615,6 @@ export function DashboardScreen() {
 		todayKey,
 		currentMinutes,
 	});
-	const weekProgress = getDashboardWeekProgress({
-		items: allRelevantAgendaItems,
-		todayKey,
-	});
 	const nextActionableId = nextLearningStep?.entry.id;
 	const nextStepFallbackAction = getDashboardNextStepFallbackAction({
 		hasLearningPlans: Boolean(learningPlans?.length),
@@ -639,17 +622,6 @@ export function DashboardScreen() {
 	const selectedWeekday = formatGermanUiText(
 		new Intl.DateTimeFormat("de-DE", { weekday: "long" }).format(selectedDate),
 	);
-	const selectedDayEntryCount = entriesByDay?.[selectedDayKey]?.length ?? 0;
-	const dashboardLayout = getDashboardScreenLayout({
-		fontScale,
-		viewportWidth: width,
-	});
-	const selectedDayAgendaLabel =
-		entriesByDay === undefined
-			? "Dein Tag wird geladen …"
-			: `${selectedDayKey === todayKey ? "Heute geplant" : "Geplant"} · ${selectedDayEntryCount} ${
-					selectedDayEntryCount === 1 ? "Termin" : "Termine"
-				}`;
 	const firstName =
 		typeof user?.name === "string" && user.name.trim().length > 0
 			? user.name.trim().split(/\s+/)[0]
@@ -735,10 +707,6 @@ export function DashboardScreen() {
 		[router, selectedDate, trackFeature],
 	);
 
-	const openLearningPlans = useCallback(
-		() => router.push("/learning-plans"),
-		[router],
-	);
 	const openNextStepFallback = useCallback(
 		() =>
 			router.push(
@@ -763,9 +731,6 @@ export function DashboardScreen() {
 			>
 				<View className="flex-row items-center justify-between">
 					<View className="flex-1 pr-4">
-						<Text className="font-poppins text-body-4 text-secondary-text">
-							{getMonthHeading(selectedDate)}
-						</Text>
 						<Text
 							accessibilityRole="header"
 							className="font-poppins font-semibold text-heading-2 text-text"
@@ -774,10 +739,34 @@ export function DashboardScreen() {
 							{firstName ? `Hallo ${firstName}` : "Dein Tag"}
 						</Text>
 					</View>
-					<NotificationButton />
+					<CreateEntryButton returnTo={ROUTES.home} />
 				</View>
-
-				<View style={{ marginTop: dashboardLayout.headerCalendarGap }}>
+			</View>
+			<ScrollView
+				className="flex-1"
+				contentInsetAdjustmentBehavior="never"
+				directionalLockEnabled
+				nestedScrollEnabled
+				showsVerticalScrollIndicator={false}
+				// The native safe area reserves the tab bar; padding adds breathing room.
+				contentContainerClassName="pb-6"
+			>
+				<View className="px-6 pt-6 pb-6" testID="dashboard-next-step">
+					<DashboardNextStepCard
+						mode="screen"
+						layout="stacked"
+						fallbackAction={nextStepFallbackAction}
+						item={nextLearningStep}
+						isLoading={
+							entriesByDay === undefined || learningPlans === undefined
+						}
+						todayKey={todayKey}
+						onOpenFallback={openNextStepFallback}
+						onOpenItem={openItem}
+					/>
+				</View>
+				<LearningRoutineCoach referenceTime={now.getTime()} />
+				<View className="px-6" testID="dashboard-calendar">
 					<FlatList
 						ref={weekPagerRef}
 						data={weekPageKeys}
@@ -833,55 +822,6 @@ export function DashboardScreen() {
 						showsHorizontalScrollIndicator={false}
 						windowSize={3}
 					/>
-				</View>
-			</View>
-
-			<ScrollView
-				className="flex-1"
-				contentInsetAdjustmentBehavior="never"
-				directionalLockEnabled
-				nestedScrollEnabled
-				showsVerticalScrollIndicator={false}
-				stickyHeaderIndices={[2]}
-				// The native safe area reserves the tab bar; padding adds breathing room.
-				contentContainerClassName="pb-6"
-			>
-				<View>
-					<DashboardHighlightCarousel>
-						<DashboardNextStepCard
-							mode="screen"
-							fallbackAction={nextStepFallbackAction}
-							item={nextLearningStep}
-							isLoading={
-								entriesByDay === undefined || learningPlans === undefined
-							}
-							todayKey={todayKey}
-							onOpenFallback={openNextStepFallback}
-							onOpenItem={openItem}
-						/>
-						<DashboardWeeklyProgressCard
-							mode="screen"
-							isLoading={entriesByDay === undefined}
-							progress={weekProgress}
-							onOpenLearningPlans={openLearningPlans}
-						/>
-					</DashboardHighlightCarousel>
-					<LearningRoutineCoach referenceTime={now.getTime()} />
-				</View>
-
-				<View className="z-10 flex-row items-center justify-between bg-background px-6 pt-5 pb-6">
-					<View className="min-w-0 flex-1 pr-4">
-						<Text
-							accessibilityRole="header"
-							className="font-poppins font-semibold text-heading-2 text-text"
-						>
-							{selectedWeekday}
-						</Text>
-						<Text className="font-poppins text-body-4 text-secondary-text">
-							{selectedDayAgendaLabel}
-						</Text>
-					</View>
-					<CreateEntryButton returnTo={ROUTES.home} />
 				</View>
 
 				<GestureDetector gesture={daySwipeGesture}>
