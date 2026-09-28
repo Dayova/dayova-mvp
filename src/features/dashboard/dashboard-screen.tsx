@@ -47,6 +47,7 @@ import {
 	sortDashboardAgendaItems,
 	toDashboardAgendaItem,
 } from "./dashboard-agenda";
+import { DashboardCalendarHeader } from "./dashboard-calendar-header";
 import { getDashboardNextStepFallbackAction } from "./dashboard-empty-state";
 import { DashboardAgendaEntryCard } from "./dashboard-product-cards";
 import { LearningRoutineCoach } from "./learning-routine-coach";
@@ -545,7 +546,7 @@ export function DashboardScreen() {
 	const todayKey = getDayKey(today);
 	const requestedDay = parseDayKey(params.dayKey);
 	const initialDayKey = requestedDay ? getDayKey(requestedDay) : todayKey;
-	const [dayPagerKeys] = useState(() =>
+	const [dayPagerKeys, setDayPagerKeys] = useState(() =>
 		getDashboardCalendarDayKeys({
 			anchorDayKey: initialDayKey,
 		}),
@@ -766,6 +767,17 @@ export function DashboardScreen() {
 				</View>
 				<LearningRoutineCoach referenceTime={now.getTime()} />
 				<View className="px-6" testID="dashboard-calendar">
+					<DashboardCalendarHeader
+						selectedDate={selectedDate}
+						onToday={() => {
+							if (!dayPagerKeys.includes(todayKey)) {
+								setDayPagerKeys(
+									getDashboardCalendarDayKeys({ anchorDayKey: todayKey }),
+								);
+							}
+							commitSelectedDay(todayKey);
+						}}
+					/>
 					<FlatList
 						ref={weekPagerRef}
 						data={weekPageKeys}

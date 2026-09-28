@@ -204,6 +204,12 @@ acknowledges a real transition without becoming recurring friction.
 
 ## Product-surface previews
 
+The Today calendar adds a compact orientation row above the existing week slider:
+selected month and year on the left, a shared ghost “Heute” button on the right.
+The action selects today's date and brings its week into view. Large content sizes
+stack the row. This simplified Apple Calendar reference does not introduce search,
+view switching, another creation control, or a redesigned week slider (DAY-490).
+
 The Today learning card follows Philipp's full course-card reference (28 September):
 a bordered `ActionSurface` with `system-subtle` fill, a white book circle and subject
 at top left, duration without “ca.” at top right, title and description, actual completion
