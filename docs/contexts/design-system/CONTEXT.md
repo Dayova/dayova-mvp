@@ -247,8 +247,8 @@ gradients and a soft lower fade into the card fill. The front card has an opaque
 base so rear borders cannot show through it. Icons come from the subject catalog
 (or GraduationCap without a lesson); unknown subjects use BookOpen. Artwork stays
 decorative, accessibility-hidden and non-interactive.
-All states share a 240px standard height, with 52px outer spacing above and below
-the card so the calendar retains its position. Large text releases the height, stacks
+All states share a 240px standard height, with 36px outer spacing above and below
+the card. Large text releases the height, stacks
 the illustration below the copy and keeps the action clear of the notch.
 Standard titles truncate at two lines and descriptions at three; full title,
 subject, original goal and day/duration remain in the accessible action label.
