@@ -204,6 +204,12 @@ acknowledges a real transition without becoming recurring friction.
 
 ## Product-surface previews
 
+The native Today tab uses `calendar.badge.checkmark` on iOS and `event_available`
+on Android (DAY-490), replacing the home symbol. This scoped native-icon exception
+preserves the existing NativeTabs rendering/tint behavior: the installed free
+Hugeicons catalog has no matching calendar-with-checkmark glyph, and NativeTabs
+cannot render the React Native SVG wrapper directly. Other tabs are unchanged.
+
 Today's selected-day agenda is a compact full-width list (DAY-490): subject-catalog
 icon, one semibold line combining subject and topic, then secondary time/duration
 on a second line. Both lines truncate with ellipsis at standard text sizes. Large text may
