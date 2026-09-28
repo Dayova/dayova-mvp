@@ -1,6 +1,7 @@
 import { describe, expect, jest, test } from "@jest/globals";
 import { act, render } from "@testing-library/react-native";
 import { View } from "react-native";
+import { Path } from "react-native-svg";
 import { NotchedActionCard } from "./notched-action-card";
 
 jest.mock("~/lib/theme", () => ({
@@ -38,6 +39,35 @@ function findVectorBackground(node: unknown): {
 }
 
 describe("NotchedActionCard", () => {
+	test("clips optional artwork independently for each card without adding actions", async () => {
+		const screen = await render(
+			<View>
+				{["first", "second"].map((id) => (
+					<NotchedActionCard
+						key={id}
+						pressType="card"
+						onPress={() => undefined}
+						cardAccessibilityLabel={id}
+						actionIcon={<View />}
+						fillColor="#F1F7FB"
+						cardHeight={144}
+						contentClassName="p-5"
+						backgroundArtwork={<Path testID={`artwork-${id}`} d="M0 0H20" />}
+					>
+						<View />
+					</NotchedActionCard>
+				))}
+			</View>,
+		);
+		expect(screen.getAllByRole("button")).toHaveLength(2);
+		expect(
+			screen.getByTestId("artwork-first", { includeHiddenElements: true }),
+		).toBeTruthy();
+		const clipIds = JSON.stringify(screen.toJSON()).match(
+			/notched-card-[a-zA-Z0-9_-]+/g,
+		);
+		expect(new Set(clipIds).size).toBe(2);
+	});
 	test("renders shared artwork without creating a dead press target", async () => {
 		const screen = await render(
 			<NotchedActionCard

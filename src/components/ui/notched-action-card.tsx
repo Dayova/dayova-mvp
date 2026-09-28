@@ -1,5 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { type ReactNode, useCallback, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useId, useMemo, useState } from "react";
 import {
 	type AccessibilityRole,
 	type LayoutChangeEvent,
@@ -9,7 +9,7 @@ import {
 	type ViewProps,
 	type ViewStyle,
 } from "react-native";
-import Svg, { Path } from "react-native-svg";
+import Svg, { ClipPath, Defs, G, Path } from "react-native-svg";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
@@ -29,6 +29,10 @@ type CommonProps = Omit<
 	cardHeight?: number;
 	cardPath?: string;
 	cardStyle?: ViewStyle;
+	/** Optional themed fill and SVG artwork clipped to the shared card outline. */
+	fillColor?: string;
+	backgroundArtwork?: ReactNode;
+	contentClassName?: string;
 	children?: ReactNode;
 };
 
@@ -318,6 +322,9 @@ export function NotchedActionCard({
 	cardHeight = DEFAULT_CARD_HEIGHT,
 	cardPath,
 	cardStyle,
+	fillColor,
+	backgroundArtwork,
+	contentClassName,
 	children,
 	className,
 	onLayout,
@@ -329,6 +336,7 @@ export function NotchedActionCard({
 		width: DEFAULT_CARD_WIDTH,
 	});
 	const { colors } = useDayovaTheme();
+	const clipId = `notched-card-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
 
 	const handleLayout = useCallback(
 		(event: LayoutChangeEvent) => {
@@ -392,14 +400,33 @@ export function NotchedActionCard({
 			>
 				<Path
 					d={resolvedCardPath}
-					fill={colors.surface}
+					fill={fillColor ?? colors.surface}
 					stroke={colors.border}
 					strokeWidth={CARD_STROKE_WIDTH}
 				/>
+				{backgroundArtwork ? (
+					<>
+						<Defs>
+							<ClipPath id={clipId}>
+								<Path d={resolvedCardPath} />
+							</ClipPath>
+						</Defs>
+						<G clipPath={`url(#${clipId})`}>{backgroundArtwork}</G>
+						<Path
+							d={resolvedCardPath}
+							fill="none"
+							stroke={colors.border}
+							strokeWidth={CARD_STROKE_WIDTH}
+						/>
+					</>
+				) : null}
 			</Svg>
 
 			<View
-				className="relative z-10 w-full px-6 pt-6 pb-[22px]"
+				className={cn(
+					"relative z-10 w-full px-6 pt-6 pb-[22px]",
+					contentClassName,
+				)}
 				// The content clears the card's measured runtime geometry and caller override.
 				style={[
 					cardStyle,

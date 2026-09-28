@@ -3,8 +3,9 @@ import { View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { Button } from "~/components/ui/button";
 import { CalendarDays, Play } from "~/components/ui/icon";
+import { NotchedActionCard } from "~/components/ui/notched-action-card";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
-import { ActionSurface, Surface } from "~/components/ui/surface";
+import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { LearningPlanStatusBadge } from "~/features/learning-plans/learning-plan-status-badge";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
@@ -143,23 +144,46 @@ export function TodayLearningCard({
 		);
 	}
 	return (
-		<ActionSurface
-			className="justify-center gap-6 overflow-hidden border border-border bg-system-subtle p-5"
-			onLayout={(event) => {
-				const { width, height } = event.nativeEvent.layout;
-				setCardLayout((previous) =>
-					previous.width === width && previous.height === height
-						? previous
-						: { width, height },
-				);
-			}}
-			// Reference aspect ratio is a minimum; scaled/long text can grow vertically.
-			style={{ minHeight: cardLayout.width / 1.36 }}
-			accessible
-			accessibilityRole="button"
-			disabled={isLoading}
-			accessibilityState={{ disabled: isLoading }}
-			accessibilityLabel={[
+		<NotchedActionCard
+			pressType="card"
+			cardHeight={144}
+			fillColor={colors.systemSubtle}
+			contentClassName="gap-6 p-5"
+			cardDisabled={isLoading}
+			actionIcon={
+				<Play
+					testID="today-learning-play"
+					size={26}
+					color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+					fill="none"
+					strokeWidth={2}
+				/>
+			}
+			backgroundArtwork={
+				<>
+					{/* DAY-490: reference-specific decorative loop, not an interface icon.
+			    Hugeicons cannot reproduce this cropped background composition. */}
+					<Svg
+						width="100%"
+						height="100%"
+						viewBox="0 0 354 260"
+						preserveAspectRatio="none"
+						pointerEvents="none"
+						accessible={false}
+						accessibilityElementsHidden
+						importantForAccessibility="no-hide-descendants"
+					>
+						<Path
+							d="M 377 77 C 301 72 245 108 291 158 C 339 212 383 211 369 186 C 348 150 295 171 269 188 C 229 213 201 240 185 270"
+							fill="none"
+							stroke={colors.primary}
+							strokeOpacity={0.22}
+							strokeWidth={17}
+						/>
+					</Svg>
+				</>
+			}
+			cardAccessibilityLabel={[
 				action,
 				item && !isLoading ? context : null,
 				title,
@@ -168,7 +192,7 @@ export function TodayLearningCard({
 			]
 				.filter(Boolean)
 				.join(". ")}
-			accessibilityHint={
+			cardAccessibilityHint={
 				item ? "Öffnet diesen Lernschritt." : fallbackAction.accessibilityHint
 			}
 			onPress={() => {
@@ -179,28 +203,6 @@ export function TodayLearningCard({
 			}}
 			testID="today-learning-card"
 		>
-			{/* DAY-490: reference-specific decorative loop, not an interface icon.
-			    Hugeicons cannot reproduce this cropped background composition. */}
-			<Svg
-				width={cardLayout.width}
-				height={cardLayout.height}
-				viewBox="0 0 354 260"
-				preserveAspectRatio="none"
-				pointerEvents="none"
-				accessible={false}
-				accessibilityElementsHidden
-				importantForAccessibility="no-hide-descendants"
-				// SVG background positioning uses its native geometry API.
-				style={{ position: "absolute", top: 0, left: 0 }}
-			>
-				<Path
-					d="M 377 77 C 301 72 245 108 291 158 C 339 212 383 211 369 186 C 348 150 295 171 269 188 C 229 213 201 240 185 270"
-					fill="none"
-					stroke={colors.primary}
-					strokeOpacity={0.22}
-					strokeWidth={17}
-				/>
-			</Svg>
 			<View
 				className={cn(
 					"items-start justify-between gap-3",
@@ -230,38 +232,14 @@ export function TodayLearningCard({
 				) : null}
 			</View>
 			{!isLoading ? (
-				<View
-					className={cn(
-						"gap-6",
-						shouldStackInlineContent ? "items-start" : "flex-row items-center",
-					)}
+				<Text
+					numberOfLines={shouldStackInlineContent ? undefined : 3}
+					ellipsizeMode="tail"
+					className="pr-14 font-poppins text-body-3 text-secondary-text"
 				>
-					<Text
-						numberOfLines={shouldStackInlineContent ? undefined : 3}
-						ellipsizeMode="tail"
-						className={cn(
-							"font-poppins text-body-3 text-secondary-text",
-							!shouldStackInlineContent && "min-w-0 flex-1",
-						)}
-					>
-						{description}
-					</Text>
-					<View
-						accessible={false}
-						accessibilityElementsHidden
-						importantForAccessibility="no-hide-descendants"
-						className="h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border bg-card"
-					>
-						<Play
-							testID="today-learning-play"
-							size={26}
-							color={colors.text}
-							fill="none"
-							strokeWidth={2}
-						/>
-					</View>
-				</View>
+					{description}
+				</Text>
 			) : null}
-		</ActionSurface>
+		</NotchedActionCard>
 	);
 }

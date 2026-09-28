@@ -226,21 +226,25 @@ The action selects today's date and brings its week into view. Large content siz
 stack the row. This simplified Apple Calendar reference does not introduce search,
 view switching, another creation control, or a redesigned week slider (DAY-490).
 
-The Today learning card uses a bordered `ActionSurface` with `system-subtle`
+The Today learning card uses the shared `NotchedActionCard` with `system-subtle`
 fill. Its simplified layout (DAY-490, 28 September) contains only the task title,
 description, duration and Play affordance. Subject/icon and completion counts/ring
 are removed. The subject remains in the accessible label for context.
 The body-1 semibold title sits left of the shared learning-plan duration badge
 (with a fine border). Below, the secondary description occupies a narrower left
-column, limited to three lines with tail ellipsis; a white circle with an unfilled
-Hugeicons Play outline (2px stroke) sits to its right. Large content sizes stack
-both rows and uncap the description; the complete text is always accessible.
+column, limited to three lines with tail ellipsis. A white unfilled Hugeicons Play
+outline (2px stroke) sits in the shared cyan-gradient action at the bottom-right
+cutout, matching learning-plan cards. The description reserves space for it.
+Large content sizes stack the heading and uncap the description; complete text
+is always accessible. The shared card accepts optional fill and clipped SVG
+background artwork, leaving other consumers' default appearance unchanged.
 The Play glyph is decorative inside the single accessible card action.
 The cropped cyan background loop is an explicit DAY-490 custom-SVG exception:
 it reproduces reference artwork, which an interface glyph from Hugeicons cannot.
 It is non-interactive and hidden from accessibility. This supersedes the earlier
-gradient-arrow and no-decoration choices on Today only. The reference ratio (1.36)
-sets minimum height; text remains free to grow. No arbitrary beginner level is shown.
+gradient-arrow and no-decoration choices on Today only. Content determines height
+with 20px inner padding and a compact 144px minimum, replacing the old aspect-ratio
+minimum and vertically centered empty space. No arbitrary beginner level is shown.
 Calendar, external spacing and agenda remain separate and unchanged.
 When no actionable lesson exists, the same blue bordered card uses Philipp's
 centered empty-state reference: a decorative calendar circle, heading, short
