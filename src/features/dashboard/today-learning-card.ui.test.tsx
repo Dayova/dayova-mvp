@@ -220,7 +220,8 @@ describe("TodayLearningCard", () => {
 		const screen = await render(
 			<TodayLearningCard {...props} item={{ ...item, dayKey }} />,
 		);
-		expect(screen.getByText(label)).toBeTruthy();
+		if (dayKey === props.todayKey) expect(screen.queryByText(label)).toBeNull();
+		else expect(screen.getByText(label)).toBeTruthy();
 		expect(screen.getByRole("button").props.accessibilityLabel).toContain(
 			label,
 		);

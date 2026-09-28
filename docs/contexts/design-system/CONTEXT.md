@@ -257,7 +257,8 @@ Calendar, external spacing and agenda remain separate and unchanged.
 The hero prioritizes today's unfinished learning sessions, including sessions whose
 scheduled time has passed. Explicitly completed sessions are excluded. When today
 has no open session, the earliest upcoming session is shown with “Morgen” or its
-date below the duration; today's sessions are labeled “Heute”. Its today-based
+date below the duration; today's sessions have no visible day label (the day stays
+in the accessibility label). Its today-based
 31-day query window is independent of calendar selection. Past-day sessions are
 not promoted. The calendar stays visible in all states.
 Without a plan, the blue bordered card has a centered heading, short explanation

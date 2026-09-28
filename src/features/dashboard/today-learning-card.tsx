@@ -245,9 +245,11 @@ export function TodayLearningCard({
 								}}
 							/>
 						)}
-						<Text className="font-poppins text-body-4 text-secondary-text">
-							{dayLabel}
-						</Text>
+						{item.dayKey !== todayKey && (
+							<Text className="font-poppins text-body-4 text-secondary-text">
+								{dayLabel}
+							</Text>
+						)}
 					</View>
 				) : null}
 			</View>
