@@ -232,22 +232,24 @@ The action selects today's date and brings its week into view. Large content siz
 stack the row. This simplified Apple Calendar reference does not introduce search,
 view switching, another creation control, or a redesigned week slider (DAY-490).
 
-The Today hero uses a centered illustrated Surface (DAY-490, Philipp's reference
-follow-up). A decorative stack of native study cards uses the shared Hugeicons
-subject catalog for active lessons and GraduationCap when no lesson is available.
-Unknown subjects use the catalog's BookOpen fallback. The artwork is hidden from
-accessibility and is not interactive. Theme-derived gradients give the card depth
-without a separate palette; the rounded-card radius and border token are retained.
-Below it sit a centered body-1 task title, secondary description and
-the shared full-width primary-gradient Button. Per the reference follow-up,
-time/date metadata and badges are hidden; date/duration remain accessible.
-Short matching session goals are shown; long goals use a concise purpose-specific
-summary while the original stays accessible. Started sessions say “Weiterlernen”.
-Only the Button acts. The native artwork fans backwards and fades into the
-matching hero-top color at its bottom edge, using same-hue transparent gradient stops.
-All states share a 320px standard height; large text releases it to natural height.
-Titles truncate at two lines only at standard sizing; complete context remains
-in the button's accessible label. Loading disables the action.
+The Today hero combines the shared NotchedActionCard with a smaller native study
+illustration on the right (DAY-490, Philipp's mixed-reference follow-up).
+Title and short supporting copy are left-aligned. At the bottom, the action label
+aligns with the 48px circular primary-gradient action in the notch: outlined
+Hugeicons Play for lessons, Plus for plan creation and ArrowRightStraight for
+existing plans. The whole card is one accessible action; there is no nested
+button, full-width CTA, time badge or decorative loop. Started sessions retain
+“Weiterlernen”; loading disables the card.
+The illustration uses filled blue, backward-fanned study cards with theme-derived
+gradients and a soft lower fade into the card fill. The front card has an opaque
+base so rear borders cannot show through it. Icons come from the subject catalog
+(or GraduationCap without a lesson); unknown subjects use BookOpen. Artwork stays
+decorative, accessibility-hidden and non-interactive.
+All states share a 240px standard height. Large text releases the height, stacks
+the illustration below the copy and keeps the action clear of the notch.
+Standard titles truncate at two lines and descriptions at three; full title,
+subject, original goal and day/duration remain in the accessible action label.
+Short matching goals are shown; long goals use a concise purpose-specific summary.
 The hero prioritizes today's unfinished learning sessions, including sessions whose
 scheduled time has passed. Explicitly completed sessions are excluded. When today
 has no open session, the earliest upcoming session is shown. Its day stays

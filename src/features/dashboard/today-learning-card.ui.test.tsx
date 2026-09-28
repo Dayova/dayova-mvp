@@ -19,7 +19,10 @@ jest.mock("~/components/ui/icon", () => {
 		BookOpen: icon,
 		CalendarDays: icon,
 		Clock3: icon,
-		Play: icon,
+		Play: (props: Record<string, unknown>) =>
+			React.createElement("Icon", { ...props, name: "play" }),
+		Plus: (props: Record<string, unknown>) =>
+			React.createElement("Icon", { ...props, name: "plus" }),
 		Calculator: (props: Record<string, unknown>) =>
 			React.createElement("Icon", { ...props, name: "calculator" }),
 		Pencil: (props: Record<string, unknown>) =>
@@ -74,13 +77,13 @@ describe("TodayLearningCard", () => {
 				/>,
 			);
 			const card = screen.getByTestId("today-learning-card");
-			expect(card).toHaveStyle({ minHeight: 320 });
-			expect(card).toHaveStyle({ height: 320 });
+			expect(card).toHaveStyle({ minHeight: 240 });
+			expect(card).toHaveStyle({ height: 240 });
 			expect(screen.getByText(title).props.numberOfLines).toBe(2);
 		}
 		await screen.rerender(<TodayLearningCard {...props} isLoading />);
 		expect(screen.getByTestId("today-learning-card")).toHaveStyle({
-			height: 320,
+			height: 240,
 		});
 	});
 	test("chooses the subject glyph and graduation cap for creation", async () => {
@@ -117,7 +120,11 @@ describe("TodayLearningCard", () => {
 		expect(
 			screen.getByText("Gleichungen mit Klammern lösen").props.className,
 		).toContain("text-body-1");
-		expect(screen.queryByTestId("today-learning-play")).toBeNull();
+		expect(
+			screen.getByTestId("today-learning-action-icon", {
+				includeHiddenElements: true,
+			}).props.name,
+		).toBe("play");
 		expect(screen.queryByText(/ca\./)).toBeNull();
 		expect(screen.getAllByRole("button")).toHaveLength(1);
 		await fireEvent.press(
@@ -235,16 +242,21 @@ describe("TodayLearningCard", () => {
 			),
 		).toBeTruthy();
 		expect(screen.getAllByRole("button")).toHaveLength(1);
+		expect(screen.getByTestId("today-learning-card")).toHaveStyle({
+			height: 240,
+		});
 		if (!hasLearningPlans)
 			expect(
-				screen.getByTestId("today-learning-card").props.className,
-			).toContain("bg-system-subtle");
+				screen.getByTestId("today-learning-action-icon", {
+					includeHiddenElements: true,
+				}).props.name,
+			).toBe("plus");
 		expect(screen.queryByText(/Min\./)).toBeNull();
 		expect(screen.queryByTestId("today-learning-progress-ring")).toBeNull();
 		await fireEvent.press(screen.getByRole("button"));
 		expect(
 			screen.getByText(
-				hasLearningPlans ? "Lernpläne ansehen" : "Jetzt Lernplan erstellen",
+				hasLearningPlans ? "Lernpläne ansehen" : "Lernplan erstellen",
 			),
 		).toBeTruthy();
 		expect(props.onOpenFallback).toHaveBeenCalledTimes(1);
@@ -273,7 +285,7 @@ describe("TodayLearningCard", () => {
 				isLoading
 			/>,
 		);
-		expect(screen.queryByText("Jetzt Lernplan erstellen")).toBeNull();
+		expect(screen.queryByText("Lernplan erstellen")).toBeNull();
 		expect(screen.getByRole("button").props.accessibilityState.disabled).toBe(
 			true,
 		);
@@ -298,7 +310,7 @@ describe("TodayLearningCard", () => {
 		).not.toContain("h-56");
 		expect(
 			screen.getByTestId("today-learning-card-context").props.className,
-		).toContain("gap-1");
+		).toContain("gap-3");
 		expect(screen.queryByText(/Min\./)).toBeNull();
 		expect(screen.queryByText(/Klassenarbeit/)).toBeNull();
 	});

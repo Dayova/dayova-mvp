@@ -1,12 +1,14 @@
-import { LinearGradient } from "expo-linear-gradient";
-import { StyleSheet, View } from "react-native";
-import { Button } from "~/components/ui/button";
+import { createElement } from "react";
+import { View } from "react-native";
+import { ArrowRightStraight, Play, Plus } from "~/components/ui/icon";
+import { NotchedActionCard } from "~/components/ui/notched-action-card";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
-import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { addDays, getDayKey, parseDayKey } from "~/lib/day-key";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { useDayovaTheme } from "~/lib/theme";
+import { cn } from "~/lib/utils";
 import {
 	type DashboardAgendaItem,
 	getAgendaEntryTitle,
@@ -46,7 +48,7 @@ export function TodayLearningCard({
 	onOpenItem,
 	onOpenFallback,
 }: Props) {
-	const { colors, isDark } = useDayovaTheme();
+	const { colors } = useDayovaTheme();
 	const { shouldStackInlineContent } = useContentSizeLayout();
 	const subject = formatGermanUiText(
 		plan?.subject ?? item?.entry.subject ?? "Dein Lernplan",
@@ -99,7 +101,7 @@ export function TodayLearningCard({
 				? "Weiterlernen"
 				: "Lernsession starten"
 			: hasNoPlan
-				? "Jetzt Lernplan erstellen"
+				? "Lernplan erstellen"
 				: "Lernpläne ansehen";
 	const metadata = [
 		item?.dayKey !== todayKey ? dayLabel : null,
@@ -120,73 +122,85 @@ export function TodayLearningCard({
 		: isLoading
 			? ""
 			: hasNoPlan
-				? "Lege deinen ersten Lernplan an, um Fächer, Lernziele und Termine an einem Ort zu organisieren."
+				? "Plane deine nächste Prüfung und lerne Schritt für Schritt."
 				: "Hier findest du deine bestehenden Lernpläne.";
+	const ActionIcon =
+		item || isLoading ? Play : hasNoPlan ? Plus : ArrowRightStraight;
 	return (
-		<Surface
-			className="justify-between gap-1 overflow-hidden rounded-card border border-border bg-system-subtle p-5"
-			// Runtime content-size mode releases the common illustrated-card height.
-			style={{
-				minHeight: 320,
-				height: shouldStackInlineContent ? undefined : 320,
+		<NotchedActionCard
+			pressType="card"
+			cardHeight={240}
+			fillColor={colors.systemSubtle}
+			contentClassName="px-6 pt-8 pb-0"
+			// Standard height is fixed; larger content sizes release it for vertical reflow.
+			cardStyle={{ height: shouldStackInlineContent ? undefined : 240 }}
+			style={{ height: shouldStackInlineContent ? undefined : 240 }}
+			actionIcon={createElement(ActionIcon, {
+				size: 26,
+				color: DAYOVA_DESIGN_SYSTEM.colors.light1,
+				strokeWidth: 2,
+				testID: "today-learning-action-icon",
+			})}
+			cardDisabled={isLoading}
+			cardAccessibilityLabel={
+				item
+					? [buttonLabel, context, title, description, dayLabel, metadata]
+							.filter(Boolean)
+							.join(". ")
+					: [buttonLabel, visibleTitle, supportingCopy]
+							.filter(Boolean)
+							.join(". ")
+			}
+			cardAccessibilityHint={
+				item ? "Öffnet diesen Lernschritt." : fallbackAction.accessibilityHint
+			}
+			onPress={() => {
+				if (isLoading) return;
+				if (item) onOpenItem(item);
+				else onOpenFallback();
 			}}
 			testID="today-learning-card"
 		>
-			<LinearGradient
-				colors={
-					isDark
-						? [colors.systemSubtle, colors.systemSubtle, colors.background]
-						: [colors.systemSubtle, colors.systemSubtle, colors.surface]
-				}
-				locations={[0, 0.48, 1]}
-				start={{ x: 0.5, y: 0 }}
-				end={{ x: 0.5, y: 1 }}
-				// Native gradient API requires absolute geometry and runtime theme colors.
-				style={StyleSheet.absoluteFill}
-				pointerEvents="none"
-				accessible={false}
-			/>
-			<LearningCardIllustration subject={item ? subject : undefined} />
-			<View className="gap-1" testID="today-learning-card-context">
-				<Text
-					accessibilityRole="header"
-					numberOfLines={shouldStackInlineContent ? undefined : 2}
-					ellipsizeMode="tail"
-					className="text-center font-poppins font-semibold text-body-1 text-text"
-				>
-					{visibleTitle}
-				</Text>
-				{supportingCopy ? (
-					<Text
-						numberOfLines={shouldStackInlineContent ? undefined : item ? 2 : 3}
-						ellipsizeMode="tail"
-						className="text-center font-poppins text-body-3 text-secondary-text"
-					>
-						{supportingCopy}
-					</Text>
-				) : null}
-			</View>
-			<Button
-				className="w-full"
-				disabled={isLoading}
-				accessibilityLabel={
-					item
-						? [buttonLabel, context, title, description, dayLabel, metadata]
-								.filter(Boolean)
-								.join(". ")
-						: buttonLabel
-				}
-				accessibilityHint={
-					item ? "Öffnet diesen Lernschritt." : fallbackAction.accessibilityHint
-				}
-				onPress={() => {
-					if (isLoading) return;
-					if (item) onOpenItem(item);
-					else onOpenFallback();
-				}}
+			<View
+				className={cn(
+					"gap-2",
+					shouldStackInlineContent ? "flex-col" : "flex-row items-start",
+				)}
 			>
-				<Text className="text-center">{buttonLabel}</Text>
-			</Button>
-		</Surface>
+				<View
+					className={cn("gap-3", !shouldStackInlineContent && "flex-1")}
+					testID="today-learning-card-context"
+				>
+					<Text
+						accessibilityRole="header"
+						numberOfLines={shouldStackInlineContent ? undefined : 2}
+						ellipsizeMode="tail"
+						className="font-poppins font-semibold text-body-1 text-text"
+					>
+						{visibleTitle}
+					</Text>
+					{supportingCopy ? (
+						<Text
+							numberOfLines={shouldStackInlineContent ? undefined : 3}
+							ellipsizeMode="tail"
+							className="font-poppins text-body-3 text-secondary-text"
+						>
+							{supportingCopy}
+						</Text>
+					) : null}
+				</View>
+				<LearningCardIllustration subject={item ? subject : undefined} />
+			</View>
+			<View
+				className={cn(
+					"justify-center pr-14",
+					shouldStackInlineContent ? "mt-6 min-h-12" : "mt-auto h-12",
+				)}
+			>
+				<Text className="font-poppins font-semibold text-body-3 text-text">
+					{buttonLabel}
+				</Text>
+			</View>
+		</NotchedActionCard>
 	);
 }
