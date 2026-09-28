@@ -413,7 +413,8 @@ export function DashboardScreen() {
 				// The native safe area reserves the tab bar; padding adds breathing room.
 				contentContainerClassName="pb-6"
 			>
-				<View className="px-6 py-8" testID="dashboard-next-step">
+				<View className="px-6 py-12" testID="dashboard-next-step">
+					<View className="h-1" accessible={false} />
 					<TodayLearningCard
 						todayKey={todayKey}
 						plan={learningPlans?.find(
@@ -426,6 +427,7 @@ export function DashboardScreen() {
 						onOpenFallback={openNextStepFallback}
 						onOpenItem={(item) => openItem(item, ROUTES.home)}
 					/>
+					<View className="h-1" accessible={false} />
 				</View>
 				<LearningRoutineCoach referenceTime={now.getTime()} />
 				<View className="px-6" testID="dashboard-calendar">

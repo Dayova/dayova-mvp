@@ -129,12 +129,12 @@ export function TodayLearningCard({
 	return (
 		<NotchedActionCard
 			pressType="card"
-			cardHeight={280}
+			cardHeight={240}
 			fillColor={colors.systemSubtle}
 			contentClassName="px-6 pt-8 pb-0"
 			// Standard height is fixed; larger content sizes release it for vertical reflow.
-			cardStyle={{ height: shouldStackInlineContent ? undefined : 280 }}
-			style={{ height: shouldStackInlineContent ? undefined : 280 }}
+			cardStyle={{ height: shouldStackInlineContent ? undefined : 240 }}
+			style={{ height: shouldStackInlineContent ? undefined : 240 }}
 			actionIcon={createElement(ActionIcon, {
 				size: 26,
 				color: DAYOVA_DESIGN_SYSTEM.colors.light1,
