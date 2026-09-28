@@ -324,8 +324,8 @@ export function TodayLearningCard({
 						testID="today-learning-play"
 						size={26}
 						color={colors.text}
-						fill={colors.text}
-						strokeWidth={2.5}
+						fill="none"
+						strokeWidth={2}
 					/>
 				</View>
 			</View>

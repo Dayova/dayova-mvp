@@ -221,7 +221,7 @@ badge, with a fine border on Today to distinguish its identical fill from the ca
 The task title uses body-1 semibold, and the secondary description is limited to
 two lines with tail ellipsis (unclamped at large content sizes, complete in the
 card accessibility label). Actual completion counts sit at bottom left and a white
-circle with a filled, heavy Hugeicons Play glyph at bottom right. A cyan completion
+circle with an unfilled Hugeicons Play outline (2px stroke) at bottom right. A cyan completion
 ring surrounds that play glyph; the unfilled track represents remaining steps. Its
 counts and remaining amount are included in the card accessibility label. The play glyph is a
 decorative affordance inside the single accessible card action, not a new pill-button

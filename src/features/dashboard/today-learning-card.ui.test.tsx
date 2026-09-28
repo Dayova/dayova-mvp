@@ -77,7 +77,11 @@ describe("TodayLearningCard", () => {
 		expect(
 			screen.getByTestId("today-learning-play", { includeHiddenElements: true })
 				.props.strokeWidth,
-		).toBe(2.5);
+		).toBe(2);
+		expect(
+			screen.getByTestId("today-learning-play", { includeHiddenElements: true })
+				.props.fill,
+		).toBe("none");
 		expect(screen.queryByText(/ca\./)).toBeNull();
 		expect(screen.getAllByRole("button")).toHaveLength(1);
 		await fireEvent.press(
