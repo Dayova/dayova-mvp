@@ -2,7 +2,7 @@ import { useState } from "react";
 import { View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { Button } from "~/components/ui/button";
-import { CalendarDays, Play } from "~/components/ui/icon";
+import { ArrowUpRight, CalendarDays, Play } from "~/components/ui/icon";
 import { NotchedActionCard } from "~/components/ui/notched-action-card";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Surface } from "~/components/ui/surface";
@@ -65,7 +65,7 @@ export function TodayLearningCard({
 		? "Dein nächster Lernschritt wird geladen …"
 		: item
 			? topic
-			: "Noch kein Lernschritt geplant";
+			: "Kein Lernschritt geplant";
 	const session =
 		plan?.currentSession?.id === item?.entry.relatedLearningPlanSessionId
 			? plan?.currentSession
@@ -74,11 +74,14 @@ export function TodayLearningCard({
 		session?.sessionPurpose === "diagnostic" ? "Wissenscheck" : "Lernen";
 	const context = `${subject} · ${learningKind}`;
 	const goal = session?.goal ? formatGermanUiText(session.goal).trim() : "";
+	const hasNoPlan =
+		fallbackAction.route === EMPTY_DASHBOARD_PRIMARY_ACTION.route;
+	const isEmptyPlan = !item && !isLoading && !hasNoPlan;
 	const description =
 		goal ||
 		(item
 			? "Dein nächster Lernschritt"
-			: "Erstelle einen Lernplan für deine nächste Prüfung.");
+			: "Hier findest du deine bestehenden Lernpläne.");
 	const action = isLoading
 		? "Wird geladen …"
 		: item
@@ -89,7 +92,7 @@ export function TodayLearningCard({
 	const duration = item?.entry.durationMinutes;
 	const durationLabel =
 		duration != null && duration > 0 ? `${duration} min` : null;
-	if (!item && !isLoading) {
+	if (!item && !isLoading && hasNoPlan) {
 		const hasNoPlan =
 			fallbackAction.route === EMPTY_DASHBOARD_PRIMARY_ACTION.route;
 		const emptyAction = hasNoPlan
@@ -152,13 +155,21 @@ export function TodayLearningCard({
 			contentClassName="gap-6 px-6 py-8"
 			cardDisabled={isLoading}
 			actionIcon={
-				<Play
-					testID="today-learning-play"
-					size={26}
-					color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-					fill="none"
-					strokeWidth={2}
-				/>
+				isEmptyPlan ? (
+					<ArrowUpRight
+						size={26}
+						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+						strokeWidth={2}
+					/>
+				) : (
+					<Play
+						testID="today-learning-play"
+						size={26}
+						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+						fill="none"
+						strokeWidth={2}
+					/>
+				)
 			}
 			backgroundArtwork={
 				<>
@@ -235,13 +246,22 @@ export function TodayLearningCard({
 				) : null}
 			</View>
 			{!isLoading ? (
-				<Text
-					numberOfLines={shouldStackInlineContent ? undefined : 3}
-					ellipsizeMode="tail"
-					className="pr-14 font-poppins text-body-3 text-secondary-text"
-				>
-					{description}
-				</Text>
+				<View className="gap-3">
+					<Text
+						numberOfLines={
+							shouldStackInlineContent ? undefined : isEmptyPlan ? 2 : 3
+						}
+						ellipsizeMode="tail"
+						className="pr-14 font-poppins text-body-3 text-secondary-text"
+					>
+						{description}
+					</Text>
+					{isEmptyPlan && (
+						<Text className="pr-14 font-poppins font-semibold text-body-3 text-text">
+							Lernpläne ansehen
+						</Text>
+					)}
+				</View>
 			) : null}
 		</NotchedActionCard>
 	);

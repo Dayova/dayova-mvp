@@ -191,7 +191,17 @@ export function DashboardScreen() {
 	const { colors } = useDayovaTheme();
 	const router = useRouter();
 	const trackFeature = useFeatureAnalytics();
-	const params = useLocalSearchParams<{ dayKey?: string }>();
+	const params = useLocalSearchParams<{
+		dayKey?: string;
+		prototype?: string;
+	}>();
+	// Throwaway read-only preview of existing empty states; never active in production.
+	const prototypeVariant = params.prototype ?? "no-step";
+	const emptyPrototype =
+		__DEV__ &&
+		(prototypeVariant === "no-step" || prototypeVariant === "new-user")
+			? prototypeVariant
+			: undefined;
 	const insets = useSafeAreaInsets();
 	const { width } = useWindowDimensions();
 	const { user } = useAuthSession();
@@ -411,17 +421,26 @@ export function DashboardScreen() {
 							(plan) =>
 								plan.id === nextLearningStep?.entry.relatedLearningPlanId,
 						)}
-						fallbackAction={nextStepFallbackAction}
-						item={nextLearningStep}
-						isLoading={
-							entriesByDay === undefined || learningPlans === undefined
+						fallbackAction={
+							emptyPrototype
+								? getDashboardNextStepFallbackAction({
+										hasLearningPlans: emptyPrototype === "no-step",
+									})
+								: nextStepFallbackAction
 						}
-						onOpenFallback={openNextStepFallback}
+						item={emptyPrototype ? undefined : nextLearningStep}
+						isLoading={
+							!emptyPrototype &&
+							(entriesByDay === undefined || learningPlans === undefined)
+						}
+						onOpenFallback={emptyPrototype ? () => {} : openNextStepFallback}
 						onOpenItem={(item) => openItem(item, ROUTES.home)}
 					/>
 					<View className="h-12" accessible={false} />
 				</View>
-				<LearningRoutineCoach referenceTime={now.getTime()} />
+				{!emptyPrototype && (
+					<LearningRoutineCoach referenceTime={now.getTime()} />
+				)}
 				<View className="px-6" testID="dashboard-calendar">
 					<DashboardCalendarHeader
 						selectedDate={selectedDate}
@@ -496,7 +515,10 @@ export function DashboardScreen() {
 						<View className="px-6 pt-6">
 							<CompactDayAgenda
 								items={sortDashboardAgendaItems(
-									(entriesByDay?.[selectedDayKey] ?? []).map((entry) =>
+									(emptyPrototype
+										? []
+										: (entriesByDay?.[selectedDayKey] ?? [])
+									).map((entry) =>
 										toDashboardAgendaItem(selectedDayKey, {
 											...entry,
 											subject:
@@ -507,7 +529,7 @@ export function DashboardScreen() {
 										}),
 									),
 								)}
-								isLoading={entriesByDay === undefined}
+								isLoading={!emptyPrototype && entriesByDay === undefined}
 								onOpenItem={(item) => {
 									const planRoute = getAgendaPlanRoute(item.entry);
 									if (planRoute) {
