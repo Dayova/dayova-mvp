@@ -236,8 +236,11 @@ The Today learning card uses the shared `NotchedActionCard` with `system-subtle`
 fill. Its simplified layout (DAY-490, 28 September) contains only the task title,
 description, duration and Play affordance. Subject/icon and completion counts/ring
 are removed. The subject remains in the accessible label for context.
-The body-1 semibold title sits left of the shared learning-plan duration badge
-(with a fine border). Below, the secondary description occupies a narrower left
+The shared learning-plan badge sits above the full-width body-1 semibold title,
+left aligned, with a fine border, solid surface fill and primary-strong text.
+It combines future day and duration (“Morgen · 17 min”); today shows duration only.
+Active cards use 24px padding and 12px gaps to preserve their fixed height.
+Below, the secondary description occupies a narrower left
 column, limited to three lines with tail ellipsis. A white unfilled Hugeicons Play
 outline (2px stroke) sits in the shared cyan-gradient action at the bottom-right
 cutout, matching learning-plan cards. The description reserves space for it.
@@ -249,7 +252,7 @@ The cropped cyan background loop is an explicit DAY-490 custom-SVG exception:
 it reproduces reference artwork, which an interface glyph from Hugeicons cannot.
 It is non-interactive and hidden from accessibility. This supersedes the earlier
 gradient-arrow and no-decoration choices on Today only. Active and loading cards
-use a stable 224px height with 24px horizontal and 32px vertical padding. Titles
+use a stable 224px height. Titles
 truncate after two lines at standard content sizes; the full title stays accessible.
 Large content sizes remove the fixed height and title limit, retaining a 224px
 minimum so content can grow without clipping. No arbitrary beginner level is shown.
@@ -257,7 +260,7 @@ Calendar, external spacing and agenda remain separate and unchanged.
 The hero prioritizes today's unfinished learning sessions, including sessions whose
 scheduled time has passed. Explicitly completed sessions are excluded. When today
 has no open session, the earliest upcoming session is shown with “Morgen” or its
-date below the duration; today's sessions have no visible day label (the day stays
+date inside the duration badge; today's sessions have no visible day label (the day stays
 in the accessibility label). Its today-based
 31-day query window is independent of calendar selection. Past-day sessions are
 not promoted. The calendar stays visible in all states.

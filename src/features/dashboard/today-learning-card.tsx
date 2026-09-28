@@ -149,7 +149,7 @@ export function TodayLearningCard({
 			contentClassName={
 				isEmptyPlan
 					? cn("px-6 pt-8 pb-0", !shouldStackInlineContent && "h-56")
-					: "gap-6 px-6 py-8"
+					: "gap-3 p-6"
 			}
 			cardDisabled={isLoading}
 			actionIcon={
@@ -215,43 +215,32 @@ export function TodayLearningCard({
 			testID="today-learning-card"
 		>
 			<View
-				className={cn(
-					"items-start justify-between gap-3",
-					shouldStackInlineContent ? "flex-col" : "flex-row",
-				)}
+				className="flex-col items-start gap-3"
 				testID="today-learning-card-context"
 			>
+				{!isLoading &&
+				item &&
+				(durationLabel || (item.dayKey !== todayKey && dayLabel)) ? (
+					<LearningPlanStatusBadge
+						className="self-start border border-border"
+						fixedTextScale={false}
+						status={{
+							label: [item.dayKey !== todayKey ? dayLabel : null, durationLabel]
+								.filter(Boolean)
+								.join(" · "),
+							background: colors.surface,
+							foreground: colors.primaryStrong,
+						}}
+					/>
+				) : null}
 				<Text
 					accessibilityRole="header"
 					numberOfLines={shouldStackInlineContent ? undefined : 2}
 					ellipsizeMode="tail"
-					className={cn(
-						"font-poppins font-semibold text-body-1 text-text",
-						!shouldStackInlineContent && "min-w-0 flex-1",
-					)}
+					className="w-full font-poppins font-semibold text-body-1 text-text"
 				>
 					{title}
 				</Text>
-				{!isLoading && item ? (
-					<View className="items-end gap-1">
-						{durationLabel && (
-							<LearningPlanStatusBadge
-								className="shrink-0 border border-border"
-								fixedTextScale={false}
-								status={{
-									label: durationLabel,
-									background: DAYOVA_DESIGN_SYSTEM.colors.systemSubtle,
-									foreground: DAYOVA_DESIGN_SYSTEM.colors.primary,
-								}}
-							/>
-						)}
-						{item.dayKey !== todayKey && (
-							<Text className="font-poppins text-body-4 text-secondary-text">
-								{dayLabel}
-							</Text>
-						)}
-					</View>
-				) : null}
 			</View>
 			{!isLoading ? (
 				<View className={isEmptyPlan ? "mt-6" : "gap-3"}>

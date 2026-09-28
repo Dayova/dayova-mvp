@@ -221,7 +221,7 @@ describe("TodayLearningCard", () => {
 			<TodayLearningCard {...props} item={{ ...item, dayKey }} />,
 		);
 		if (dayKey === props.todayKey) expect(screen.queryByText(label)).toBeNull();
-		else expect(screen.getByText(label)).toBeTruthy();
+		else expect(screen.getByText(`${label} · 17 min`)).toBeTruthy();
 		expect(screen.getByRole("button").props.accessibilityLabel).toContain(
 			label,
 		);
