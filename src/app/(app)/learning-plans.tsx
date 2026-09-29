@@ -697,6 +697,7 @@ function HomeworkCard({
 	);
 }
 
+/** Lists plans and homework, exposing a validated return destination when opened from Today. */
 export default function LearningPlansScreen() {
 	const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
 	const returnTarget = getSafeReturnTo(returnTo);

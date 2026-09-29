@@ -297,6 +297,7 @@ export function SessionPreviewCard({
 	);
 }
 
+/** Presents the plan's learning path and session actions, preserving an optional safe return route. */
 export default function LearningPlanSessionsScreen() {
 	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
@@ -477,6 +478,7 @@ export default function LearningPlanSessionsScreen() {
 		prepareSession(defaultSession.id);
 	}, [defaultSession, prepareSession]);
 
+	/** Returns to the validated originating screen, or to the plans overview by default. */
 	const goBack = () => {
 		dismissToOrReplace(
 			router,
