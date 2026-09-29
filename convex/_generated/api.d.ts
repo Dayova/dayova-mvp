@@ -14,6 +14,7 @@ import type * as adaptiveLearningPlan from "../adaptiveLearningPlan.js";
 import type * as adaptiveLearningPlanPolicy from "../adaptiveLearningPlanPolicy.js";
 import type * as aiConsent from "../aiConsent.js";
 import type * as answerEvaluation from "../answerEvaluation.js";
+import type * as dashboardNextStep from "../dashboardNextStep.js";
 import type * as dayEntries from "../dayEntries.js";
 import type * as dayKeyVariants from "../dayKeyVariants.js";
 import type * as deletionPasswordHttp from "../deletionPasswordHttp.js";
@@ -80,6 +81,7 @@ declare const fullApi: ApiFromModules<{
   adaptiveLearningPlanPolicy: typeof adaptiveLearningPlanPolicy;
   aiConsent: typeof aiConsent;
   answerEvaluation: typeof answerEvaluation;
+  dashboardNextStep: typeof dashboardNextStep;
   dayEntries: typeof dayEntries;
   dayKeyVariants: typeof dayKeyVariants;
   deletionPasswordHttp: typeof deletionPasswordHttp;

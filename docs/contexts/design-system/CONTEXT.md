@@ -128,11 +128,11 @@ individual screens. Non-heading text keeps unrestricted system scaling.
 
 Non-destructive light-mode pill buttons have two visual appearances: the light-mode
 gradient button and the black button using the primary text color `#1A1A1A`.
-The Today hero is an explicit exception: its shared Button `ghost` variant is
-transparent, without a visible surrounding capsule; the Today caller uses dark
+The Today hero uses the shared ActionSurface as one accessible action. Its inline
+action group is transparent, without a surrounding capsule; the Today caller uses dark
 action text in light mode and white in dark mode, as does the calendar's Heute label.
-A primary-interactive gradient circle (32px, before the label) highlights the white action
-icon inside the 56px hit area. The Today hero explicitly permits a second, subtle
+A primary-interactive gradient circle (36px, before the label) highlights the white action
+icon inside a 56px action row. The whole card is the hit area. The Today hero explicitly permits a second, subtle
 theme-derived background gradient, per Philipp's 29 September reference.
 Other screens retain the existing appearances. Both
 appearances are 56px tall with a 44px radius and a 0.3px inside stroke: gradient
@@ -258,11 +258,11 @@ heights allow longer agendas to scroll vertically in the existing parent.
 
 The Today hero combines the shared Surface with a smaller native study
 illustration on the right (DAY-490, Philipp's mixed-reference follow-up).
-Title and short supporting copy are left-aligned. A shared transparent `ghost` Button
-sits inside the card at the bottom left. A 32px primary-interactive gradient circle
+Title and short supporting copy are left-aligned. The shared ActionSurface makes
+the entire card one accessible action. A 36px primary-interactive gradient circle
 with white Hugeicons Play precedes “Jetzt lernen” or “Weiterlernen” in body-2
 SemiBold, separated by 12px. The compact group has no surrounding fill and keeps
-a 56px minimum hit height and opacity press feedback. Card dimensions remain
+a 56px layout height; the whole card provides opacity press feedback. Card dimensions remain
 unchanged. The hero blends
 16% primary at the left into 4% at 55% of its width, holding that color across the
 illustration area. The illustration's lower fade uses this same right-side opaque
@@ -287,10 +287,13 @@ subject, original goal and day/duration remain in the accessible action label.
 Short matching goals are shown; long goals use a concise purpose-specific summary.
 The hero prioritizes today's unfinished learning sessions, including sessions whose
 scheduled time has passed. Explicitly completed sessions are excluded. When today
-has no open session, the earliest upcoming session is shown. Its day stays
-in the accessibility label; visible date orientation is deferred by this visual
-review and remains a product-review limitation. Its today-based
-31-day query window is independent of calendar selection. Past-day sessions are
+has no open session, the earliest upcoming session is shown. Its day appears as
+Heute, Morgen or a date badge and in the accessibility label. The owner-scoped
+session query pages forward from today without a fixed day horizon, independently
+of calendar selection. It skips completed/provisional sessions and unaccepted
+plans, and finishes scanning the first matching day before selecting its earliest
+time. The card stays loading until this selection or a genuine end of results;
+it never treats a skipped page as an empty state. Past-day sessions are
 not promoted. The calendar stays visible in all states.
 Without a plan, the same illustrated card shows “Noch kein Lernplan”, a short
 explanation and “Jetzt Lernplan erstellen”. With existing plans but no next

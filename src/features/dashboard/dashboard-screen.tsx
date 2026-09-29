@@ -27,7 +27,6 @@ import { CalendarPager } from "./calendar-pager";
 import { CompactDayAgenda } from "./compact-day-agenda";
 import {
 	type DashboardAgendaItem,
-	findNextActionableAgendaItem,
 	getAgendaEntryTitle,
 	getDashboardCalendarDayKeys,
 	getDashboardRelevantDayKeys,
@@ -40,6 +39,8 @@ import { DashboardCalendarHeader } from "./dashboard-calendar-header";
 import { getDashboardNextStepFallbackAction } from "./dashboard-empty-state";
 import { LearningRoutineCoach } from "./learning-routine-coach";
 import { TodayLearningCard } from "./today-learning-card";
+import { getTodaySummary } from "./today-summary";
+import { useNextLearningStep } from "./use-next-learning-step";
 import { CalendarWeekdays, WeekCalendar } from "./week-calendar";
 
 const triggerDaySelectionHaptic = () => {
@@ -142,26 +143,11 @@ export function DashboardScreen() {
 		user && isConvexAuthenticated ? {} : "skip",
 	);
 	// Calendar browsing must not change the hero's candidates or loading state.
-	const heroDayKeys = Array.from({ length: 31 }, (_, offset) =>
-		getDayKey(addDays(today, offset)),
-	);
-	const heroEntries = useQuery(
-		api.dayEntries.listByDayKeys,
-		user && isConvexAuthenticated ? { dayKeys: heroDayKeys } : "skip",
-	);
-	const allRelevantAgendaItems = heroEntries
-		? heroDayKeys.flatMap((dayKey) =>
-				getVisibleDashboardEntries(heroEntries[dayKey] ?? []).map((entry) =>
-					toDashboardAgendaItem(dayKey, entry),
-				),
-			)
-		: [];
-	const currentMinutes = now.getHours() * 60 + now.getMinutes();
-	const nextLearningStep = findNextActionableAgendaItem({
-		items: allRelevantAgendaItems,
-		todayKey,
-		currentMinutes,
-	});
+	const {
+		item: nextLearningStep,
+		plan: nextLearningPlan,
+		isLoading: isNextStepLoading,
+	} = useNextLearningStep(todayKey, Boolean(user && isConvexAuthenticated));
 	const nextStepFallbackAction = getDashboardNextStepFallbackAction({
 		hasLearningPlans: Boolean(learningPlans?.length),
 	});
@@ -195,7 +181,7 @@ export function DashboardScreen() {
 	);
 
 	const openItem = useCallback(
-		(item: DashboardAgendaItem, returnTo?: string) => {
+		(item: DashboardAgendaItem, returnTo = ROUTES.home) => {
 			if (item.kind === "schoolLesson") return;
 			trackFeature("home.entry_opened", "performed", item.entry.id);
 			const itemDate = parseDayKey(item.dayKey) ?? parseDayKey(selectedDayKey);
@@ -213,12 +199,7 @@ export function DashboardScreen() {
 	);
 
 	const openNextStepFallback = useCallback(
-		() =>
-			router.push(
-				nextStepFallbackAction.route === ROUTES.createExam
-					? withReturnTo(nextStepFallbackAction.route, ROUTES.home)
-					: nextStepFallbackAction.route,
-			),
+		() => router.push(withReturnTo(nextStepFallbackAction.route, ROUTES.home)),
 		[nextStepFallbackAction.route, router],
 	);
 
@@ -234,8 +215,8 @@ export function DashboardScreen() {
 				// Safe-area padding is runtime device geometry.
 				style={{ paddingTop: insets.top + 16 }}
 			>
-				<View className="flex-row items-center justify-between">
-					<View className="flex-1 pr-4">
+				<View className="flex-row items-center justify-between gap-6">
+					<View className="min-w-0 flex-1 justify-center gap-1">
 						<Text
 							accessibilityRole="header"
 							className="font-poppins font-semibold text-heading-2 text-text"
@@ -243,8 +224,13 @@ export function DashboardScreen() {
 						>
 							{firstName ? `Hallo ${firstName}` : "Dein Tag"}
 						</Text>
+						<Text variant="small" className="font-poppins text-secondary-text">
+							{getTodaySummary(entriesByDay?.[todayKey])}
+						</Text>
 					</View>
-					<CreateEntryButton returnTo={ROUTES.home} />
+					<View className="shrink-0">
+						<CreateEntryButton returnTo={ROUTES.home} />
+					</View>
 				</View>
 			</View>
 			<ScrollView
@@ -260,13 +246,10 @@ export function DashboardScreen() {
 					<View className="h-1" accessible={false} />
 					<TodayLearningCard
 						todayKey={todayKey}
-						plan={learningPlans?.find(
-							(plan) =>
-								plan.id === nextLearningStep?.entry.relatedLearningPlanId,
-						)}
+						plan={nextLearningPlan}
 						fallbackAction={nextStepFallbackAction}
 						item={nextLearningStep}
-						isLoading={heroEntries === undefined || learningPlans === undefined}
+						isLoading={isNextStepLoading || learningPlans === undefined}
 						onOpenFallback={openNextStepFallback}
 						onOpenItem={(item) => openItem(item, ROUTES.home)}
 					/>

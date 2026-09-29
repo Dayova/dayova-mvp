@@ -72,7 +72,9 @@ const props = {
 describe("TodayLearningCard", () => {
 	test("groups the smaller play circle before the label in a transparent left-aligned action", async () => {
 		const screen = await render(<TodayLearningCard {...props} />);
-		const action = screen.getByRole("button");
+		expect(screen.getAllByRole("button")).toHaveLength(1);
+		expect(screen.getByRole("button").props.testID).toBe("today-learning-card");
+		const action = screen.getByTestId("today-learning-action");
 		expect(action.props.className).toContain("bg-transparent");
 		expect(action.props.className).not.toContain("bg-primary/10");
 		expect(action.props.style?.backgroundColor).toBeUndefined();
@@ -83,7 +85,7 @@ describe("TodayLearningCard", () => {
 			screen.getByTestId("today-learning-action-circle", {
 				includeHiddenElements: true,
 			}).props.className,
-		).toContain("h-8 w-8");
+		).toContain("h-9 w-9");
 		expect(
 			screen.getByTestId("today-learning-action-gradient", {
 				includeHiddenElements: true,
@@ -340,9 +342,9 @@ describe("TodayLearningCard", () => {
 			/>,
 		);
 		expect(screen.getByText(title).props.numberOfLines).toBeUndefined();
-		expect(
-			screen.getByTestId("today-learning-card").props.className,
-		).not.toContain("h-56");
+		expect(screen.getByTestId("today-learning-card").props.style).toEqual(
+			expect.objectContaining({ minHeight: 240, height: undefined }),
+		);
 		expect(
 			screen.getByTestId("today-learning-card-context").props.className,
 		).toContain("gap-2");

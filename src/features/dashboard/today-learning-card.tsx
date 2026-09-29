@@ -1,10 +1,9 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { createElement } from "react";
 import { StyleSheet, View } from "react-native";
-import { Button } from "~/components/ui/button";
 import { ArrowRightStraight, Play, Plus } from "~/components/ui/icon";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
-import { Surface } from "~/components/ui/surface";
+import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { LearningPlanStatusBadge } from "~/features/learning-plans/learning-plan-status-badge";
 import { addDays, getDayKey, parseDayKey } from "~/lib/day-key";
@@ -146,7 +145,28 @@ export function TodayLearningCard({
 	const ActionIcon =
 		item || isLoading ? Play : hasNoPlan ? Plus : ArrowRightStraight;
 	return (
-		<Surface
+		<ActionSurface
+			accessibilityRole="button"
+			accessibilityLabel={[
+				buttonLabel,
+				item ? context : visibleTitle,
+				title,
+				description,
+				dayLabel,
+				metadata,
+			]
+				.filter(Boolean)
+				.join(". ")}
+			accessibilityHint={
+				item ? "Öffnet diesen Lernschritt." : fallbackAction.accessibilityHint
+			}
+			disabled={isLoading}
+			accessibilityState={{ disabled: isLoading }}
+			onPress={() => {
+				if (isLoading) return;
+				if (item) onOpenItem(item);
+				else onOpenFallback();
+			}}
 			className="overflow-hidden rounded-button border border-border bg-system-subtle px-6 pt-6 pb-4"
 			// Standard height is fixed; larger content sizes release it for vertical reflow.
 			style={{
@@ -224,35 +244,16 @@ export function TodayLearningCard({
 					backgroundColor={cardEnd}
 				/>
 			</View>
-			<Button
-				variant="ghost"
-				size="default"
+			<View
+				pointerEvents="none"
 				className={cn(
-					"mt-2 max-w-full justify-start gap-3 self-start bg-transparent px-0 py-1 active:bg-transparent active:opacity-80",
+					"mt-2 min-h-14 max-w-full flex-row items-center justify-start gap-3 self-start bg-transparent px-0 py-1",
 					shouldStackInlineContent && "mt-6",
 				)}
-				disabled={isLoading}
-				accessibilityLabel={[
-					buttonLabel,
-					item ? context : visibleTitle,
-					title,
-					description,
-					dayLabel,
-					metadata,
-				]
-					.filter(Boolean)
-					.join(". ")}
-				accessibilityHint={
-					item ? "Öffnet diesen Lernschritt." : fallbackAction.accessibilityHint
-				}
-				onPress={() => {
-					if (isLoading) return;
-					if (item) onOpenItem(item);
-					else onOpenFallback();
-				}}
+				testID="today-learning-action"
 			>
 				<View
-					className="h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-strong"
+					className="h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-strong"
 					accessible={false}
 					testID="today-learning-action-circle"
 				>
@@ -263,7 +264,7 @@ export function TodayLearningCard({
 						testID="today-learning-action-gradient"
 					/>
 					{createElement(ActionIcon, {
-						size: 16,
+						size: 18,
 						color: DAYOVA_DESIGN_SYSTEM.colors.light1,
 						strokeWidth: 2,
 						testID: "today-learning-action-icon",
@@ -273,7 +274,7 @@ export function TodayLearningCard({
 				<Text className="shrink font-poppins font-semibold text-body-2 text-text dark:text-white">
 					{buttonLabel}
 				</Text>
-			</Button>
-		</Surface>
+			</View>
+		</ActionSurface>
 	);
 }

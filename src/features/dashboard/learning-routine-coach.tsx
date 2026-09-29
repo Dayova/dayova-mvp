@@ -10,7 +10,7 @@ import { useSheetAccessibility } from "~/components/ui/sheet-accessibility";
 import { Text } from "~/components/ui/text";
 import { LearningTimeImpactSheet } from "~/features/learning-plans/learning-time-impact-sheet";
 import { LearningTimeSuggestionCard } from "~/features/learning-plans/learning-time-suggestion-card";
-import { ROUTES } from "~/lib/routes";
+import { ROUTES, withReturnTo } from "~/lib/routes";
 
 /** One short daily check-in; actual schedule changes still require consent. */
 export function LearningRoutineCoach({
@@ -149,7 +149,9 @@ export function LearningRoutineCoach({
 						evidenceSessionCount={suggestion.evidenceSessionCount}
 						isBusy={busy}
 						onConfirm={() => setImpactFingerprint(suggestion.fingerprint)}
-						onAdjust={() => router.push(ROUTES.learningTimes)}
+						onAdjust={() =>
+							router.push(withReturnTo(ROUTES.learningTimes, ROUTES.home))
+						}
 						onKeep={() =>
 							void run(() =>
 								respond({
@@ -261,7 +263,7 @@ export function LearningRoutineCoach({
 							disabled={busy}
 							onPress={() => {
 								setSelected(null);
-								router.push(ROUTES.learningTimes);
+								router.push(withReturnTo(ROUTES.learningTimes, ROUTES.home));
 							}}
 						>
 							<Text>Regelmäßige Zeiten einstellen</Text>
