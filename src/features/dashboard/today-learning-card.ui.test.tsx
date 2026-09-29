@@ -70,9 +70,14 @@ const props = {
 };
 
 describe("TodayLearningCard", () => {
-	test("keeps the gradient circle close to the action edge and tints the card", async () => {
+	test("removes the action capsule without moving its label or gradient circle", async () => {
 		const screen = await render(<TodayLearningCard {...props} />);
-		expect(screen.getByRole("button").props.className).toContain("pr-1");
+		const action = screen.getByRole("button");
+		expect(action.props.className).toContain("bg-transparent");
+		expect(action.props.className).not.toContain("bg-primary/10");
+		expect(action.props.style?.backgroundColor).toBeUndefined();
+		expect(action.props.className).toContain("pr-1");
+		expect(action.props.className).toContain("pl-4");
 		expect(
 			screen.getByTestId("today-learning-action-circle", {
 				includeHiddenElements: true,

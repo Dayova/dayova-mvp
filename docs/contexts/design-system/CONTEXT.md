@@ -128,11 +128,11 @@ individual screens. Non-heading text keeps unrestricted system scaling.
 
 Non-destructive light-mode pill buttons have two visual appearances: the light-mode
 gradient button and the black button using the primary text color `#1A1A1A`.
-The Today hero is an explicit exception: its shared Button `soft` variant uses
-a theme-derived blue tint without a gradient; the Today caller uses dark action
-text in light mode and white in dark mode, as does the calendar's Heute label. A
-primary-interactive gradient circle (48px, 4px inset) highlights the white action
-icon inside the 56px button. The Today hero explicitly permits a second, subtle
+The Today hero is an explicit exception: its shared Button `ghost` variant is
+transparent, without a visible surrounding capsule; the Today caller uses dark
+action text in light mode and white in dark mode, as does the calendar's Heute label.
+A primary-interactive gradient circle (48px, 4px inset) highlights the white action
+icon inside the 56px hit area. The Today hero explicitly permits a second, subtle
 theme-derived background gradient, per Philipp's 29 September reference.
 Other screens retain the existing appearances. Both
 appearances are 56px tall with a 44px radius and a 0.3px inside stroke: gradient
@@ -255,11 +255,12 @@ heights allow longer agendas to scroll vertically in the existing parent.
 
 The Today hero combines the shared Surface with a smaller native study
 illustration on the right (DAY-490, Philipp's mixed-reference follow-up).
-Title and short supporting copy are left-aligned. A shared blue-tinted `soft` Button
+Title and short supporting copy are left-aligned. A shared transparent `ghost` Button
 sits inside the card at the bottom, spanning the content width, with “Jetzt lernen”
 or “Weiterlernen” in body-2 SemiBold on the left and white Hugeicons Play in a
 48px primary-interactive gradient circle on the right, with 4px surrounding space.
-The 56px action fill blends 18% theme primary into systemSubtle. The hero blends
+Philipp's follow-up removes only the long action fill, preserving the label and
+circle positions, 56px hit area, and opacity press feedback. The hero blends
 16% primary at the left into 4% at 55% of its width, holding that color across the
 illustration area. The illustration's lower fade uses this same right-side opaque
 fill so it has no contrasting edge. The card has a

@@ -53,7 +53,7 @@ export function TodayLearningCard({
 }: Props) {
 	const { shouldStackInlineContent } = useContentSizeLayout();
 	const { colors } = useDayovaTheme();
-	// Theme-derived blue tint for the quieter inset action.
+	// Theme-derived blue tint for the card background.
 	const tint = (strength: number) =>
 		`#${[1, 3, 5]
 			.map((offset) =>
@@ -67,7 +67,6 @@ export function TodayLearningCard({
 					.padStart(2, "0"),
 			)
 			.join("")}`;
-	const actionFill = tint(0.18);
 	const cardStart = tint(0.16);
 	const cardEnd = tint(0.04);
 	const subject = formatGermanUiText(
@@ -226,12 +225,10 @@ export function TodayLearningCard({
 				/>
 			</View>
 			<Button
-				variant="soft"
+				variant="ghost"
 				size="default"
-				// Opaque blend of the active theme's semantic colors.
-				style={{ backgroundColor: actionFill }}
 				className={cn(
-					"mt-2 w-full justify-between py-1 pr-1 pl-4",
+					"mt-2 w-full justify-between bg-transparent py-1 pr-1 pl-4 active:bg-transparent active:opacity-80",
 					shouldStackInlineContent && "mt-6",
 				)}
 				disabled={isLoading}
