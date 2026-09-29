@@ -1,6 +1,6 @@
 import { describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render } from "@testing-library/react-native";
-import { ExamDateSelector } from "./exam-flow";
+import { ExamDateSelector, SingleSelectOption } from "./exam-flow";
 
 jest.mock("react-native-reanimated", () =>
 	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
@@ -8,11 +8,16 @@ jest.mock("react-native-reanimated", () =>
 
 jest.mock("~/components/ui/icon", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
+	const { View } =
+		jest.requireActual<typeof import("react-native")>("react-native");
 	const Icon = (props: Record<string, unknown>) =>
 		React.createElement("Icon", props);
 
 	return {
 		CalendarDays: Icon,
+		Check: (props: Record<string, unknown>) => (
+			<View testID="exam-selection-check" {...props} />
+		),
 		ChevronDown: Icon,
 		Computer: Icon,
 		GraduationCap: Icon,
@@ -28,6 +33,22 @@ jest.mock("~/lib/theme", () => ({
 		colors: { primary: "#00BAFF", secondaryText: "#697586" },
 	}),
 }));
+
+test("uses a white check for a selected exam type", async () => {
+	const screen = await render(
+		<SingleSelectOption
+			Icon={() => <></>}
+			label="Test"
+			selected
+			onPress={jest.fn()}
+		/>,
+	);
+	expect(
+		screen.getByTestId("exam-selection-check", {
+			includeHiddenElements: true,
+		}).props.color,
+	).toBe("#FFFFFF");
+});
 
 describe("ExamDateSelector", () => {
 	test("presents the selected date as an accessible calendar trigger", async () => {

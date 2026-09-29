@@ -23,6 +23,7 @@ import {
 	SelectionIndicator,
 } from "~/components/ui/selection-control";
 import { Text } from "~/components/ui/text";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatAccessibleExamDate } from "~/lib/exam-date";
 import { useDayovaTheme } from "~/lib/theme";
 
@@ -143,7 +144,7 @@ function SingleSelectOption({
 				<Icon size={20} color={colors.secondaryText} strokeWidth={2} />
 			</View>
 			<Text className="flex-1 font-poppins text-body-2 text-text">{label}</Text>
-			<SelectionIndicator />
+			<SelectionIndicator checkColor={DAYOVA_DESIGN_SYSTEM.colors.light1} />
 		</SelectionControl>
 	);
 }

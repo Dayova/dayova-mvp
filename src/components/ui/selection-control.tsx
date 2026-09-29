@@ -192,14 +192,17 @@ export function SelectionControl({
 /** Keep the slot mounted so selecting cannot move labels or shrink hit areas. */
 export function SelectionIndicator({
 	plain = false,
+	checkColor,
 	className,
 	testID,
 }: {
 	plain?: boolean;
+	checkColor?: string;
 	className?: string;
 	testID?: string;
 }) {
 	const { progress, checkScale, colors } = useSelection();
+	const resolvedCheckColor = checkColor ?? colors.onIndicator;
 	const checkStyle = useAnimatedStyle(() => ({
 		opacity: progress.get(),
 		transform: [{ scale: checkScale.get() }],
@@ -229,7 +232,7 @@ export function SelectionIndicator({
 		>
 			{plain ? (
 				<Animated.View style={checkStyle}>
-					<Check size={16} color={colors.onIndicator} strokeWidth={2.8} />
+					<Check size={16} color={resolvedCheckColor} strokeWidth={2.8} />
 				</Animated.View>
 			) : (
 				<>
@@ -242,7 +245,7 @@ export function SelectionIndicator({
 						className="absolute h-6 w-6 items-center justify-center rounded-full"
 						style={[fillStyle, checkStyle]}
 					>
-						<Check size={14} color={colors.onIndicator} strokeWidth={2.8} />
+						<Check size={14} color={resolvedCheckColor} strokeWidth={2.8} />
 					</Animated.View>
 				</>
 			)}

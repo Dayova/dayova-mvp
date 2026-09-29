@@ -24,7 +24,15 @@ jest.mock("react-native-reanimated", () => ({
 		return value;
 	},
 }));
-jest.mock("~/components/ui/icon", () => ({ Check: () => null }));
+jest.mock("~/components/ui/icon", () => {
+	const { View } =
+		jest.requireActual<typeof import("react-native")>("react-native");
+	return {
+		Check: (props: Record<string, unknown>) => (
+			<View testID="selection-check" {...props} />
+		),
+	};
+});
 jest.mock("~/lib/theme", () => ({
 	useDayovaTheme: () => ({
 		colors: jest.requireActual<typeof import("~/lib/design-system")>(
@@ -69,6 +77,19 @@ function Choices({
 beforeEach(() => {
 	mockReducedMotion = false;
 	jest.clearAllMocks();
+});
+
+test("renders a white check on the selected primary indicator", async () => {
+	const screen = await render(
+		<SelectionControl selected accessibilityLabel="Test" onPress={jest.fn()}>
+			<SelectionText>Test</SelectionText>
+			<SelectionIndicator checkColor="#FFFFFF" />
+		</SelectionControl>,
+	);
+	expect(
+		screen.getByTestId("selection-check", { includeHiddenElements: true }).props
+			.color,
+	).toBe("#FFFFFF");
 });
 
 describe.each<Appearance>([
