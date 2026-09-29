@@ -65,6 +65,26 @@ export const getDashboardWeekDayKeys = (selectedDayKey: string) => {
 	);
 };
 
+/** Keeps the weekday on week moves, falling back to the first available day in a partial week. */
+export const getDashboardWeekSelection = ({
+	selectedDayKey,
+	weekDelta,
+	dayPagerKeys,
+}: {
+	selectedDayKey: string;
+	weekDelta: number;
+	dayPagerKeys: string[];
+}) => {
+	const date = parseDayKey(selectedDayKey);
+	if (!date) return undefined;
+	const nextDayKey = getDayKey(addDays(date, weekDelta * 7));
+	return dayPagerKeys.includes(nextDayKey)
+		? nextDayKey
+		: getDashboardWeekDayKeys(nextDayKey).find((key) =>
+				dayPagerKeys.includes(key),
+			);
+};
+
 /** Builds the bounded date-navigation window around the anchor day. */
 export const getDashboardCalendarDayKeys = ({
 	anchorDayKey,

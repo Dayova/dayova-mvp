@@ -9,6 +9,7 @@ import {
 	getDashboardRelevantDayKeys,
 	getDashboardWeekDayKeys,
 	getDashboardWeekProgress,
+	getDashboardWeekSelection,
 	getNextLearningStepAccessibilityLabel,
 	getVisibleDashboardEntries,
 	hasDashboardDayEntries,
@@ -25,6 +26,31 @@ const entry = (overrides: Partial<DayEntry>): DayEntry =>
 	}) as DayEntry;
 
 describe("dashboard agenda", () => {
+	it.each([
+		["2026-09-28", -1, "2026-09-25"],
+		["2026-10-04", 1, "2026-10-05"],
+		["2026-09-26", 1, "2026-10-03"],
+		["2026-10-03", -1, "2026-09-26"],
+	])("selects an available day when moving from %s by %i weeks", (selectedDayKey, weekDelta, expected) => {
+		const dayPagerKeys = getDashboardCalendarDayKeys({
+			anchorDayKey: "2026-10-01",
+			radiusInDays: 6,
+		});
+		expect(
+			getDashboardWeekSelection({ selectedDayKey, weekDelta, dayPagerKeys }),
+		).toBe(expected);
+	});
+
+	it("does not select a day outside the calendar window", () => {
+		expect(
+			getDashboardWeekSelection({
+				selectedDayKey: "2026-10-01",
+				weekDelta: 10,
+				dayPagerKeys: ["2026-10-01"],
+			}),
+		).toBeUndefined();
+	});
+
 	it("marks days with open or completed entries, but not empty or timetable-only days", () => {
 		expect(hasDashboardDayEntries(undefined)).toBe(false);
 		expect(hasDashboardDayEntries([])).toBe(false);

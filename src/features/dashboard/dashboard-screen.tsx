@@ -10,12 +10,7 @@ import { CreateEntryButton } from "~/components/create-entry-button";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
-import {
-	addDays,
-	getDayKey,
-	parseDayKey,
-	useCurrentLocalDay,
-} from "~/lib/day-key";
+import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { ROUTES, withReturnTo } from "~/lib/routes";
 import { triggerSelectionHaptic } from "~/lib/safe-haptics";
@@ -31,6 +26,7 @@ import {
 	getDashboardCalendarDayKeys,
 	getDashboardRelevantDayKeys,
 	getDashboardWeekDayKeys,
+	getDashboardWeekSelection,
 	getVisibleDashboardEntries,
 	sortDashboardAgendaItems,
 	toDashboardAgendaItem,
@@ -171,10 +167,12 @@ export function DashboardScreen() {
 		(nextPageIndex: number) => {
 			const weekDelta = nextPageIndex - selectedWeekPageIndex;
 			if (weekDelta === 0) return;
-			const date = parseDayKey(selectedDayKey);
-			if (!date) return;
-			const nextDayKey = getDayKey(addDays(date, weekDelta * 7));
-			if (!dayPagerKeys.includes(nextDayKey)) return;
+			const nextDayKey = getDashboardWeekSelection({
+				selectedDayKey,
+				weekDelta,
+				dayPagerKeys,
+			});
+			if (!nextDayKey) return;
 			commitSelectedDay(nextDayKey);
 			triggerDaySelectionHaptic();
 		},

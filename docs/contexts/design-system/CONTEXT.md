@@ -273,9 +273,10 @@ unchanged. The hero blends
 16% primary at the left into 4% at 55% of its width, holding that color across the
 illustration area. The illustration's lower fade uses this same right-side opaque
 fill so it has no contrasting edge. The card has a
-continuous 44px outline without a notch and is not itself pressable: the button
-is the only action. Empty states use the same inset action with their existing
-labels and Plus/ArrowRightStraight icons. Loading disables the button. There is
+continuous 44px outline without a notch. The entire card is the only pressable,
+accessible action; the inset action is visual content. Empty states use the same
+inset action with their existing labels and Plus/ArrowRightStraight icons.
+Loading disables the card action. There is
 no separate footer label or decorative loop. Active lessons show duration and
 Heute/Morgen/date above the title using LearningPlanStatusBadge exactly as on
 learning plans, adding a border-border outline on the matching subtle card fill;
