@@ -1,9 +1,10 @@
-import { Pressable, View } from "react-native";
+import { Pressable, useWindowDimensions, View } from "react-native";
 import { ArrowRight, Clock3, Plus } from "~/components/ui/icon";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { LEARNING_DAYS } from "~/features/learning-times/learning-time-days";
 import { useDayovaTheme } from "~/lib/theme";
+import { cn } from "~/lib/utils";
 
 type WeeklyLearningTime = {
 	id: string;
@@ -24,10 +25,14 @@ function WeeklyLearningTimes({
 	onEdit,
 }: WeeklyLearningTimesProps) {
 	const { colors } = useDayovaTheme();
+	const { fontScale } = useWindowDimensions();
 
 	return (
-		<View className="gap-3">
-			{LEARNING_DAYS.map((day) => {
+		<Surface
+			className="overflow-hidden border border-border px-4"
+			style={{ borderCurve: "continuous" }}
+		>
+			{LEARNING_DAYS.map((day, index) => {
 				const dayEntries = entries
 					.filter((entry) => entry.dayOfWeek === day.value)
 					.sort((first, second) =>
@@ -36,25 +41,36 @@ function WeeklyLearningTimes({
 				const isEmpty = dayEntries.length === 0;
 
 				return (
-					<Surface
+					<View
 						key={day.value}
-						className="overflow-hidden rounded-[28px] px-4 py-4"
-						style={{ borderCurve: "continuous" }}
+						className={cn(
+							"py-3",
+							index < LEARNING_DAYS.length - 1 && "border-border border-b",
+						)}
 					>
 						<View className="min-h-11 flex-row items-center">
-							<View className="h-10 w-10 items-center justify-center rounded-full bg-muted">
-								<Text className="font-poppins font-semibold text-body-4 text-text">
+							<View className="h-10 w-10 items-center justify-center rounded-full bg-accent">
+								<Text
+									allowFontScaling={false}
+									className="font-poppins font-semibold text-body-4 text-text"
+								>
 									{day.abbreviation}
 								</Text>
 							</View>
 
-							<View className="ml-3 flex-1">
-								<Text className="font-poppins font-semibold text-body-2 text-text">
+							<View className="ml-3 min-w-0 flex-1">
+								<Text
+									className="font-poppins font-semibold text-body-2 text-text"
+									style={{ lineHeight: 24 * fontScale }}
+								>
 									{day.label}
 								</Text>
 								{isEmpty ? (
-									<Text className="mt-0.5 font-poppins text-body-4 text-secondary-text">
-										Noch keine Lernzeit
+									<Text
+										className="mt-0.5 font-poppins text-body-4 text-secondary-text"
+										style={{ lineHeight: 18 * fontScale }}
+									>
+										Keine Lernzeit
 									</Text>
 								) : null}
 							</View>
@@ -71,7 +87,7 @@ function WeeklyLearningTimes({
 						</View>
 
 						{isEmpty ? null : (
-							<View className="mt-3 gap-2">
+							<View className="mt-2 gap-2 pl-13">
 								{dayEntries.map((entry) => {
 									const timeRange = `${entry.startTime}–${entry.endTime}`;
 
@@ -80,7 +96,7 @@ function WeeklyLearningTimes({
 											key={entry.id}
 											accessibilityLabel={`${day.label}, Lernzeit ${entry.startTime} bis ${entry.endTime} bearbeiten`}
 											accessibilityRole="button"
-											className="min-h-12 flex-row items-center rounded-[18px] bg-muted px-4 active:opacity-80"
+											className="min-h-11 flex-row items-center rounded-[18px] bg-muted px-4 py-2 active:opacity-80"
 											onPress={() => onEdit(entry)}
 											style={{ borderCurve: "continuous" }}
 										>
@@ -92,7 +108,10 @@ function WeeklyLearningTimes({
 											<Text
 												selectable
 												className="ml-3 flex-1 font-poppins font-semibold text-body-3 text-text"
-												style={{ fontVariant: ["tabular-nums"] }}
+												style={{
+													fontVariant: ["tabular-nums"],
+													lineHeight: 21 * fontScale,
+												}}
 											>
 												{timeRange}
 											</Text>
@@ -106,10 +125,10 @@ function WeeklyLearningTimes({
 								})}
 							</View>
 						)}
-					</Surface>
+					</View>
 				);
 			})}
-		</View>
+		</Surface>
 	);
 }
 

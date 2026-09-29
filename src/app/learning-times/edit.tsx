@@ -6,6 +6,7 @@ import {
 	Platform,
 	Pressable,
 	ScrollView,
+	useWindowDimensions,
 	View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -72,6 +73,7 @@ export default function LearningTimesScreen() {
 		returnTo?: string;
 	}>();
 	const insets = useSafeAreaInsets();
+	const { fontScale } = useWindowDimensions();
 	const { user } = useAuthSession();
 	const { colors } = useDayovaTheme();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
@@ -240,7 +242,8 @@ export default function LearningTimesScreen() {
 			>
 				<Text
 					accessibilityRole="header"
-					className="font-poppins font-semibold text-body-1 text-text"
+					className="min-w-0 flex-1 pr-3 font-poppins font-semibold text-body-1 text-text"
+					style={{ lineHeight: 30 * Math.min(fontScale, 1.75) }}
 				>
 					{isEditingExisting ? "Lernzeit bearbeiten" : "Neue Lernzeit"}
 				</Text>
@@ -248,7 +251,7 @@ export default function LearningTimesScreen() {
 					accessibilityLabel="Lernzeit schließen"
 					accessibilityRole="button"
 					hitSlop={8}
-					className="h-10 w-10 items-center justify-center rounded-full bg-muted active:opacity-75"
+					className="h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted active:opacity-75"
 					onPress={goBack}
 				>
 					<X size={18} color={colors.text} strokeWidth={2.2} />
@@ -270,9 +273,9 @@ export default function LearningTimesScreen() {
 				<Text
 					selectable
 					className="font-poppins text-body-3 text-secondary-text"
+					style={{ lineHeight: 21 * fontScale }}
 				>
-					Wähle den Wochentag und das Zeitfenster, in dem du regelmäßig lernen
-					kannst.
+					Wähle Wochentag und Zeitraum.
 				</Text>
 
 				<LearningTimeEditorFields
@@ -325,8 +328,13 @@ export default function LearningTimesScreen() {
 				className="border-border border-t bg-background px-6 pt-4"
 				style={{ paddingBottom: Math.max(insets.bottom, 20) }}
 			>
-				<Button disabled={!canSave} onPress={save}>
-					<Text>{isSaving ? "Speichert..." : "Speichern"}</Text>
+				<Button className="py-4" disabled={!canSave} onPress={save}>
+					<Text
+						maxFontSizeMultiplier={2}
+						style={{ lineHeight: 24 * Math.min(fontScale, 2) }}
+					>
+						{isSaving ? "Speichert..." : "Speichern"}
+					</Text>
 				</Button>
 			</View>
 
