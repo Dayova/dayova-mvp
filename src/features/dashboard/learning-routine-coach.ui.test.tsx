@@ -225,7 +225,7 @@ test("regular changes open the settings instead of silently persisting the one-o
 	await fireEvent.press(
 		screen.getByRole("button", { name: "Regelmäßige Zeiten einstellen" }),
 	);
-	expect(mockPush).toHaveBeenCalledWith("/learning-times");
+	expect(mockPush).toHaveBeenCalledWith("/learning-times?returnTo=%2Fhome");
 	expect(mockMove).not.toHaveBeenCalled();
 });
 test("waits for other sheets and for dashboard focus", async () => {

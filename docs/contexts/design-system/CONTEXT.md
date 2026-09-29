@@ -296,10 +296,16 @@ The hero prioritizes today's unfinished learning sessions, including sessions wh
 scheduled time has passed. Explicitly completed sessions are excluded. When today
 has no open session, the earliest upcoming session is shown. Its day appears as
 Heute, Morgen or a date badge and in the accessibility label. The owner-scoped
-session query pages forward from today without a fixed day horizon, independently
-of calendar selection. It skips completed/provisional sessions and unaccepted
-plans, and finishes scanning the first matching day before selecting its earliest
-time. The card stays loading until this selection or a genuine end of results;
+session query pages through the owner's sessions without a fixed day horizon,
+independently of calendar selection. It skips completed/provisional sessions,
+unaccepted plans and normalized Berlin days before today. Legacy date strings
+can have offsets that differ from their raw date prefix, so neither a raw date
+lower bound nor a prefix-based early stop is safe. Selection waits for all pages
+and then orders candidates by normalized day and start time. This deliberately
+trades more page loads/subscriptions for correctness with legacy data; a long
+session history can increase initial loading time and reads. A canonical indexed
+day would require a separately verified data migration. The card stays loading
+until the genuine end of results;
 it never treats a skipped page as an empty state. Past-day sessions are
 not promoted. The calendar stays visible in all states.
 Without a plan, the same illustrated card shows “Noch kein Lernplan”, a short

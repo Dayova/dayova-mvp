@@ -93,8 +93,8 @@ test("keeps today's overdue open step and normalizes legacy Berlin-midnight date
 		executionStatus: "started",
 	});
 	const result = await owner.query(api.dashboardNextStep.listCandidates, args);
-	expect(result.page).toHaveLength(1);
-	expect(result.page[0].step).toMatchObject({
+	expect(result.page.filter((row) => row.step)).toHaveLength(1);
+	expect(result.page.find((row) => row.step)?.step).toMatchObject({
 		dayKey: "2026-09-29",
 		session: { _id: id, executionStatus: "started" },
 	});
@@ -119,6 +119,19 @@ test("requires authentication and isolates both session and plan ownership", asy
 		(await owner.query(api.dashboardNextStep.listCandidates, args)).page[0]
 			.step,
 	).toBeNull();
+});
+
+test("keeps offset dates whose raw key precedes the Berlin-midnight lower bound", async () => {
+	const { owner, insert } = await setup();
+	const id = await insert({ dateKey: "2026-10-04T12:00:00-12:00" });
+	const result = await owner.query(api.dashboardNextStep.listCandidates, {
+		...args,
+		todayKey: "2026-10-05",
+	});
+	expect(result.page.find((row) => row.step)?.step).toMatchObject({
+		dayKey: "2026-10-05",
+		session: { _id: id },
+	});
 });
 
 test("excludes unaccepted plans and supports legacy completion flags", async () => {

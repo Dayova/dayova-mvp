@@ -8,11 +8,12 @@ type Candidate = FunctionReturnType<
 	typeof api.dashboardNextStep.listCandidates
 >["page"][number];
 
-/** Selects the earliest candidate only after its whole day has been scanned or results end. */
+/** Selects by normalized Berlin day after all pages, since legacy date strings are not chronologically ordered. */
 export function selectNextLearningCandidate(
 	rows: Candidate[],
 	exhausted: boolean,
 ) {
+	if (!exhausted) return { next: undefined, settled: false };
 	const next = rows
 		.flatMap((row) => (row.step ? [row.step] : []))
 		.sort(
@@ -20,11 +21,7 @@ export function selectNextLearningCandidate(
 				a.dayKey.localeCompare(b.dayKey) ||
 				a.session.startTime.localeCompare(b.session.startTime),
 		)[0];
-	const lastScannedDay = rows.at(-1)?.scanDateKey.slice(0, 10);
-	const settled =
-		exhausted ||
-		Boolean(next && lastScannedDay && lastScannedDay > next.dayKey);
-	return { next: settled ? next : undefined, settled };
+	return { next, settled: true };
 }
 
 /** Pages forward until an eligible step is settled; skipped pages never imply an empty state. */

@@ -5,7 +5,7 @@ import {
 import { v } from "convex/values";
 import { query } from "./_generated/server";
 import { assertAccountActive } from "./accountDeletion";
-import { getBerlinDayKey, getDayKeyQueryVariants } from "./dayKeyVariants";
+import { getBerlinDayKey } from "./dayKeyVariants";
 import { throwUserFacingError } from "./errors";
 import schema from "./schema";
 
@@ -22,8 +22,10 @@ const sessionValidator = v.object({
 	sessionPurpose: sessionFields.sessionPurpose,
 });
 
-// Retain scan boundaries even for skipped rows: the client must finish the first
-// matching day before choosing its earliest time, including legacy ISO date keys.
+/** Pages through the owner's sessions and filters on normalized Berlin days.
+ * Raw legacy date strings cannot safely bound or terminate a chronological search.
+ * Keep scanDateKey in the response for compatibility, not as an ordering guarantee.
+ */
 export const listCandidates = query({
 	args: { todayKey: v.string(), paginationOpts: paginationOptsValidator },
 	returns: paginationResultValidator(
@@ -46,13 +48,10 @@ export const listCandidates = query({
 		if (!/^\d{4}-\d{2}-\d{2}$/.test(args.todayKey)) {
 			throwUserFacingError("Ungültiger Tag.");
 		}
-		const lowerBound = getDayKeyQueryVariants(args.todayKey).sort()[0];
 		const result = await ctx.db
 			.query("learningPlanSessions")
-			.withIndex("by_ownerTokenIdentifier_and_dateKey", (q) =>
-				q
-					.eq("ownerTokenIdentifier", identity.tokenIdentifier)
-					.gte("dateKey", lowerBound),
+			.withIndex("by_ownerTokenIdentifier", (q) =>
+				q.eq("ownerTokenIdentifier", identity.tokenIdentifier),
 			)
 			.paginate(args.paginationOpts);
 		const page = await Promise.all(
