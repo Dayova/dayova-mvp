@@ -1,6 +1,6 @@
 import { createElement } from "react";
 import { View } from "react-native";
-import { ArrowRight, Check } from "~/components/ui/icon";
+import { ArrowRight, CalendarDays, Check } from "~/components/ui/icon";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { ActionSurface, Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
@@ -156,6 +156,7 @@ export function CompactDayAgenda({
 	isLoading: boolean;
 	onOpenItem: (item: DashboardAgendaItem) => void;
 }) {
+	const { colors } = useDayovaTheme();
 	if (isLoading)
 		return (
 			<Text
@@ -167,9 +168,29 @@ export function CompactDayAgenda({
 		);
 	if (!items.length)
 		return (
-			<Text className="py-4 text-center font-poppins text-body-3 text-secondary-text">
-				Für diesen Tag ist nichts geplant.
-			</Text>
+			<View
+				className="min-h-44 items-center justify-center gap-3 py-6"
+				testID="calendar-empty-day"
+			>
+				<View
+					className="h-14 w-14 items-center justify-center rounded-full bg-system-subtle"
+					accessible={false}
+					accessibilityElementsHidden
+					importantForAccessibility="no-hide-descendants"
+				>
+					<CalendarDays
+						size={28}
+						color={colors.primaryStrong}
+						strokeWidth={1.5}
+					/>
+				</View>
+				<Text className="text-center font-poppins text-body-3 text-secondary-text">
+					Für diesen Tag ist nichts geplant.
+				</Text>
+				<Text className="text-center font-poppins text-body-4 text-secondary-text">
+					Wische, um deine anderen Tage anzusehen.
+				</Text>
+			</View>
 		);
 	return (
 		<View className="gap-3">

@@ -1,20 +1,10 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-	FlatList,
-	ScrollView,
-	type TextStyle,
-	TouchableOpacity,
-	useWindowDimensions,
-	View,
-	type ViewStyle,
-} from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SafeAreaView } from "react-native-screens/experimental";
-import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import { CreateEntryButton } from "~/components/create-entry-button";
 import { Text } from "~/components/ui/text";
@@ -31,9 +21,9 @@ import { ROUTES, withReturnTo } from "~/lib/routes";
 import { triggerSelectionHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
 import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
-import { cn } from "~/lib/utils";
 import type { DayEntry } from "~/types/dayEntries";
 import { getAgendaPlanRoute } from "./agenda-plan-route";
+import { CalendarPager } from "./calendar-pager";
 import { CompactDayAgenda } from "./compact-day-agenda";
 import {
 	type DashboardAgendaItem,
@@ -43,7 +33,6 @@ import {
 	getDashboardRelevantDayKeys,
 	getDashboardWeekDayKeys,
 	getVisibleDashboardEntries,
-	hasDashboardDayEntries,
 	sortDashboardAgendaItems,
 	toDashboardAgendaItem,
 } from "./dashboard-agenda";
@@ -51,52 +40,13 @@ import { DashboardCalendarHeader } from "./dashboard-calendar-header";
 import { getDashboardNextStepFallbackAction } from "./dashboard-empty-state";
 import { LearningRoutineCoach } from "./learning-routine-coach";
 import { TodayLearningCard } from "./today-learning-card";
+import { CalendarWeekdays, WeekCalendar } from "./week-calendar";
 
 const triggerDaySelectionHaptic = () => {
 	void triggerSelectionHaptic({
 		platform: process.env.EXPO_OS,
 		selectionAsync: () => Haptics.selectionAsync(),
 	});
-};
-
-// These are native rendering controls with no NativeWind equivalent.
-const continuousBorderStyle = {
-	borderCurve: "continuous",
-} satisfies ViewStyle;
-const tabularNumberStyle = {
-	fontVariant: ["tabular-nums"],
-} satisfies TextStyle;
-
-type CalendarDay = {
-	key: string;
-	date: Date;
-	weekday: string;
-	dayOfMonth: string;
-	isToday: boolean;
-};
-
-const toCalendarDay = ({
-	dayKey,
-	todayKey,
-}: {
-	dayKey: string;
-	todayKey: string;
-}): CalendarDay | null => {
-	const date = parseDayKey(dayKey);
-	if (!date) return null;
-
-	return {
-		key: dayKey,
-		date,
-		weekday: new Intl.DateTimeFormat("de-DE", {
-			weekday: "short",
-		})
-			.format(date)
-			.replace(".", "")
-			.slice(0, 2),
-		dayOfMonth: date.getDate().toString(),
-		isToday: dayKey === todayKey,
-	};
 };
 
 const getEntryUrl = (entry: DayEntry, selectedDayLabel: string) => {
@@ -128,81 +78,12 @@ const getEntryUrl = (entry: DayEntry, selectedDayLabel: string) => {
 	return `/entry/${encodeURIComponent(entry.id)}?${query}`;
 };
 
-function WeekCalendar({
-	days,
-	entriesByDay,
-	selectedDayKey,
-	onSelectDay,
-}: {
-	days: CalendarDay[];
-	entriesByDay: Record<string, DayEntry[]> | undefined;
-	selectedDayKey: string;
-	onSelectDay: (day: CalendarDay) => void;
-}) {
-	return (
-		<View className="flex-row border-border border-b pb-2">
-			{days.map((day) => {
-				const selected = day.key === selectedDayKey;
-				return (
-					<TouchableOpacity
-						key={day.key}
-						activeOpacity={0.82}
-						accessibilityRole="button"
-						accessibilityLabel={`${new Intl.DateTimeFormat("de-DE", {
-							weekday: "long",
-							day: "numeric",
-							month: "long",
-						}).format(
-							day.date,
-						)}${hasDashboardDayEntries(entriesByDay?.[day.key]) ? ", mit Einträgen" : ""}`}
-						accessibilityState={{ selected }}
-						onPress={() => onSelectDay(day)}
-						hitSlop={2}
-						className="min-h-20 flex-1 items-center justify-start"
-					>
-						<Text className="font-poppins text-body-4 text-secondary-text">
-							{day.weekday}
-						</Text>
-						<View
-							className={cn(
-								"mt-2 h-12 w-12 items-center justify-center rounded-full border",
-								selected
-									? "border-primary-strong/30 bg-system-subtle"
-									: "border-transparent bg-transparent",
-							)}
-							style={continuousBorderStyle}
-						>
-							<Text
-								className={cn(
-									"font-poppins font-semibold text-body-1",
-									selected ? "text-primary-strong" : "text-text",
-								)}
-								style={tabularNumberStyle}
-							>
-								{day.dayOfMonth}
-							</Text>
-							{hasDashboardDayEntries(entriesByDay?.[day.key]) ? (
-								<View
-									className="absolute bottom-1 h-1 w-1 rounded-full bg-primary"
-									accessible={false}
-									testID={`calendar-entry-dot-${day.key}`}
-								/>
-							) : null}
-						</View>
-					</TouchableOpacity>
-				);
-			})}
-		</View>
-	);
-}
-
 export function DashboardScreen() {
 	const { colors } = useDayovaTheme();
 	const router = useRouter();
 	const trackFeature = useFeatureAnalytics();
 	const params = useLocalSearchParams<{ dayKey?: string }>();
 	const insets = useSafeAreaInsets();
-	const { width } = useWindowDimensions();
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const today = useCurrentLocalDay();
@@ -223,7 +104,6 @@ export function DashboardScreen() {
 		return () => clearInterval(timer);
 	}, []);
 
-	const selectedPagerIndex = Math.max(dayPagerKeys.indexOf(selectedDayKey), 0);
 	const weekPageKeys = useMemo(
 		() => [
 			...new Set(
@@ -240,9 +120,6 @@ export function DashboardScreen() {
 		),
 		0,
 	);
-	const weekPagerWidth = Math.max(width - 48, 1);
-	const weekPagerRef = useRef<FlatList<string>>(null);
-	const visibleWeekPageIndexRef = useRef(selectedWeekPageIndex);
 	const queriedDayKeys = getDashboardRelevantDayKeys({
 		selectedDayKey,
 		todayKey,
@@ -303,40 +180,6 @@ export function DashboardScreen() {
 		[selectedDayKey, trackFeature],
 	);
 
-	const selectDay = (day: CalendarDay) => {
-		if (!dayPagerKeys.includes(day.key)) return;
-		commitSelectedDay(day.key);
-	};
-
-	const adjustSelectedDay = useCallback(
-		(direction: -1 | 1) => {
-			const nextIndex = Math.min(
-				Math.max(selectedPagerIndex + direction, 0),
-				dayPagerKeys.length - 1,
-			);
-			const nextDayKey = dayPagerKeys[nextIndex];
-			if (!nextDayKey) return;
-			commitSelectedDay(nextDayKey);
-			triggerDaySelectionHaptic();
-		},
-		[commitSelectedDay, dayPagerKeys, selectedPagerIndex],
-	);
-
-	const daySwipeGesture = useMemo(
-		() =>
-			Gesture.Pan()
-				.activeOffsetX([-24, 24])
-				.failOffsetY([-12, 12])
-				.onEnd((event) => {
-					"worklet";
-					const passedDistance = Math.abs(event.translationX) >= 56;
-					const passedVelocity = Math.abs(event.velocityX) >= 650;
-					if (!passedDistance && !passedVelocity) return;
-					scheduleOnRN(adjustSelectedDay, event.translationX < 0 ? 1 : -1);
-				}),
-		[adjustSelectedDay],
-	);
-
 	const selectWeekPage = useCallback(
 		(nextPageIndex: number) => {
 			const weekDelta = nextPageIndex - selectedWeekPageIndex;
@@ -350,15 +193,6 @@ export function DashboardScreen() {
 		},
 		[commitSelectedDay, dayPagerKeys, selectedDayKey, selectedWeekPageIndex],
 	);
-
-	useEffect(() => {
-		if (visibleWeekPageIndexRef.current === selectedWeekPageIndex) return;
-		visibleWeekPageIndexRef.current = selectedWeekPageIndex;
-		weekPagerRef.current?.scrollToIndex({
-			animated: true,
-			index: selectedWeekPageIndex,
-		});
-	}, [selectedWeekPageIndex]);
 
 	const openItem = useCallback(
 		(item: DashboardAgendaItem, returnTo?: string) => {
@@ -451,71 +285,44 @@ export function DashboardScreen() {
 							commitSelectedDay(todayKey);
 						}}
 					/>
-					<FlatList
-						ref={weekPagerRef}
-						data={weekPageKeys}
-						decelerationRate="fast"
-						disableIntervalMomentum
-						getItemLayout={(_data, index) => ({
-							index,
-							length: weekPagerWidth,
-							offset: weekPagerWidth * index,
-						})}
-						horizontal
-						initialNumToRender={3}
-						initialScrollIndex={selectedWeekPageIndex}
-						keyExtractor={(weekKey) => weekKey}
-						maxToRenderPerBatch={3}
-						onMomentumScrollEnd={(event) => {
-							const nextPageIndex = Math.min(
-								Math.max(
-									Math.round(
-										event.nativeEvent.contentOffset.x / weekPagerWidth,
-									),
-									0,
-								),
-								weekPageKeys.length - 1,
-							);
-							visibleWeekPageIndexRef.current = nextPageIndex;
-							selectWeekPage(nextPageIndex);
-						}}
-						onScrollToIndexFailed={({ index }) => {
-							weekPagerRef.current?.scrollToOffset({
-								animated: true,
-								offset: index * weekPagerWidth,
-							});
-						}}
-						pagingEnabled
-						renderItem={({ item: weekKey }) => {
-							const days = getDashboardWeekDayKeys(weekKey).flatMap(
-								(dayKey) => {
-									const day = toCalendarDay({ dayKey, todayKey });
-									return day ? [day] : [];
-								},
-							);
-							return (
-								<View style={{ width: weekPagerWidth }}>
-									<WeekCalendar
-										days={days}
-										entriesByDay={entriesByDay}
-										selectedDayKey={selectedDayKey}
-										onSelectDay={selectDay}
-									/>
-								</View>
-							);
-						}}
-						showsHorizontalScrollIndicator={false}
-						windowSize={3}
-					/>
+					<CalendarWeekdays />
+					<View className="border-border border-b">
+						<CalendarPager
+							testID="calendar-week-pager"
+							keys={weekPageKeys}
+							selectedKey={weekPageKeys[selectedWeekPageIndex]}
+							minimumHeight={68}
+							onSelect={(key) => selectWeekPage(weekPageKeys.indexOf(key))}
+							renderPage={(weekKey) => (
+								<WeekCalendar
+									weekKey={weekKey}
+									todayKey={todayKey}
+									selectedDayKey={selectedDayKey}
+									entriesByDay={entriesByDay}
+									onSelectDay={(key) => {
+										if (dayPagerKeys.includes(key)) commitSelectedDay(key);
+									}}
+								/>
+							)}
+						/>
+					</View>
 				</View>
 
-				<GestureDetector gesture={daySwipeGesture}>
-					<View>
+				<CalendarPager
+					testID="calendar-day-pager"
+					keys={dayPagerKeys}
+					selectedKey={selectedDayKey}
+					minimumHeight={180}
+					onSelect={(key) => {
+						commitSelectedDay(key);
+						triggerDaySelectionHaptic();
+					}}
+					renderPage={(dayKey) => (
 						<View className="px-6 pt-4">
 							<CompactDayAgenda
 								items={sortDashboardAgendaItems(
-									(entriesByDay?.[selectedDayKey] ?? []).map((entry) =>
-										toDashboardAgendaItem(selectedDayKey, {
+									(entriesByDay?.[dayKey] ?? []).map((entry) =>
+										toDashboardAgendaItem(dayKey, {
 											...entry,
 											subject:
 												entry.subject ??
@@ -525,7 +332,7 @@ export function DashboardScreen() {
 										}),
 									),
 								)}
-								isLoading={entriesByDay === undefined}
+								isLoading={entriesByDay?.[dayKey] === undefined}
 								onOpenItem={(item) => {
 									const planRoute = getAgendaPlanRoute(item.entry);
 									if (planRoute) {
@@ -541,8 +348,8 @@ export function DashboardScreen() {
 								}}
 							/>
 						</View>
-					</View>
-				</GestureDetector>
+					)}
+				/>
 			</ScrollView>
 		</SafeAreaView>
 	);

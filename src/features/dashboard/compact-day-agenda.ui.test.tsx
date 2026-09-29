@@ -7,6 +7,7 @@ import { toDashboardAgendaItem } from "./dashboard-agenda";
 jest.mock("~/components/ui/icon", () => ({
 	Check: () => null,
 	ArrowRight: () => null,
+	CalendarDays: () => null,
 }));
 jest.mock("~/features/subjects/subject-catalog", () => ({
 	getSubjectIcon: () => () => null,

@@ -226,8 +226,10 @@ removed. Open interactive rows show a small neutral Hugeicons right arrow; compl
 rows show only the completion check. The whole row opens its associated learning
 plan, falling back to entry details when no plan exists. School lessons stay
 non-interactive without an arrow. The upper card retains direct session entry.
-Empty days use only “Für diesen Tag ist nichts geplant.” The list container does
-not group away accessible row actions; calendar day buttons provide day selection.
+Empty days use a small decorative Hugeicons calendar on a subtle circle, “Für
+diesen Tag ist nichts geplant.” and a quiet swipe hint. No extra creation CTA or
+large empty-state card competes with the hero. The list container does not group
+away accessible row actions; calendar day buttons provide day selection.
 
 The Today calendar adds a compact orientation row above the existing week slider:
 selected month and year on the left, a shared ghost “Heute” button on the right.
@@ -236,7 +238,20 @@ pill surface and border. Its quiet treatment uses regular body-3 secondary text,
 36px minimum visual height and 6px hit slop; the row retains 48px minimum height.
 The action selects today's date and brings its week into view. Large content sizes
 stack the row. This simplified Apple Calendar reference does not introduce search,
-view switching, another creation control, or a redesigned week slider (DAY-490).
+view switching or another creation control (DAY-490).
+
+Philipp's 29 September Apple Calendar video supersedes the original slider:
+Mo–So remain outside the moving date strip. Native horizontal pagers move the
+numbers week by week and the agenda day by day, sharing one selected date.
+Tapping a date, paging either section, or pressing Heute synchronizes both;
+the hero remains independent. Today keeps blue text when unselected and a cyan
+circle with onPrimary text when selected. Other selected dates use the neutral
+black circle in light mode, white in dark mode; other dates have no circle.
+Blue event dots include completed entries. Adjacent agenda pages are prepared
+from the existing day query; missing data shows loading, never a false empty
+day. Pages follow native drag motion; reduced motion disables programmatic
+sliding. Only the active page is exposed to accessibility, and measured page
+heights allow longer agendas to scroll vertically in the existing parent.
 
 The Today hero combines the shared Surface with a smaller native study
 illustration on the right (DAY-490, Philipp's mixed-reference follow-up).
