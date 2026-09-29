@@ -111,7 +111,7 @@ test("settings displays a recoverable load error instead of crashing or claiming
 	expect(mockBack).toHaveBeenCalledTimes(1);
 });
 
-test("empty settings offers both the header plus and a first-subject action", async () => {
+test("empty settings presents one clear add action and saves without a confirmation step", async () => {
 	mockResponse = { personal: [], reusableTimetableSubjects: [] };
 	mockMutation.mockResolvedValue({
 		kind: "personal",
@@ -119,24 +119,20 @@ test("empty settings offers both the header plus and a first-subject action", as
 		name: "Spanisch",
 	});
 	const screen = await render(<PersonalSubjectsScreen />);
-	const actions = screen.getAllByRole("button", {
-		name: "Persönliches Fach hinzufügen",
-	});
-	expect(actions).toHaveLength(2);
-	await act(() => fireEvent.press(actions[1]));
+	expect(
+		screen.queryByRole("button", { name: "Persönliches Fach hinzufügen" }),
+	).toBeNull();
 	await act(() =>
-		fireEvent.changeText(screen.getByLabelText("Name des Fachs"), "spanisch"),
+		fireEvent.press(screen.getByRole("button", { name: "Fach hinzufügen" })),
 	);
 	await act(() =>
-		fireEvent.press(screen.getByRole("button", { name: "Weiter" })),
+		fireEvent.changeText(screen.getByLabelText("Name des Fachs"), "spanisch"),
 	);
 	expect(
 		screen.queryByRole("button", { name: "Nur diesmal verwenden" }),
 	).toBeNull();
 	await act(async () => {
-		fireEvent.press(
-			screen.getByRole("button", { name: "Dauerhaft hinzufügen" }),
-		);
+		fireEvent.press(screen.getByRole("button", { name: "Fach speichern" }));
 	});
 	expect(mockMutation).toHaveBeenCalledWith({ name: "Spanisch" });
 	expect(screen.queryByText("Fach dauerhaft hinzufügen?")).toBeNull();
@@ -148,7 +144,7 @@ test("the header plus remains available when a personal subject already exists",
 		reusableTimetableSubjects: [],
 	};
 	const screen = await render(<PersonalSubjectsScreen />);
-	expect(screen.queryByText("Noch keine persönlichen Fächer")).toBeNull();
+	expect(screen.queryByText("Noch keine eigenen Fächer")).toBeNull();
 	await act(() =>
 		fireEvent.press(
 			screen.getByRole("button", { name: "Persönliches Fach hinzufügen" }),

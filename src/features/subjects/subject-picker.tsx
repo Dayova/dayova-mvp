@@ -73,7 +73,7 @@ function SubjectOptionRow({
 				)}
 			>
 				{selected ? (
-					<Check size={14} color="#FFFFFF" strokeWidth={2.5} />
+					<Check size={14} color={colors.onPrimary} strokeWidth={2.5} />
 				) : null}
 			</View>
 		</Pressable>
@@ -174,6 +174,7 @@ function SubjectAddFlow({
 	onSelect: (selection: SubjectSelection) => void;
 	onSavePermanent: (name: string) => Promise<SubjectSelection>;
 }) {
+	const { colors } = useDayovaTheme();
 	const inputRef = useRef<TextInput>(null);
 	const [name, setName] = useState("");
 	const [step, setStep] = useState<"input" | "confirm">("input");
@@ -186,6 +187,7 @@ function SubjectAddFlow({
 		onSelect(selection);
 	};
 	const continueFromInput = () => {
+		if (isBusy) return;
 		setErrorMessage(null);
 		if (!cleanedName) {
 			setErrorMessage("Gib einen Fachnamen ein.");
@@ -201,7 +203,15 @@ function SubjectAddFlow({
 					normalizeSubjectName(option.name) ===
 					normalizeSubjectName(cleanedName),
 			);
-		if (existing && (!permanentOnly || existing.kind !== "timetable")) {
+		if (existing && permanentOnly && existing.kind !== "timetable") {
+			setErrorMessage(
+				existing.kind === "personal"
+					? "Dieses Fach hast du bereits hinzugefügt."
+					: "Dieses Fach ist bereits in der Fachauswahl verfügbar.",
+			);
+			return;
+		}
+		if (existing && !permanentOnly) {
 			finish({
 				name: existing.name,
 				...(existing.personalSubjectId
@@ -211,6 +221,10 @@ function SubjectAddFlow({
 			return;
 		}
 		Keyboard.dismiss();
+		if (permanentOnly) {
+			void savePermanent();
+			return;
+		}
 		setName(existing?.name ?? cleanedName);
 		setStep("confirm");
 	};
@@ -242,7 +256,9 @@ function SubjectAddFlow({
 			description={
 				step === "confirm"
 					? `${cleanedName} kann künftig bei Prüfungen, Hausaufgaben, Lernplänen und im Stundenplan ausgewählt werden.`
-					: "Gib ein Fach ein, das noch nicht in der Liste steht."
+					: permanentOnly
+						? "Speichere ein Fach, das du später wieder auswählen möchtest."
+						: "Gib ein Fach ein, das noch nicht in der Liste steht."
 			}
 			onClose={() => {
 				Keyboard.dismiss();
@@ -264,15 +280,29 @@ function SubjectAddFlow({
 							spellCheck
 							maxLength={MAX_SUBJECT_NAME_LENGTH}
 							placeholder="Zum Beispiel Französisch"
-							returnKeyType="next"
+							returnKeyType={permanentOnly ? "done" : "next"}
 							value={name}
 							onChangeText={setName}
 							onSubmitEditing={continueFromInput}
 						/>
 					</View>
 					{errorMessage ? <ErrorMessage>{errorMessage}</ErrorMessage> : null}
-					<Button disabled={!cleanedName} onPress={continueFromInput}>
-						<Text>Weiter</Text>
+					<Button
+						accessibilityState={{
+							busy: isBusy,
+							disabled: !cleanedName || isBusy,
+						}}
+						disabled={!cleanedName || isBusy}
+						onPress={continueFromInput}
+					>
+						{isBusy ? <ActivityIndicator color={colors.onPrimary} /> : null}
+						<Text>
+							{isBusy
+								? "Wird gespeichert …"
+								: permanentOnly
+									? "Fach speichern"
+									: "Weiter"}
+						</Text>
 					</Button>
 				</View>
 			) : (

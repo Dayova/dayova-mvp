@@ -304,7 +304,7 @@ test("corrects a common language typo before permanent confirmation", async () =
 	expect(onSavePermanent).toHaveBeenCalledWith("Italienisch");
 });
 
-test("settings mode offers only permanent saving and promotes timetable-only subjects", async () => {
+test("settings mode saves directly and promotes timetable-only subjects", async () => {
 	const onSelect = jest.fn();
 	const onSavePermanent = jest.fn<(name: string) => Promise<SubjectSelection>>(
 		async (name) => ({ name, personalSubjectId: "latin-id" as never }),
@@ -328,21 +328,71 @@ test("settings mode offers only permanent saving and promotes timetable-only sub
 	await act(() =>
 		fireEvent.changeText(screen.getByLabelText("Name des Fachs"), "Latein"),
 	);
-	await act(() =>
-		fireEvent.press(screen.getByRole("button", { name: "Weiter" })),
-	);
-	expect(onSelect).not.toHaveBeenCalled();
+	expect(screen.getByText("Fach hinzufügen")).toBeOnTheScreen();
 	expect(
 		screen.queryByRole("button", { name: "Nur diesmal verwenden" }),
 	).toBeNull();
 	await act(async () => {
-		fireEvent.press(
-			screen.getByRole("button", { name: "Dauerhaft hinzufügen" }),
-		);
+		fireEvent.press(screen.getByRole("button", { name: "Fach speichern" }));
 	});
 	expect(onSavePermanent).toHaveBeenCalledWith("Latein");
 	expect(onSelect).toHaveBeenCalledWith({
 		name: "Latein",
 		personalSubjectId: "latin-id",
 	});
+});
+
+test("settings keeps the direct add sheet open when saving fails", async () => {
+	const onSelect = jest.fn();
+	const screen = await render(
+		<SubjectAddFlow
+			permanentOnly
+			options={[]}
+			onCancel={jest.fn()}
+			onSelect={onSelect}
+			onSavePermanent={async () => {
+				throw new Error("[CONVEX M(personalSubjects:create)] Server Error");
+			}}
+		/>,
+	);
+	await act(() =>
+		fireEvent.changeText(screen.getByLabelText("Name des Fachs"), "Spanisch"),
+	);
+	await act(async () => {
+		fireEvent.press(screen.getByRole("button", { name: "Fach speichern" }));
+	});
+	expect(onSelect).not.toHaveBeenCalled();
+	expect(
+		screen.getByRole("button", { name: "Fach speichern" }),
+	).toBeOnTheScreen();
+	expect(screen.getByText(/konnte nicht gespeichert werden/)).toBeOnTheScreen();
+});
+
+test("settings explains an already saved subject instead of silently closing", async () => {
+	const onSelect = jest.fn();
+	const onSavePermanent =
+		jest.fn<(name: string) => Promise<SubjectSelection>>();
+	const screen = await render(
+		<SubjectAddFlow
+			permanentOnly
+			options={[personalOption]}
+			onCancel={jest.fn()}
+			onSelect={onSelect}
+			onSavePermanent={onSavePermanent}
+		/>,
+	);
+	await act(() =>
+		fireEvent.changeText(
+			screen.getByLabelText("Name des Fachs"),
+			"französisch",
+		),
+	);
+	await act(() =>
+		fireEvent.press(screen.getByRole("button", { name: "Fach speichern" })),
+	);
+	expect(
+		screen.getByText("Dieses Fach hast du bereits hinzugefügt."),
+	).toBeOnTheScreen();
+	expect(onSelect).not.toHaveBeenCalled();
+	expect(onSavePermanent).not.toHaveBeenCalled();
 });

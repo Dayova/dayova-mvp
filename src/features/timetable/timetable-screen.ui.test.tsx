@@ -20,6 +20,9 @@ jest.mock("react-native-safe-area-context", () => ({
 jest.mock("convex/react", () => ({
 	useConvexAuth: () => ({ isAuthenticated: mockAuthenticated }),
 	useQuery: () => mockState,
+	useQueries: () => ({
+		subjects: { personal: [], reusableTimetableSubjects: [] },
+	}),
 	useMutation: () => mockMutation,
 	useAction: () => jest.fn(),
 }));

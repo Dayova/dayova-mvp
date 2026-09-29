@@ -113,14 +113,17 @@ export default function PersonalSubjectsScreen() {
 						title="Persönliche Fächer"
 						onBack={() => router.back()}
 						right={
-							<Pressable
-								accessibilityRole="button"
-								accessibilityLabel="Persönliches Fach hinzufügen"
-								onPress={() => setIsAdding(true)}
-								className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
-							>
-								<Plus size={28} color={colors.text} strokeWidth={1.8} />
-							</Pressable>
+							isLoading || loadError || personalOptions.length > 0 ? (
+								<Button
+									accessibilityLabel="Persönliches Fach hinzufügen"
+									className="h-12 min-h-12 w-12 min-w-12 rounded-full border border-border bg-card px-0"
+									onPress={() => setIsAdding(true)}
+									size="icon"
+									variant="ghost"
+								>
+									<Plus size={24} color={colors.primary} strokeWidth={2.2} />
+								</Button>
+							) : null
 						}
 					/>
 				</PortraitContent>
@@ -131,8 +134,7 @@ export default function PersonalSubjectsScreen() {
 					horizontalPadding={24}
 				>
 					<Text className="mb-5 font-poppins text-body-3 text-secondary-text">
-						Diese Fächer stehen dir bei Prüfungen, Hausaufgaben, Lernplänen und
-						im Stundenplan zur Verfügung.
+						Hier verwaltest du die Fächer, die du selbst hinzugefügt hast.
 					</Text>
 
 					{isLoading ? (
@@ -146,26 +148,19 @@ export default function PersonalSubjectsScreen() {
 					) : loadError ? (
 						<ErrorMessage>{loadError}</ErrorMessage>
 					) : personalOptions.length === 0 ? (
-						<Surface className="items-center border border-border px-6 py-10">
+						<Surface className="items-center border border-border px-6 py-8">
 							<View className="h-14 w-14 items-center justify-center rounded-full bg-accent">
 								<BookOpen size={26} color={colors.primary} strokeWidth={2} />
 							</View>
 							<Text className="mt-5 text-center font-poppins font-semibold text-body-2 text-text">
-								Noch keine persönlichen Fächer
+								Noch keine eigenen Fächer
 							</Text>
 							<Text className="mt-2 text-center font-poppins text-body-4 text-secondary-text">
-								Füge dein erstes persönliches Fach hinzu, damit du es überall
-								wieder auswählen kannst.
+								Füge ein Fach hinzu, um es später wieder auswählen zu können.
 							</Text>
-							<Button
-								onPress={() => setIsAdding(true)}
-								size="sm"
-								className="mt-5"
-							>
-								<Plus size={18} color="#FFFFFF" strokeWidth={2.4} />
-								<Text className="text-body-4">
-									Persönliches Fach hinzufügen
-								</Text>
+							<Button onPress={() => setIsAdding(true)} className="mt-6 w-full">
+								<Plus size={18} color={colors.onPrimary} strokeWidth={2.4} />
+								<Text>Fach hinzufügen</Text>
 							</Button>
 						</Surface>
 					) : (

@@ -118,6 +118,7 @@ export default function SettingsScreen() {
 							<SettingsRow
 								icon={BookOpen}
 								label="Persönliche Fächer"
+								description="Eigene Fächer verwalten"
 								onPress={() => router.push(ROUTES.personalSubjects)}
 							/>
 						</SettingsSection>
