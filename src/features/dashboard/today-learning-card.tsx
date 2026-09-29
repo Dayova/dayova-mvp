@@ -1,5 +1,6 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { createElement } from "react";
-import { View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { Button } from "~/components/ui/button";
 import { ArrowRightStraight, Play, Plus } from "~/components/ui/icon";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
@@ -53,17 +54,22 @@ export function TodayLearningCard({
 	const { shouldStackInlineContent } = useContentSizeLayout();
 	const { colors } = useDayovaTheme();
 	// Theme-derived blue tint for the quieter inset action.
-	const actionFill = `#${[1, 3, 5]
-		.map((offset) =>
-			Math.round(
-				Number.parseInt(colors.systemSubtle.slice(offset, offset + 2), 16) *
-					0.88 +
-					Number.parseInt(colors.primary.slice(offset, offset + 2), 16) * 0.12,
+	const tint = (strength: number) =>
+		`#${[1, 3, 5]
+			.map((offset) =>
+				Math.round(
+					Number.parseInt(colors.systemSubtle.slice(offset, offset + 2), 16) *
+						(1 - strength) +
+						Number.parseInt(colors.primary.slice(offset, offset + 2), 16) *
+							strength,
+				)
+					.toString(16)
+					.padStart(2, "0"),
 			)
-				.toString(16)
-				.padStart(2, "0"),
-		)
-		.join("")}`;
+			.join("")}`;
+	const actionFill = tint(0.18);
+	const cardStart = tint(0.16);
+	const cardEnd = tint(0.04);
 	const subject = formatGermanUiText(
 		plan?.subject ?? item?.entry.subject ?? "Dein Lernplan",
 	);
@@ -142,7 +148,7 @@ export function TodayLearningCard({
 		item || isLoading ? Play : hasNoPlan ? Plus : ArrowRightStraight;
 	return (
 		<Surface
-			className="rounded-button border border-border bg-system-subtle px-6 pt-6 pb-4"
+			className="overflow-hidden rounded-button border border-border bg-system-subtle px-6 pt-6 pb-4"
 			// Standard height is fixed; larger content sizes release it for vertical reflow.
 			style={{
 				backgroundColor: colors.systemSubtle,
@@ -151,6 +157,16 @@ export function TodayLearningCard({
 			}}
 			testID="today-learning-card"
 		>
+			<LinearGradient
+				colors={[cardStart, cardEnd, cardEnd]}
+				locations={[0, 0.55, 1]}
+				start={{ x: 0, y: 0 }}
+				end={{ x: 1, y: 0 }}
+				pointerEvents="none"
+				// Native gradient needs concrete absolute bounds.
+				style={StyleSheet.absoluteFill}
+				testID="today-learning-card-gradient"
+			/>
 			<View
 				className={cn(
 					"gap-2",
@@ -206,7 +222,7 @@ export function TodayLearningCard({
 				</View>
 				<LearningCardIllustration
 					subject={item ? subject : undefined}
-					backgroundColor={colors.systemSubtle}
+					backgroundColor={cardEnd}
 				/>
 			</View>
 			<Button
@@ -215,7 +231,7 @@ export function TodayLearningCard({
 				// Opaque blend of the active theme's semantic colors.
 				style={{ backgroundColor: actionFill }}
 				className={cn(
-					"mt-2 w-full justify-between py-2 pr-2 pl-4",
+					"mt-2 w-full justify-between py-1 pr-1 pl-4",
 					shouldStackInlineContent && "mt-6",
 				)}
 				disabled={isLoading}
@@ -242,9 +258,16 @@ export function TodayLearningCard({
 					{buttonLabel}
 				</Text>
 				<View
-					className="h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-strong"
+					className="h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-strong"
 					accessible={false}
+					testID="today-learning-action-circle"
 				>
+					<LinearGradient
+						{...DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive}
+						pointerEvents="none"
+						style={StyleSheet.absoluteFill}
+						testID="today-learning-action-gradient"
+					/>
 					{createElement(ActionIcon, {
 						size: 22,
 						color: DAYOVA_DESIGN_SYSTEM.colors.light1,

@@ -70,6 +70,21 @@ const props = {
 };
 
 describe("TodayLearningCard", () => {
+	test("keeps the gradient circle close to the action edge and tints the card", async () => {
+		const screen = await render(<TodayLearningCard {...props} />);
+		expect(screen.getByRole("button").props.className).toContain("pr-1");
+		expect(
+			screen.getByTestId("today-learning-action-circle", {
+				includeHiddenElements: true,
+			}).props.className,
+		).toContain("h-12 w-12");
+		expect(
+			screen.getByTestId("today-learning-action-gradient", {
+				includeHiddenElements: true,
+			}),
+		).toBeTruthy();
+		expect(screen.getByTestId("today-learning-card-gradient")).toBeTruthy();
+	});
 	beforeEach(() => {
 		jest.clearAllMocks();
 		mockStack = false;
