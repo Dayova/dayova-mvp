@@ -37,6 +37,13 @@ Die bestehende main-Prüfungserstellung wird weiterverwendet, einschließlich
 
 ## Review und Veröffentlichung
 
+Die freigegebene Heute-Schaltfläche ist eine absichtliche, auf diese
+Kalendernavigation begrenzte Ausnahme von den üblichen Pill-Varianten: helle
+Oberfläche, schwarze Schrift in Light Mode und passende Dark-Mode-Farben.
+Sie ist kein neues allgemeines CTA-Design. Bei vergrößerter Systemschrift
+wechseln die sieben Kalenderzellen in lesbare vertikale Tageszeilen mit
+Wochentagsnamen; die normale kompakte Wochenansicht bleibt unverändert.
+
 Historische Screenshots/Videos sind im [alten PR #797](https://github.com/Dayova/dayova-mvp/pull/797)
 verlinkt. Sie dienen nur als Designreferenz, nicht als Laufzeitnachweis dieses
 isolierten Builds. Automatisierte Tests ersetzen keine Geräte-Abnahme.

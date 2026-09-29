@@ -5,6 +5,16 @@ import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { CalendarWeekdays, WeekCalendar } from "./week-calendar";
 
 let mockReducedMotion = false;
+let mockFontScale = 1;
+jest.mock("react-native/Libraries/Utilities/useWindowDimensions", () => ({
+	__esModule: true,
+	default: () => ({
+		width: 390,
+		height: 844,
+		scale: 3,
+		fontScale: mockFontScale,
+	}),
+}));
 const mockTiming = jest.fn();
 jest.mock("react-native-reanimated", () => ({
 	...jest.requireActual<Record<string, unknown>>(
@@ -17,6 +27,7 @@ jest.mock("react-native-reanimated", () => ({
 	},
 }));
 beforeEach(() => {
+	mockFontScale = 1;
 	mockReducedMotion = false;
 	jest.clearAllMocks();
 	configure({ defaultIncludeHiddenElements: true });
@@ -59,6 +70,32 @@ test("weekday labels live outside the moving date row", async () => {
 	const screen = await render(<CalendarWeekdays />);
 	for (const label of ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"])
 		expect(screen.getByText(label)).toBeTruthy();
+});
+
+test("large text reflows weekdays beside uncapped, enlarged date circles", async () => {
+	mockFontScale = 3;
+	const screen = await render(
+		<>
+			<CalendarWeekdays />
+			<WeekCalendar
+				weekKey="2026-09-28"
+				todayKey="2026-09-29"
+				selectedDayKey="2026-09-29"
+				entriesByDay={{}}
+				onSelectDay={jest.fn()}
+			/>
+		</>,
+	);
+	expect(screen.queryByTestId("calendar-weekdays")).toBeNull();
+	expect(screen.getByText("Montag")).toBeTruthy();
+	expect(screen.getByTestId("calendar-day-size-2026-09-29")).toHaveStyle({
+		width: 132,
+		height: 132,
+	});
+	expect(
+		screen.getByTestId("calendar-day-number-2026-09-29").props
+			.maxFontSizeMultiplier,
+	).toBeUndefined();
 });
 
 test("selected today gets a white number on the branded gradient", async () => {

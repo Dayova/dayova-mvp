@@ -255,6 +255,8 @@ describe("TodayLearningCard", () => {
 		const screen = await render(<TodayLearningCard {...props} isLoading />);
 		const button = screen.getByRole("button");
 		expect(button.props.accessibilityState.disabled).toBe(true);
+		expect(button.props.accessibilityState.busy).toBe(true);
+		expect(button.props.accessibilityLiveRegion).toBe("polite");
 		await fireEvent.press(button);
 		expect(props.onOpenItem).not.toHaveBeenCalled();
 	});

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { TouchableOpacity, useWindowDimensions, View } from "react-native";
 import Animated, {
 	Easing,
 	useAnimatedStyle,
@@ -7,6 +7,7 @@ import Animated, {
 	useSharedValue,
 	withTiming,
 } from "react-native-reanimated";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 import { parseDayKey } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
@@ -35,6 +36,9 @@ function DayCircle({
 	today: boolean;
 	hasEntries: boolean;
 }) {
+	const { fontScale } = useWindowDimensions();
+	const { shouldStackInlineContent } = useContentSizeLayout();
+	const diameter = shouldStackInlineContent ? 44 * Math.max(1, fontScale) : 44;
 	const reducedMotion = useReducedMotion();
 	const progress = useSharedValue(Number(selected));
 	useEffect(() => {
@@ -56,7 +60,9 @@ function DayCircle({
 	}));
 	return (
 		<View
-			className="h-11 w-11"
+			testID={`calendar-day-size-${dayKey}`}
+			// Match the user's uncapped number scaling; enlarged weeks reflow below.
+			style={{ width: diameter, height: diameter }}
 			pointerEvents="none"
 			accessibilityElementsHidden
 			importantForAccessibility="no-hide-descendants"
@@ -92,7 +98,7 @@ function DayCircle({
 					testID={`calendar-day-circle-${dayKey}`}
 					style={today ? todayGradient : undefined}
 					className={cn(
-						"h-11 w-11 items-center justify-center rounded-full",
+						"h-full w-full items-center justify-center rounded-full",
 						today ? "bg-primary" : "bg-button-neutral",
 					)}
 				/>
@@ -118,6 +124,8 @@ function DayCircle({
 
 /** Renders stationary weekday labels outside the moving week strip. */
 export function CalendarWeekdays() {
+	const { shouldStackInlineContent } = useContentSizeLayout();
+	if (shouldStackInlineContent) return null;
 	return (
 		<View className="mb-2 flex-row" testID="calendar-weekdays">
 			{["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((day) => (
@@ -146,8 +154,11 @@ export function WeekCalendar({
 	entriesByDay: Record<string, DayEntry[]> | undefined;
 	onSelectDay: (dayKey: string) => void;
 }) {
+	const { shouldStackInlineContent } = useContentSizeLayout();
 	return (
-		<View className="flex-row pb-3">
+		<View
+			className={cn("pb-3", shouldStackInlineContent ? "gap-3" : "flex-row")}
+		>
 			{getDashboardWeekDayKeys(weekKey).map((key) => {
 				const date = parseDayKey(key);
 				if (!date) return null;
@@ -162,7 +173,10 @@ export function WeekCalendar({
 						accessibilityLabel={`${new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric", month: "long" }).format(date)}${today ? ", Heute" : ""}${hasEntries ? ", mit Einträgen" : ""}`}
 						accessibilityState={{ selected }}
 						onPress={() => onSelectDay(key)}
-						className="min-h-14 flex-1 items-center"
+						className={cn(
+							"min-h-14 items-center",
+							shouldStackInlineContent ? "flex-row gap-4" : "flex-1",
+						)}
 					>
 						<DayCircle
 							dayKey={key}
@@ -171,6 +185,13 @@ export function WeekCalendar({
 							today={today}
 							hasEntries={hasEntries}
 						/>
+						{shouldStackInlineContent ? (
+							<Text className="min-w-0 flex-1 text-body-4 text-secondary-text">
+								{new Intl.DateTimeFormat("de-DE", { weekday: "long" }).format(
+									date,
+								)}
+							</Text>
+						) : null}
 					</TouchableOpacity>
 				);
 			})}

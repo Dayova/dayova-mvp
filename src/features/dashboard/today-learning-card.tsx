@@ -160,7 +160,8 @@ export function TodayLearningCard({
 				item ? "Öffnet diesen Lernschritt." : fallbackAction.accessibilityHint
 			}
 			disabled={isLoading}
-			accessibilityState={{ disabled: isLoading }}
+			accessibilityState={{ disabled: isLoading, busy: isLoading }}
+			accessibilityLiveRegion="polite"
 			onPress={() => {
 				if (isLoading) return;
 				if (item) onOpenItem(item);
