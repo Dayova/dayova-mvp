@@ -51,6 +51,31 @@ const props = {
 	testID: "pager",
 };
 
+test("selection follows the visible page before momentum ends without interrupting the swipe", async () => {
+	const onSelect = jest.fn();
+	const screen = await render(<CalendarPager {...props} onSelect={onSelect} />);
+	await fireEvent(screen.getByTestId("pager-viewport"), "layout", {
+		nativeEvent: { layout: { width: 400 } },
+	});
+	await fireEvent(screen.getByTestId("pager"), "scrollBeginDrag");
+	await fireEvent(screen.getByTestId("pager"), "scroll", {
+		nativeEvent: { contentOffset: { x: 160 } },
+	});
+	expect(onSelect).not.toHaveBeenCalled();
+	await fireEvent(screen.getByTestId("pager"), "scroll", {
+		nativeEvent: { contentOffset: { x: 240 } },
+	});
+	expect(onSelect).toHaveBeenCalledWith(keys[1]);
+	await screen.rerender(
+		<CalendarPager {...props} onSelect={onSelect} selectedKey={keys[1]} />,
+	);
+	expect(mockScroll).not.toHaveBeenCalled();
+	await fireEvent(screen.getByTestId("pager"), "scroll", {
+		nativeEvent: { contentOffset: { x: 100 } },
+	});
+	expect(onSelect).toHaveBeenLastCalledWith(keys[0]);
+});
+
 test("drag compares with the latest committed selection and ignores the same day", async () => {
 	const onSelect = jest.fn();
 	const screen = await render(<CalendarPager {...props} onSelect={onSelect} />);
@@ -99,6 +124,9 @@ test.each([
 		<CalendarPager {...props} onSelect={onSelect} selectedKey={keys[2]} />,
 	);
 	expect(mockScroll).toHaveBeenCalledWith({ offset: 800, animated: !reduced });
+	await fireEvent(screen.getByTestId("pager"), "scroll", {
+		nativeEvent: { contentOffset: { x: 240 } },
+	});
 	await fireEvent(screen.getByTestId("pager"), "momentumScrollEnd", {
 		nativeEvent: { contentOffset: { x: 400 } },
 	});

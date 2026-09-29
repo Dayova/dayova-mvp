@@ -59,6 +59,7 @@ export function CalendarPager({
 					decelerationRate="fast"
 					disableIntervalMomentum
 					showsHorizontalScrollIndicator={false}
+					scrollEventThrottle={16}
 					initialScrollIndex={index}
 					initialNumToRender={3}
 					maxToRenderPerBatch={3}
@@ -73,6 +74,21 @@ export function CalendarPager({
 					style={{ height }}
 					onScrollBeginDrag={() => {
 						dragging.current = true;
+					}}
+					onScroll={(event) => {
+						if (!dragging.current) return;
+						const next = Math.max(
+							0,
+							Math.min(
+								keys.length - 1,
+								Math.round(event.nativeEvent.contentOffset.x / width),
+							),
+						);
+						if (next === visibleIndex.current || !keys[next]) return;
+						// Acknowledge the visible page before notifying the parent so its
+						// controlled update cannot restart this in-flight native swipe.
+						visibleIndex.current = next;
+						onSelect(keys[next]);
 					}}
 					onMomentumScrollEnd={(event) => {
 						const next = Math.max(
