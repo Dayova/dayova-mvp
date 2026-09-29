@@ -10,6 +10,7 @@ module.exports = {
  __esModule: true,
  default: { View: Native.View, Text: Native.Text, createAnimatedComponent: (component) => component },
  Easing: { cubic: "cubic", out: (value) => value },
+ ReduceMotion: { System: "system" },
  FadeIn: animationBuilder,
  FadeInDown: animationBuilder,
  LinearTransition: animationBuilder,
