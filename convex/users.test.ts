@@ -797,3 +797,25 @@ test("profile sync maps generic legacy values and clears school names", async ()
 		),
 	).resolves.toMatchObject({ answer: "gymnasium" });
 });
+
+test("profile email follows Clerk's verified primary address", async () => {
+	const backend = convexTest(schema, modules);
+	const oldToken = backend.withIdentity(userIdentity);
+	await oldToken.mutation(api.users.syncCurrentUser, { name: "User" });
+
+	// A profile write cannot claim an unverified address while the JWT is stale.
+	await oldToken.mutation(api.users.updateProfile, {
+		email: "new@example.com",
+	});
+	await oldToken.mutation(api.users.syncCurrentUser, { name: "User" });
+	await expect(oldToken.query(api.users.getMe, {})).resolves.toMatchObject({
+		email: userIdentity.email,
+	});
+
+	await backend
+		.withIdentity({ ...userIdentity, email: "new@example.com" })
+		.mutation(api.users.syncCurrentUser, { name: "User" });
+	await expect(oldToken.query(api.users.getMe, {})).resolves.toMatchObject({
+		email: "new@example.com",
+	});
+});
