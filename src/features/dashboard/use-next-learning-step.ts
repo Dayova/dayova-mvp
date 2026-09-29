@@ -1,4 +1,4 @@
-import { usePaginatedQuery } from "convex/react";
+import { usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { useEffect } from "react";
 import { api } from "#convex/_generated/api";
@@ -8,12 +8,12 @@ type Candidate = FunctionReturnType<
 	typeof api.dashboardNextStep.listCandidates
 >["page"][number];
 
-/** Selects by normalized Berlin day after all pages, since legacy date strings are not chronologically ordered. */
+/** Settle after the earliest eligible day is complete; legacy pages must still be exhausted. */
 export function selectNextLearningCandidate(
 	rows: Candidate[],
 	exhausted: boolean,
+	chronological = false,
 ) {
-	if (!exhausted) return { next: undefined, settled: false };
 	const next = rows
 		.flatMap((row) => (row.step ? [row.step] : []))
 		.sort(
@@ -21,25 +21,37 @@ export function selectNextLearningCandidate(
 				a.dayKey.localeCompare(b.dayKey) ||
 				a.session.startTime.localeCompare(b.session.startTime),
 		)[0];
-	return { next, settled: true };
+	const settled =
+		exhausted ||
+		(chronological &&
+			next !== undefined &&
+			rows.some((row) => row.scanDateKey > next.dayKey));
+	return { next: settled ? next : undefined, settled };
 }
 
 /** Pages forward until an eligible step is settled; skipped pages never imply an empty state. */
 export function useNextLearningStep(todayKey: string, enabled: boolean) {
+	const indexReady = useQuery(
+		api.dashboardNextStep.isDayIndexReady,
+		enabled ? {} : "skip",
+	);
 	const { results, status, loadMore } = usePaginatedQuery(
 		api.dashboardNextStep.listCandidates,
-		enabled ? { todayKey } : "skip",
+		enabled && indexReady !== undefined
+			? { todayKey, useDayIndex: indexReady }
+			: "skip",
 		{ initialNumItems: 32 },
 	);
 	const { next, settled } = selectNextLearningCandidate(
 		results,
 		status === "Exhausted",
+		indexReady === true,
 	);
 	useEffect(() => {
 		if (enabled && !settled && status === "CanLoadMore") loadMore(32);
 	}, [enabled, settled, status, loadMore]);
 	return {
-		isLoading: !enabled || !settled,
+		isLoading: !enabled || indexReady === undefined || !settled,
 		item: next
 			? toDashboardAgendaItem(next.dayKey, {
 					id: next.session._id,

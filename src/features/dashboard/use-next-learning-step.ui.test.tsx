@@ -30,7 +30,10 @@ let mockPage: {
 	status: string;
 	loadMore: typeof mockLoadMore;
 };
-jest.mock("convex/react", () => ({ usePaginatedQuery: () => mockPage }));
+jest.mock("convex/react", () => ({
+	usePaginatedQuery: () => mockPage,
+	useQuery: () => true,
+}));
 jest.mock("#convex/_generated/api", () => ({
 	api: { dashboardNextStep: { listCandidates: "candidates" } },
 }));
@@ -67,6 +70,32 @@ test("waits for all pages before selecting the earliest normalized day and time"
 	);
 	expect(selected.settled).toBe(true);
 	expect(selected.next?.session.startTime).toBe("08:00");
+});
+
+test("stops at the first day boundary, not at the end of the user's future history", () => {
+	expect(selectNextLearningCandidate([row("18:00")], false, true).settled).toBe(
+		false,
+	);
+	const selected = selectNextLearningCandidate(
+		[row("18:00"), row("08:00"), { scanDateKey: "2027-03-02", step: null }],
+		false,
+		true,
+	);
+	expect(selected.settled).toBe(true);
+	expect(selected.next?.session.startTime).toBe("08:00");
+});
+
+test("does not fetch future pages after the earliest day is complete", async () => {
+	mockPage = {
+		...mockPage,
+		results: [row("17:00"), row("08:00", "2027-03-02")],
+		status: "CanLoadMore",
+	};
+	const { result } = await renderHook(() =>
+		useNextLearningStep("2026-09-29", true),
+	);
+	expect(result.current.isLoading).toBe(false);
+	expect(mockLoadMore).not.toHaveBeenCalled();
 });
 
 test("does not settle from a later raw prefix before an earlier offset-date candidate arrives", () => {

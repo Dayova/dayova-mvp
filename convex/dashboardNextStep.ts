@@ -21,12 +21,32 @@ const sessionValidator = v.object({
 	sessionPurpose: sessionFields.sessionPurpose,
 });
 
-/** Pages through the owner's sessions and filters on normalized Berlin days.
- * Raw legacy date strings cannot safely bound or terminate a chronological search.
- * Keep scanDateKey in the response for compatibility, not as an ordering guarantee.
- */
+/** Switch query arguments only after this owner's backfill is complete, resetting pagination. */
+export const isDayIndexReady = query({
+	args: {},
+	returns: v.boolean(),
+	handler: async (ctx) => {
+		const identity = await ctx.auth.getUserIdentity();
+		if (!identity) throwUserFacingError("Nicht authentifiziert.");
+		const missing = await ctx.db
+			.query("learningPlanSessions")
+			.withIndex("by_ownerTokenIdentifier_and_berlinDayKey", (q) =>
+				q
+					.eq("ownerTokenIdentifier", identity.tokenIdentifier)
+					.eq("berlinDayKey", undefined),
+			)
+			.first();
+		return missing === null;
+	},
+});
+
+/** Indexed pages are chronological. Legacy clients retain the full-scan contract. */
 export const listCandidates = query({
-	args: { todayKey: v.string(), paginationOpts: paginationOptsValidator },
+	args: {
+		todayKey: v.string(),
+		paginationOpts: paginationOptsValidator,
+		useDayIndex: v.optional(v.boolean()),
+	},
 	returns: paginationResultValidator(
 		v.object({
 			scanDateKey: v.string(),
@@ -46,16 +66,24 @@ export const listCandidates = query({
 		if (!/^\d{4}-\d{2}-\d{2}$/.test(args.todayKey)) {
 			throwUserFacingError("Ungültiger Tag.");
 		}
-		const result = await ctx.db
-			.query("learningPlanSessions")
-			.withIndex("by_ownerTokenIdentifier", (q) =>
-				q.eq("ownerTokenIdentifier", identity.tokenIdentifier),
-			)
-			.paginate(args.paginationOpts);
+		const sessions = ctx.db.query("learningPlanSessions");
+		const range = args.useDayIndex
+			? sessions.withIndex("by_ownerTokenIdentifier_and_berlinDayKey", (q) =>
+					q
+						.eq("ownerTokenIdentifier", identity.tokenIdentifier)
+						.gte("berlinDayKey", args.todayKey),
+				)
+			: sessions.withIndex("by_ownerTokenIdentifier", (q) =>
+					q.eq("ownerTokenIdentifier", identity.tokenIdentifier),
+				);
+		const result = await range.paginate(args.paginationOpts);
 		const page = await Promise.all(
 			result.page.map(async (session) => {
-				const skipped = { scanDateKey: session.dateKey, step: null };
 				const dayKey = getBerlinDayKey(session.dateKey);
+				const scanDateKey = args.useDayIndex
+					? (session.berlinDayKey ?? "")
+					: session.dateKey;
+				const skipped = { scanDateKey, step: null };
 				const completed = session.executionStatus
 					? session.executionStatus === "completed"
 					: session.completed === true;
@@ -74,7 +102,7 @@ export const listCandidates = query({
 				)
 					return skipped;
 				return {
-					scanDateKey: session.dateKey,
+					scanDateKey,
 					step: {
 						dayKey,
 						subject: plan.subject,

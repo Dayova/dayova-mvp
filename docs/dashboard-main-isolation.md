@@ -26,8 +26,11 @@ Der neue PR benötigt keinen dieser PRs als Merge-Voraussetzung.
 
 - Routine-Check-in-Popup und dessen separate Backend-Funktionen.
 - Analytics- und persönliche-Fächer-Verwaltung aus anderen Parent-PRs.
-- Native Runtime-/Dependency-Änderungen aus #798. `package.json`, Lockfile und
-  App-Konfiguration bleiben auf main. Kein Cloud-Build, OTA oder Deploy erfolgt.
+- Native Runtime-/Dependency-Änderungen aus #798. Die App-Konfiguration bleibt
+  auf main. Hinzu kommt ausschließlich die Backend-Migrationskomponente
+  `@convex-dev/migrations@0.3.4`, kompatibel mit Convex 1.41.
+  Kein Cloud-Build oder OTA wurde veröffentlicht. Backend-Tests und ein Deploy
+  erfolgten ausschließlich im isolierten DEV, nicht in Produktion.
 - Account-Löschstatus-Guard aus der alten Kette: main hat diesen Guard und sein
   Datenmodell nicht. Die neue Abfrage nutzt main-Authentifizierung und prüft
   sowohl Session- als auch Plan-Eigentum.
@@ -58,3 +61,55 @@ Vor Veröffentlichung dieses neuen Standes:
 - [ ] OTA-Kompatibilität gegen den tatsächlich eingesetzten Build bestimmen.
 
 Es gibt keine Merge- oder OTA-Freigabe allein durch das Herauslösen aus der Kette.
+
+## Datumsindex und sichere Einführung (29. September)
+
+Der bestätigte Full-History-Scan ist behoben: Sessions erhalten einen normalisierten
+Berlin-Tag und einen Owner-/Tag-Index. Alle Erstellungs- und Verschiebepfade pflegen
+das Feld. Der Client liest ab heute und beendet die Suche nach dem vollständig
+gelesenen frühesten geeigneten Tag. Eine 30-Tage-Grenze gibt es weiterhin nicht.
+
+Das Feld bleibt optional. Alte Clients und noch nicht migrierte Nutzer verwenden
+den bisherigen paginierten Pfad. `isDayIndexReady` schaltet erst nach vollständiger
+Normalisierung des jeweiligen Nutzers auf den Index um. Ungültige Altdaten erhalten
+`null`, gültige Offset-Zeitstempel werden auf Europe/Berlin normalisiert; das
+ursprüngliche Datum wird nicht verändert.
+
+Reihenfolge für den verantwortlichen Release-Operator:
+
+1. Zieldeployment ausdrücklich prüfen und Backend inklusive Migrationskomponente
+   bereitstellen (kein Produktionsauftrag durch diese Dokumentation).
+2. `dashboardMigrations:backfillBerlinDayKeys` zunächst mit `{"dryRun":true}` testen.
+3. Danach mit `{"dryRun":false}` über die Migrationskomponente ausführen und den
+   Abschluss aller Batches prüfen; bei Fehlern fortsetzen, nicht Daten überschreiben.
+4. Fehlende Indexfelder und Readiness prüfen, anschließend Client freigeben.
+
+Im isolierten DEV `beloved-crane-533` wurde der Backfill abgeschlossen: vier
+synthetische Sessions, keine fehlenden Indexfelder, Readiness `true`.
+Produktion wurde nicht migriert. Der automatisierte Migrationstest prüft mehrere
+Batches mit 105 Einträgen, ungültige Datumswerte und Wiederholbarkeit.
+
+## Ergänzende QA und verbleibende Abnahme
+
+- [x] Regression mit 320 vergangenen Sessions: vor dem Fix fehlgeschlagen,
+      anschließend erfolgreich; die erste Indexseite erreicht direkt heute.
+- [x] Backend-Gesamtsuite: 920 Tests / 129 Dateien; UI-Gesamtsuite:
+      350 Tests / 78 Suites. Zusätzlich neuer Hook-Test für Mitternacht und
+      Monatswechsel erfolgreich. TypeScript, ESLint, Biome und Diff-Check geprüft.
+- [x] Unabhängige Standards- und Spec-Code-Reviews: keine offenen Code-Findings.
+- [x] iOS-Leerzustände, Morgen, Datum außerhalb von 30 Tagen, Kalenderauswahl und
+      Rückwege im isolierten DEV geprüft; keine echten Lerndaten verändert.
+- [x] Android: Agenda → Plan → Zurück sowie obere Karte → Übung → Zurück geprüft.
+      KI-Einwilligung wurde abgelehnt, nicht stellvertretend erteilt.
+- [x] Android Light/Dark sowie Systemschrift 1,5 geprüft; iOS Light/Dark geprüft.
+- [ ] Abschließende Animationsevidenz auf dem finalen Stand: iOS-Testclient zeigte
+      beim erneuten Start nur eine weiße Fläche. Die beiden Aufnahmeversuche sind
+      deshalb **keine** gültige Kalender-Animationsevidenz. Ursache nicht bestätigt.
+- [ ] Abschließende große-Schrift-Abnahme wiederholen: ein früherer iOS-Durchlauf
+      zeigte vorübergehend abgeschnittenen Header, nach Neustart nicht reproduziert.
+      Dies ist keine bestätigte Fehlerbehebung.
+- [ ] Aktuellen Head durch CI, CodeRabbit, OTA-Kompatibilitätsreport und Jakob
+      prüfen lassen. Frühere grüne Checks gelten nicht für spätere Commits.
+
+Die generische Codeprüfung ersetzt keine separate Produktqualitätsabnahme.
+Simulator-/Entwicklungsclient-Tests belegen keine Release-Framerate.
