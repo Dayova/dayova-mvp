@@ -98,6 +98,9 @@ export const getDashboardRelevantDayKeys = ({
 	};
 
 	if (selectedDate) {
+		for (const dayKey of getDashboardWeekDayKeys(selectedDayKey)) {
+			addKey(dayKey);
+		}
 		for (const offset of [-1, 0, 1]) {
 			addKey(getDayKey(addDays(selectedDate, offset)));
 		}
@@ -281,3 +284,8 @@ export const findNextActionableAgendaItem = ({
 // Filter by origin, not subject/title: homework and exams must stay visible.
 export const getVisibleDashboardEntries = (entries: DayEntry[]): DayEntry[] =>
 	entries.filter((entry) => entry.source !== "timetable");
+
+// A marker represents activity on the day, not remaining work or today's date.
+export const hasDashboardDayEntries = (
+	entries: DayEntry[] | undefined,
+): boolean => getVisibleDashboardEntries(entries ?? []).length > 0;

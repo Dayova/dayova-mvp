@@ -43,6 +43,7 @@ import {
 	getDashboardRelevantDayKeys,
 	getDashboardWeekDayKeys,
 	getVisibleDashboardEntries,
+	hasDashboardDayEntries,
 	sortDashboardAgendaItems,
 	toDashboardAgendaItem,
 } from "./dashboard-agenda";
@@ -129,10 +130,12 @@ const getEntryUrl = (entry: DayEntry, selectedDayLabel: string) => {
 
 function WeekCalendar({
 	days,
+	entriesByDay,
 	selectedDayKey,
 	onSelectDay,
 }: {
 	days: CalendarDay[];
+	entriesByDay: Record<string, DayEntry[]> | undefined;
 	selectedDayKey: string;
 	onSelectDay: (day: CalendarDay) => void;
 }) {
@@ -145,11 +148,13 @@ function WeekCalendar({
 						key={day.key}
 						activeOpacity={0.82}
 						accessibilityRole="button"
-						accessibilityLabel={new Intl.DateTimeFormat("de-DE", {
+						accessibilityLabel={`${new Intl.DateTimeFormat("de-DE", {
 							weekday: "long",
 							day: "numeric",
 							month: "long",
-						}).format(day.date)}
+						}).format(
+							day.date,
+						)}${hasDashboardDayEntries(entriesByDay?.[day.key]) ? ", mit Einträgen" : ""}`}
 						accessibilityState={{ selected }}
 						onPress={() => onSelectDay(day)}
 						hitSlop={2}
@@ -176,8 +181,12 @@ function WeekCalendar({
 							>
 								{day.dayOfMonth}
 							</Text>
-							{day.isToday && !selected ? (
-								<View className="absolute bottom-1 h-1 w-1 rounded-full bg-primary" />
+							{hasDashboardDayEntries(entriesByDay?.[day.key]) ? (
+								<View
+									className="absolute bottom-1 h-1 w-1 rounded-full bg-primary"
+									accessible={false}
+									testID={`calendar-entry-dot-${day.key}`}
+								/>
 							) : null}
 						</View>
 					</TouchableOpacity>
@@ -488,6 +497,7 @@ export function DashboardScreen() {
 								<View style={{ width: weekPagerWidth }}>
 									<WeekCalendar
 										days={days}
+										entriesByDay={entriesByDay}
 										selectedDayKey={selectedDayKey}
 										onSelectDay={selectDay}
 									/>

@@ -11,6 +11,7 @@ import {
 	getDashboardWeekProgress,
 	getNextLearningStepAccessibilityLabel,
 	getVisibleDashboardEntries,
+	hasDashboardDayEntries,
 	isDashboardAgendaItemPast,
 	sortDashboardAgendaItems,
 	toDashboardAgendaItem,
@@ -24,6 +25,30 @@ const entry = (overrides: Partial<DayEntry>): DayEntry =>
 	}) as DayEntry;
 
 describe("dashboard agenda", () => {
+	it("marks days with open or completed entries, but not empty or timetable-only days", () => {
+		expect(hasDashboardDayEntries(undefined)).toBe(false);
+		expect(hasDashboardDayEntries([])).toBe(false);
+		expect(
+			hasDashboardDayEntries([entry({ executionStatus: "notStarted" })]),
+		).toBe(true);
+		expect(
+			hasDashboardDayEntries([entry({ executionStatus: "completed" })]),
+		).toBe(true);
+		expect(hasDashboardDayEntries([entry({ completed: true })])).toBe(true);
+		expect(hasDashboardDayEntries([entry({ source: "timetable" })])).toBe(
+			false,
+		);
+	});
+
+	it("loads every day in a selected historical week for entry markers", () => {
+		const keys = getDashboardRelevantDayKeys({
+			selectedDayKey: "2026-08-12",
+			todayKey: "2026-09-29",
+		});
+		for (const key of getDashboardWeekDayKeys("2026-08-12"))
+			expect(keys).toContain(key);
+		expect(keys.length).toBeLessThanOrEqual(31);
+	});
 	it("keeps today's overdue open step ahead of tomorrow and skips completed steps", () => {
 		const today = toDashboardAgendaItem(
 			"2026-09-28",
@@ -136,9 +161,13 @@ describe("dashboard agenda", () => {
 			"2026-07-31",
 			"2026-08-01",
 			"2026-08-02",
+			"2026-08-10",
 			"2026-08-11",
 			"2026-08-12",
 			"2026-08-13",
+			"2026-08-14",
+			"2026-08-15",
+			"2026-08-16",
 		]);
 	});
 
