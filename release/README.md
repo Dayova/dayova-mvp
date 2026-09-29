@@ -29,7 +29,20 @@ CI and compatibility checks must still succeed before production publication.
 
 ## Runtime boundary
 
-The current app/runtime boundary is **1.0.5**. The September 2026 patch upgrade
+The dashboard integration candidate uses app/runtime **1.0.6** on both platforms.
+It inherits native dependency/configuration changes, including
+`expo-image-manipulator`, Expo patch upgrades, iOS scene support and Android build
+configuration, that are not covered by the verified 1.0.5 binaries. New signed
+binaries and device validation are required; changing the version does not make
+this candidate OTA-compatible with old installations. See
+[the 1.0.6 candidate handoff](./dashboard-native-1.0.6.md).
+
+The distributed-binary baseline remains **1.0.5**, deliberately unchanged until
+replacement binaries meet the evidence requirements below. Historical 1.0.5
+commands and evidence in this document describe that verified release, not a
+release authorization for the new candidate.
+
+The previous September 2026 patch upgrade
 uses Expo 57.0.20, React Native 0.86.3, Reanimated 4.5.1, and Worklets 0.10.1 to
 remove the [Hermes V1 memory regression](https://expo.dev/changelog/sdk-57#known-regressions).
 These native dependencies require a new store binary; do not send its JavaScript
