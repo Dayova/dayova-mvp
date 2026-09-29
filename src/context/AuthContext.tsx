@@ -1253,7 +1253,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	const persistProfileToConvex = async (profile: UpdateProfileInput) => {
 		if (!isConvexAuthenticated) return;
 		await updateConvexProfile({
-			email: profile.email,
 			name: profile.name,
 			grade: profile.grade,
 			schoolType: profile.schoolType,

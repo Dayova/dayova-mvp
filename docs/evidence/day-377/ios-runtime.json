@@ -1,0 +1,53 @@
+{
+  "nativeAppVersion": "1.0.4",
+  "nativeBuildNumber": "1",
+  "manifestVersion": "1.0.5",
+  "device": "DAY-169 iPhone 16",
+  "udid": "0D8A5A07-FCA7-414F-B61A-BE572AB2DA55",
+  "os": "iOS 26.5",
+  "maestro": "2.9.0",
+  "sourceFiles": {
+    "src/app/(creation)/entry/new.tsx": {
+      "sha256": "86983c1905d6e67f161d96d7aad4ffae782f79956d7961bcfc176bac8aeabfc1",
+      "matchesBaseCommit": true
+    },
+    "src/app/(creation)/_layout.tsx": {
+      "sha256": "85c6679c8c04b60d8440cc55773d790f85bf2b36c7a7580229012ce4d35a8849",
+      "matchesBaseCommit": true
+    },
+    "src/app/(app)/_layout.tsx": {
+      "sha256": "0663365cc1a8bbb8018d6406defcb97f650d15056addca916137b09499e0c259",
+      "matchesBaseCommit": true
+    },
+    "src/lib/navigation.ts": {
+      "sha256": "b238ef3d15dd90c2677c2478080daa5f107689d1575c914a7b82cabf1508030e",
+      "matchesBaseCommit": false
+    },
+    "src/lib/navigation-actions.ts": {
+      "sha256": "75813580b39d6f850971522af85031eb4ead82c0fbdb90ce261dd022000aa1ba",
+      "matchesBaseCommit": true
+    },
+    "src/features/learning-plans/creation-progress-shell.tsx": {
+      "sha256": "bfbfdf83175443a77a769321edcc1b144eced65bdf35afae1600dcdee2ac3682",
+      "matchesBaseCommit": true
+    },
+    "src/features/learning-plans/creation-progress-header.tsx": {
+      "sha256": "f52237df3087784b02c711ceeabf00fa7bdc73b9048ca5d03e0aa9f754f7a332",
+      "matchesBaseCommit": true
+    }
+  },
+  "nativeDebugDylibSha256": "363563d3a52780b450852ae2dd24ff156d29010ee22788dd9be85cb96045b6b2",
+  "runtime": {
+    "react-native": "0.86.0",
+    "react": "19.2.3",
+    "expo": "57.0.8",
+    "expo-router": "57.0.19",
+    "react-native-screens": "4.26.2",
+    "react-native-reanimated": "4.5.0",
+    "react-native-worklets": "0.10.0",
+    "react-native-keyboard-controller": "1.21.9"
+  },
+  "scope": "Native route integration using unchanged PR sources, real native tabs and stacks, with local auth/data/analytics boundaries and a fixture Home destination. Not a full authenticated release build.",
+  "baseCommit": "a769829d0279729a2d5205c80cd0d912eec85d55",
+  "harness": "Real PR screen/layout/navigation with isolated account data, fixture Home, and Reanimated layout animations disabled using enableLayoutAnimations(false). Native UIKit swipe transitions remain enabled. Metro runs in CI mode with reloads disabled."
+}

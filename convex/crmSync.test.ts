@@ -13,6 +13,45 @@ import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
 
+test("one Notion client spaces consecutive requests below the integration limit", async () => {
+	const requestTimes: number[] = [];
+	vi.stubGlobal(
+		"fetch",
+		vi.fn(async () => {
+			requestTimes.push(performance.now());
+			return Response.json({
+				results: [],
+				has_more: requestTimes.length === 1,
+				next_cursor: requestTimes.length === 1 ? "next" : null,
+			});
+		}),
+	);
+	await createNotionClient("test", source).students();
+	expect(requestTimes).toHaveLength(2);
+	expect(requestTimes[1] - requestTimes[0]).toBeGreaterThanOrEqual(375);
+});
+
+test("Notion throttling waits for Retry-After before retrying a safe request", async () => {
+	const requestTimes: number[] = [];
+	vi.stubGlobal(
+		"fetch",
+		vi.fn(async () => {
+			requestTimes.push(performance.now());
+			return requestTimes.length === 1
+				? new Response(null, {
+						status: 429,
+						headers: { "Retry-After": "1" },
+					})
+				: Response.json({
+						properties: { "Clerk User ID": { type: "rich_text" } },
+					});
+		}),
+	);
+	await createNotionClient("test", source).checkSchema(false);
+	expect(requestTimes).toHaveLength(2);
+	expect(requestTimes[1] - requestTimes[0]).toBeGreaterThanOrEqual(950);
+});
+
 test("Notion pagination includes duplicates and inventories beyond 200 contacts", async () => {
 	let calls = 0;
 	vi.stubGlobal(
@@ -59,7 +98,9 @@ test("Notion pagination includes duplicates and inventories beyond 200 contacts"
 			}),
 		),
 	);
-	await expect(createNotionClient("test", source).students()).rejects.toMatchObject({
+	await expect(
+		createNotionClient("test", source).students(),
+	).rejects.toMatchObject({
 		category: "capacity",
 	});
 });
@@ -139,6 +180,139 @@ test("a successful live run continues after the first dry-run window and destina
 		t.mutation(internal.crmSyncState.begin, {
 			runId: "wrong-target",
 			dataSourceId: pageId,
+			mode: "live",
+		}),
+	).rejects.toThrow("dry run");
+	await t.mutation(internal.crmSyncState.begin, {
+		runId: "new-target-dry",
+		dataSourceId: pageId,
+		mode: "dry-run",
+	});
+	await t.mutation(internal.crmSyncState.finish, {
+		runId: "new-target-dry",
+		counts: emptyCounts(),
+	});
+	expect(
+		(await t.query(internal.crmSyncState.status, {}))?.liveVerifiedAt,
+	).toBeUndefined();
+});
+
+test("a row-level audit failure does not disable later live updates when the dry-run window expires", async () => {
+	const t = convexTest(schema, modules);
+	await enable(t);
+	await t.mutation(internal.crmSyncState.begin, {
+		runId: "conflicted-audit",
+		dataSourceId: source,
+		mode: "live",
+	});
+	await t.mutation(internal.crmSyncState.finish, {
+		runId: "conflicted-audit",
+		counts: { ...emptyCounts(), failed: 1 },
+	});
+	expect(
+		(await t.query(internal.crmSyncState.status, {}))?.lastSuccessAt,
+	).toBeUndefined();
+	expect(
+		(await t.query(internal.crmSyncState.status, {}))?.liveVerifiedAt,
+	).toBeTypeOf("number");
+	await t.run(async (ctx) => {
+		const row = await ctx.db.query("crmSyncState").unique();
+		if (row)
+			await ctx.db.patch("crmSyncState", row._id, {
+				dryRunAt: Date.now() - 48 * 3600_000,
+			});
+	});
+	expect(
+		await t.mutation(internal.crmSyncState.begin, {
+			runId: "later-update",
+			dataSourceId: source,
+			mode: "live",
+			countAsAudit: false,
+		}),
+	).toBe(true);
+	await t.mutation(internal.crmSyncState.finish, {
+		runId: "later-update",
+		counts: emptyCounts(),
+		countAsAudit: false,
+	});
+	await expect(
+		t.mutation(internal.crmSyncState.begin, {
+			runId: "wrong-target",
+			dataSourceId: pageId,
+			mode: "live",
+		}),
+	).rejects.toThrow("dry run");
+});
+
+test("a terminal live audit error does not authorize later live runs", async () => {
+	const t = convexTest(schema, modules);
+	await enable(t);
+	await t.mutation(internal.crmSyncState.begin, {
+		runId: "failed-audit",
+		dataSourceId: source,
+		mode: "live",
+	});
+	await t.mutation(internal.crmSyncState.finish, {
+		runId: "failed-audit",
+		counts: emptyCounts(),
+		error: "schema",
+	});
+	expect(
+		(await t.query(internal.crmSyncState.status, {}))?.liveVerifiedAt,
+	).toBeUndefined();
+	await t.run(async (ctx) => {
+		const row = await ctx.db.query("crmSyncState").unique();
+		if (row)
+			await ctx.db.patch("crmSyncState", row._id, {
+				dryRunAt: Date.now() - 48 * 3600_000,
+			});
+	});
+	await expect(
+		t.mutation(internal.crmSyncState.begin, {
+			runId: "later-live",
+			dataSourceId: source,
+			mode: "live",
+		}),
+	).rejects.toThrow("dry run");
+});
+
+test("a partial audit followed by a terminal error never verifies live mode", async () => {
+	const t = convexTest(schema, modules);
+	await enable(t);
+	await t.mutation(internal.crmSyncState.begin, {
+		runId: "first-batch",
+		dataSourceId: source,
+		mode: "live",
+	});
+	await t.mutation(internal.crmSyncState.finish, {
+		runId: "first-batch",
+		counts: emptyCounts(),
+		nextPhase: "links",
+	});
+	expect(
+		(await t.query(internal.crmSyncState.status, {}))?.liveVerifiedAt,
+	).toBeUndefined();
+	await t.mutation(internal.crmSyncState.begin, {
+		runId: "failed-batch",
+		dataSourceId: source,
+		mode: "live",
+	});
+	await t.mutation(internal.crmSyncState.finish, {
+		runId: "failed-batch",
+		counts: emptyCounts(),
+		error: "schema",
+	});
+	await t.run(async (ctx) => {
+		const row = await ctx.db.query("crmSyncState").unique();
+		if (row)
+			await ctx.db.patch("crmSyncState", row._id, {
+				dryRunAt: Date.now() - 48 * 3600_000,
+			});
+	});
+	await expect(
+		t.mutation(internal.crmSyncState.begin, {
+			runId: "later-live",
+			dataSourceId: source,
 			mode: "live",
 		}),
 	).rejects.toThrow("dry run");
@@ -585,8 +759,12 @@ test("a changed account email updates the linked Notion contact", async () => {
 	await finishAudit(t);
 	vi.stubEnv("NOTION_CRM_MODE", "off");
 	await t
-		.withIdentity({ subject: clerkId, tokenIdentifier, email })
-		.mutation(api.users.updateProfile, { email: "changed@example.com" });
+		.withIdentity({
+			subject: clerkId,
+			tokenIdentifier,
+			email: "changed@example.com",
+		})
+		.mutation(api.users.syncCurrentUser, {});
 	vi.stubEnv("NOTION_CRM_MODE", "live");
 	await finishAudit(t);
 	expect((patches[1] as { properties: unknown }).properties).toMatchObject({
@@ -728,8 +906,12 @@ test("an email already used by another Notion contact blocks the linked update",
 	expect(patches).toHaveLength(1);
 	vi.stubEnv("NOTION_CRM_MODE", "off");
 	await t
-		.withIdentity({ subject: clerkId, tokenIdentifier, email })
-		.mutation(api.users.updateProfile, { email: "changed@example.com" });
+		.withIdentity({
+			subject: clerkId,
+			tokenIdentifier,
+			email: "changed@example.com",
+		})
+		.mutation(api.users.syncCurrentUser, {});
 	vi.stubEnv("NOTION_CRM_MODE", "live");
 	expect((await finishAudit(t))[0]).toMatchObject({
 		status: "failed",
@@ -820,12 +1002,13 @@ test("profile changes schedule live reconciliation once, while unchanged sign-in
 		});
 		await authenticated.mutation(api.users.updateProfile, { state: "Berlin" });
 		await authenticated.mutation(api.users.updateProfile, { state: "Berlin" });
-		await authenticated.mutation(api.users.updateProfile, {
+		const refreshedIdentity = t.withIdentity({
+			subject: clerkId,
+			tokenIdentifier,
 			email: "changed@example.com",
 		});
-		await authenticated.mutation(api.users.updateProfile, {
-			email: "changed@example.com",
-		});
+		await refreshedIdentity.mutation(api.users.syncCurrentUser, {});
+		await refreshedIdentity.mutation(api.users.syncCurrentUser, {});
 		vi.stubEnv("NOTION_CRM_MODE", "off");
 		await authenticated.mutation(api.users.updateProfile, { grade: "11" });
 		const scheduled = await t.run((ctx) =>

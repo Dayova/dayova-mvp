@@ -230,6 +230,7 @@ export const begin = internalMutation({
 			args.mode === "live" &&
 			(state?.dataSourceId !== args.dataSourceId ||
 				(!state.lastSuccessAt &&
+					!state.liveVerifiedAt &&
 					(!state.dryRunAt || now - state.dryRunAt > 24 * 60 * 60_000)))
 		)
 			throw new Error(
@@ -248,6 +249,7 @@ export const begin = internalMutation({
 			...(state?.dataSourceId !== args.dataSourceId
 				? {
 						dryRunAt: undefined,
+						liveVerifiedAt: undefined,
 						lastSuccessAt: undefined,
 						auditCursor: undefined,
 						auditPhase: undefined,
@@ -324,6 +326,10 @@ export const finish = internalMutation({
 					}
 				: {}),
 			...(!args.error && state.mode === "dry-run" ? { dryRunAt: now } : {}),
+			// Row-level identity conflicts need review, but must not revoke live delivery.
+			...(!args.error && auditRun && !args.nextPhase
+				? { liveVerifiedAt: now }
+				: {}),
 			...(!args.error && auditRun && !args.nextPhase && auditFailed === 0
 				? { lastSuccessAt: now }
 				: {}),
@@ -393,6 +399,7 @@ export const status = internalQuery({
 			running: v.boolean(),
 			startedAt: v.number(),
 			finishedAt: v.optional(v.number()),
+			liveVerifiedAt: v.optional(v.number()),
 			lastSuccessAt: v.optional(v.number()),
 			auditCursor: v.optional(v.string()),
 			auditPhase: v.optional(
@@ -413,6 +420,7 @@ export const status = internalQuery({
 			running: row.running,
 			startedAt: row.startedAt,
 			finishedAt: row.finishedAt,
+			liveVerifiedAt: row.liveVerifiedAt,
 			lastSuccessAt: row.lastSuccessAt,
 			auditCursor: row.auditCursor,
 			auditPhase: row.auditPhase,

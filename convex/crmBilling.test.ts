@@ -227,6 +227,45 @@ test("trial and verified purchase changes schedule CRM updates; identical snapsh
 	await t.finishAllScheduledFunctions(vi.runAllTimers);
 });
 
+test("a verified RevenueCat snapshot without period type clears a stale trial label", async () => {
+	vi.useFakeTimers();
+	vi.setSystemTime(now);
+	vi.stubEnv("NOTION_CRM_MODE", "off");
+	const t = convexTest(schema, modules);
+	await t.withIdentity(identity).mutation(api.users.syncCurrentUser, {});
+	await t.mutation(internal.entitlements.applyRevenueCatSnapshot, {
+		ownerTokenIdentifier: identity.tokenIdentifier,
+		active: true,
+		expiresAt: tomorrow,
+		productId: monthly,
+		store: "app_store",
+		periodType: "trial",
+		verifiedAt: now,
+	});
+	await t.mutation(internal.entitlements.applyRevenueCatSnapshot, {
+		ownerTokenIdentifier: identity.tokenIdentifier,
+		active: true,
+		expiresAt: tomorrow,
+		productId: monthly,
+		store: "app_store",
+		verifiedAt: now + 1,
+	});
+	expect(
+		(await t.run((ctx) => ctx.db.query("accessEntitlements").unique()))
+			?.subscriptionPeriodType,
+	).toBeUndefined();
+	expect(
+		await t.query(internal.crmSyncState.inspectStudent, {
+			pageId,
+			clerkId: identity.subject,
+			now: now + 1,
+		}),
+	).toMatchObject({
+		status: "matched",
+		projection: { paymentStatus: "Unknown", subscriptionPlan: "Monthly" },
+	});
+});
+
 test.each([
 	"off",
 	"dry-run",
