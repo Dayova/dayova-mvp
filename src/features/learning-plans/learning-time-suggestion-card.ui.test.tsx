@@ -59,61 +59,12 @@ describe("post-diagnostic reminder", () => {
 		);
 
 		expect(
-			screen.getByText("Mach deinen Lernplan noch genauer"),
+			screen.getByText("Plane kommende Lernschritte genauer"),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByText(/besser in deinen Alltag einplanen/),
 		).toBeOnTheScreen();
 		await fireEvent.press(screen.getByRole("button", { name: "Später" }));
-		expect(onContinue).toHaveBeenCalledTimes(1);
-	});
-});
-
-describe("behavioral suggestion", () => {
-	test("explains the observed pattern and requires an explicit choice", async () => {
-		const onConfirm = jest.fn();
-		const onKeep = jest.fn();
-		const onContinue = jest.fn();
-		const screen = await render(
-			<LearningTimeSuggestionCard
-				entries={[
-					{
-						dayOfWeek: 1,
-						startTime: "20:00",
-						endTime: "00:00",
-						previousStartTime: "17:00",
-						previousEndTime: "21:00",
-					},
-				]}
-				variant="behavioral"
-				isBusy={false}
-				evidenceSessionCount={5}
-				plannedStartTime="17:00"
-				observedStartTime="20:00"
-				onConfirm={onConfirm}
-				onAdjust={jest.fn()}
-				onKeep={onKeep}
-				onContinue={onContinue}
-			/>,
-		);
-
-		expect(
-			screen.getByText("Passen diese Lernzeiten besser?"),
-		).toBeOnTheScreen();
-		expect(
-			screen.getByText("Mo 17:00–21:00 → 20:00–Mitternacht"),
-		).toBeOnTheScreen();
-		expect(
-			screen.getByText(/letzten 5 abgeschlossenen Lernsessions/),
-		).toBeOnTheScreen();
-		await fireEvent.press(
-			screen.getByRole("button", { name: "Zeiten übernehmen" }),
-		);
-		await fireEvent.press(
-			screen.getByRole("button", { name: "Aktuelle Zeiten behalten" }),
-		);
-		await fireEvent.press(
-			screen.getByRole("button", { name: "Später erinnern" }),
-		);
-		expect(onConfirm).toHaveBeenCalledTimes(1);
-		expect(onKeep).toHaveBeenCalledTimes(1);
 		expect(onContinue).toHaveBeenCalledTimes(1);
 	});
 });

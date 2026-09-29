@@ -57,7 +57,6 @@ import {
 	DashboardNextStepCard,
 	DashboardWeeklyProgressCard,
 } from "./dashboard-product-cards";
-import { LearningRoutineCoach } from "./learning-routine-coach";
 
 const triggerDaySelectionHaptic = () => {
 	void triggerSelectionHaptic({
@@ -866,7 +865,6 @@ export function DashboardScreen() {
 							onOpenLearningPlans={openLearningPlans}
 						/>
 					</DashboardHighlightCarousel>
-					<LearningRoutineCoach referenceTime={now.getTime()} />
 				</View>
 
 				<View className="z-10 flex-row items-center justify-between bg-background px-6 pt-5 pb-6">

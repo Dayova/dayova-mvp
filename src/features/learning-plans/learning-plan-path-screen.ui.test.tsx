@@ -18,11 +18,6 @@ beforeEach(() => {
 jest.mock("react-native-safe-area-context", () => ({
 	useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
-// This suite tests path cards, not the separately covered consent sheet.
-jest.mock("~/features/learning-plans/learning-time-impact-sheet", () => ({
-	LearningTimeImpactSheet: () => null,
-}));
-
 jest.mock("expo-router", () => ({
 	Stack: { Screen: () => null },
 	useLocalSearchParams: () => ({ planId: "plan_1" }),
@@ -44,8 +39,6 @@ jest.mock("#convex/_generated/api", () => ({
 	api: {
 		learningTimes: {
 			confirmProposedDefaults: "confirmProposedDefaults",
-			applyBehavioralSuggestion: "applyBehavioralSuggestion",
-			respondToBehavioralSuggestion: "respondToBehavioralSuggestion",
 		},
 		learningPlanAi: { ensureSessionContent: "ensureSessionContent" },
 		learningPlans: {

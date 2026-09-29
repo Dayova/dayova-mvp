@@ -42,17 +42,17 @@ These windows guide automatic scheduling. They never prevent a learner from
 opening a learning step earlier or later, and an explicitly confirmed preference
 remains authoritative.
 
-## Behavioral refinement
+## Contextual refinement
 
-Dayova compares planned and actual start times already recorded for completed
-learning sessions. It proposes changed days and times only after at least five
-eligible sessions show a consistent shift; one late or early start does not
-create a prompt. Automatic proposals remain inside the learner's grade boundary.
+Dayova does not interrupt the learner with daily check-ins or infer a preferred
+routine from individual start times. After the Wissenscheck, the learning path
+may show one dismissible, inline reminder while the grade-aware defaults remain
+unconfirmed. It explains the benefit in context and offers three voluntary
+choices: accept the visible proposal, adjust it, or continue learning.
 
-The proposal explains the observed pattern and offers `apply`, `adjust`, `keep
-current`, and `later`. It is never applied silently. `Later` snoozes the same
-proposal for 14 days, while `keep current` suppresses that exact fingerprint
-until the behavior produces a materially different proposal.
+The reminder never opens automatically as a sheet, never competes with the next
+learning action, and does not treat a missed or shifted session as a preference.
+Regular learning times remain available in settings at all times.
 
 ## Consequences
 
@@ -70,5 +70,6 @@ until the behavior produces a materially different proposal.
 - If even a safe provisional window cannot fit before the assessment, the
   learner receives a concrete recovery instruction instead of a generic plan
   generation failure.
-- Accepted behavioral suggestions update only future scheduling. Completed,
-  partially completed, missed, adjusted, and active sessions remain unchanged.
+- The Today dashboard never asks whether a scheduled time still fits. Moving a
+  single appointment is deferred until user evidence establishes that this is a
+  meaningful problem rather than another routine prompt.

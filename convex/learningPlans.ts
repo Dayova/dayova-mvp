@@ -52,11 +52,6 @@ import { isLearningSessionCompositionEligible } from "./learningSessionCompositi
 import { deleteSessionLearningDataForSession } from "./learningSessionContent";
 import { alignSessionDurationReferences } from "./learningSessionDurationText";
 import {
-	BEHAVIOR_OBSERVATION_WINDOW_MS,
-	deriveBehavioralLearningTimeSuggestion,
-	isBehavioralSuggestionSnoozed,
-} from "./learningTimeBehavior";
-import {
 	learningEvidenceDimensionValidator,
 	learningTopicValidator,
 	normalizeLearningTopics,
@@ -74,7 +69,6 @@ const MAX_LEARNING_TIMES = 50;
 const MAX_SCHEDULING_DAY_ENTRIES = 500;
 const MAX_SCHEDULING_LOOKAHEAD_DAYS = 366;
 const MIN_ROLLING_HORIZON_MINUTES = 20;
-const MAX_BEHAVIOR_SESSIONS = 30;
 const MIN_DIAGNOSTIC_QUESTION_COUNT = 5;
 const MAX_DIAGNOSTIC_QUESTION_COUNT = 10;
 // Convex Node actions have a 10-minute platform ceiling. Allow one extra minute
@@ -1268,10 +1262,7 @@ export const getSchedulingAvailability = query({
 });
 
 export const getSnapshot = query({
-	args: {
-		id: v.id("learningPlans"),
-		behaviorSuggestionReferenceTime: v.optional(v.number()),
-	},
+	args: { id: v.id("learningPlans") },
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
 		const plan = await ctx.db.get("learningPlans", args.id);
@@ -1302,49 +1293,9 @@ export const getSnapshot = query({
 				q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
 			)
 			.take(MAX_LEARNING_TIMES);
-		const [user, recentSessions] = await Promise.all([
-			getOwnerUser(ctx, ownerTokenIdentifier),
-			ctx.db
-				.query("learningPlanSessions")
-				.withIndex("by_ownerTokenIdentifier_and_startedAt", (q) =>
-					q
-						.eq("ownerTokenIdentifier", ownerTokenIdentifier)
-						.gte(
-							"startedAt",
-							(args.behaviorSuggestionReferenceTime ?? 0) -
-								BEHAVIOR_OBSERVATION_WINDOW_MS,
-						)
-						.lte("startedAt", args.behaviorSuggestionReferenceTime ?? 0),
-				)
-				.order("desc")
-				.take(MAX_BEHAVIOR_SESSIONS),
-		]);
+		const user = await getOwnerUser(ctx, ownerTokenIdentifier);
 		const proposedLearningTimes = learningTimes.filter(
 			(learningTime) => learningTime.preferenceStatus === "systemDefault",
-		);
-		const behavioralLearningTimeSuggestion =
-			deriveBehavioralLearningTimeSuggestion({
-				sessions: recentSessions.map((session) => ({
-					dateKey: session.dateKey,
-					startTime: session.startTime,
-					durationMinutes: session.durationMinutes,
-					startedAt: session.startedAt,
-					executionStatus: getSessionExecutionStatus(session),
-					planningStatus: session.planningStatus,
-				})),
-				learningTimes,
-				grade: user?.grade,
-				referenceTime: args.behaviorSuggestionReferenceTime ?? 0,
-				observationStartedAt: user?.behavioralLearningTimeObservationStartedAt,
-			}) ?? undefined;
-		const behavioralSuggestionIsDismissed = Boolean(
-			behavioralLearningTimeSuggestion &&
-				user?.behavioralLearningTimeSuggestionDismissedFingerprint ===
-					behavioralLearningTimeSuggestion.fingerprint,
-		);
-		const behavioralSuggestionIsSnoozed = isBehavioralSuggestionSnoozed(
-			user?.behavioralLearningTimeSuggestionSnoozedAt,
-			args.behaviorSuggestionReferenceTime ?? 0,
 		);
 		const progress = await ctx.db
 			.query("learningPlanGenerationProgress")
@@ -1426,12 +1377,6 @@ export const getSnapshot = query({
 									plan.postDiagnosticLearningTimeReminderDismissedAt !==
 									undefined,
 							}
-						: undefined,
-				behavioralLearningTimeSuggestion:
-					behavioralLearningTimeSuggestion &&
-					!behavioralSuggestionIsDismissed &&
-					!behavioralSuggestionIsSnoozed
-						? behavioralLearningTimeSuggestion
 						: undefined,
 			},
 			documents: documents.map(publicDocument),

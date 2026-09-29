@@ -382,11 +382,10 @@ test("offers and applies a consent-based behavioral learning-time suggestion", a
 		return learningPlanId;
 	});
 
-	const before = await t.query(api.learningPlans.getSnapshot, {
-		id: learningPlanId,
-		behaviorSuggestionReferenceTime: Date.now(),
+	const before = await t.query(api.learningTimes.getHomeRoutine, {
+		referenceTime: Date.now(),
 	});
-	const suggestion = before?.plan.behavioralLearningTimeSuggestion;
+	const suggestion = before?.behavioral;
 	expect(suggestion).toMatchObject({
 		plannedStartTime: "17:00",
 		observedStartTime: "20:00",
@@ -412,11 +411,10 @@ test("offers and applies a consent-based behavioral learning-time suggestion", a
 	});
 	expect(
 		(
-			await t.query(api.learningPlans.getSnapshot, {
-				id: learningPlanId,
-				behaviorSuggestionReferenceTime: Date.now(),
+			await t.query(api.learningTimes.getHomeRoutine, {
+				referenceTime: Date.now(),
 			})
-		)?.plan.behavioralLearningTimeSuggestion,
+		)?.behavioral,
 	).toBeUndefined();
 	await expect(
 		t.mutation(api.learningTimes.applyBehavioralSuggestion, {
@@ -510,7 +508,6 @@ test("offers and applies a consent-based behavioral learning-time suggestion", a
 	]);
 	const after = await t.query(api.learningPlans.getSnapshot, {
 		id: learningPlanId,
-		behaviorSuggestionReferenceTime: Date.now(),
 	});
 	expect(
 		(await t.query(api.learningTimes.listMine, {})).map((time) => time.id),
@@ -521,7 +518,13 @@ test("offers and applies a consent-based behavioral learning-time suggestion", a
 			expectedImpactRevision: impact.revision,
 		}),
 	).rejects.toThrow();
-	expect(after?.plan.behavioralLearningTimeSuggestion).toBeUndefined();
+	expect(
+		(
+			await t.query(api.learningTimes.getHomeRoutine, {
+				referenceTime: Date.now(),
+			})
+		)?.behavioral,
+	).toBeUndefined();
 	expect(
 		after?.sessions.every((session) => session.executionStatus === "completed"),
 	).toBe(true);

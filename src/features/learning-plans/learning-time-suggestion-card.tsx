@@ -21,25 +21,18 @@ export function LearningTimeSuggestionCard({
 	entries,
 	variant,
 	isBusy,
-	evidenceSessionCount,
 	onConfirm,
 	onAdjust,
-	onKeep,
 	onContinue,
 }: {
 	entries: SuggestedLearningTime[];
-	variant: "initial" | "postDiagnostic" | "behavioral";
+	variant: "initial" | "postDiagnostic";
 	isBusy: boolean;
-	evidenceSessionCount?: number;
-	plannedStartTime?: string;
-	observedStartTime?: string;
 	onConfirm: () => void;
 	onAdjust: () => void;
-	onKeep?: () => void;
 	onContinue: () => void;
 }) {
 	const isReminder = variant === "postDiagnostic";
-	const isBehavioral = variant === "behavioral";
 	const formatDisplayTime = (time: string) =>
 		time === "00:00" ? "Mitternacht" : time;
 	const summary = entries
@@ -61,18 +54,14 @@ export function LearningTimeSuggestionCard({
 				</View>
 				<View className="min-w-0 flex-1">
 					<Text className="font-poppins font-semibold text-body-3 text-text">
-						{isBehavioral
-							? "Passen diese Lernzeiten besser?"
-							: isReminder
-								? "Mach deinen Lernplan noch genauer"
-								: "Vorgeschlagene Lernzeiten"}
+						{isReminder
+							? "Plane kommende Lernschritte genauer"
+							: "Vorgeschlagene Lernzeiten"}
 					</Text>
 					<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
-						{isBehavioral
-							? `In deinen letzten ${evidenceSessionCount ?? "mehreren"} abgeschlossenen Lernsessions über mindestens zwei Wochen zeigt sich an diesen Tagen ein anderes Startmuster. Möchtest du die vorgeschlagenen Zeiten ausprobieren? Andere Tage bleiben unverändert. Geändert wird erst nach deiner Zustimmung. Lernen kannst du weiterhin jederzeit.`
-							: isReminder
-								? "Bestätige oder ändere die vorgeschlagenen Zeiten. Deine bisherigen Fortschritte bleiben erhalten."
-								: "Du kannst Lernzeiten jetzt eintragen oder später ergänzen. Bis dahin plant Dayova mit diesen vorgeschlagenen Zeiten. Lernen kannst du jederzeit."}
+						{isReminder
+							? "Mit passenden Lernzeiten kann Dayova deine nächsten Schritte besser in deinen Alltag einplanen. Übernimm den Vorschlag oder passe ihn an. Lernen kannst du weiterhin jederzeit."
+							: "Du kannst Lernzeiten jetzt eintragen oder später ergänzen. Bis dahin plant Dayova mit diesen vorgeschlagenen Zeiten. Lernen kannst du jederzeit."}
 					</Text>
 				</View>
 			</View>
@@ -101,19 +90,6 @@ export function LearningTimeSuggestionCard({
 				<Button disabled={isBusy} onPress={onAdjust} variant="neutral">
 					<Text>Jetzt anpassen</Text>
 				</Button>
-				{isBehavioral && onKeep ? (
-					<Pressable
-						accessibilityRole="button"
-						className="min-h-11 items-center justify-center active:opacity-70"
-						disabled={isBusy}
-						hitSlop={6}
-						onPress={onKeep}
-					>
-						<Text className="font-poppins font-semibold text-body-4 text-secondary-text">
-							Aktuelle Zeiten behalten
-						</Text>
-					</Pressable>
-				) : null}
 				<Pressable
 					accessibilityRole="button"
 					className="min-h-11 items-center justify-center active:opacity-70"
@@ -122,11 +98,7 @@ export function LearningTimeSuggestionCard({
 					onPress={onContinue}
 				>
 					<Text className="font-poppins font-semibold text-body-4 text-secondary-text">
-						{isBehavioral
-							? "Später erinnern"
-							: isReminder
-								? "Später"
-								: "Weiterlernen"}
+						{isReminder ? "Später" : "Weiterlernen"}
 					</Text>
 				</Pressable>
 			</View>
