@@ -8,23 +8,6 @@ import {
 import type { ReactNode } from "react";
 import SettingsScreen from "../../app/(app)/settings";
 
-jest.mock("react-native-reanimated", () => {
-	const Native =
-		jest.requireActual<typeof import("react-native")>("react-native");
-	return {
-		__esModule: true,
-		default: { View: Native.View },
-		Easing: { cubic: jest.fn(), out: (value: unknown) => value },
-		ReduceMotion: { System: "system" },
-		useAnimatedStyle: (factory: () => unknown) => factory(),
-		useSharedValue: (initial: number) => ({
-			get: () => initial,
-			set: jest.fn(),
-		}),
-		withTiming: (value: number) => value,
-	};
-});
-
 jest.mock("~/components/ui/dayova-sheet-frame", () => ({
 	DayovaSheetFrame: ({
 		visible,
@@ -252,10 +235,14 @@ describe("SettingsScreen", () => {
 		const dark = screen.getByRole("radio", {
 			name: "Dunkles Design verwenden",
 		});
-		expect(light.props.accessibilityState).toEqual({ checked: false });
-		expect(system.props.accessibilityState).toEqual({ checked: true });
-		expect(dark.props.accessibilityState).toEqual({ checked: false });
+		expect(light).not.toBeChecked();
+		expect(system).toBeChecked();
+		expect(dark).not.toBeChecked();
 		await fireEvent.press(light);
 		expect(mockSetPreference).toHaveBeenCalledWith("light");
 	});
 });
+
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+);

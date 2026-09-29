@@ -1,7 +1,13 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+	type ComponentProps,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import {
 	ActivityIndicator,
 	Pressable,
@@ -12,6 +18,10 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "~/components/ui/button";
 import { ArrowLeft, Check } from "~/components/ui/icon";
+import {
+	SelectionControl,
+	SelectionIndicator,
+} from "~/components/ui/selection-control";
 import { SupportContact } from "~/components/ui/support-contact";
 import { Text } from "~/components/ui/text";
 import { useAccess } from "~/context/AccessContext";
@@ -45,8 +55,6 @@ const subscribeActionStyle = {
 	backgroundColor: BRAND_COLORS.text,
 	borderColor: BRAND_COLORS.border,
 };
-const planGlassSurface = "rgba(255, 255, 255, 0.8)";
-const planGlassBorder = "rgba(255, 255, 255, 0.6)";
 const STORE_NAME = getStoreName(process.env.EXPO_OS);
 
 const getStoreApiKey = () =>
@@ -276,7 +284,7 @@ export function SubscriptionScreen() {
 						<Benefit>Auf allen Geräten mit deinem Dayova-Konto nutzbar</Benefit>
 					</View>
 
-					<View className="gap-3">
+					<View className="gap-3" accessibilityRole="radiogroup">
 						<PlanCard
 							description={getPlanDescription(annualPlan, isLoadingPlans)}
 							label="Jährlich"
@@ -376,22 +384,18 @@ export function SubscriptionScreen() {
 						</Text>
 					</Pressable>
 
-					<View className="flex-row flex-wrap justify-center gap-x-4 gap-y-2 px-2 pt-5">
+					<View className="flex-row flex-wrap items-center justify-center gap-x-4 gap-y-2 pt-5">
 						<SupportContact context="Abonnement">
 							{({ onPress, busy, buttonRef }) => (
-								<Pressable
+								<FooterLink
 									ref={buttonRef}
+									label="Support"
 									accessibilityLabel="Support"
 									accessibilityRole="button"
 									accessibilityState={{ busy, disabled: busy }}
 									disabled={busy}
-									className="min-h-12 justify-center"
 									onPress={onPress}
-								>
-									<Text className="text-body-4 text-white underline">
-										Support
-									</Text>
-								</Pressable>
+								/>
 							)}
 						</SupportContact>
 						<LegalLink
@@ -443,22 +447,13 @@ function PlanCard({
 	testID: string;
 }) {
 	return (
-		<Pressable
+		<SelectionControl
+			selected={selected}
+			appearance="payment"
 			accessibilityLabel={`${label}, ${price}. ${description}`}
-			accessibilityRole="radio"
-			accessibilityState={{ checked: selected }}
-			className="rounded-3xl border px-5 py-4"
+			contentClassName="rounded-3xl px-5 py-4"
 			onPress={onPress}
 			testID={testID}
-			// Selection changes native glass border and shadow values at runtime.
-			style={{
-				backgroundColor: planGlassSurface,
-				borderColor: selected ? BRAND_COLORS.text : planGlassBorder,
-				borderWidth: 1,
-				boxShadow: selected
-					? "inset 0 1px 0 rgba(255, 255, 255, 0.64), 0 8px 20px rgba(9, 54, 78, 0.1)"
-					: "inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 6px 16px rgba(9, 54, 78, 0.08)",
-			}}
 		>
 			<View className="flex-row items-start">
 				<View className="flex-1 pr-3">
@@ -473,25 +468,10 @@ function PlanCard({
 					<Text className="font-semibold text-body-2" style={primaryTextStyle}>
 						{price}
 					</Text>
-					<View
-						accessible={false}
-						className="h-6 w-6 items-center justify-center rounded-full border"
-						// The selected radio state drives both native colors.
-						style={{
-							backgroundColor: selected
-								? BRAND_COLORS.text
-								: BRAND_COLORS.surface,
-							borderColor: selected ? BRAND_COLORS.text : BRAND_COLORS.border,
-						}}
-						testID={`${testID}-indicator`}
-					>
-						{selected ? (
-							<Check size={14} color={WHITE} strokeWidth={3} />
-						) : null}
-					</View>
+					<SelectionIndicator testID={`${testID}-indicator`} />
 				</View>
 			</View>
-		</Pressable>
+		</SelectionControl>
 	);
 }
 
@@ -505,13 +485,27 @@ function LegalLink({
 	url?: string;
 }) {
 	return (
-		<Pressable
+		<FooterLink
+			label={label}
 			accessibilityRole="link"
 			disabled={!url}
-			hitSlop={8}
 			onPress={() => void onOpen(url)}
+		/>
+	);
+}
+
+function FooterLink({
+	label,
+	...props
+}: ComponentProps<typeof Pressable> & { label: string }) {
+	return (
+		<Pressable
+			{...props}
+			className="min-h-12 max-w-full items-center justify-center py-2"
 		>
-			<Text className="text-body-4 text-white underline">{label}</Text>
+			<Text className="text-center text-body-4 text-white underline">
+				{label}
+			</Text>
 		</Pressable>
 	);
 }

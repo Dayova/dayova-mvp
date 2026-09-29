@@ -34,7 +34,7 @@ describe("LearningTimeEditorFields", () => {
 		);
 
 		const selectedDay = screen.getByRole("radio", { name: "Dienstag" });
-		expect(selectedDay.props.accessibilityState).toEqual({ checked: true });
+		expect(selectedDay).toBeChecked();
 		expect(selectedDay.props.className).toContain("aspect-square");
 		expect(selectedDay.props.className).toContain("max-w-12");
 		expect(screen.getByText("Di")).toHaveStyle({
@@ -61,3 +61,7 @@ describe("LearningTimeEditorFields", () => {
 		}
 	});
 });
+
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+);

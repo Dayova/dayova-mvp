@@ -1,6 +1,10 @@
 import { Pressable, View } from "react-native";
 import { Field, FieldLabel } from "~/components/ui/field";
 import { Timer } from "~/components/ui/icon";
+import {
+	SelectionControl,
+	SelectionText,
+} from "~/components/ui/selection-control";
 import { Text } from "~/components/ui/text";
 import {
 	LEARNING_DAYS,
@@ -59,7 +63,6 @@ function LearningTimeEditorFields({
 	onStartTimePress,
 	onEndTimePress,
 }: LearningTimeEditorFieldsProps) {
-	const { colors } = useDayovaTheme();
 	const selectedDayValue =
 		LEARNING_DAYS.find((day) => day.label === selectedDay)?.value ?? 1;
 
@@ -80,27 +83,20 @@ function LearningTimeEditorFields({
 						const isSelected = day.value === selectedDayValue;
 
 						return (
-							<Pressable
+							<SelectionControl
 								key={day.value}
+								selected={isSelected}
+								appearance="pill"
 								accessibilityLabel={day.label}
-								accessibilityRole="radio"
-								accessibilityState={{ checked: isSelected }}
-								className="aspect-square max-w-12 flex-1 items-center justify-center rounded-full active:opacity-80"
+								className="aspect-square max-w-12 flex-1"
+								contentClassName="min-h-0 flex-1 border-0"
+								hitSlop={4}
 								onPress={() => onDayChange(day.label)}
-								style={{
-									backgroundColor: isSelected ? colors.primary : colors.surface,
-									borderCurve: "continuous",
-								}}
 							>
-								<Text
-									className="font-poppins font-semibold text-body-4"
-									style={{
-										color: isSelected ? colors.onPrimary : colors.text,
-									}}
-								>
+								<SelectionText className="font-poppins font-semibold text-body-4">
 									{day.abbreviation}
-								</Text>
-							</Pressable>
+								</SelectionText>
+							</SelectionControl>
 						);
 					})}
 				</View>
@@ -118,5 +114,5 @@ function LearningTimeEditorFields({
 	);
 }
 
-export { LearningTimeEditorFields };
 export type { LearningTimeEditorFieldsProps };
+export { LearningTimeEditorFields };
