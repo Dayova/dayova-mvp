@@ -9,7 +9,7 @@ test("agenda opens the plan rather than its session", () => {
 			relatedLearningPlanId: "plan" as Id<"learningPlans">,
 			relatedLearningPlanSessionId: "session" as Id<"learningPlanSessions">,
 		}),
-	).toBe("/learning-plans/plan");
+	).toBe("/learning-plans/plan?returnTo=%2Fhome");
 });
 test("entries without a plan retain their existing fallback", () => {
 	expect(getAgendaPlanRoute({ id: "entry" as Id<"dayEntries"> })).toBeNull();

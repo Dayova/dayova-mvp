@@ -10,9 +10,13 @@ import type { PlanSession } from "~/features/learning-plans/types";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 
 let mockSnapshot: unknown = null;
+let mockReturnTo: string | undefined;
+const mockDismissTo = jest.fn();
 const mockRestore = jest.fn<() => Promise<boolean>>();
 beforeEach(() => {
 	mockSnapshot = null;
+	mockReturnTo = undefined;
+	mockDismissTo.mockClear();
 	mockRestore.mockReset().mockResolvedValue(false);
 });
 jest.mock("react-native-safe-area-context", () => ({
@@ -25,8 +29,8 @@ jest.mock("~/features/learning-plans/learning-time-impact-sheet", () => ({
 
 jest.mock("expo-router", () => ({
 	Stack: { Screen: () => null },
-	useLocalSearchParams: () => ({ planId: "plan_1" }),
-	useRouter: () => ({ push: jest.fn() }),
+	useLocalSearchParams: () => ({ planId: "plan_1", returnTo: mockReturnTo }),
+	useRouter: () => ({ push: jest.fn(), dismissTo: mockDismissTo }),
 	useFocusEffect: (callback: () => void) => {
 		const React = jest.requireActual<typeof import("react")>("react");
 		React.useEffect(callback, [callback]);
@@ -153,6 +157,16 @@ const session = (
 });
 
 describe("learning-plan path", () => {
+	test.each([
+		["/home", "/home"],
+		[undefined, "/learning-plans"],
+		["https://example.com", "/learning-plans"],
+	])("returns to the originating screen: %s", async (returnTo, target) => {
+		mockReturnTo = returnTo;
+		const screen = await render(<LearningPlanSessionsScreen />);
+		await fireEvent.press(screen.getByRole("button", { name: "Zurück" }));
+		expect(mockDismissTo).toHaveBeenCalledWith(target);
+	});
 	test("recovers an exhausted plan and shows the new practice session after the snapshot updates", async () => {
 		const plan = {
 			id: "plan_1",
