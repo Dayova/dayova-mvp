@@ -1,12 +1,17 @@
 import { TouchableOpacity, View } from "react-native";
 import { Text } from "~/components/ui/text";
 import { parseDayKey } from "~/lib/day-key";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { cn } from "~/lib/utils";
 import type { DayEntry } from "~/types/dayEntries";
 import {
 	getDashboardWeekDayKeys,
 	hasDashboardDayEntries,
 } from "./dashboard-agenda";
+
+const todayGradient = {
+	experimental_backgroundImage: `linear-gradient(to bottom, ${DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.colors[0]}, ${DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.colors[1]})`,
+};
 
 export function CalendarWeekdays() {
 	return (
@@ -56,6 +61,7 @@ export function WeekCalendar({
 					>
 						<View
 							testID={`calendar-day-circle-${key}`}
+							style={selected && today ? todayGradient : undefined}
 							className={cn(
 								"h-11 w-11 items-center justify-center rounded-full",
 								selected
@@ -71,7 +77,7 @@ export function WeekCalendar({
 									"font-poppins font-semibold text-body-1",
 									selected
 										? today
-											? "text-on-primary"
+											? "text-white"
 											: "text-background"
 										: today
 											? "text-primary-strong"
@@ -81,13 +87,11 @@ export function WeekCalendar({
 							>
 								{date.getDate()}
 							</Text>
-						</View>
-						<View className="mt-1 h-1 items-center">
-							{hasEntries ? (
+							{hasEntries && !selected ? (
 								<View
 									testID={`calendar-entry-dot-${key}`}
 									accessible={false}
-									className="h-1 w-1 rounded-full bg-primary"
+									className="absolute bottom-1 h-1 w-1 rounded-full bg-primary"
 								/>
 							) : null}
 						</View>

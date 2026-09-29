@@ -1,6 +1,7 @@
 import { expect, jest, test } from "@jest/globals";
 import { fireEvent, render } from "@testing-library/react-native";
 import type { Id } from "#convex/_generated/dataModel";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { CalendarWeekdays, WeekCalendar } from "./week-calendar";
 
 test("today stays blue when another date is selected; only that date gets a neutral circle", async () => {
@@ -42,7 +43,7 @@ test("weekday labels live outside the moving date row", async () => {
 		expect(screen.getByText(label)).toBeTruthy();
 });
 
-test("selected today gets the branded circle", async () => {
+test("selected today gets a white number on the branded gradient", async () => {
 	const screen = await render(
 		<WeekCalendar
 			weekKey="2026-09-28"
@@ -56,7 +57,44 @@ test("selected today gets the branded circle", async () => {
 		screen.getByTestId("calendar-day-circle-2026-09-29").props.className,
 	).toContain("bg-primary");
 	expect(
+		screen.getByTestId("calendar-day-number-2026-09-29").props.className,
+	).toContain("text-white");
+	expect(screen.getByTestId("calendar-day-circle-2026-09-29")).toHaveStyle({
+		experimental_backgroundImage: `linear-gradient(to bottom, ${DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.colors[0]}, ${DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.colors[1]})`,
+	});
+	expect(
 		screen.getByRole("button", { name: /Dienstag, 29. September, Heute/ }).props
 			.accessibilityState.selected,
 	).toBe(true);
+});
+
+test.each([
+	"2026-09-29",
+	"2026-09-30",
+])("hides dots on selected %s and places other event dots just below the number", async (selectedDayKey) => {
+	const screen = await render(
+		<WeekCalendar
+			weekKey="2026-09-28"
+			todayKey="2026-09-29"
+			selectedDayKey={selectedDayKey}
+			entriesByDay={{
+				"2026-09-28": [{ id: "done" as Id<"dayEntries">, completed: true }],
+				[selectedDayKey]: [{ id: "open" as Id<"dayEntries"> }],
+			}}
+			onSelectDay={jest.fn()}
+		/>,
+	);
+	expect(
+		screen.queryByTestId(`calendar-entry-dot-${selectedDayKey}`, {
+			includeHiddenElements: true,
+		}),
+	).toBeNull();
+	expect(
+		screen.getByTestId("calendar-entry-dot-2026-09-28", {
+			includeHiddenElements: true,
+		}).props.className,
+	).toContain("absolute bottom-1");
+	expect(
+		screen.getByRole("button", { name: /mit Einträgen/, selected: true }),
+	).toBeTruthy();
 });

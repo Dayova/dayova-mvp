@@ -244,10 +244,13 @@ Philipp's 29 September Apple Calendar video supersedes the original slider:
 Mo–So remain outside the moving date strip. Native horizontal pagers move the
 numbers week by week and the agenda day by day, sharing one selected date.
 Tapping a date, paging either section, or pressing Heute synchronizes both;
-the hero remains independent. Today keeps blue text when unselected and a cyan
-circle with onPrimary text when selected. Other selected dates use the neutral
+the hero remains independent. Today keeps blue text when unselected and the shared
+primary-interactive gradient with white text when selected, per Philipp's follow-up.
+Other selected dates use the neutral
 black circle in light mode, white in dark mode; other dates have no circle.
-Blue event dots include completed entries. Adjacent agenda pages are prepared
+Blue event dots include completed entries, sit directly beneath the number, and
+are hidden on the selected date; its accessible label still announces entries.
+Adjacent agenda pages are prepared
 from the existing day query; missing data shows loading, never a false empty
 day. Pages follow native drag motion; reduced motion disables programmatic
 sliding. Only the active page is exposed to accessibility, and measured page
