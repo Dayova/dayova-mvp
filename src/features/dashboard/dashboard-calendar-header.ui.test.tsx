@@ -27,6 +27,9 @@ describe("DashboardCalendarHeader", () => {
 		);
 		expect(screen.getByText("Januar 2027")).toBeTruthy();
 		expect(screen.getAllByRole("button")).toHaveLength(1);
+		expect(screen.getByText("Heute").props.className).toContain(
+			"dark:text-white",
+		);
 		expect(
 			screen.getByRole("button", { name: "Heute" }).props.className,
 		).toContain("border-border");
