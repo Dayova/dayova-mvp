@@ -1,6 +1,111 @@
 import { describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render } from "@testing-library/react-native";
-import { ExamDateSelector } from "./exam-flow";
+import type { ReactNode } from "react";
+import { ExamDateSelector, ExamTypePicker } from "./exam-flow";
+
+jest.mock("~/components/ui/dayova-sheet-frame", () => ({
+	DayovaSheetFrame: ({
+		visible,
+		children,
+		onClose,
+	}: {
+		visible: boolean;
+		children: ReactNode;
+		onClose: () => void;
+	}) => {
+		const RN =
+			jest.requireActual<typeof import("react-native")>("react-native");
+		return visible ? (
+			<RN.View>
+				<RN.Pressable
+					accessibilityRole="button"
+					accessibilityLabel="Dialog schließen"
+					onPress={onClose}
+				/>
+				{children}
+			</RN.View>
+		) : null;
+	},
+}));
+
+jest.mock("~/components/ui/button", () => ({
+	Button: ({
+		children,
+		disabled,
+		onPress,
+	}: {
+		children: ReactNode;
+		disabled?: boolean;
+		onPress: () => void;
+	}) => {
+		const RN =
+			jest.requireActual<typeof import("react-native")>("react-native");
+		return (
+			<RN.Pressable
+				accessibilityRole="button"
+				disabled={disabled}
+				onPress={onPress}
+			>
+				{children}
+			</RN.Pressable>
+		);
+	},
+}));
+
+describe("ExamTypePicker custom entry", () => {
+	test("opens an add dialog without clearing the previous selection and cancels safely", async () => {
+		const onSelect = jest.fn();
+		const screen = await render(
+			<ExamTypePicker selectedValue="Test" onSelect={onSelect} />,
+		);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Prüfungsart hinzufügen" }),
+		);
+		expect(screen.getByLabelText("Name der Prüfungsart")).toBeOnTheScreen();
+		await fireEvent.changeText(
+			screen.getByLabelText("Name der Prüfungsart"),
+			"Vokabeltest",
+		);
+		await fireEvent.press(screen.getByRole("button", { name: "Abbrechen" }));
+		expect(onSelect).not.toHaveBeenCalled();
+		expect(screen.queryByLabelText("Name der Prüfungsart")).toBeNull();
+	});
+
+	test("rejects whitespace and commits a normalized value only on confirmation", async () => {
+		const onSelect = jest.fn();
+		const screen = await render(
+			<ExamTypePicker selectedValue="Test" onSelect={onSelect} />,
+		);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Prüfungsart hinzufügen" }),
+		);
+		const input = screen.getByLabelText("Name der Prüfungsart");
+		await fireEvent.changeText(input, "   ");
+		await fireEvent(input, "submitEditing");
+		expect(onSelect).not.toHaveBeenCalled();
+		await fireEvent.changeText(input, "  Vokabel  test  ");
+		await fireEvent(input, "submitEditing");
+		expect(onSelect).toHaveBeenCalledWith("Vokabel test");
+		expect(screen.queryByLabelText("Name der Prüfungsart")).toBeNull();
+	});
+
+	test("prefills a resumed custom value and preserves it when dismissed", async () => {
+		const onSelect = jest.fn();
+		const screen = await render(
+			<ExamTypePicker selectedValue="Vokabeltest" onSelect={onSelect} />,
+		);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Prüfungsart hinzufügen" }),
+		);
+		expect(screen.getByLabelText("Name der Prüfungsart").props.value).toBe(
+			"Vokabeltest",
+		);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Dialog schließen" }),
+		);
+		expect(onSelect).not.toHaveBeenCalled();
+	});
+});
 
 jest.mock("react-native-reanimated", () => {
 	const ReactNative =

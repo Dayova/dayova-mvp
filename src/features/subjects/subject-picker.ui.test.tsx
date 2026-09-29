@@ -5,9 +5,6 @@ import { InlineSubjectPicker, SubjectAddFlow } from "./subject-picker";
 import type { SubjectSelection } from "./use-subject-options";
 
 jest.mock("~/components/ui/dayova-sheet-frame", () => ({
-	DayovaSheetInput: jest.requireActual<typeof import("~/components/ui/input")>(
-		"~/components/ui/input",
-	).Input,
 	DayovaSheetFrame: ({
 		visible,
 		title,

@@ -8,12 +8,10 @@ import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
-import {
-	DayovaSheetFrame,
-	DayovaSheetInput,
-} from "~/components/ui/dayova-sheet-frame";
+import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
 import { ErrorMessage } from "~/components/ui/error-message";
 import { BookOpen, Pencil, Plus, Trash2 } from "~/components/ui/icon";
+import { Input } from "~/components/ui/input";
 import { PortraitContent } from "~/components/ui/portrait-content";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Surface } from "~/components/ui/surface";
@@ -245,11 +243,10 @@ export default function PersonalSubjectsScreen() {
 				dismissible={!isBusy}
 				closeAccessibilityLabel="Umbenennen schließen"
 				scrollable
-				size="content"
 			>
 				<View className="gap-4">
 					<View className="min-h-16 flex-row items-center rounded-input border border-border bg-card px-5">
-						<DayovaSheetInput
+						<Input
 							accessibilityLabel="Neuer Fachname"
 							autoCapitalize="sentences"
 							autoCorrect

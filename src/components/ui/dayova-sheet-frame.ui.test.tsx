@@ -6,10 +6,11 @@ import {
 	jest,
 	test,
 } from "@jest/globals";
-import { act, fireEvent, render, within } from "@testing-library/react-native";
+import { act, fireEvent, render } from "@testing-library/react-native";
 import type { ReactElement, ReactNode } from "react";
 import { AccessibilityInfo, BackHandler, Platform, View } from "react-native";
 import { DayovaSheetFrame } from "./dayova-sheet-frame";
+import { Input } from "./input";
 import {
 	SheetAccessibilityProvider,
 	useSheetAccessibility,
@@ -79,11 +80,17 @@ jest.mock("@gorhom/bottom-sheet", () => {
 				children,
 				onChange,
 				onDismiss,
+				footerComponent: Footer,
+				containerComponent: Container = React.Fragment,
 				...props
 			}: {
 				children?: ReactNode;
 				onChange?: (index: number) => void;
 				onDismiss?: () => void;
+				footerComponent?: import("react").ComponentType;
+				containerComponent?: import("react").ComponentType<{
+					children?: ReactNode;
+				}>;
 			},
 			ref: import("react").ForwardedRef<{
 				dismiss: typeof mockSheetHarness.dismiss;
@@ -97,9 +104,14 @@ jest.mock("@gorhom/bottom-sheet", () => {
 				present: mockSheetHarness.present,
 			}));
 			return React.createElement(
-				"BottomSheetModal",
-				{ testID: "bottom-sheet-modal", ...props },
-				children,
+				Container,
+				{},
+				React.createElement(
+					"BottomSheetModal",
+					{ testID: "bottom-sheet-modal", footerComponent: Footer, ...props },
+					children,
+					Footer ? React.createElement(Footer) : null,
+				),
 			);
 		},
 	);
@@ -108,6 +120,13 @@ jest.mock("@gorhom/bottom-sheet", () => {
 		BottomSheetBackdrop: (props: Record<string, unknown>) =>
 			React.createElement("BottomSheetBackdrop", props),
 		BottomSheetModal,
+		BottomSheetTextInput: (props: Record<string, unknown>) =>
+			React.createElement("TextInput", {
+				...props,
+				testID: "sheet-native-input",
+			}),
+		BottomSheetFooter: ({ children }: { children?: ReactNode }) =>
+			React.createElement("BottomSheetFooter", {}, children),
 		BottomSheetScrollView: ({ children, ...props }: { children?: ReactNode }) =>
 			React.createElement("BottomSheetScrollView", props, children),
 		BottomSheetView: ({ children, ...props }: { children?: ReactNode }) =>
@@ -116,6 +135,27 @@ jest.mock("@gorhom/bottom-sheet", () => {
 });
 
 describe("DayovaSheetFrame", () => {
+	test("registers sheet inputs with the keyboard-aware primitive only inside the sheet", async () => {
+		const onChangeText = jest.fn();
+		const screen = await render(
+			<View>
+				<Input accessibilityLabel="Outside" />
+				<DayovaSheetFrame visible onClose={() => {}} title="Input test">
+					<Input accessibilityLabel="Inside" onChangeText={onChangeText} />
+				</DayovaSheetFrame>
+			</View>,
+		);
+		expect(screen.getByLabelText("Inside").props.testID).toBe(
+			"sheet-native-input",
+		);
+		expect(screen.queryByLabelText("Outside")).toBeNull();
+		expect(
+			screen.getByLabelText("Outside", { includeHiddenElements: true }).props
+				.testID,
+		).toBeUndefined();
+		await fireEvent.changeText(screen.getByLabelText("Inside"), "Name");
+		expect(onChangeText).toHaveBeenCalledWith("Name");
+	});
 	let animationFrames: FrameRequestCallback[];
 	let focusSpy: jest.SpiedFunction<
 		typeof AccessibilityInfo.setAccessibilityFocus
@@ -333,7 +373,7 @@ describe("DayovaSheetFrame", () => {
 		await act(flushAnimationFrames);
 
 		const heading = view.getByRole("header", { name: "Auswahl" });
-		const modalContent = heading.parent?.parent?.parent;
+		const modalContent = view.getByTestId("dayova-sheet-content");
 		const modal = view.getByTestId("bottom-sheet-modal");
 		expect(heading).toBeOnTheScreen();
 		expect(modal.props.accessible).toBe(false);
@@ -348,7 +388,9 @@ describe("DayovaSheetFrame", () => {
 		expect(background.props.importantForAccessibility).toBe(
 			"no-hide-descendants",
 		);
-		expect(modalContent?.props.accessibilityViewIsModal).toBe(true);
+		expect(
+			view.getByTestId("dayova-sheet-modal").props.accessibilityViewIsModal,
+		).toBe(true);
 		expect(modalContent?.props.accessibilityActions).toEqual([
 			{ name: "escape", label: "Auswahl schließen" },
 		]);
@@ -363,14 +405,53 @@ describe("DayovaSheetFrame", () => {
 		expect(mockSheetHarness.dismiss).toHaveBeenCalledTimes(1);
 	});
 
-	test("keeps the title outside scrollable content while fixing the footer", async () => {
+	test("fits ordinary information to content and allows overflow to scroll", async () => {
+		const view = await render(
+			<DayovaSheetFrame visible onClose={jest.fn()} title="App-Informationen">
+				<View testID="information" />
+			</DayovaSheetFrame>,
+		);
+		const modal = view.getByTestId("bottom-sheet-modal");
+		expect(modal.props.enableDynamicSizing).toBe(true);
+		expect(modal.props.snapPoints).toBeUndefined();
+		expect(view.getByTestId("dayova-sheet-scroll-content")).toContainElement(
+			view.getByTestId("information"),
+		);
+	});
+
+	test("keeps enlarged headings and actions in one reachable scroll flow", async () => {
+		Object.assign(mockWindowDimensions, {
+			fontScale: 2,
+			height: 568,
+			width: 320,
+		});
+		const view = await render(
+			<DayovaSheetFrame
+				visible
+				onClose={jest.fn()}
+				title="Schulmaterial fehlt"
+				footer={<View testID="sheet-footer" />}
+			>
+				<View testID="material" />
+			</DayovaSheetFrame>,
+		);
+		const scroll = view.getByTestId("dayova-sheet-scroll-content");
+		expect(scroll).toContainElement(
+			view.getByRole("header", { name: "Schulmaterial fehlt" }),
+		);
+		expect(scroll).toContainElement(view.getByTestId("sheet-footer"));
+		expect(
+			view.getByTestId("bottom-sheet-modal").props.footerComponent,
+		).toBeUndefined();
+	});
+
+	test("scrolls the heading with the content and reserves space for pinned actions", async () => {
 		const view = await render(
 			<DayovaSheetFrame
 				visible
 				footer={<View testID="sheet-footer" />}
 				onClose={jest.fn()}
 				scrollable
-				size="medium"
 				title="Fester Titel"
 			>
 				<View testID="long-sheet-content" />
@@ -382,7 +463,8 @@ describe("DayovaSheetFrame", () => {
 		const header = view.getByTestId("dayova-sheet-header");
 		const footer = view.getByTestId("sheet-footer");
 
-		expect(scrollContent).not.toContainElement(header);
+		expect(scrollContent).toContainElement(header);
+		expect(scrollContent.props.enableFooterMarginAdjustment).toBe(true);
 		expect(scrollContent).toContainElement(
 			view.getByTestId("long-sheet-content"),
 		);
@@ -399,7 +481,6 @@ describe("DayovaSheetFrame", () => {
 				maxWidth={760}
 				onClose={jest.fn()}
 				scrollable
-				size="medium"
 				title="Querformat"
 			>
 				<View />
@@ -412,7 +493,28 @@ describe("DayovaSheetFrame", () => {
 			marginHorizontal: 47,
 			width: 750,
 		});
-		expect(modal.props.snapPoints).toEqual([370]);
+		expect(modal.props.snapPoints).toBeUndefined();
+		expect(modal.props.maxDynamicContentSize).toBe(370);
+	});
+
+	test("moves oversized measured actions into the scroll flow", async () => {
+		const view = await render(
+			<DayovaSheetFrame
+				visible
+				onClose={jest.fn()}
+				title="Bestätigung"
+				footer={<View testID="action" />}
+			/>,
+		);
+		expect(
+			view.getByTestId("dayova-sheet-scroll-content"),
+		).not.toContainElement(view.getByTestId("action"));
+		await fireEvent(view.getByTestId("dayova-sheet-actions"), "layout", {
+			nativeEvent: { layout: { height: 330 } },
+		});
+		expect(view.getByTestId("dayova-sheet-scroll-content")).toContainElement(
+			view.getByTestId("action"),
+		);
 	});
 
 	test("hides background content from screen readers while a sheet is open", async () => {
@@ -436,7 +538,8 @@ describe("DayovaSheetFrame", () => {
 		);
 		await act(flushAnimationFrames);
 		expect(
-			view.getByTestId("background").props.accessibilityElementsHidden,
+			view.getByTestId("background", { includeHiddenElements: true }).props
+				.accessibilityElementsHidden,
 		).toBe(false);
 
 		await act(() => mockSheetHarness.onChange?.(0));
@@ -447,35 +550,10 @@ describe("DayovaSheetFrame", () => {
 
 		await act(() => mockSheetHarness.onDismiss?.());
 		expect(
-			view.getByTestId("background").props.accessibilityElementsHidden,
+			view.getByTestId("background", { includeHiddenElements: true }).props
+				.accessibilityElementsHidden,
 		).toBe(false);
 	});
-	test("dynamic form sheets measure the title, description, fields and actions in one scrollable", async () => {
-		const view = await render(
-			<DayovaSheetFrame
-				visible
-				onClose={jest.fn()}
-				title="Fach hinzufügen"
-				description="Beschreibung"
-				scrollable
-				size="content"
-				footer={<View testID="save-action" />}
-			>
-				<View testID="subject-field" />
-			</DayovaSheetFrame>,
-		);
-		const modal = view.getByTestId("bottom-sheet-modal");
-		const scrollable = view.getByTestId("dayova-sheet-scroll-view");
-		expect(modal.props.enableDynamicSizing).toBe(true);
-		expect(scrollable.parent).toBe(modal);
-		expect(
-			within(scrollable).getByRole("header", { name: "Fach hinzufügen" }),
-		).toBeOnTheScreen();
-		expect(within(scrollable).getByTestId("subject-field")).toBeOnTheScreen();
-		expect(within(scrollable).getByTestId("save-action")).toBeOnTheScreen();
-		expect(scrollable.props.style?.flex).not.toBe(1);
-	});
-
 	test("allows input focus only after native presentation, once per opening", async () => {
 		const onPresented = jest.fn();
 		await render(
