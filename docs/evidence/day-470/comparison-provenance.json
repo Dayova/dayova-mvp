@@ -1,0 +1,60 @@
+{
+  "capturedOn": "2026-09-24",
+  "beforeCommit": "00c5b190714ec2c4946c1190ed6078b6ed77b285",
+  "withPrCommit": "0b88a0c44f1bbab734e4011f7c5875de33f82a73",
+  "productCodeEquivalentTo": "dcb47876",
+  "device": "iPhone 16",
+  "os": "iOS 26.5",
+  "orientation": "portrait",
+  "appearance": "light",
+  "contentSize": "large",
+  "fixture": "isolated native component gallery",
+  "cases": [
+    "material-top",
+    "info-top",
+    "long-material-top",
+    "long-material-end"
+  ],
+  "screenshots": [
+    {
+      "name": "comparison-before-material-top.png",
+      "url": "https://github.com/user-attachments/assets/211f87e5-25b6-4e10-8a62-8ea5cc3c9a93",
+      "sha256": "f62a00aaf307fc8ffd94cec5c6c57380956c64e300beaabd903b84b9b00b2614"
+    },
+    {
+      "name": "comparison-before-info-top.png",
+      "url": "https://github.com/user-attachments/assets/3d9733bc-7b51-43ed-b7ac-5156eba0e3e2",
+      "sha256": "ebce96d92c8af6930ff497976d9a4788f87194d64a678eed144ba04ab306606e"
+    },
+    {
+      "name": "comparison-before-long-material-top.png",
+      "url": "https://github.com/user-attachments/assets/a3b66829-8f6e-4122-acd0-fdf445501214",
+      "sha256": "89fb6c688ecc1ab1820ea3e7832e9dde8257b8b03fba9df47894427215afd5aa"
+    },
+    {
+      "name": "comparison-before-long-material-end.png",
+      "url": "https://github.com/user-attachments/assets/f9e657ae-f2cf-4214-a6d9-1899f1661541",
+      "sha256": "23b51bd74d251b3a0f6a66617c58937c634567ed455b7f8e5d46b962fae4d040"
+    },
+    {
+      "name": "comparison-after-material-top.png",
+      "url": "https://github.com/user-attachments/assets/f090be5c-6a50-43b5-8a96-8050b1550fea",
+      "sha256": "d458f31eb9c8109e867b4f9bc1b776432649c5923e2670c3c16780652f142b36"
+    },
+    {
+      "name": "comparison-after-info-top.png",
+      "url": "https://github.com/user-attachments/assets/43669492-af88-4910-afa1-4241efe741d7",
+      "sha256": "845def377265fa98a9bbf8cf4ef708690216870fb14ce94b6f56372099f81dd5"
+    },
+    {
+      "name": "comparison-after-long-material-top.png",
+      "url": "https://github.com/user-attachments/assets/a4484d4e-44ca-4aa5-bf1b-771c74ceda28",
+      "sha256": "0c11ac85945cdadbcd26cfeddca97064ebbe9051ee1293b0b679b385809492c3"
+    },
+    {
+      "name": "comparison-after-long-material-end.png",
+      "url": "https://github.com/user-attachments/assets/7ed91368-545e-4be7-bee0-f8bcf1f43701",
+      "sha256": "7118bc45e8c7b71d6db38242af579784a4a1f64ed4b1ef9aee5b559146344844"
+    }
+  ]
+}
