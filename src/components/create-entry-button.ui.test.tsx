@@ -64,37 +64,40 @@ describe("CreateEntryButton", () => {
 		mockPush.mockClear();
 	});
 
-	test("opens the picker and routes to exam creation", async () => {
+	test("opens learning-plan creation directly without a picker", async () => {
 		const screen = await render(<CreateEntryButton returnTo={ROUTES.home} />);
 
 		await act(() =>
 			fireEvent.press(
-				screen.getByRole("button", { name: "Neuen Eintrag erstellen." }),
+				screen.getByRole("button", { name: "Lernplan erstellen" }),
 			),
 		);
-		fireEvent.press(screen.getByRole("button", { name: "Prüfung auswählen" }));
+		expect(
+			screen.queryByRole("button", { name: "Prüfung auswählen" }),
+		).toBeNull();
+		expect(
+			screen.queryByRole("button", { name: "Hausaufgabe auswählen" }),
+		).toBeNull();
+		expect(mockPush).toHaveBeenCalledTimes(1);
 
 		expect(mockPush).toHaveBeenCalledWith(
 			withReturnTo(ROUTES.createExam, ROUTES.home),
 		);
 	});
 
-	test("routes homework selection to homework creation", async () => {
+	test("preserves the return destination for learning-plan creation", async () => {
 		const screen = await render(
 			<CreateEntryButton returnTo={ROUTES.learningPlans} />,
 		);
 
 		await act(() =>
 			fireEvent.press(
-				screen.getByRole("button", { name: "Neuen Eintrag erstellen." }),
+				screen.getByRole("button", { name: "Lernplan erstellen" }),
 			),
-		);
-		fireEvent.press(
-			screen.getByRole("button", { name: "Hausaufgabe auswählen" }),
 		);
 
 		expect(mockPush).toHaveBeenCalledWith(
-			withReturnTo(ROUTES.createHomework, ROUTES.learningPlans),
+			withReturnTo(ROUTES.createExam, ROUTES.learningPlans),
 		);
 	});
 });

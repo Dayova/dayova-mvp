@@ -11,6 +11,7 @@ import { LearningPlanCardFooter } from "~/features/learning-plans/learning-plan-
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
+import { LearningPlanStatusBadge as StatusBadge } from "./learning-plan-status-badge";
 
 type LearningPlanCardStatus = {
 	label: string;
@@ -58,31 +59,6 @@ type ArtworkLearningPlanCardVisualProps = {
 type LearningPlanCardVisualProps =
 	| ScreenLearningPlanCardVisualProps
 	| ArtworkLearningPlanCardVisualProps;
-
-function StatusBadge({
-	status,
-	fixedTextScale,
-}: {
-	status: LearningPlanCardStatus;
-	fixedTextScale: boolean;
-}) {
-	return (
-		<View
-			className="min-h-7 justify-center rounded-full px-3 py-1"
-			// Badge colors are semantic runtime values supplied by the card model.
-			style={{ backgroundColor: status.background }}
-		>
-			<Text
-				allowFontScaling={!fixedTextScale}
-				className="font-poppins font-semibold text-body-5"
-				// Badge colors are semantic runtime values supplied by the card model.
-				style={{ color: status.foreground }}
-			>
-				{status.label}
-			</Text>
-		</View>
-	);
-}
 
 export function LearningPlanCardVisual(props: LearningPlanCardVisualProps) {
 	const { colors } = useDayovaTheme();
