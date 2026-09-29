@@ -1,10 +1,22 @@
 # DAY-187 keyboard regression
 
+## Current native replay — 29 September 2026
+
+Source: PR #655 implementation at `4d3a251062f446bf54524a2daade484638f5c82b`. The current implementation uses dynamic sheet sizing. The two dialogs now end after their content and the intentional bottom safe-area spacing instead of retaining the historical fixed-medium empty area.
+
+Environment: iOS 26.4 simulator `47731F12-CE91-4857-8F3A-799040A0DCA3`, development client `de.dayova.app-dev`, light appearance, dedicated Metro port 8091 and an isolated local Convex deployment. Synthetic text was entered only; no exam or permanent subject was saved.
+
+| Exam type, current dynamic sheet | Subject, current dynamic sheet |
+| --- | --- |
+| <a href="current-ios-exam-keyboard.png"><img src="current-ios-exam-keyboard.png" width="220" alt="Current iOS exam-type dialog sized to its content above the keyboard" /></a> | <a href="current-ios-subject-keyboard.png"><img src="current-ios-subject-keyboard.png" width="220" alt="Current iOS subject dialog sized to its content above the keyboard" /></a> |
+
+The original 1206 × 2622 PNGs are unedited and open at full resolution when clicked. The updated `dialog-comparison.yaml` replay passed from the learning-plan entry point through both dialogs. This is exact-head iOS simulator evidence; Android was not recaptured because no Android emulator is available in the local test environment. The Android images farther below remain explicitly historical evidence.
+
 ## Current integration status — 26 September 2026
 
 Commit `53a3638d` integrates `main` at `165e1da1` and resolves the PR's merge conflicts. Main's dynamic sheet sizing, footer handling, accessibility behavior and navigation guards are retained; the keyboard-aware input provider and top safe-area inset are retained from this PR. Obsolete fixed-size props were removed from the subject and exam-type dialogs.
 
-Validation on this integration: 907 Vitest tests and 306 Jest tests (71 suites) passed; TypeScript, targeted ESLint and diff checks passed. The screenshots below document the earlier explicitly identified source, **not** a native replay of `53a3638d`. A native replay of the merged dynamic-sizing implementation remains required before declaring device acceptance complete.
+Validation on this integration: 907 Vitest tests and 306 Jest tests (71 suites) passed; TypeScript, targeted ESLint and diff checks passed. The historical screenshots below document their explicitly identified earlier sources. The current-head iOS replay above now documents the merged dynamic-sizing implementation; physical-device acceptance remains separate.
 
 ## Historical native verification
 
@@ -15,7 +27,7 @@ Environment: iOS 26.4 simulator `47731F12-CE91-4857-8F3A-799040A0DCA3`, existing
 
 Ordinary React Native inputs did not register their focus with Gorhom. The shared sheet now supplies the keyboard-aware input primitive through context while retaining the shared field styling and normal inputs outside sheets. The component identities are module-level constants; the narrowly documented compiler-lint exception does not introduce components during render.
 
-Both creation dialogs use the existing medium scrollable size: content-height sizing did not account for the complete scrollable dialog and left the cancel action below the visible area.
+At the historical verification source, both creation dialogs used the existing medium scrollable size: content-height sizing did not account for the complete scrollable dialog and left the cancel action below the visible area. The current-head replay above supersedes that fixed-size presentation.
 
 ## Observed regression
 
