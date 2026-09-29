@@ -53,12 +53,18 @@ isolierten Builds. Automatisierte Tests ersetzen keine Geräte-Abnahme.
 
 Vor Veröffentlichung dieses neuen Standes:
 
-- [ ] Frische Light-/Dark-, große-Schrift- und Android-Abnahme auf diesem Branch.
-- [ ] Kalendergesten, Tageswechsel, Leerzustände und Rückwege am Gerät prüfen.
+- [x] Light-/Dark-Mode und große Schrift auf iOS und Android im isolierten
+      Entwicklungsclient geprüft (kein Release-Build).
+- [x] Kalendergesten, Tageswechsel, Leerzustände und Rückwege auf iOS und
+      Android gegen synthetische Daten im isolierten DEV geprüft.
 - [ ] Neue Convex-Abfrage auf dem vorgesehenen Backend bereitstellen und prüfen,
       bevor der neue Client veröffentlicht wird.
-- [ ] CI, CodeRabbit und finalen menschlichen Review des aktuellen Heads prüfen.
-- [ ] OTA-Kompatibilität gegen den tatsächlich eingesetzten Build bestimmen.
+- [x] CI und CodeRabbit für den aktuellen Head prüfen; keine offenen
+      zutreffenden Bot-Hinweise.
+- [ ] Jakobs finalen Produkt- und Code-Review einholen.
+- [x] OTA-Kompatibilitätsreport für den aktuellen Head prüfen; der Report ist
+      kompatibel. Vor Veröffentlichung weiterhin den konkret vorgesehenen
+      nativen Build und Release-Kanal abgleichen.
 
 Es gibt keine Merge- oder OTA-Freigabe allein durch das Herauslösen aus der Kette.
 
@@ -102,14 +108,27 @@ Batches mit 105 Einträgen, ungültige Datumswerte und Wiederholbarkeit.
 - [x] Android: Agenda → Plan → Zurück sowie obere Karte → Übung → Zurück geprüft.
       KI-Einwilligung wurde abgelehnt, nicht stellvertretend erteilt.
 - [x] Android Light/Dark sowie Systemschrift 1,5 geprüft; iOS Light/Dark geprüft.
-- [ ] Abschließende Animationsevidenz auf dem finalen Stand: iOS-Testclient zeigte
-      beim erneuten Start nur eine weiße Fläche. Die beiden Aufnahmeversuche sind
-      deshalb **keine** gültige Kalender-Animationsevidenz. Ursache nicht bestätigt.
-- [ ] Abschließende große-Schrift-Abnahme wiederholen: ein früherer iOS-Durchlauf
-      zeigte vorübergehend abgeschnittenen Header, nach Neustart nicht reproduziert.
-      Dies ist keine bestätigte Fehlerbehebung.
-- [ ] Aktuellen Head durch CI, CodeRabbit, OTA-Kompatibilitätsreport und Jakob
-      prüfen lassen. Frühere grüne Checks gelten nicht für spätere Commits.
+- [x] Kalenderanimation auf dem finalen Code-Stand im frisch gebauten iOS-
+      Entwicklungsclient erneut aufgenommen und geprüft. Die 52,10-s-Aufnahme
+      wurde vollständig mit 54 Frames im 1-s-Raster und zusätzlich von 00:43
+      bis 00:51 mit 67 Frames bei 8 fps untersucht; kein Audiostream.
+      Bei 00:43,5 ist der neue Auswahlkreis sichtbar, während die Agenda
+      seitlich übergeht; ab 00:44 sind beide auf dem leeren 1. Oktober.
+      Beim Rückweg ab 00:45,9 und der Auswahl des 28. September ab 00:48,5
+      stimmen Auswahl und Eintrag nach Abschluss der kurzen Transition überein.
+      Beim Laden des 28. erscheint kurz „Dein Tag wird geladen …“.
+- [x] iOS-Großschrift erneut geprüft: Bei `extra-extra-large` wechselt der
+      Kalender in vertikale Tageszeilen. Automatisiert bestätigt wurden
+      Begrüßung, „Jetzt lernen“, Scrollen zum 28. September, Tagesauswahl
+      und der abgeschlossene Wissenscheck. Schriftgröße danach zurückgesetzt.
+- [x] CI, CodeRabbit und OTA-Kompatibilitätsreport für `e07fd634` geprüft;
+      CodeRabbit meldete keine neuen actionable comments. Bei jedem späteren
+      Commit müssen diese Prüfungen erneut für den dann aktuellen Head laufen.
+- [ ] Jakobs menschlichen Review und die Release-Entscheidung einholen.
 
 Die generische Codeprüfung ersetzt keine separate Produktqualitätsabnahme.
-Simulator-/Entwicklungsclient-Tests belegen keine Release-Framerate.
+Simulator-/Entwicklungsclient-Tests belegen keine Release-Framerate. Der
+anfängliche weiße iOS-Bildschirm war ein lokales CSS-/Metro-Problem des
+Testaufbaus; mit frischem Metro aus einer temporären Kopie und neuem lokalen
+iOS-Build wurde das Dashboard korrekt dargestellt. Daraus folgt keine Änderung
+am PR-Code.
