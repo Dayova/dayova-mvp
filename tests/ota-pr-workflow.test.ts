@@ -263,7 +263,10 @@ describe("PR OTA workflow routing", () => {
 			(expression: string) => String(evaluate(expression, context)),
 		);
 		expect(rendered).toContain(`### ${expected}`);
-		expect(rendered).toContain(context.github.sha);
+		expect(rendered).toContain(`**Checked commit:** \`${context.github.sha}\``);
+		expect(rendered).toContain("**This report applies only to the checked commit.**");
+		expect(rendered).toContain("this result is **outdated**");
+		expect(rendered).toContain("latest commit is **unconfirmed**");
 		expect(rendered).toContain(`[View EAS run](${context.workflow.url})`);
 
 		// Both destinations render the same template, including failed assessments.
