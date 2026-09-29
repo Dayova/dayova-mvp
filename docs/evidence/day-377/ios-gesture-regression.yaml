@@ -1,0 +1,59 @@
+appId: de.dayova.app-dev
+---
+- extendedWaitUntil:
+    visible: PR 494 native verification
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    text: Open exam
+    retryTapIfNoChange: true
+- assertVisible: Welche Art von Prüfung ist es?
+- assertVisible: Klausur
+- takeScreenshot: evidence/ios-followup/exam-visible
+- tapOn: Zurück
+- assertVisible: PR 494 native verification
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    text: Open exam
+    retryTapIfNoChange: true
+- assertVisible: Welche Art von Prüfung ist es?
+- swipe:
+    start: 1%, 50%
+    end: 95%, 50%
+    duration: 450
+- assertVisible: PR 494 native verification
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    text: Open exam
+    retryTapIfNoChange: true
+- tapOn: Klausur
+- takeScreenshot: evidence/ios-followup/exam-selected
+- swipe:
+    start: 1%, 50%
+    end: 95%, 50%
+    duration: 450
+- assertVisible: PR 494 native verification
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    text: Open exam
+    retryTapIfNoChange: true
+- tapOn: Klausur
+- tapOn: Weiter
+- assertVisible: Welches Fach ist es?
+- tapOn: Zurück
+- assertVisible: Welche Art von Prüfung ist es?
+- tapOn: Weiter
+- assertVisible: Welches Fach ist es?
+- swipe:
+    start: 1%, 50%
+    end: 95%, 50%
+    duration: 450
+- assertVisible: Welche Art von Prüfung ist es?
+- assertNotVisible: PR 494 native verification
+- tapOn: Zurück
+- assertVisible: PR 494 native verification
+- takeScreenshot: evidence/ios-followup/regression-returned
