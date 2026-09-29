@@ -741,6 +741,7 @@ function HomeworkCard({
 
 export default function LearningPlansScreen() {
 	const insets = useSafeAreaInsets();
+	const { colors } = useDayovaTheme();
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const removePlan = useMutation(api.learningPlans.removePlan);
