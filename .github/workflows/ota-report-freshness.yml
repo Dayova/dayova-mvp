@@ -1,0 +1,82 @@
+name: Track OTA report freshness
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+  issue_comment:
+    types: [created, edited, deleted]
+
+permissions:
+  issues: read
+  pull-requests: read
+  statuses: write
+
+jobs:
+  reconcile:
+    if: >-
+      github.event_name == 'pull_request_target' ||
+      (github.event.issue.pull_request &&
+       github.event.comment.user.login == 'expo[bot]' &&
+       (github.event.action == 'deleted' ||
+        (github.event.sender.login == 'expo[bot]' &&
+         (contains(github.event.comment.body, '<!-- dayova-ota-report -->') ||
+          startsWith(github.event.comment.body, '## 📱 OTA compatibility')))))
+    concurrency:
+      group: ota-report-freshness-${{ github.event.pull_request.number || github.event.issue.number }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Read comment metadata and write only a commit status. No PR code or secrets.
+      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const marker = '<!-- dayova-ota-report -->';
+            const repo = context.repo;
+            const number = context.payload.pull_request?.number ?? context.payload.issue?.number;
+            const checkedSha = body => body?.match(/\*\*Checked commit:\*\* `([a-f0-9]{40})`/)?.[1];
+            const isReport = comment => comment?.user?.login === 'expo[bot]' &&
+              (comment.body?.includes(marker) ||
+               (comment.body?.startsWith('## 📱 OTA compatibility\n') &&
+                comment.body.includes('<!-- eas-comment-id: ')));
+            const readPr = async () => (await github.rest.pulls.get({ ...repo, pull_number: number })).data;
+            const eligible = pr => pr.state === 'open' &&
+              pr.head.repo?.id === pr.base.repo?.id;
+            if (!eligible(await readPr())) return;
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              ...repo, issue_number: number, per_page: 100,
+            });
+            const latest = await readPr();
+            if (!eligible(latest)) return;
+            const sha = latest.head.sha;
+            const eventComment = context.payload.comment;
+            const deletedId = context.payload.action === 'deleted' ? eventComment?.id : undefined;
+            let current = context.eventName === 'issue_comment' &&
+              context.payload.action !== 'deleted' &&
+              context.payload.sender?.login === 'expo[bot]' &&
+              isReport(eventComment) && checkedSha(eventComment.body) === sha;
+            for (const candidate of comments.filter(isReport)) {
+              if (candidate.id === deletedId) continue;
+              let comment;
+              try {
+                ({ data: comment } = await github.rest.issues.getComment({
+                  ...repo, comment_id: candidate.id,
+                }));
+              } catch (error) {
+                if (error.status === 404) continue;
+                throw error;
+              }
+              if (isReport(comment) && checkedSha(comment.body) === sha) current = true;
+            }
+
+            await github.rest.repos.createCommitStatus({
+              ...repo,
+              sha,
+              context: 'OTA report freshness',
+              state: current ? 'success' : 'pending',
+              description: current
+                ? 'Report covers the latest commit; review its OTA verdict.'
+                : 'Latest commit has no current OTA report; compatibility unconfirmed.',
+              target_url: latest.html_url + '/checks',
+            });
