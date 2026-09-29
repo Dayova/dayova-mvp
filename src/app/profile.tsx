@@ -166,6 +166,15 @@ export default function ProfileScreen() {
 				setFeedback({ tone: "neutral", message: result.message });
 				return;
 			}
+			if (
+				result.status === "email_retry_required" ||
+				result.status === "profile_sync_pending" ||
+				result.status === "email_activation_pending" ||
+				result.status === "email_cleanup_pending"
+			) {
+				setFeedback({ tone: "neutral", message: result.message });
+				return;
+			}
 
 			setFeedback({
 				tone: "success",
@@ -193,9 +202,13 @@ export default function ProfileScreen() {
 		setIsSaving(true);
 		setFeedback(null);
 		try {
-			await verifyProfileEmailCode(code);
+			const result = await verifyProfileEmailCode(code);
 			setIsEmailVerificationPending(false);
 			setCode("");
+			if (result.status !== "complete") {
+				setFeedback({ tone: "neutral", message: result.message });
+				return;
+			}
 			setFeedback({
 				tone: "success",
 				message: "E-Mail wurde bestätigt und dein Profil gespeichert.",
