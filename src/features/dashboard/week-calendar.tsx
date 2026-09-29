@@ -1,4 +1,12 @@
+import { useEffect } from "react";
 import { TouchableOpacity, View } from "react-native";
+import Animated, {
+	Easing,
+	useAnimatedStyle,
+	useReducedMotion,
+	useSharedValue,
+	withTiming,
+} from "react-native-reanimated";
 import { Text } from "~/components/ui/text";
 import { parseDayKey } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
@@ -12,6 +20,95 @@ import {
 const todayGradient = {
 	experimental_backgroundImage: `linear-gradient(to bottom, ${DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.colors[0]}, ${DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.colors[1]})`,
 };
+
+/** Crossfade both faces together; selection commits independently of motion. */
+function DayCircle({
+	dayKey,
+	number,
+	selected,
+	today,
+	hasEntries,
+}: {
+	dayKey: string;
+	number: number;
+	selected: boolean;
+	today: boolean;
+	hasEntries: boolean;
+}) {
+	const reducedMotion = useReducedMotion();
+	const progress = useSharedValue(Number(selected));
+	useEffect(() => {
+		progress.set(
+			reducedMotion
+				? Number(selected)
+				: withTiming(Number(selected), {
+						duration: 180,
+						easing: Easing.out(Easing.cubic),
+					}),
+		);
+	}, [progress, reducedMotion, selected]);
+	const normalStyle = useAnimatedStyle(() => ({ opacity: 1 - progress.get() }));
+	const selectedStyle = useAnimatedStyle(() => ({
+		opacity: progress.get(),
+		transform: [{ scale: 0.94 + 0.06 * progress.get() }],
+	}));
+	return (
+		<View
+			className="h-11 w-11"
+			pointerEvents="none"
+			accessibilityElementsHidden
+			importantForAccessibility="no-hide-descendants"
+		>
+			<Animated.View
+				testID={`calendar-day-normal-${dayKey}`}
+				style={normalStyle}
+				className="absolute inset-0 items-center justify-center"
+			>
+				<Text
+					className={cn(
+						"font-poppins font-semibold text-body-1",
+						today ? "text-primary-strong" : "text-text",
+					)}
+					style={{ fontVariant: ["tabular-nums"] }}
+				>
+					{number}
+				</Text>
+				{hasEntries ? (
+					<View
+						testID={`calendar-entry-dot-${dayKey}`}
+						accessible={false}
+						className="absolute bottom-1 h-1 w-1 rounded-full bg-primary"
+					/>
+				) : null}
+			</Animated.View>
+			<Animated.View
+				testID={`calendar-day-selection-${dayKey}`}
+				style={selectedStyle}
+				className="absolute inset-0"
+			>
+				<View
+					testID={`calendar-day-circle-${dayKey}`}
+					style={today ? todayGradient : undefined}
+					className={cn(
+						"h-11 w-11 items-center justify-center rounded-full",
+						today ? "bg-primary" : "bg-button-neutral",
+					)}
+				>
+					<Text
+						testID={`calendar-day-number-${dayKey}`}
+						className={cn(
+							"font-poppins font-semibold text-body-1",
+							today ? "text-white" : "text-background",
+						)}
+						style={{ fontVariant: ["tabular-nums"] }}
+					>
+						{number}
+					</Text>
+				</View>
+			</Animated.View>
+		</View>
+	);
+}
 
 export function CalendarWeekdays() {
 	return (
@@ -59,42 +156,13 @@ export function WeekCalendar({
 						onPress={() => onSelectDay(key)}
 						className="min-h-14 flex-1 items-center"
 					>
-						<View
-							testID={`calendar-day-circle-${key}`}
-							style={selected && today ? todayGradient : undefined}
-							className={cn(
-								"h-11 w-11 items-center justify-center rounded-full",
-								selected
-									? today
-										? "bg-primary"
-										: "bg-button-neutral"
-									: "bg-transparent",
-							)}
-						>
-							<Text
-								testID={`calendar-day-number-${key}`}
-								className={cn(
-									"font-poppins font-semibold text-body-1",
-									selected
-										? today
-											? "text-white"
-											: "text-background"
-										: today
-											? "text-primary-strong"
-											: "text-text",
-								)}
-								style={{ fontVariant: ["tabular-nums"] }}
-							>
-								{date.getDate()}
-							</Text>
-							{hasEntries && !selected ? (
-								<View
-									testID={`calendar-entry-dot-${key}`}
-									accessible={false}
-									className="absolute bottom-1 h-1 w-1 rounded-full bg-primary"
-								/>
-							) : null}
-						</View>
+						<DayCircle
+							dayKey={key}
+							number={date.getDate()}
+							selected={selected}
+							today={today}
+							hasEntries={hasEntries}
+						/>
 					</TouchableOpacity>
 				);
 			})}

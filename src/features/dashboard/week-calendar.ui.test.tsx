@@ -1,8 +1,26 @@
-import { expect, jest, test } from "@jest/globals";
-import { fireEvent, render } from "@testing-library/react-native";
+import { beforeEach, expect, jest, test } from "@jest/globals";
+import { configure, fireEvent, render } from "@testing-library/react-native";
 import type { Id } from "#convex/_generated/dataModel";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { CalendarWeekdays, WeekCalendar } from "./week-calendar";
+
+let mockReducedMotion = false;
+const mockTiming = jest.fn();
+jest.mock("react-native-reanimated", () => ({
+	...jest.requireActual<Record<string, unknown>>(
+		"../../../tests/mocks/selection-reanimated.cjs",
+	),
+	useReducedMotion: () => mockReducedMotion,
+	withTiming: (value: number, config: unknown) => {
+		mockTiming(value, config);
+		return value;
+	},
+}));
+beforeEach(() => {
+	mockReducedMotion = false;
+	jest.clearAllMocks();
+	configure({ defaultIncludeHiddenElements: true });
+});
 
 test("today stays blue when another date is selected; only that date gets a neutral circle", async () => {
 	const onSelectDay = jest.fn();
@@ -17,15 +35,15 @@ test("today stays blue when another date is selected; only that date gets a neut
 			onSelectDay={onSelectDay}
 		/>,
 	);
-	expect(
-		screen.getByTestId("calendar-day-number-2026-09-29").props.className,
-	).toContain("text-primary-strong");
+	expect(screen.getByTestId("calendar-day-selection-2026-09-29")).toHaveStyle({
+		opacity: 0,
+	});
 	expect(
 		screen.getByTestId("calendar-day-circle-2026-09-30").props.className,
 	).toContain("bg-button-neutral");
-	expect(
-		screen.getByTestId("calendar-day-circle-2026-10-01").props.className,
-	).toContain("bg-transparent");
+	expect(screen.getByTestId("calendar-day-selection-2026-10-01")).toHaveStyle({
+		opacity: 0,
+	});
 	expect(
 		screen.getByTestId("calendar-entry-dot-2026-09-28", {
 			includeHiddenElements: true,
@@ -85,10 +103,8 @@ test.each([
 		/>,
 	);
 	expect(
-		screen.queryByTestId(`calendar-entry-dot-${selectedDayKey}`, {
-			includeHiddenElements: true,
-		}),
-	).toBeNull();
+		screen.getByTestId(`calendar-day-normal-${selectedDayKey}`),
+	).toHaveStyle({ opacity: 0 });
 	expect(
 		screen.getByTestId("calendar-entry-dot-2026-09-28", {
 			includeHiddenElements: true,
@@ -97,4 +113,38 @@ test.each([
 	expect(
 		screen.getByRole("button", { name: /mit Einträgen/, selected: true }),
 	).toBeTruthy();
+});
+
+test.each([
+	false,
+	true,
+])("selection animates unless reduced motion is %s", async (reduce) => {
+	mockReducedMotion = reduce;
+	const props = {
+		weekKey: "2026-09-28",
+		todayKey: "2026-09-29",
+		entriesByDay: {},
+		onSelectDay: jest.fn(),
+	};
+	const screen = await render(
+		<WeekCalendar {...props} selectedDayKey="2026-09-29" />,
+	);
+	mockTiming.mockClear();
+	await screen.rerender(
+		<WeekCalendar {...props} selectedDayKey="2026-09-30" />,
+	);
+	expect(
+		screen.getByRole("button", { selected: true }).props.accessibilityLabel,
+	).toContain("30. September");
+	if (reduce) expect(mockTiming).not.toHaveBeenCalled();
+	else {
+		expect(mockTiming).toHaveBeenCalledWith(
+			0,
+			expect.objectContaining({ duration: 180 }),
+		);
+		expect(mockTiming).toHaveBeenCalledWith(
+			1,
+			expect.objectContaining({ duration: 180 }),
+		);
+	}
 });
