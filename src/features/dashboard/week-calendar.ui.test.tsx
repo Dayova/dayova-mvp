@@ -36,13 +36,13 @@ test("today stays blue when another date is selected; only that date gets a neut
 		/>,
 	);
 	expect(screen.getByTestId("calendar-day-selection-2026-09-29")).toHaveStyle({
-		opacity: 0,
+		transform: [{ scale: 0 }],
 	});
 	expect(
 		screen.getByTestId("calendar-day-circle-2026-09-30").props.className,
 	).toContain("bg-button-neutral");
 	expect(screen.getByTestId("calendar-day-selection-2026-10-01")).toHaveStyle({
-		opacity: 0,
+		transform: [{ scale: 0 }],
 	});
 	expect(
 		screen.getByTestId("calendar-entry-dot-2026-09-28", {
@@ -140,11 +140,11 @@ test.each([
 	else {
 		expect(mockTiming).toHaveBeenCalledWith(
 			0,
-			expect.objectContaining({ duration: 180 }),
+			expect.objectContaining({ duration: 240 }),
 		);
 		expect(mockTiming).toHaveBeenCalledWith(
 			1,
-			expect.objectContaining({ duration: 180 }),
+			expect.objectContaining({ duration: 240 }),
 		);
 	}
 });

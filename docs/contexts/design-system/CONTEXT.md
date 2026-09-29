@@ -250,9 +250,10 @@ Other selected dates use the neutral
 black circle in light mode, white in dark mode; other dates have no circle.
 Blue event dots include completed entries, sit directly beneath the number, and
 are hidden on the selected date; its accessible label still announces entries.
-Day selection crossfades the normal and selected faces over 180ms with an
-ease-out curve and a restrained 0.94-to-1 scale on the selected circle. Both
-faces stay mounted so rapid taps can interrupt and reverse the transition.
+Day selection shrinks the previous circle from full size to zero and grows the
+new circle from zero to full size over 240ms with an ease-out curve. Circle
+opacity stays constant; the date stays full-sized and only its color crossfades.
+Both faces stay mounted so rapid taps can interrupt and reverse the transition.
 Selection and agenda updates are immediate; reduced motion settles without
 animation. Date dimensions, theme colors, and pager behavior stay unchanged.
 Adjacent agenda pages are prepared

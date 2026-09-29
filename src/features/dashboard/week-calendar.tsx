@@ -21,7 +21,7 @@ const todayGradient = {
 	experimental_backgroundImage: `linear-gradient(to bottom, ${DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.colors[0]}, ${DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.colors[1]})`,
 };
 
-/** Crossfade both faces together; selection commits independently of motion. */
+/** Grow/shrink the circle without scaling the date or delaying selection. */
 function DayCircle({
 	dayKey,
 	number,
@@ -42,15 +42,17 @@ function DayCircle({
 			reducedMotion
 				? Number(selected)
 				: withTiming(Number(selected), {
-						duration: 180,
+						duration: 240,
 						easing: Easing.out(Easing.cubic),
 					}),
 		);
 	}, [progress, reducedMotion, selected]);
 	const normalStyle = useAnimatedStyle(() => ({ opacity: 1 - progress.get() }));
 	const selectedStyle = useAnimatedStyle(() => ({
+		transform: [{ scale: progress.get() }],
+	}));
+	const selectedNumberStyle = useAnimatedStyle(() => ({
 		opacity: progress.get(),
-		transform: [{ scale: 0.94 + 0.06 * progress.get() }],
 	}));
 	return (
 		<View
@@ -93,18 +95,22 @@ function DayCircle({
 						"h-11 w-11 items-center justify-center rounded-full",
 						today ? "bg-primary" : "bg-button-neutral",
 					)}
+				/>
+			</Animated.View>
+			<Animated.View
+				style={selectedNumberStyle}
+				className="absolute inset-0 items-center justify-center"
+			>
+				<Text
+					testID={`calendar-day-number-${dayKey}`}
+					className={cn(
+						"font-poppins font-semibold text-body-1",
+						today ? "text-white" : "text-background",
+					)}
+					style={{ fontVariant: ["tabular-nums"] }}
 				>
-					<Text
-						testID={`calendar-day-number-${dayKey}`}
-						className={cn(
-							"font-poppins font-semibold text-body-1",
-							today ? "text-white" : "text-background",
-						)}
-						style={{ fontVariant: ["tabular-nums"] }}
-					>
-						{number}
-					</Text>
-				</View>
+					{number}
+				</Text>
 			</Animated.View>
 		</View>
 	);
