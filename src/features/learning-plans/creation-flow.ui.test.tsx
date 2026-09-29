@@ -23,6 +23,9 @@ let mockSnapshot:
 let mockPauseVisible = false;
 jest.mock("convex/react", () => ({
 	useConvexAuth: () => ({ isAuthenticated: true }),
+	useQueries: () => ({
+		subjects: { personal: [], reusableTimetableSubjects: [] },
+	}),
 	useConvex: () => ({ query: async () => mockAvailability }),
 	useQuery: (_reference: unknown, args: unknown) =>
 		args === "skip"

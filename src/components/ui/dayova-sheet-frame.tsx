@@ -49,6 +49,7 @@ type DayovaSheetFrameProps = {
 	visible: boolean;
 	onClose: () => void;
 	onDismiss?: () => void;
+	onPresented?: () => void;
 	title?: ReactNode;
 	description?: ReactNode;
 	children?: ReactNode;
@@ -83,6 +84,7 @@ function DayovaSheetFrame({
 	visible,
 	onClose,
 	onDismiss,
+	onPresented,
 	title,
 	description,
 	children,
@@ -260,12 +262,13 @@ function DayovaSheetFrame({
 			if (didMoveFocusRef.current) return;
 
 			didMoveFocusRef.current = true;
+			onPresented?.();
 			initialFocusFrameRef.current = requestAnimationFrame(() => {
 				moveAccessibilityFocus(initialFocusRef.current);
 				initialFocusFrameRef.current = null;
 			});
 		},
-		[moveAccessibilityFocus, setSheetOpen, sheetId],
+		[moveAccessibilityFocus, onPresented, setSheetOpen, sheetId],
 	);
 
 	const handleAccessibilityAction = useCallback(

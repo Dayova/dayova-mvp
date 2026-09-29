@@ -1,4 +1,6 @@
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQueries } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
+import { useEffect } from "react";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import {
@@ -6,6 +8,7 @@ import {
 	PersonalSubjectIcon,
 } from "~/features/subjects/subject-catalog";
 import { normalizeSubjectName } from "~/features/subjects/subject-definitions";
+import { logDiagnosticError } from "~/lib/diagnostics";
 
 type SubjectSelection = {
 	name: string;
@@ -20,11 +23,29 @@ type SubjectOption = SubjectSelection & {
 };
 
 function useSubjectOptions() {
-	const { isAuthenticated } = useConvexAuth();
-	const result = useQuery(
-		api.personalSubjects.list,
-		isAuthenticated ? {} : "skip",
+	const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth();
+	// Unlike useQuery, useQueries returns query errors instead of throwing during
+	// render. A subject-list outage must not unmount the learner's creation form.
+	const results = useQueries(
+		isAuthenticated
+			? { subjects: { query: api.personalSubjects.list, args: {} } }
+			: {},
 	);
+	const response = results.subjects as
+		| FunctionReturnType<typeof api.personalSubjects.list>
+		| Error
+		| undefined;
+	const queryError =
+		isAuthenticated && response instanceof Error ? response : null;
+	const result =
+		isAuthenticated && !(response instanceof Error) ? response : undefined;
+	useEffect(() => {
+		if (queryError) {
+			logDiagnosticError("Personal subject query failed", queryError, {
+				source: "personal-subjects.list",
+			});
+		}
+	}, [queryError]);
 	const createPersonalSubject = useMutation(api.personalSubjects.create);
 
 	const personalOptions: SubjectOption[] = (result?.personal ?? []).map(
@@ -58,7 +79,10 @@ function useSubjectOptions() {
 	};
 
 	return {
-		isLoading: isAuthenticated && result === undefined,
+		isLoading: isAuthLoading || (isAuthenticated && response === undefined),
+		loadError: queryError
+			? "Deine persönlichen Fächer konnten nicht geladen werden. Bitte öffne die Fachauswahl später erneut."
+			: null,
 		options,
 		personalOptions,
 		savePermanent,

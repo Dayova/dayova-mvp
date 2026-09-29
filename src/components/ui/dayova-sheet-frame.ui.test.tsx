@@ -554,4 +554,21 @@ describe("DayovaSheetFrame", () => {
 				.accessibilityElementsHidden,
 		).toBe(false);
 	});
+	test("allows input focus only after native presentation, once per opening", async () => {
+		const onPresented = jest.fn();
+		await render(
+			<DayovaSheetFrame
+				visible
+				onClose={jest.fn()}
+				onPresented={onPresented}
+				title="Fach hinzufügen"
+			/>,
+		);
+		await act(flushAnimationFrames);
+		expect(onPresented).not.toHaveBeenCalled();
+		await act(() => mockSheetHarness.onChange?.(0));
+		expect(onPresented).toHaveBeenCalledTimes(1);
+		await act(() => mockSheetHarness.onChange?.(1));
+		expect(onPresented).toHaveBeenCalledTimes(1);
+	});
 });
