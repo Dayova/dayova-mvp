@@ -12,6 +12,76 @@ const user = {
 	tokenIdentifier: "test:user",
 };
 
+test("revises the same pending exam after navigating back through creation", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const id = await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-09-30",
+		title: "Biologie Klassenarbeit",
+		subject: "Biologie",
+		kind: "Leistungskontrolle",
+		examTypeLabel: "Klassenarbeit",
+		durationMinutes: 30,
+	});
+	await t.mutation(api.dayEntries.updatePendingExam, {
+		id,
+		dayKey: "2026-10-01",
+		subject: "Chemie",
+		examTypeLabel: "Test",
+		plannedDateLabel: "Donnerstag, 1. Oktober",
+		durationMinutes: 45,
+	});
+	const entries = await t.run((ctx) => ctx.db.query("dayEntries").take(2));
+	expect(entries).toHaveLength(1);
+	expect(entries[0]).toMatchObject({
+		_id: id,
+		dayKey: "2026-10-01",
+		subject: "Chemie",
+		title: "Chemie Test",
+		durationMinutes: 45,
+	});
+});
+
+test("pending exam edits require ownership and cannot change an exam with a learning plan", async () => {
+	const t = convexTest(schema, modules);
+	const owner = t.withIdentity(user);
+	const id = await owner.mutation(api.dayEntries.create, {
+		dayKey: "2026-09-30",
+		title: "Biologie Klassenarbeit",
+		subject: "Biologie",
+		kind: "Leistungskontrolle",
+	});
+	const edit = {
+		id,
+		dayKey: "2026-10-01",
+		subject: "Chemie",
+		examTypeLabel: "Test",
+		plannedDateLabel: "1. Oktober",
+		durationMinutes: 30,
+	};
+	await expect(
+		t
+			.withIdentity({ tokenIdentifier: "someone-else" })
+			.mutation(api.dayEntries.updatePendingExam, edit),
+	).rejects.toThrow("Prüfung nicht gefunden");
+	await owner.mutation(api.learningPlans.createDraft, {
+		examDayEntryId: id,
+		subject: "Biologie",
+		examTypeLabel: "Klassenarbeit",
+		examDateKey: "2026-09-30",
+		examDateLabel: "30. September",
+		durationMinutes: 30,
+		topicDescription: "Zellteilung und Mitose",
+		notes: "",
+	});
+	await expect(
+		owner.mutation(api.dayEntries.updatePendingExam, edit),
+	).rejects.toThrow("Lernplan");
+	await expect(owner.query(api.dayEntries.get, { id })).resolves.toMatchObject({
+		dayKey: "2026-09-30",
+		subject: "Biologie",
+	});
+});
+
 test("keeps adaptive exam entries with a stored subject schema-compatible", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 

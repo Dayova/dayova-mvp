@@ -1,6 +1,8 @@
 # Google Play Closed and Open testing runbook
 
-Last updated: 2026-08-26
+Last reconciled: 2026-09-16 against the pinned EAS CLI, workflow, current Google
+guidance, [DAY-248](https://linear.app/dayova/issue/DAY-248), and a signed-in
+[live Console inspection](../live-verification-2026-09-16.md).
 
 This runbook owns Dayova's repeatable Android tester-distribution path for the
 existing Play app `com.dayova`. It does not create another Android application,
@@ -11,10 +13,15 @@ production EAS build profile and differ only in their Google Play release track.
 
 | Dayova destination | EAS Submit profile | Google Play API track | Audience | Release behavior |
 | --- | --- | --- | --- | --- |
-| Internal testing | `internal` | `internal` | Up to 100 internal testers | Publishes immediately to the configured internal audience. |
-| Closed testing | `closed` | `alpha` | Explicit email lists or Google Groups | Publishes immediately after the workflow approval gate. |
-| Open testing | `open` | `beta` | Anyone in the selected countries, optionally capped | Publishes immediately after the workflow approval gate. |
+| Internal testing | `internal` | `internal` | Up to 100 internal testers | Requests a completed release; normally available within minutes, subject to Play processing. |
+| Closed testing | `closed` | `alpha` | Explicit email lists or Google Groups | Submits after workflow approval; availability depends on Google review, publishing state, and processing. |
+| Open testing | `open` | `beta` | Anyone in the selected countries, optionally capped | Submits after workflow approval; availability depends on Google review, publishing state, and processing. |
 | Production | `production` | `production` | Public production audience | Creates a draft; production rollout remains a separate Play Console decision. |
+
+EAS submission success and `releaseStatus: completed` do not prove that testers
+can install the release. Verify **Available** in Console and an actual opt-in
+installation. See Google's [testing guidance](https://support.google.com/googleplay/android-developer/answer/9845334)
+and [publishing states](https://support.google.com/googleplay/android-developer/answer/9859751).
 
 The store build always uses EAS build profile `production`, which resolves
 `APP_VARIANT=production`, package `com.dayova`, the production EAS environment,
@@ -23,21 +30,31 @@ codes. Do not use `preview`, `apk-test`, or `com.dayova.dev` for a Play track.
 
 ## Current rollout gate
 
-On 2026-08-25, Play Console was prepared with the existing production artifact
-`1.0.3` / version code `20` for Closed and Open testing, the existing Dayova
-internal email list for the Closed audience, and Germany for both tracks. These
-four changes are deliberately left under **Changes not yet submitted for
-review**. Google warned that submitting them would cancel and restart the
-Production review that has been running since 2026-08-23, so the restart was
-cancelled.
+The recorded 2026-09-07 submission in
+[PR #545](https://github.com/Dayova/dayova-mvp/pull/545): app/runtime `1.0.5`,
+version code `23`, was available to Internal testers. The same bundle was
+promoted to Closed Alpha and Open testing and replaced the Production
+`1.0.4`/code-21 draft. Full rollouts on all three tracks plus resuming Open
+testing were sent for review, preserving Germany targeting with Managed
+publishing off.
 
-Do not submit, rebuild, promote, remove, or otherwise modify the Closed/Open
-rollout until the current Production review resolves or is withdrawn. Build 20
-uses SDK 57 with legacy runtime `1.0.3`, so its saved testing drafts are obsolete
-release evidence, not a candidate to resume. After Production review is no
-longer active, discard those drafts, verify version-code precedence, feedback
-channel, audience, country/cap, service-account permissions, and listing state,
-then use the checked workflow for a clean app/runtime `1.0.4` replacement.
+The owner reported Google live on September 15 in
+[DAY-248](https://linear.app/dayova/issue/DAY-248). The September 16 Console
+check independently confirmed all four tracks active with 1.0.5/code 23:
+Production available on Play, Internal available to internal testers, Closed
+Alpha available to selected testers, and Open available to unlimited testers.
+Production targets Germany. Installed-build and tester-specific access QA
+remain outstanding.
+
+Recheck Console for subsequent review/availability changes before acting. Run
+install and billing QA on the exact build 23 identified in the
+[candidate audit](./release-candidate-audit.md), and record the track, device,
+and results. Live Console availability does not establish successful device QA.
+
+The August build-20 testing drafts and build-21 replacement instructions are
+superseded. Do not resume that withdrawal/replacement sequence or run the
+new-candidate workflow below just to complete build-23 verification. Use that
+workflow only for a separately approved future candidate.
 
 ## Create a new test candidate
 

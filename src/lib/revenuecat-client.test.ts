@@ -9,7 +9,9 @@ const monthlyPackage = {
 	packageType: "MONTHLY",
 	product: {
 		identifier: "dayova_monthly",
-		priceString: "14,99 €",
+		price: 14.99,
+		currencyCode: "EUR",
+		priceString: "€14.99",
 	},
 };
 const annualPackage = {
@@ -17,8 +19,11 @@ const annualPackage = {
 	packageType: "ANNUAL",
 	product: {
 		identifier: "dayova_annual",
-		pricePerMonthString: "12,99 €",
-		priceString: "155,88 €",
+		price: 155.88,
+		currencyCode: "EUR",
+		pricePerMonth: 12.99,
+		pricePerMonthString: "EUR12.99",
+		priceString: "€155.88",
 	},
 };
 
@@ -48,19 +53,6 @@ const createSdk = (): RevenueCatSdkBoundary => ({
 			},
 		},
 	})),
-	parseAsWebPurchaseRedemption: vi.fn(async (redemptionLink: string) => ({
-		redemptionLink,
-	})),
-	redeemWebPurchase: vi.fn(async () => ({
-		result: "SUCCESS" as const,
-		customerInfo: {
-			entitlements: {
-				active: {
-					dayova_full_access: {},
-				},
-			},
-		},
-	})),
 });
 
 describe("createRevenueCatClient", () => {
@@ -77,12 +69,14 @@ describe("createRevenueCatClient", () => {
 				billingPeriod: "annual",
 				packageIdentifier: "$rc_annual",
 				price: "155,88 €",
+				pricePerMonth: "12,99 €",
 				productIdentifier: "dayova_annual",
 			},
 			{
 				billingPeriod: "monthly",
 				packageIdentifier: "$rc_monthly",
 				price: "14,99 €",
+				pricePerMonth: null,
 				productIdentifier: "dayova_monthly",
 			},
 		]);
@@ -90,6 +84,63 @@ describe("createRevenueCatClient", () => {
 			apiKey: "appl_test",
 			appUserID: "clerk_user_1",
 		});
+	});
+
+	it("uses the store amount and currency instead of hardcoded launch prices", async () => {
+		const sdk = createSdk();
+		sdk.getOfferings = vi.fn(async () => ({
+			all: {},
+			current: {
+				availablePackages: [
+					{
+						...annualPackage,
+						product: {
+							...annualPackage.product,
+							price: 15000,
+							pricePerMonth: 1250,
+							currencyCode: "JPY",
+						},
+					},
+				],
+			},
+		}));
+		const client = createRevenueCatClient({
+			apiKey: "test",
+			appUserId: "test",
+			sdk,
+		});
+
+		await expect(client.getPlans()).resolves.toEqual([
+			expect.objectContaining({ price: "15.000 ¥", pricePerMonth: "1.250 ¥" }),
+		]);
+	});
+
+	it("preserves store text when numeric or currency data cannot be formatted", async () => {
+		const sdk = createSdk();
+		sdk.getOfferings = vi.fn(async () => ({
+			all: {},
+			current: {
+				availablePackages: [
+					{
+						...annualPackage,
+						product: {
+							...annualPackage.product,
+							currencyCode: "",
+							pricePerMonth: null,
+						},
+					},
+				],
+			},
+		}));
+		const client = createRevenueCatClient({
+			apiKey: "test",
+			appUserId: "test",
+			sdk,
+		});
+
+		await expect(client.getPlans()).resolves.toEqual([
+			expect.objectContaining({ price: "€155.88", pricePerMonth: "EUR12.99" }),
+		]);
 	});
 
 	it("unlocks only when RevenueCat returns the full-access entitlement", async () => {
@@ -130,65 +181,5 @@ describe("createRevenueCatClient", () => {
 		await expect(client.restore()).resolves.toEqual({
 			status: "purchased",
 		});
-	});
-
-	it("redeems a RevenueCat web purchase for the configured account", async () => {
-		const sdk = createSdk();
-		const client = createRevenueCatClient({
-			apiKey: "appl_test",
-			appUserId: "clerk_user_1",
-			sdk,
-		});
-		const redemptionUrl =
-			"rc-abc123://redeem_web_purchase?redemption_token=secret";
-
-		await expect(client.redeemWebPurchase(redemptionUrl)).resolves.toEqual({
-			status: "redeemed",
-		});
-		expect(sdk.parseAsWebPurchaseRedemption).toHaveBeenCalledWith(
-			redemptionUrl,
-		);
-		expect(sdk.redeemWebPurchase).toHaveBeenCalledWith({
-			redemptionLink: redemptionUrl,
-		});
-	});
-
-	it.each([
-		["EXPIRED", { status: "expired", obfuscatedEmail: "f***@example.com" }],
-		["INVALID_TOKEN", { status: "invalidToken" }],
-		["PURCHASE_BELONGS_TO_OTHER_USER", { status: "belongsToOtherUser" }],
-	] as const)("maps the %s redemption result", async (result, expected) => {
-		const sdk = createSdk();
-		sdk.redeemWebPurchase = vi.fn(async () =>
-			result === "EXPIRED"
-				? { result, obfuscatedEmail: "f***@example.com" }
-				: { result },
-		);
-		const client = createRevenueCatClient({
-			apiKey: "appl_test",
-			appUserId: "clerk_user_1",
-			sdk,
-		});
-
-		await expect(client.redeemWebPurchase("rc-test://link")).resolves.toEqual(
-			expected,
-		);
-	});
-
-	it("rejects links the RevenueCat SDK does not recognize", async () => {
-		const sdk = createSdk();
-		sdk.parseAsWebPurchaseRedemption = vi.fn(async () => null);
-		const client = createRevenueCatClient({
-			apiKey: "appl_test",
-			appUserId: "clerk_user_1",
-			sdk,
-		});
-
-		await expect(
-			client.redeemWebPurchase("rc-test://invalid"),
-		).resolves.toEqual({
-			status: "invalidToken",
-		});
-		expect(sdk.redeemWebPurchase).not.toHaveBeenCalled();
 	});
 });

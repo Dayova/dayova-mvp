@@ -43,9 +43,7 @@ describe("getMissingPublicRuntimeConfig", () => {
 			"EXPO_PUBLIC_PRIVACY_URL",
 			"EXPO_PUBLIC_TERMS_URL",
 			"EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL",
-			"EXPO_PUBLIC_CANCELLATION_URL",
 			"EXPO_PUBLIC_SUPPORT_URL",
-			"EXPO_PUBLIC_PARENT_CHECKOUT_URL",
 		] as const;
 		const originalValues = new Map(
 			publicEnvKeys.map((key) => [key, process.env[key]]),
@@ -66,9 +64,7 @@ describe("getMissingPublicRuntimeConfig", () => {
 				EXPO_PUBLIC_PRIVACY_URL: undefined,
 				EXPO_PUBLIC_TERMS_URL: undefined,
 				EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL: undefined,
-				EXPO_PUBLIC_CANCELLATION_URL: undefined,
 				EXPO_PUBLIC_SUPPORT_URL: undefined,
-				EXPO_PUBLIC_PARENT_CHECKOUT_URL: undefined,
 			});
 		} finally {
 			for (const key of publicEnvKeys) {
@@ -140,7 +136,7 @@ describe("getMissingPublicRuntimeConfig", () => {
 				EXPO_PUBLIC_CONVEX_URL: "https://example.convex.cloud",
 			}),
 		).toThrowError(
-			/Missing values: EXPO_PUBLIC_REVENUECAT_IOS_API_KEY, EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY, EXPO_PUBLIC_PRIVACY_URL, EXPO_PUBLIC_TERMS_URL, EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL, EXPO_PUBLIC_CANCELLATION_URL, EXPO_PUBLIC_SUPPORT_URL/,
+			/Missing values: EXPO_PUBLIC_REVENUECAT_IOS_API_KEY, EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY, EXPO_PUBLIC_PRIVACY_URL, EXPO_PUBLIC_TERMS_URL, EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL, EXPO_PUBLIC_SUPPORT_URL/,
 		);
 	});
 
@@ -152,7 +148,6 @@ describe("getMissingPublicRuntimeConfig", () => {
 			EXPO_PUBLIC_TERMS_URL: "https://example.com/terms",
 			EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL:
 				"https://example.com/subscription-terms",
-			EXPO_PUBLIC_CANCELLATION_URL: "https://example.com/cancellation",
 			EXPO_PUBLIC_SUPPORT_URL: "https://example.com/support",
 		};
 

@@ -1,0 +1,84 @@
+appId: ${APP_ID}
+name: Registration introduction and profile answers survive back navigation
+tags:
+  - smoke
+  - onboarding
+---
+- runFlow: ../shared/launch-unauthenticated.yaml
+- tapOn: Registrierung
+- assertVisible: 'Du weißt, was heute wirklich zählt\.'
+- tapOn: Weiter
+- assertVisible: 'Deine Prüfung\. Alles an einem Ort\.'
+- tapOn: Weiter
+- assertVisible: 'Aus Stoff wird ein klarer Weg\.'
+- tapOn: Meinen Start personalisieren
+- assertVisible: 'Wie dürfen wir dich nennen\?'
+- assertVisible:
+    text: Weiter
+    enabled: false
+- tapOn:
+    id: onboarding-name-input
+- inputText: A
+- hideKeyboard
+- assertVisible: 'Bitte gib deinen Namen ein\.'
+- assertVisible:
+    text: Weiter
+    enabled: false
+- tapOn:
+    id: onboarding-name-input
+- eraseText
+- inputText: Maestro
+- hideKeyboard
+- assertNotVisible: 'Bitte gib deinen Namen ein\.'
+- assertVisible:
+    text: Weiter
+    enabled: true
+- tapOn: Weiter
+- assertVisible: 'Wie lange möchtest du pro Lerntag einplanen\?'
+# A preview duration is not a selection; the learner must choose explicitly.
+- assertVisible:
+    text: Weiter
+    enabled: false
+- tapOn: 30 Minuten auswählen
+- assertVisible:
+    text: Weiter
+    enabled: true
+- tapOn: Zurück
+- assertVisible: 'Wie dürfen wir dich nennen\?'
+- assertVisible: Maestro
+- tapOn: Weiter
+- assertVisible: 'Wie lange möchtest du pro Lerntag einplanen\?'
+- assertNotVisible: 30 Minuten auswählen
+- assertVisible:
+    text: Weiter
+    enabled: true
+- tapOn: Weiter
+- assertVisible: 'Dein Lernplan braucht echte Zeitfenster\.'
+- tapOn: Weiter
+- assertVisible: 'An welchen Tagen kannst du lernen\?'
+- assertVisible:
+    text: Weiter
+    enabled: false
+- tapOn: Montag
+- assertVisible:
+    text: Weiter
+    enabled: true
+- tapOn: Montag
+- assertVisible:
+    text: Weiter
+    enabled: false
+- tapOn: Montag
+- tapOn: Weiter
+- assertVisible: 'Um wie viel Uhr möchtest du starten\?'
+- assertVisible: Startzeit auswählen
+- tapOn: Zurück
+- assertVisible: 'An welchen Tagen kannst du lernen\?'
+- assertVisible:
+    text: Weiter
+    enabled: true
+# Toggling the retained day off must disable progress again.
+- tapOn: Montag
+- assertVisible:
+    text: Weiter
+    enabled: false
+- takeScreenshot: onboarding-retained-answers

@@ -72,8 +72,10 @@ function AnimatedFlowerPetalCircle({
 }
 
 export function AnimatedFlowerLoader({
+	accessibilityLabel = "Wird geladen",
 	size = ANIMATED_FLOWER_BASE_SIZE,
 }: {
+	accessibilityLabel?: string;
 	size?: number;
 }) {
 	const geometry = useMemo(() => getAnimatedFlowerGeometry(size), [size]);
@@ -131,7 +133,13 @@ export function AnimatedFlowerLoader({
 	}));
 
 	return (
-		<View style={{ height: geometry.size, width: geometry.size }}>
+		<View
+			accessible
+			accessibilityLabel={accessibilityLabel}
+			accessibilityRole="progressbar"
+			accessibilityValue={{ text: accessibilityLabel }}
+			style={{ height: geometry.size, width: geometry.size }}
+		>
 			<Animated.View className="h-full w-full" style={flowerStyle}>
 				{geometry.petals.map((petal) => (
 					<AnimatedFlowerPetalCircle

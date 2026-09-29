@@ -8,6 +8,11 @@ Canonical product framing: [Dayova Business Plan 2026 — Exact Exam, Real Gaps,
 
 ## Language
 
+**Dayova**:
+The sole product name, including during the trial and a paid subscription. Monthly and annual subscriptions describe billing cadence, not product tiers. Use copy such as `Dayova abonnieren`, `Dayova freischalten`, and `Willkommen bei Dayova`; use `subscription-success` for the purchase-confirmation route and related code.
+_Avoid_: Dayova Pro, or invented Premium/Plus product tiers. Existing store product IDs and access states are technical contracts, not branding to rename.
+_Decision_: [Das Produkt heißt Dayova](https://app.notion.com/p/3d52e87228bf811d9060e7cd264a9d2a), reaffirmed 2026-09-08.
+
 **Persönlicher Lernplan**:
 The user-facing adaptive study path created after the learner uploads at least one `Interne Schulquelle`. Creation schedules a `Wissenscheck` and a rolling two-session future window instead of asking setup questions or generating the complete plan up front.
 _Avoid_: Wissensanalyse, setup quiz, fully generated schedule

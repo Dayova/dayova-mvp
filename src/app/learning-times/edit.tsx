@@ -18,8 +18,7 @@ import {
 	DateTimePickerSheet,
 } from "~/components/ui/date-time-picker-sheet";
 import { ErrorMessage } from "~/components/ui/error-message";
-import { Field, FieldLabel } from "~/components/ui/field";
-import { Timer, Trash2, X } from "~/components/ui/icon";
+import { Trash2, X } from "~/components/ui/icon";
 import { Screen } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
@@ -28,6 +27,7 @@ import {
 	LEARNING_DAYS,
 	type LearningDayLabel,
 } from "~/features/learning-times/learning-time-days";
+import { LearningTimeEditorFields } from "~/features/learning-times/learning-time-editor-fields";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { dismissToOrReplace } from "~/lib/navigation";
@@ -63,42 +63,6 @@ const parseTimeToMinutes = (time: string) => {
 	const [hours, minutes] = time.split(":").map(Number);
 	return (hours || 0) * 60 + (minutes || 0);
 };
-
-function TimeControl({
-	label,
-	value,
-	onPress,
-}: {
-	label: string;
-	value: string;
-	onPress: () => void;
-}) {
-	const { colors } = useDayovaTheme();
-
-	return (
-		<View className="flex-1 gap-2">
-			<Text className="font-poppins text-body-4 text-secondary-text">
-				{label}
-			</Text>
-			<Pressable
-				accessibilityLabel={`${label}: ${value}`}
-				accessibilityRole="button"
-				className="min-h-16 flex-row items-center justify-between rounded-[28px] bg-card px-5 shadow-black/10 shadow-sm active:opacity-80"
-				onPress={onPress}
-				style={{ borderCurve: "continuous" }}
-			>
-				<Text
-					selectable
-					className="font-poppins font-semibold text-body-2 text-text"
-					style={{ fontVariant: ["tabular-nums"] }}
-				>
-					{value}
-				</Text>
-				<Timer size={19} color={colors.secondaryText} strokeWidth={1.9} />
-			</Pressable>
-		</View>
-	);
-}
 
 export default function LearningTimesScreen() {
 	const router = useRouter();
@@ -311,59 +275,14 @@ export default function LearningTimesScreen() {
 					kannst.
 				</Text>
 
-				<Field className="mb-0">
-					<View className="mb-2 flex-row items-center justify-between">
-						<FieldLabel className="mb-0">Wochentag</FieldLabel>
-						<Text
-							selectable
-							className="font-poppins font-semibold text-body-4 text-secondary-text"
-						>
-							{selectedDay}
-						</Text>
-					</View>
-					<View className="flex-row gap-1.5">
-						{LEARNING_DAYS.map((day) => {
-							const isSelected = day.value === selectedDayValue;
-
-							return (
-								<Pressable
-									key={day.value}
-									accessibilityLabel={day.label}
-									accessibilityRole="radio"
-									accessibilityState={{ checked: isSelected }}
-									className="h-12 flex-1 items-center justify-center rounded-full active:opacity-80"
-									onPress={() => updateDraft({ selectedDay: day.label })}
-									style={{
-										backgroundColor: isSelected
-											? colors.primary
-											: colors.surface,
-										borderCurve: "continuous",
-									}}
-								>
-									<Text
-										className="font-poppins font-semibold text-body-4"
-										style={{ color: isSelected ? colors.light1 : colors.text }}
-									>
-										{day.abbreviation}
-									</Text>
-								</Pressable>
-							);
-						})}
-					</View>
-				</Field>
-
-				<View className="flex-row gap-3">
-					<TimeControl
-						label="Beginn"
-						value={startTime}
-						onPress={() => setActiveTimeField("start")}
-					/>
-					<TimeControl
-						label="Ende"
-						value={endTime}
-						onPress={() => setActiveTimeField("end")}
-					/>
-				</View>
+				<LearningTimeEditorFields
+					selectedDay={selectedDay}
+					startTime={startTime}
+					endTime={endTime}
+					onDayChange={(day) => updateDraft({ selectedDay: day })}
+					onStartTimePress={() => setActiveTimeField("start")}
+					onEndTimePress={() => setActiveTimeField("end")}
+				/>
 
 				{hasValidTimeRange ? null : (
 					<Text

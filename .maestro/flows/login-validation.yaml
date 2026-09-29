@@ -1,0 +1,59 @@
+appId: ${APP_ID}
+name: Login rejects invalid fields and toggles password visibility
+tags:
+  - smoke
+  - auth
+---
+- runFlow: ../shared/open-login.yaml
+# These submissions fail local validation before any Clerk sign-in request.
+- scrollUntilVisible:
+    element: LOGIN
+    direction: DOWN
+    timeout: 10000
+- tapOn: LOGIN
+- assertVisible: 'Bitte gib eine gültige E-Mail-Adresse ein\.'
+- scrollUntilVisible:
+    element: E-Mail-Adresse
+    direction: UP
+    timeout: 10000
+- tapOn: E-Mail-Adresse
+- inputText: invalid-email
+- hideKeyboard
+- scrollUntilVisible:
+    element: LOGIN
+    direction: DOWN
+    timeout: 10000
+- tapOn: LOGIN
+- assertVisible: 'Bitte gib eine gültige E-Mail-Adresse ein\.'
+- scrollUntilVisible:
+    element: E-Mail-Adresse
+    direction: UP
+    timeout: 10000
+- tapOn: E-Mail-Adresse
+- eraseText
+- inputText: smoke@example.invalid
+- hideKeyboard
+- scrollUntilVisible:
+    element: LOGIN
+    direction: DOWN
+    timeout: 10000
+- tapOn: LOGIN
+- assertVisible: 'Bitte gib dein Passwort ein\.'
+- assertNotVisible: 'Bitte gib eine gültige E-Mail-Adresse ein\.'
+# Use a synthetic value only; never submit the now-complete form.
+- scrollUntilVisible:
+    element: Passwort
+    direction: UP
+    timeout: 10000
+- tapOn: Passwort
+- inputText: MaestroOnly123
+- hideKeyboard
+- assertVisible: Passwort anzeigen
+- assertNotVisible: MaestroOnly123
+- tapOn: Passwort anzeigen
+- assertVisible: Passwort ausblenden
+- assertVisible: MaestroOnly123
+- tapOn: Passwort ausblenden
+- assertVisible: Passwort anzeigen
+- assertNotVisible: MaestroOnly123
+- takeScreenshot: login-validation

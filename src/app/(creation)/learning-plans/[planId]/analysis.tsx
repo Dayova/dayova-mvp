@@ -8,6 +8,7 @@ import { AnimatedFlowerLoader } from "~/components/ui/animated-flower-loader";
 import { Button } from "~/components/ui/button";
 import { ErrorMessage } from "~/components/ui/error-message";
 import { Text } from "~/components/ui/text";
+import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
@@ -28,6 +29,7 @@ export default function LearningPlanAnalysisScreen() {
 	const params = useLocalSearchParams<{ planId?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const { user } = useAuthSession();
+	const { requestAiConsent } = useAiConsent();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const generateKnowledgeQuestions = useAction(
 		api.learningPlanAi.generateKnowledgeQuestions,
@@ -70,7 +72,15 @@ export default function LearningPlanAnalysisScreen() {
 		queueMicrotask(() => {
 			setIsBusy(true);
 			setErrorMessage(null);
-			void generateKnowledgeQuestions({ learningPlanId: planId })
+			void requestAiConsent()
+				.then((allowed) => {
+					if (!allowed) {
+						didStartRef.current = false;
+						dismissToOrReplace(router, learningPlanMaterialPath(planId));
+						return null;
+					}
+					return generateKnowledgeQuestions({ learningPlanId: planId });
+				})
 				.catch((error: unknown) => {
 					const message = getErrorMessage(
 						error,
@@ -87,7 +97,14 @@ export default function LearningPlanAnalysisScreen() {
 				})
 				.finally(() => setIsBusy(false));
 		});
-	}, [generateKnowledgeQuestions, planId, retryAttempt, router, snapshot]);
+	}, [
+		generateKnowledgeQuestions,
+		planId,
+		requestAiConsent,
+		retryAttempt,
+		router,
+		snapshot,
+	]);
 
 	const goBack = () => {
 		goBackOrReplace(

@@ -14,9 +14,12 @@ import {
 	normalizeLegacySchoolType,
 	SCHOOL_TYPE_VALUES,
 } from "../src/lib/school-types";
-import type { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
+import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { mutation, query } from "./_generated/server";
+import { env, mutation, query } from "./_generated/server";
+import { operatingSystem } from "./crmContract";
+import { enqueueCrmUpdate } from "./crmUpdates";
 import { throwUserFacingError } from "./errors";
 import {
 	deriveOnboardingLearningTimes,
@@ -49,6 +52,12 @@ const ONBOARDING_LEARNING_TIME_KEYS = [
 	"learningTime",
 	"dailySchoolTime",
 ] as const;
+const ONBOARDING_PERSISTED_ANSWER_KEYS = [
+	"state",
+	"schoolType",
+	"grade",
+	...ONBOARDING_LEARNING_TIME_KEYS,
+] as const satisfies readonly OnboardingQuestionKey[];
 
 const DEFAULT_ONBOARDING_QUESTIONS: Array<{
 	key: OnboardingQuestionKey;
@@ -143,7 +152,7 @@ const DEFAULT_ONBOARDING_QUESTIONS: Array<{
 	},
 	{
 		key: "dailySchoolTime",
-		prompt: "Wie viel Zeit willst du pro Tag für die Schule aufwenden?",
+		prompt: "Wie lange möchtest du pro Lerntag einplanen?",
 		kind: "select" as const,
 		order: 7,
 		options: [...DURATION_OPTIONS],
@@ -165,7 +174,7 @@ const DEFAULT_ONBOARDING_QUESTIONS: Array<{
 	},
 	{
 		key: "learningTime",
-		prompt: "Wann ist die beste Uhrzeit für dich zum Lernen?",
+		prompt: "Wann möchtest du an diesen Tagen starten?",
 		kind: "input" as const,
 		order: 9,
 	},
@@ -400,8 +409,29 @@ const sanitizeLegacyOnboardingSchoolType = async (
 	}
 };
 
+async function scheduleCrmProfileSync(
+	ctx: MutationCtx,
+	previous: Doc<"users">,
+	patch: Partial<Doc<"users">>,
+) {
+	if (
+		(
+			[
+				"email",
+				"name",
+				"grade",
+				"state",
+				"schoolType",
+				"operatingSystems",
+			] as const
+		).some((key) => Object.hasOwn(patch, key) && patch[key] !== previous[key])
+	)
+		await enqueueCrmUpdate(ctx, previous._id);
+}
+
 export const syncCurrentUser = mutation({
 	args: {
+		operatingSystem: v.optional(operatingSystem),
 		name: v.optional(v.string()),
 		phone: v.optional(v.string()),
 		birthDate: v.optional(v.string()),
@@ -411,6 +441,7 @@ export const syncCurrentUser = mutation({
 		avatarUrl: v.optional(v.string()),
 		validationStudentCode: v.optional(v.string()),
 	},
+	returns: v.id("users"),
 	handler: async (ctx, args) => {
 		const identity = await requireIdentity(ctx);
 
@@ -439,6 +470,16 @@ export const syncCurrentUser = mutation({
 			email,
 			name: args.name ?? identity.name,
 			...profileFields({ ...args, birthDate: providedBirthDate }),
+			// Only patch on a new observation; omitted/older clients preserve history.
+			...(args.operatingSystem &&
+			!existingUser?.operatingSystems?.includes(args.operatingSystem)
+				? {
+						operatingSystems: [
+							...(existingUser?.operatingSystems ?? []),
+							args.operatingSystem,
+						],
+					}
+				: {}),
 		};
 
 		let userId: Id<"users">;
@@ -451,10 +492,16 @@ export const syncCurrentUser = mutation({
 				...user,
 				schoolType,
 			});
+			await scheduleCrmProfileSync(ctx, existingUser, { ...user, schoolType });
 			await sanitizeLegacyOnboardingSchoolType(ctx, existingUser._id);
 			userId = existingUser._id;
 		} else {
 			userId = await ctx.db.insert("users", user);
+			// Persist with signup; an unavailable CRM must not lose the delivery intent.
+			await ctx.db.insert("crmStudentSignups", { userId, status: "pending" });
+			if (env.NOTION_CRM_MODE === "live") {
+				await ctx.scheduler.runAfter(0, internal.crmSync.reconcile, {});
+			}
 		}
 
 		await backfillLegacyLearningTimes(ctx, {
@@ -490,11 +537,12 @@ export const updateProfile = mutation({
 		const providedBirthDate = getProvidedBirthDate(args.birthDate);
 		normalizeOptionalBirthDate(providedBirthDate ?? user.birthDate);
 
-		await ctx.db.patch(
-			"users",
-			user._id,
-			profileFields({ ...args, birthDate: providedBirthDate }),
-		);
+		const patch = profileFields({ ...args, birthDate: providedBirthDate });
+		// Clerk owns email verification. Older clients may still send an email,
+		// but only syncCurrentUser can persist the primary address from its JWT.
+		delete patch.email;
+		await ctx.db.patch("users", user._id, patch);
+		await scheduleCrmProfileSync(ctx, user, patch);
 		return { success: true };
 	},
 });
@@ -516,6 +564,8 @@ export const getMe = query({
 export const saveOnboardingAnswers = mutation({
 	args: {
 		answers: v.object({
+			// Accepted temporarily for older installed clients. These decorative
+			// answers are intentionally excluded from ONBOARDING_PERSISTED_ANSWER_KEYS.
 			studyTime: v.optional(v.string()),
 			strength: v.optional(v.string()),
 			challenge: v.optional(v.string()),
@@ -612,9 +662,8 @@ export const saveOnboardingAnswers = mutation({
 			questionIdsByKey[question.key] = questionId;
 		}
 
-		for (const [key, answer] of Object.entries(args.answers) as Array<
-			[keyof typeof args.answers, string | undefined]
-		>) {
+		for (const key of ONBOARDING_PERSISTED_ANSWER_KEYS) {
+			const answer = args.answers[key];
 			if (answer === undefined) continue;
 			const normalizedAnswer =
 				key === "grade"

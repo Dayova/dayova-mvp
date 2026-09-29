@@ -51,9 +51,18 @@ const IDENTITY_INPUT_KEYS = new Set([
 	"state",
 ]);
 
-export const isPostHogConfigured = Boolean(
-	env.EXPO_PUBLIC_POSTHOG_API_KEY?.trim(),
-);
+export const isPostHogConfiguredForPlatform = ({
+	apiKey,
+	platform,
+}: {
+	apiKey?: string;
+	platform?: string;
+}) => platform !== "ios" && Boolean(apiKey?.trim());
+
+export const isPostHogConfigured = isPostHogConfiguredForPlatform({
+	apiKey: env.EXPO_PUBLIC_POSTHOG_API_KEY,
+	platform: process.env.EXPO_OS,
+});
 
 export const postHogApiKey = env.EXPO_PUBLIC_POSTHOG_API_KEY?.trim() ?? "";
 
@@ -208,7 +217,7 @@ const identityOutputRules = {
 const eventPropertyRules = {
 	onboarding_completed: {
 		local_day_key: required(isDayKey),
-		onboarding_version: required(oneOf([1, 2] as const)),
+		onboarding_version: required(oneOf([1, 2, 3] as const)),
 	},
 	homework_created: {
 		day_entry_id: required(isNonEmptyString),

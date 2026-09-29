@@ -2,6 +2,7 @@ import * as Slot from "@rn-primitives/slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 import { Platform, Text as RNText, type Role } from "react-native";
+import { SEMANTIC_HEADING_MAX_FONT_SIZE_MULTIPLIER } from "~/lib/content-size-layout";
 import { cn } from "~/lib/utils";
 
 const textVariants = cva(
@@ -77,8 +78,11 @@ const androidTextResetStyle = Platform.select({
 });
 
 function Text({
+	accessibilityRole,
 	className,
 	asChild = false,
+	maxFontSizeMultiplier,
+	role,
 	style,
 	variant = "default",
 	...props
@@ -88,10 +92,20 @@ function Text({
 	}) {
 	const textClass = React.useContext(TextClassContext);
 	const Component = asChild ? Slot.Text : RNText;
+	const semanticRole = role ?? (variant ? ROLE[variant] : undefined);
+	const semanticHeading =
+		accessibilityRole === "header" || semanticRole === "heading";
 	return (
 		<Component
+			accessibilityRole={accessibilityRole}
 			className={cn(textVariants({ variant }), textClass, className)}
-			role={variant ? ROLE[variant] : undefined}
+			maxFontSizeMultiplier={
+				maxFontSizeMultiplier ??
+				(semanticHeading
+					? SEMANTIC_HEADING_MAX_FONT_SIZE_MULTIPLIER
+					: undefined)
+			}
+			role={semanticRole}
 			aria-level={variant ? ARIA_LEVEL[variant] : undefined}
 			// Android adds extra font padding around Text by default; the Figma
 			// typography ramp assumes the rendered line box, so the native reset is

@@ -81,6 +81,11 @@ With that configuration:
 
 ## Maintenance Rules
 
+- `border-hairline` is a custom border width. Keep it registered in the
+  `border-w` class group in `src/lib/utils.ts`; otherwise `cn()` treats it as
+  a color, dropping either the border color or the width when selection adds
+  `border-primary`. `src/lib/utils.test.ts` covers selection and width overrides.
+
 - When adding or removing custom `fontSize` tokens in `tailwind.config.ts`, update the `theme.text` list in `src/lib/utils.ts`.
 - Use Tailwind's standard spacing scale. Spacing must stay on a 4px rhythm: `gap-1` is 4px, `gap-2` is 8px, `gap-3` is 12px, `gap-4` is 16px, and so on. Do not redefine spacing keys so class numbers mean raw pixels.
 - The app supports light, dark, and system theme preferences. Keep CSS tokens
@@ -124,7 +129,7 @@ rendering problem:
 | Runtime dimensions, safe areas, measurements, responsive transforms, or animation values | `style` | These values do not exist at build time and cannot be represented by static classes. |
 | Fixed illustration artboard coordinates or transforms copied from Figma | NativeWind for static visual tokens; a small, named RN style for geometry only | Preserves exact composition without turning normal app UI into coordinate-based layout. |
 | Static vector artwork with no editable copy, state, or embedded raster data | Imported SVG | Keeps complex vector paths compact when the export is correct and truly static. |
-| Artwork containing product copy, theme tokens, native icons/images, state, or data that must remain inspectable | A native React Native module | Keeps content maintainable and testable instead of hiding it in generated vector paths. |
+| Artwork containing product copy, runtime theme tokens, accessibility-responsive layout, native icons/images, state, or data that must remain inspectable | A native React Native module | Keeps content maintainable, testable, and responsive to runtime theme/content-size changes instead of hiding it in generated vector paths. |
 | Photographic or intentionally raster artwork | PNG/WebP through `Image` | Avoids pretending raster content is vector data. |
 
 An SVG is a rendering format, not the source of truth for mutable product copy.

@@ -1,0 +1,20 @@
+--- choice-list.tsx
++++ candidate-choice-list.tsx
+@@ -20 +20 @@
+-export function ChoiceList({
++export function CandidateChoiceList({
+@@ -92 +92 @@
+-			[colors.border, colors.primary],
++			[colors.border, "#007DA8"],
+@@ -99 +99 @@
+-			[colors.light2, colors.primary],
++			[colors.light2, "#007DA8"],
+@@ -106 +106 @@
+-			[colors.secondaryText, colors.onPrimary],
++			[colors.secondaryText, "#FFFFFF"],
+@@ -151 +151 @@
+-						style={checkStyle}
++						style={[checkStyle, { backgroundColor: "#007DA8" }]}
+@@ -153 +153 @@
+-						<Check size={14} color={colors.onPrimary} strokeWidth={2.8} />
++						<Check size={14} color={"#FFFFFF"} strokeWidth={2.8} />

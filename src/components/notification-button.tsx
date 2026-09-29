@@ -26,12 +26,7 @@ export function NotificationButton() {
 					: "In-App-Mitteilungen öffnen"
 			}
 			onPress={() => router.push("/notifications")}
-			className="h-14 w-14 items-center justify-center rounded-full bg-card"
-			style={{
-				borderWidth: 1,
-				borderColor: colors.border,
-				boxShadow: "0 10px 22px rgba(21, 29, 48, 0.08)",
-			}}
+			className="h-14 w-14 items-center justify-center rounded-full border border-border bg-card"
 		>
 			<Bell size={22} color={colors.text} strokeWidth={2.2} />
 			{hasUnread ? (

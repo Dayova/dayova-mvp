@@ -1,0 +1,20 @@
+{
+  "capturedOn": "2026-09-24",
+  "beforeCommit": "b0b9b73c25a7b8c0751eb42a9d07387472438df2",
+  "afterButtonSha256": "1e6752a417494354b6a8048ba2a8dd31adedf5c4934001273e973bbe9f06e30c",
+  "device": "DAY_169_Pixel_9",
+  "fontScale": 2.0,
+  "appearance": "dark",
+  "screenshots": [
+    {
+      "name": "privacy-link-before-fix.png",
+      "url": "https://github.com/user-attachments/assets/b12cf150-8a18-48f5-a2ab-9af18886c674",
+      "sha256": "0cfa76206446175ecce631b1360cf2e23fbab776073ddc98f35a31e8f46c9d32"
+    },
+    {
+      "name": "privacy-link-after-fix.png",
+      "url": "https://github.com/user-attachments/assets/5a5893e7-49fd-46df-a685-fb0a796e83f0",
+      "sha256": "4c4ff4987911889e2d9cc6c5ce02137d521ea1deb746dfeac9375a28246bcd1a"
+    }
+  ]
+}

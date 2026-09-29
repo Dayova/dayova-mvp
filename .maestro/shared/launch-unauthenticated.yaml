@@ -1,0 +1,59 @@
+appId: ${APP_ID}
+---
+# Fail before clearing data if someone supplies a production app ID.
+- assertTrue: ${ APP_ID == 'com.dayova.dev' || APP_ID == 'de.dayova.app-dev' }
+# Use a disposable emulator/simulator: clearKeychain clears the entire iOS Keychain.
+- launchApp:
+    clearState: true
+    clearKeychain: true
+    permissions:
+      all: deny
+# Optional local dev-client bootstrap; this loads the root, not a login deep link.
+- runFlow:
+    when:
+      true: ${typeof DEV_SERVER_URL != 'undefined' && DEV_SERVER_URL != ''}
+    commands:
+      - extendedWaitUntil:
+          visible: Development Build
+          timeout: 60000
+      - openLink:
+          # iOS reads the inner server URL; keep the outer flag for Android compatibility.
+          link: >-
+            ${'exp+dayova://expo-development-client/?url=' +
+            encodeURIComponent(DEV_SERVER_URL + (DEV_SERVER_URL.indexOf('?') == -1 ? '?' : '&') +
+            'disableOnboarding=1') + '&disableOnboarding=1'}
+      # iOS can require confirmation on the first custom-scheme launch.
+      - runFlow:
+          when:
+            visible: 'Open in .Dayova.\?'
+          commands:
+            - tapOn: Open
+      - extendedWaitUntil:
+          visible: 'Login|Reload'
+          timeout: 60000
+      # SDK 57 can show the developer menu even with onboarding disabled.
+      - runFlow:
+          when:
+            visible: Reload
+          commands:
+            - tapOn: Close
+- extendedWaitUntil:
+    visible:
+      text: Login
+      enabled: true
+    timeout: 60000
+- assertVisible: Registrierung
+# Disabling analytics intentionally produces this SDK warning in development.
+# Its LogBox banner can cover bottom actions. Dismiss only this exact warning;
+# Other error messages are not matched by this condition.
+- runFlow:
+    when:
+      true: ${typeof DEV_SERVER_URL != 'undefined' && DEV_SERVER_URL != ''}
+      visible: "You must pass your PostHog project's api key[.] The client will be disabled[.]"
+    commands:
+      - tapOn: "You must pass your PostHog project's api key[.] The client will be disabled[.]"
+      - assertVisible: "You must pass your PostHog project's api key[.] The client will be disabled[.]"
+      - tapOn: Dismiss
+# The welcome controls become accessible before their entrance animation settles.
+- waitForAnimationToEnd:
+    timeout: 5000

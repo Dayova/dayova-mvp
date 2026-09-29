@@ -1,5 +1,3 @@
-import type { DayovaBillingPeriod } from "./subscription-pricing";
-
 const ENTITLEMENT_ID = "dayova_full_access";
 const OFFERING_ID = "default";
 const PACKAGE_BILLING_PERIOD = {
@@ -12,7 +10,10 @@ type RevenueCatPackage = {
 	packageType?: string;
 	product: {
 		identifier: string;
+		price: number;
+		currencyCode: string;
 		priceString: string;
+		pricePerMonth?: number | null;
 		pricePerMonthString?: string | null;
 	};
 };
@@ -22,17 +23,6 @@ type RevenueCatCustomerInfo = {
 		active: Record<string, unknown>;
 	};
 };
-
-type RevenueCatWebPurchaseRedemption = {
-	redemptionLink: string;
-};
-
-type RevenueCatWebPurchaseRedemptionResult =
-	| { result: "SUCCESS"; customerInfo: RevenueCatCustomerInfo }
-	| { result: "ERROR"; error: unknown }
-	| { result: "PURCHASE_BELONGS_TO_OTHER_USER" }
-	| { result: "INVALID_TOKEN" }
-	| { result: "EXPIRED"; obfuscatedEmail: string };
 
 type RevenueCatOffering = {
 	availablePackages: RevenueCatPackage[];
@@ -49,49 +39,62 @@ export type RevenueCatSdkBoundary = {
 		packageToPurchase: RevenueCatPackage,
 	) => Promise<{ customerInfo: RevenueCatCustomerInfo }>;
 	restorePurchases: () => Promise<RevenueCatCustomerInfo>;
-	parseAsWebPurchaseRedemption: (
-		url: string,
-	) => Promise<RevenueCatWebPurchaseRedemption | null>;
-	redeemWebPurchase: (
-		redemption: RevenueCatWebPurchaseRedemption,
-	) => Promise<RevenueCatWebPurchaseRedemptionResult>;
 };
 
 export type DayovaStorePlan = {
 	billingPeriod: DayovaBillingPeriod;
 	packageIdentifier: keyof typeof PACKAGE_BILLING_PERIOD;
 	price: string;
+	pricePerMonth: string | null;
 	productIdentifier: string;
 };
+
+export type DayovaBillingPeriod = "annual" | "monthly";
 
 type PurchaseResult =
 	| { status: "purchased" }
 	| { status: "cancelled" }
 	| { status: "notEntitled" };
 
-export type WebPurchaseRedemptionResult =
-	| { status: "redeemed" }
-	| { status: "expired"; obfuscatedEmail: string }
-	| { status: "invalidToken" }
-	| { status: "belongsToOtherUser" }
-	| { status: "error"; error: unknown };
-
 const isDayovaPackage = (
 	packageIdentifier: string,
 ): packageIdentifier is DayovaStorePlan["packageIdentifier"] =>
 	packageIdentifier === "$rc_annual" || packageIdentifier === "$rc_monthly";
+
+const formatStorePrice = (
+	amount: number | null | undefined,
+	currencyCode: string,
+) => {
+	if (amount == null || !Number.isFinite(amount)) return null;
+	try {
+		// Match the German paywall copy, even when the store uses an English locale.
+		return new Intl.NumberFormat("de-DE", {
+			style: "currency",
+			currency: currencyCode,
+		}).format(amount);
+	} catch {
+		return null;
+	}
+};
 
 const toStorePlan = (
 	revenueCatPackage: RevenueCatPackage,
 ): DayovaStorePlan | null => {
 	const packageIdentifier = revenueCatPackage.identifier;
 	if (!isDayovaPackage(packageIdentifier)) return null;
+	const product = revenueCatPackage.product;
 
 	return {
 		billingPeriod: PACKAGE_BILLING_PERIOD[packageIdentifier],
 		packageIdentifier,
-		price: revenueCatPackage.product.priceString,
-		productIdentifier: revenueCatPackage.product.identifier,
+		price:
+			formatStorePrice(product.price, product.currencyCode) ??
+			product.priceString,
+		pricePerMonth:
+			formatStorePrice(product.pricePerMonth, product.currencyCode) ??
+			product.pricePerMonthString ??
+			null,
+		productIdentifier: product.identifier,
 	};
 };
 
@@ -172,30 +175,6 @@ export const createRevenueCatClient = ({
 			return hasFullAccess(customerInfo)
 				? { status: "purchased" }
 				: { status: "notEntitled" };
-		},
-		redeemWebPurchase: async (
-			url: string,
-		): Promise<WebPurchaseRedemptionResult> => {
-			await ready;
-			const redemption = await sdk.parseAsWebPurchaseRedemption(url);
-			if (!redemption) return { status: "invalidToken" };
-
-			const result = await sdk.redeemWebPurchase(redemption);
-			switch (result.result) {
-				case "SUCCESS":
-					return { status: "redeemed" };
-				case "EXPIRED":
-					return {
-						status: "expired",
-						obfuscatedEmail: result.obfuscatedEmail,
-					};
-				case "PURCHASE_BELONGS_TO_OTHER_USER":
-					return { status: "belongsToOtherUser" };
-				case "INVALID_TOKEN":
-					return { status: "invalidToken" };
-				case "ERROR":
-					return { status: "error", error: result.error };
-			}
 		},
 	};
 };

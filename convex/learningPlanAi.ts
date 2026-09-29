@@ -2774,6 +2774,7 @@ export const evaluateWrittenAnswer = action({
 			};
 		} else {
 			try {
+				await ctx.runQuery(internal.aiConsent.requireCurrentConsent, {});
 				const model = createVertexModel();
 				const result = await withStructuredOutputErrorHandling(
 					() =>
@@ -2891,6 +2892,7 @@ export const ensureSessionContent = action({
 				"Die Fragen des Wissenschecks fehlen. Erstelle den Lernplan erneut.",
 			);
 		}
+		await ctx.runQuery(internal.aiConsent.requireCurrentConsent, {});
 		const claimed: boolean = await ctx.runMutation(
 			internal.learningPlans.claimSessionContentGeneration,
 			{ sessionId: args.sessionId },
@@ -2926,6 +2928,7 @@ export const retryFailedSessionContent = action({
 		failedSessionCount: number;
 		isReady: boolean;
 	}> => {
+		await ctx.runQuery(internal.aiConsent.requireCurrentConsent, {});
 		const generationId = crypto.randomUUID();
 		const sessionIds: Id<"learningPlanSessions">[] = await ctx.runMutation(
 			internal.learningPlans.claimIncompleteContentGenerationSessions,
@@ -3000,6 +3003,7 @@ export const addSessionWithContent = action({
 		ctx,
 		args,
 	): Promise<{ sessionId: Id<"learningPlanSessions">; itemCount: number }> => {
+		await ctx.runQuery(internal.aiConsent.requireCurrentConsent, {});
 		const sessionId: Id<"learningPlanSessions"> = await ctx.runMutation(
 			api.learningPlans.addSession,
 			{ learningPlanId: args.learningPlanId },
@@ -3026,6 +3030,7 @@ export const generateKnowledgeQuestions = action({
 		learningPlanId: v.id("learningPlans"),
 	},
 	handler: async (ctx, args): Promise<{ questionCount: number }> => {
+		await ctx.runQuery(internal.aiConsent.requireCurrentConsent, {});
 		const context: LearningPlanAiContext = await ctx.runQuery(
 			internal.learningPlans.getAiContext,
 			{ learningPlanId: args.learningPlanId },
@@ -3193,6 +3198,7 @@ export const generatePlan = action({
 		contentSessionCount: number;
 		compositionEligibleSessionCount: number;
 	}> => {
+		await ctx.runQuery(internal.aiConsent.requireCurrentConsent, {});
 		const generationId = globalThis.crypto.randomUUID();
 		await ctx.runMutation(internal.learningPlans.beginContentGeneration, {
 			learningPlanId: args.learningPlanId,

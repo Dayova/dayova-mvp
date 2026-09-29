@@ -6,6 +6,7 @@ import { api } from "#convex/_generated/api";
 import { useAccess } from "~/context/AccessContext";
 import { useAuthSession } from "~/context/AuthContext";
 import { logDiagnosticError } from "~/lib/diagnostics";
+import { isOnboardingSettled } from "~/lib/auth-routing";
 import { DAYOVA_NOTIFICATION_CHANNEL_ID } from "~/lib/local-notification-scheduler";
 import type { NotificationPlanningPreferences } from "~/lib/notification-planner";
 import {
@@ -29,8 +30,8 @@ const hasNotificationPermission = (
 	permissions.ios?.status === notifications.IosAuthorizationStatus.PROVISIONAL;
 
 export function TrialReminderSync() {
-	const { access } = useAccess();
-	const { user } = useAuthSession();
+	const { access, isAccessLoading } = useAccess();
+	const { onboardingCompletionStatus, user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const preferences = useQuery(
 		api.notifications.getPreferences,
@@ -38,6 +39,7 @@ export function TrialReminderSync() {
 	) as NotificationPlanningPreferences | undefined;
 	const preferencesLoaded = preferences !== undefined;
 	const systemNotificationsEnabled = preferences?.systemNotificationsEnabled;
+	const onboardingIsSettled = isOnboardingSettled(onboardingCompletionStatus);
 	const syncQueueRef = useRef<Promise<void>>(Promise.resolve());
 
 	useEffect(() => {
@@ -45,7 +47,12 @@ export function TrialReminderSync() {
 		if (!notifications) return;
 
 		const syncReminder = async () => {
-			if (!user || !access) {
+			if (!user) {
+				await syncTrialReminderNotification(notifications, null);
+				return;
+			}
+			if (isAccessLoading || !onboardingIsSettled) return;
+			if (!access) {
 				await syncTrialReminderNotification(notifications, null);
 				return;
 			}
@@ -91,7 +98,14 @@ export function TrialReminderSync() {
 				});
 			});
 		syncQueueRef.current = nextSync;
-	}, [access, preferencesLoaded, systemNotificationsEnabled, user]);
+	}, [
+		access,
+		isAccessLoading,
+		onboardingIsSettled,
+		preferencesLoaded,
+		systemNotificationsEnabled,
+		user,
+	]);
 
 	return null;
 }

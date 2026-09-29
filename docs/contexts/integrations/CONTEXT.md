@@ -108,6 +108,12 @@ internal users.
 
 ## Notes
 
+- The student CRM is a read-only projection of Convex effective access, joined
+  through Clerk User ID. New authenticated accounts queue creation of a minimal
+  CRM contact; collisions require review. See [DAY-366 runtime contract and runbook](crm-sync.md)
+  for matching, dry-run, schema, deployment isolation and recovery. PostHog never
+  determines paid access; Notion edits never change it.
+
 - PostHog identifies validation-phase students with Clerk's stable user ID. The Validation Student Code should live in Dayova data, not Clerk auth metadata, and should be sent to PostHog as a profile property when present.
 - PostHog tracking is identified-only during the Validation Phase. Anonymous pre-auth app activity, autocapture, lifecycle events, and session replay are intentionally out of scope unless login or onboarding becomes a measured blocker.
 - Names, email addresses, birth dates, avatar URLs, school names, raw notes, filenames, uploaded content, learner answers, transcripts, and diagnostic error detail are never custom person or event properties.
@@ -115,40 +121,10 @@ internal users.
 - Capture integration ownership, external IDs, sync boundaries, and migration decisions here.
 - Put integrations ADRs in `docs/contexts/integrations/adr/`.
 
-## RevenueCat web purchase redemption
+## Store purchase boundary
 
-The public website sells RevenueCat Web Billing subscriptions anonymously. It
-must not accept a browser-controlled Clerk or RevenueCat App User ID. RevenueCat
-creates a one-time Redemption Link after checkout, includes it as `redeem_url`
-on the configured success redirect, and sends it to the billing email.
-
-The mobile app owns the account-binding step:
-
-1. Expo registers the RevenueCat web config's generated `rc-…` scheme from the
-   build-time `REVENUECAT_REDEMPTION_SCHEME` environment value.
-2. `src/app/+native-intent.tsx` captures the link in memory without placing the
-   redemption token in an Expo route or persisted storage.
-3. After Clerk and Convex identify the learner, the app configures RevenueCat
-   with the Clerk user ID, redeems the purchase, then calls Convex to verify the
-   canonical RevenueCat subscriber snapshot.
-4. Convex grants access only from that server-verified snapshot. The webhook
-   refreshes every known Dayova account in the bounded identity fields,
-   including redemption/transfer destinations and transfer sources, so access
-   is both granted and revoked from canonical subscriber snapshots. A verified
-   active purchase creates paid access directly when the account has no prior
-   trial entitlement; redeeming a purchase must never require trial activation.
-
-The website and every mobile build environment must use the matching scheme
-from the same RevenueCat web config. Enabling Redemption Links requires a new
-native build; an OTA update cannot add a URL scheme. Test the complete sandbox
-purchase and email-link flow before enabling production Redemption Links.
-Local development builds register Dayova's sandbox redemption scheme by
-default so rebuilding the simulator app cannot silently remove link support.
-Preview and production builds still take the scheme from
-`REVENUECAT_REDEMPTION_SCHEME` in their EAS environment.
-
-References:
-
-- [RevenueCat Redemption Links](https://www.revenuecat.com/docs/web/redemption-links)
-- [RevenueCat Web Purchase Links](https://www.revenuecat.com/docs/web/web-billing/web-purchase-links)
-- [RevenueCat webhook event types](https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields)
+The mobile app sells digital access only through Apple In-App Purchase or
+Google Play Billing. Website billing is a separate channel: the app must not
+register RevenueCat redemption URL schemes, process web-purchase redemption
+links, or direct customers to website checkout. Mobile access continues to be
+derived from RevenueCat subscriber snapshots verified by Convex.

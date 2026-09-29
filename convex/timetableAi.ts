@@ -67,6 +67,7 @@ export const extract = action({
 		timetableId: v.id("timetables"),
 	},
 	handler: async (ctx, args): Promise<{ lessonCount: number }> => {
+		await ctx.runQuery(internal.aiConsent.requireCurrentConsent, {});
 		const context: ExtractionContext = await ctx.runQuery(
 			internal.timetables.getExtractionContext,
 			{ timetableId: args.timetableId },

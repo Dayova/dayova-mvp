@@ -40,10 +40,6 @@ const otherIdentity = {
 
 const onboardingAnswers = (
 	overrides: Partial<{
-		studyTime: string;
-		strength: string;
-		challenge: string;
-		goal: string;
 		state: string;
 		schoolType: string;
 		grade: string;
@@ -52,10 +48,6 @@ const onboardingAnswers = (
 		learningTime: string;
 	}> = {},
 ) => ({
-	studyTime: "30 min",
-	strength: "Mathe",
-	challenge: "Zeitmanagement",
-	goal: "Bessere Noten",
 	state: "Sachsen",
 	schoolType: "gymnasium",
 	grade: "9",
@@ -135,6 +127,91 @@ test("onboarding persists canonical learning times visible to settings and plans
 	expect(context.learningTimes).toMatchObject([
 		{ dayOfWeek: 1, startTime: "16:30", endTime: "17:15" },
 		{ dayOfWeek: 3, startTime: "16:30", endTime: "17:15" },
+	]);
+});
+
+test("release onboarding payload creates operational windows without decorative answers", async () => {
+	const t = convexTest(schema, modules).withIdentity(userIdentity);
+	const userId = await syncTestUser(t, { name: "User" });
+
+	await t.mutation(api.users.saveOnboardingAnswers, {
+		answers: {
+			dailySchoolTime: "30 min",
+			studyDays: "Montag, Donnerstag, Samstag",
+			learningTime: "16:30",
+			state: "Sachsen",
+			schoolType: "gymnasium",
+			grade: "9",
+		},
+	});
+
+	await expect(t.query(api.learningTimes.listMine, {})).resolves.toMatchObject([
+		{ dayOfWeek: 1, startTime: "16:30", endTime: "17:00" },
+		{ dayOfWeek: 4, startTime: "16:30", endTime: "17:00" },
+		{ dayOfWeek: 6, startTime: "16:30", endTime: "17:00" },
+	]);
+	const savedKeys = await t.run(async (ctx) => {
+		const answers = await ctx.db
+			.query("userOnboardingAnswers")
+			.withIndex("by_userId", (query) => query.eq("userId", userId))
+			.take(20);
+		const keys: string[] = [];
+		for (const answer of answers) {
+			const question = await ctx.db.get(
+				"onboardingQuestions",
+				answer.questionId,
+			);
+			if (question) keys.push(question.key);
+		}
+		return keys.sort();
+	});
+	expect(savedKeys).toEqual([
+		"dailySchoolTime",
+		"grade",
+		"learningTime",
+		"schoolType",
+		"state",
+		"studyDays",
+	]);
+});
+
+test("accepts but never persists legacy decorative answers from installed clients", async () => {
+	const t = convexTest(schema, modules).withIdentity(userIdentity);
+	const userId = await syncTestUser(t, { name: "User" });
+	const legacyPayload = {
+		...onboardingAnswers(),
+		studyTime: "30 min",
+		strength: "Mathe",
+		challenge: "Zeitmanagement",
+		goal: "Bessere Noten",
+	};
+
+	await t.mutation(api.users.saveOnboardingAnswers, {
+		answers: legacyPayload,
+	});
+	const savedKeys = await t.run(async (ctx) => {
+		const answers = await ctx.db
+			.query("userOnboardingAnswers")
+			.withIndex("by_userId", (query) => query.eq("userId", userId))
+			.take(20);
+		const keys = await Promise.all(
+			answers.map(async (answer) => {
+				const question = await ctx.db.get(
+					"onboardingQuestions",
+					answer.questionId,
+				);
+				return question?.key;
+			}),
+		);
+		return keys.filter((key): key is string => Boolean(key)).sort();
+	});
+	expect(savedKeys).toEqual([
+		"dailySchoolTime",
+		"grade",
+		"learningTime",
+		"schoolType",
+		"state",
+		"studyDays",
 	]);
 });
 
@@ -779,4 +856,26 @@ test("profile sync maps generic legacy values and clears school names", async ()
 				.unique(),
 		),
 	).resolves.toMatchObject({ answer: "gymnasium" });
+});
+
+test("profile email follows Clerk's verified primary address", async () => {
+	const backend = convexTest(schema, modules);
+	const oldToken = backend.withIdentity(userIdentity);
+	await syncTestUser(oldToken, { name: "User" });
+
+	// A profile write cannot claim an unverified address while the JWT is stale.
+	await oldToken.mutation(api.users.updateProfile, {
+		email: "new@example.com",
+	});
+	await oldToken.mutation(api.users.syncCurrentUser, { name: "User" });
+	await expect(oldToken.query(api.users.getMe, {})).resolves.toMatchObject({
+		email: userIdentity.email,
+	});
+
+	await backend
+		.withIdentity({ ...userIdentity, email: "new@example.com" })
+		.mutation(api.users.syncCurrentUser, { name: "User" });
+	await expect(oldToken.query(api.users.getMe, {})).resolves.toMatchObject({
+		email: "new@example.com",
+	});
 });

@@ -1,12 +1,16 @@
 import { NativeTabs } from "expo-router/unstable-native-tabs";
+import { Platform } from "react-native";
 import { useDayovaTheme } from "~/lib/theme";
 
 export default function AppLayout() {
 	const { colors } = useDayovaTheme();
 
+	// Android's native fallback can retain the old theme until the next tab change.
+	// Keep iOS's adaptive glass background while explicitly updating Android.
 	return (
 		<NativeTabs
 			backBehavior="history"
+			backgroundColor={Platform.OS === "android" ? colors.surface : undefined}
 			iconColor={{
 				default: colors.secondaryText,
 				selected: colors.primaryStrong,
@@ -29,7 +33,7 @@ export default function AppLayout() {
 			labelVisibilityMode="labeled"
 			minimizeBehavior="onScrollDown"
 			rippleColor={colors.systemSubtle}
-			shadowColor={colors.border}
+			shadowColor="transparent"
 			tintColor={colors.primaryStrong}
 		>
 			<NativeTabs.Trigger
@@ -60,30 +64,18 @@ export default function AppLayout() {
 			</NativeTabs.Trigger>
 
 			<NativeTabs.Trigger
-				name="analyse"
-				accessibilityLabel="Analyse"
-				disableAutomaticContentInsets
-			>
-				<NativeTabs.Trigger.Icon
-					md={{ default: "analytics", selected: "analytics" }}
-					sf={{ default: "chart.bar", selected: "chart.bar.fill" }}
-				/>
-				<NativeTabs.Trigger.Label>Analyse</NativeTabs.Trigger.Label>
-			</NativeTabs.Trigger>
-
-			<NativeTabs.Trigger
 				name="settings"
-				accessibilityLabel="Mehr"
+				accessibilityLabel="Einstellungen"
 				disableAutomaticContentInsets
 			>
 				<NativeTabs.Trigger.Icon
-					md={{ default: "more_horiz", selected: "more_horiz" }}
+					md={{ default: "settings", selected: "settings" }}
 					sf={{
-						default: "ellipsis.circle",
-						selected: "ellipsis.circle.fill",
+						default: "gearshape",
+						selected: "gearshape.fill",
 					}}
 				/>
-				<NativeTabs.Trigger.Label>Mehr</NativeTabs.Trigger.Label>
+				<NativeTabs.Trigger.Label>Einstellungen</NativeTabs.Trigger.Label>
 			</NativeTabs.Trigger>
 		</NativeTabs>
 	);

@@ -21,6 +21,13 @@ duplicate, the signed decision.
 
 ## 1. Scope and release provenance
 
+**Release status changed after this audit.** The Play-delivered Android build is
+now Dayova `1.0.5`, version code `23`; see the [current Play release record](../../../release/google-play/README.md).
+The version-20 AAB and `origin/main` commit below are the exact historical
+evidence inspected on August 26, not descriptions of today's distributed
+binary or source. Reinspect build 23 and any replacement before carrying their
+SDK, permission, or age-gate conclusions into current store declarations.
+
 The audit covers the production configuration, direct production dependencies,
 native permissions, mobile data flows, current Convex schema, and every external
 processor reachable from the app or backend at the commits below. It does not
