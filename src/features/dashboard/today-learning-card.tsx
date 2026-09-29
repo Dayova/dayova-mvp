@@ -228,7 +228,7 @@ export function TodayLearningCard({
 				variant="ghost"
 				size="default"
 				className={cn(
-					"mt-2 w-full justify-between bg-transparent py-1 pr-1 pl-4 active:bg-transparent active:opacity-80",
+					"mt-2 max-w-full justify-start gap-3 self-start bg-transparent px-0 py-1 active:bg-transparent active:opacity-80",
 					shouldStackInlineContent && "mt-6",
 				)}
 				disabled={isLoading}
@@ -251,11 +251,8 @@ export function TodayLearningCard({
 					else onOpenFallback();
 				}}
 			>
-				<Text className="flex-1 font-poppins font-semibold text-body-2 text-text dark:text-white">
-					{buttonLabel}
-				</Text>
 				<View
-					className="h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-strong"
+					className="h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-strong"
 					accessible={false}
 					testID="today-learning-action-circle"
 				>
@@ -266,13 +263,16 @@ export function TodayLearningCard({
 						testID="today-learning-action-gradient"
 					/>
 					{createElement(ActionIcon, {
-						size: 22,
+						size: 16,
 						color: DAYOVA_DESIGN_SYSTEM.colors.light1,
 						strokeWidth: 2,
 						testID: "today-learning-action-icon",
 						accessible: false,
 					})}
 				</View>
+				<Text className="shrink font-poppins font-semibold text-body-2 text-text dark:text-white">
+					{buttonLabel}
+				</Text>
 			</Button>
 		</Surface>
 	);

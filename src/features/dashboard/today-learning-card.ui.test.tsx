@@ -70,19 +70,20 @@ const props = {
 };
 
 describe("TodayLearningCard", () => {
-	test("removes the action capsule without moving its label or gradient circle", async () => {
+	test("groups the smaller play circle before the label in a transparent left-aligned action", async () => {
 		const screen = await render(<TodayLearningCard {...props} />);
 		const action = screen.getByRole("button");
 		expect(action.props.className).toContain("bg-transparent");
 		expect(action.props.className).not.toContain("bg-primary/10");
 		expect(action.props.style?.backgroundColor).toBeUndefined();
-		expect(action.props.className).toContain("pr-1");
-		expect(action.props.className).toContain("pl-4");
+		expect(action.props.className).toContain("self-start");
+		expect(action.props.className).toContain("justify-start");
+		expect(action.props.className).toContain("min-h-14");
 		expect(
 			screen.getByTestId("today-learning-action-circle", {
 				includeHiddenElements: true,
 			}).props.className,
-		).toContain("h-12 w-12");
+		).toContain("h-8 w-8");
 		expect(
 			screen.getByTestId("today-learning-action-gradient", {
 				includeHiddenElements: true,

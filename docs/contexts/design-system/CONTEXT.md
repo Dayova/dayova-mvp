@@ -131,7 +131,7 @@ gradient button and the black button using the primary text color `#1A1A1A`.
 The Today hero is an explicit exception: its shared Button `ghost` variant is
 transparent, without a visible surrounding capsule; the Today caller uses dark
 action text in light mode and white in dark mode, as does the calendar's Heute label.
-A primary-interactive gradient circle (48px, 4px inset) highlights the white action
+A primary-interactive gradient circle (32px, before the label) highlights the white action
 icon inside the 56px hit area. The Today hero explicitly permits a second, subtle
 theme-derived background gradient, per Philipp's 29 September reference.
 Other screens retain the existing appearances. Both
@@ -259,11 +259,11 @@ heights allow longer agendas to scroll vertically in the existing parent.
 The Today hero combines the shared Surface with a smaller native study
 illustration on the right (DAY-490, Philipp's mixed-reference follow-up).
 Title and short supporting copy are left-aligned. A shared transparent `ghost` Button
-sits inside the card at the bottom, spanning the content width, with “Jetzt lernen”
-or “Weiterlernen” in body-2 SemiBold on the left and white Hugeicons Play in a
-48px primary-interactive gradient circle on the right, with 4px surrounding space.
-Philipp's follow-up removes only the long action fill, preserving the label and
-circle positions, 56px hit area, and opacity press feedback. The hero blends
+sits inside the card at the bottom left. A 32px primary-interactive gradient circle
+with white Hugeicons Play precedes “Jetzt lernen” or “Weiterlernen” in body-2
+SemiBold, separated by 12px. The compact group has no surrounding fill and keeps
+a 56px minimum hit height and opacity press feedback. Card dimensions remain
+unchanged. The hero blends
 16% primary at the left into 4% at 55% of its width, holding that color across the
 illustration area. The illustration's lower fade uses this same right-side opaque
 fill so it has no contrasting edge. The card has a
