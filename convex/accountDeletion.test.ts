@@ -68,6 +68,20 @@ test("deletes the authenticated account data in bounded batches", async () => {
 			startTime: "16:00",
 			updatedAt: 1,
 		});
+		await ctx.db.insert("personalSubjects", {
+			ownerTokenIdentifier: userIdentity.tokenIdentifier,
+			name: "Französisch",
+			normalizedName: "französisch",
+			createdAt: 1,
+			updatedAt: 1,
+		});
+		await ctx.db.insert("personalSubjects", {
+			ownerTokenIdentifier: otherIdentity.tokenIdentifier,
+			name: "Latein",
+			normalizedName: "latein",
+			createdAt: 1,
+			updatedAt: 1,
+		});
 		for (const [id, status] of [
 			[userId, "pending"],
 			[otherUserId, "review"],
@@ -95,12 +109,16 @@ test("deletes the authenticated account data in bounded batches", async () => {
 	expect(requests).toBeGreaterThan(1);
 	const remaining = await backend.run(async (ctx) => ({
 		dayEntries: await ctx.db.query("dayEntries").take(100),
+		personalSubjects: await ctx.db.query("personalSubjects").take(100),
 		onboardingAnswers: await ctx.db.query("userOnboardingAnswers").take(100),
 		users: await ctx.db.query("users").take(100),
 		crmUpdates: await ctx.db.query("crmStudentUpdates").take(100),
 	}));
 	expect(remaining.dayEntries).toMatchObject([
 		{ ownerTokenIdentifier: otherIdentity.tokenIdentifier },
+	]);
+	expect(remaining.personalSubjects).toMatchObject([
+		{ ownerTokenIdentifier: otherIdentity.tokenIdentifier, name: "Latein" },
 	]);
 	expect(remaining.onboardingAnswers).toMatchObject([{ userId: otherUserId }]);
 	expect(remaining.users).toMatchObject([

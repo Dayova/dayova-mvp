@@ -109,6 +109,9 @@ jest.mock("~/components/ui/date-time-picker-sheet", () => ({
 	DateTimePickerSheet: () => null,
 }));
 jest.mock("~/components/ui/select-sheet", () => ({ SelectSheet: () => null }));
+jest.mock("~/components/ui/dayova-sheet-frame", () => ({
+	DayovaSheetFrame: () => null,
+}));
 jest.mock("~/components/ui/icon", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
 	const Icon = (props: Record<string, unknown>) =>

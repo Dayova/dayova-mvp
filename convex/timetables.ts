@@ -15,6 +15,7 @@ import {
 	getConfiguredStorageProvider,
 	getR2ConfigOrThrow,
 } from "./fileStorage";
+import { resolveSubjectSelection } from "./personalSubjects";
 import { timetableTimeToMinutes } from "./timetableOccurrences";
 import {
 	isSupportedTimetableFileType,
@@ -35,6 +36,8 @@ const timetableStatusValidator = v.union(
 export const timetableLessonInputValidator = v.object({
 	dayOfWeek: v.number(),
 	subject: v.string(),
+	personalSubjectId: v.optional(v.id("personalSubjects")),
+	subjectIsOneTime: v.optional(v.boolean()),
 	startTime: v.string(),
 	endTime: v.string(),
 	room: v.optional(v.string()),
@@ -43,6 +46,8 @@ export const timetableLessonInputValidator = v.object({
 export type TimetableLessonInput = {
 	dayOfWeek: number;
 	subject: string;
+	personalSubjectId?: Id<"personalSubjects">;
+	subjectIsOneTime?: boolean;
 	startTime: string;
 	endTime: string;
 	room?: string;
@@ -72,6 +77,8 @@ const publicLesson = (lesson: Doc<"timetableLessons">) => ({
 	id: lesson._id,
 	dayOfWeek: lesson.dayOfWeek,
 	subject: lesson.subject,
+	personalSubjectId: lesson.personalSubjectId ?? null,
+	subjectIsOneTime: lesson.subjectIsOneTime ?? false,
 	startTime: lesson.startTime,
 	endTime: lesson.endTime,
 	room: lesson.room ?? null,
@@ -188,6 +195,10 @@ const normalizeAndValidateLessons = (lessons: TimetableLessonInput[]) => {
 		return {
 			dayOfWeek: lesson.dayOfWeek,
 			subject,
+			...(lesson.personalSubjectId
+				? { personalSubjectId: lesson.personalSubjectId }
+				: {}),
+			...(lesson.subjectIsOneTime ? { subjectIsOneTime: true } : {}),
 			startTime: lesson.startTime,
 			endTime: lesson.endTime,
 			...(room ? { room } : {}),
@@ -229,6 +240,16 @@ const replaceLessons = async (
 	},
 ) => {
 	const normalizedLessons = normalizeAndValidateLessons(lessons);
+	const resolvedLessons = await Promise.all(
+		normalizedLessons.map(async (lesson) => ({
+			...lesson,
+			...(await resolveSubjectSelection(ctx, {
+				ownerTokenIdentifier: timetable.ownerTokenIdentifier,
+				subject: lesson.subject,
+				personalSubjectId: lesson.personalSubjectId,
+			})),
+		})),
+	);
 	const existing = await ctx.db
 		.query("timetableLessons")
 		.withIndex("by_timetableId_and_dayOfWeek_and_startTime", (q) =>
@@ -240,7 +261,7 @@ const replaceLessons = async (
 	}
 
 	const now = Date.now();
-	for (const [sortOrder, lesson] of normalizedLessons.entries()) {
+	for (const [sortOrder, lesson] of resolvedLessons.entries()) {
 		await ctx.db.insert("timetableLessons", {
 			ownerTokenIdentifier: timetable.ownerTokenIdentifier,
 			timetableId: timetable._id,

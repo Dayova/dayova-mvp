@@ -1,11 +1,26 @@
 import { expect, test } from "vitest";
 import type { Id } from "#convex/_generated/dataModel";
 import {
+	examEntryResumePath,
 	examEntrySuccessPath,
 	learningPlanMaterialPath,
 	learningPlanResumePath,
 	learningPlanTopicsPath,
 } from "./creation-routes";
+
+test("preserves a personal subject when resuming exam creation", () => {
+	expect(
+		examEntryResumePath({
+			examDayEntryId: "exam-id",
+			subject: "Astronomie",
+			personalSubjectId: "personal-subject-id",
+			examTypeLabel: "Klausur",
+			examDateKey: "2026-09-30",
+			durationMinutes: 90,
+			topicDescription: "Sternentwicklung",
+		}),
+	).toContain("personalSubjectId=personal-subject-id");
+});
 
 test("builds the exam confirmation route for a saved materialless exam", () => {
 	expect(

@@ -10,6 +10,7 @@ import { act, fireEvent, render } from "@testing-library/react-native";
 import type { ReactElement, ReactNode } from "react";
 import { AccessibilityInfo, BackHandler, Platform, View } from "react-native";
 import { DayovaSheetFrame } from "./dayova-sheet-frame";
+import { Input } from "./input";
 import {
 	SheetAccessibilityProvider,
 	useSheetAccessibility,
@@ -119,6 +120,11 @@ jest.mock("@gorhom/bottom-sheet", () => {
 		BottomSheetBackdrop: (props: Record<string, unknown>) =>
 			React.createElement("BottomSheetBackdrop", props),
 		BottomSheetModal,
+		BottomSheetTextInput: (props: Record<string, unknown>) =>
+			React.createElement("TextInput", {
+				...props,
+				testID: "sheet-native-input",
+			}),
 		BottomSheetFooter: ({ children }: { children?: ReactNode }) =>
 			React.createElement("BottomSheetFooter", {}, children),
 		BottomSheetScrollView: ({ children, ...props }: { children?: ReactNode }) =>
@@ -129,6 +135,27 @@ jest.mock("@gorhom/bottom-sheet", () => {
 });
 
 describe("DayovaSheetFrame", () => {
+	test("registers sheet inputs with the keyboard-aware primitive only inside the sheet", async () => {
+		const onChangeText = jest.fn();
+		const screen = await render(
+			<View>
+				<Input accessibilityLabel="Outside" />
+				<DayovaSheetFrame visible onClose={() => {}} title="Input test">
+					<Input accessibilityLabel="Inside" onChangeText={onChangeText} />
+				</DayovaSheetFrame>
+			</View>,
+		);
+		expect(screen.getByLabelText("Inside").props.testID).toBe(
+			"sheet-native-input",
+		);
+		expect(screen.queryByLabelText("Outside")).toBeNull();
+		expect(
+			screen.getByLabelText("Outside", { includeHiddenElements: true }).props
+				.testID,
+		).toBeUndefined();
+		await fireEvent.changeText(screen.getByLabelText("Inside"), "Name");
+		expect(onChangeText).toHaveBeenCalledWith("Name");
+	});
 	let animationFrames: FrameRequestCallback[];
 	let focusSpy: jest.SpiedFunction<
 		typeof AccessibilityInfo.setAccessibilityFocus
