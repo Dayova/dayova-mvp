@@ -1,5 +1,6 @@
 import type { DayEntry } from "~/types/dayEntries";
 
+/** Summarizes today's explicit learning-session completion, with a loading fallback. */
 export function getTodaySummary(entries: DayEntry[] | undefined) {
 	if (!entries) return "Dein nächster Lernschritt und deine Woche.";
 	const sessions = entries.filter(

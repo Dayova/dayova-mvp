@@ -12,6 +12,7 @@ import {
 	getAgendaEntryTitle,
 } from "./dashboard-agenda";
 
+/** Displays an entry with completion derived from its explicit state, not elapsed time. */
 function AgendaRow({
 	item,
 	onOpenItem,
@@ -147,6 +148,7 @@ function AgendaRow({
 	);
 }
 
+/** Displays a day's compact entries or a non-interactive empty state. */
 export function CompactDayAgenda({
 	items,
 	isLoading,

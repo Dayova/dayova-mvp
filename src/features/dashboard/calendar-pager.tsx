@@ -25,8 +25,6 @@ export function CalendarPager({
 	const index = Math.max(0, keys.indexOf(selectedKey));
 	const visibleIndex = useRef(index);
 	const dragging = useRef(false);
-	const targetIndex = useRef(index);
-	targetIndex.current = index;
 	const height = Math.max(
 		minimumHeight,
 		...keys
@@ -87,8 +85,7 @@ export function CalendarPager({
 						if (!dragging.current) return;
 						dragging.current = false;
 						visibleIndex.current = next;
-						if (next !== targetIndex.current && keys[next])
-							onSelect(keys[next]);
+						if (next !== index && keys[next]) onSelect(keys[next]);
 					}}
 					renderItem={({ item: key }) => (
 						<View

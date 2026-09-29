@@ -122,7 +122,6 @@ export function TodayLearningCard({
 				? "Lernplan erstellen"
 				: "Lernpläne ansehen";
 	const metadata = [
-		item?.dayKey !== todayKey ? dayLabel : null,
 		duration != null && duration > 0
 			? `${duration} ${duration === 1 ? "Minute" : "Minuten"}`
 			: null,

@@ -51,6 +51,27 @@ const props = {
 	testID: "pager",
 };
 
+test("drag compares with the latest committed selection and ignores the same day", async () => {
+	const onSelect = jest.fn();
+	const screen = await render(<CalendarPager {...props} onSelect={onSelect} />);
+	await fireEvent(screen.getByTestId("pager-viewport"), "layout", {
+		nativeEvent: { layout: { width: 400 } },
+	});
+	await screen.rerender(
+		<CalendarPager {...props} onSelect={onSelect} selectedKey={keys[2]} />,
+	);
+	await fireEvent(screen.getByTestId("pager"), "scrollBeginDrag");
+	await fireEvent(screen.getByTestId("pager"), "momentumScrollEnd", {
+		nativeEvent: { contentOffset: { x: 800 } },
+	});
+	expect(onSelect).not.toHaveBeenCalled();
+	await fireEvent(screen.getByTestId("pager"), "scrollBeginDrag");
+	await fireEvent(screen.getByTestId("pager"), "momentumScrollEnd", {
+		nativeEvent: { contentOffset: { x: 0 } },
+	});
+	expect(onSelect).toHaveBeenCalledWith(keys[0]);
+});
+
 test("native drag selects the settled day across a month boundary", async () => {
 	const onSelect = jest.fn();
 	const screen = await render(<CalendarPager {...props} onSelect={onSelect} />);

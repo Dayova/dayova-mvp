@@ -8,6 +8,7 @@ type Candidate = FunctionReturnType<
 	typeof api.dashboardNextStep.listCandidates
 >["page"][number];
 
+/** Selects the earliest candidate only after its whole day has been scanned or results end. */
 export function selectNextLearningCandidate(
 	rows: Candidate[],
 	exhausted: boolean,
@@ -26,6 +27,7 @@ export function selectNextLearningCandidate(
 	return { next: settled ? next : undefined, settled };
 }
 
+/** Pages forward until an eligible step is settled; skipped pages never imply an empty state. */
 export function useNextLearningStep(todayKey: string, enabled: boolean) {
 	const { results, status, loadMore } = usePaginatedQuery(
 		api.dashboardNextStep.listCandidates,

@@ -302,7 +302,7 @@ time. The card stays loading until this selection or a genuine end of results;
 it never treats a skipped page as an empty state. Past-day sessions are
 not promoted. The calendar stays visible in all states.
 Without a plan, the same illustrated card shows “Noch kein Lernplan”, a short
-explanation and “Jetzt Lernplan erstellen”. With existing plans but no next
+explanation and “Lernplan erstellen”. With existing plans but no next
 session, it shows “Kein Lernschritt geplant” and “Lernpläne ansehen”.
 This does not claim all work is finished or encourage duplicate plans; the plans
 overview remains the place to inspect incomplete or completed plans.

@@ -53,6 +53,7 @@ export const getAdjacentDashboardDayKey = ({
 	return getDayKey(addDays(selectedDate, direction === "next" ? 1 : -1));
 };
 
+/** Returns Monday through Sunday around a valid day key, preserving invalid input as a singleton. */
 export const getDashboardWeekDayKeys = (selectedDayKey: string) => {
 	const selectedDate = parseDayKey(selectedDayKey);
 	if (!selectedDate) return [selectedDayKey];
@@ -64,6 +65,7 @@ export const getDashboardWeekDayKeys = (selectedDayKey: string) => {
 	);
 };
 
+/** Builds the bounded date-navigation window around the anchor day. */
 export const getDashboardCalendarDayKeys = ({
 	anchorDayKey,
 	radiusInDays = 730,
@@ -81,6 +83,7 @@ export const getDashboardCalendarDayKeys = ({
 	);
 };
 
+/** Prioritizes the selected week and neighboring days within the 31-day query budget. */
 export const getDashboardRelevantDayKeys = ({
 	selectedDayKey,
 	todayKey,
@@ -257,6 +260,7 @@ export const findNextActionableAgendaItemId = ({
 		currentMinutes,
 	})?.entry.id;
 
+/** Finds the earliest unfinished learning session from today, including elapsed times today. */
 export const findNextActionableAgendaItem = ({
 	items,
 	todayKey,
@@ -281,11 +285,11 @@ export const findNextActionableAgendaItem = ({
 					: item.entry.completed !== true),
 		);
 
-// Filter by origin, not subject/title: homework and exams must stay visible.
+/** Filters timetable-origin entries only; homework and exams remain visible. */
 export const getVisibleDashboardEntries = (entries: DayEntry[]): DayEntry[] =>
 	entries.filter((entry) => entry.source !== "timetable");
 
-// A marker represents activity on the day, not remaining work or today's date.
+/** Reports visible activity on a day, including completed entries and past dates. */
 export const hasDashboardDayEntries = (
 	entries: DayEntry[] | undefined,
 ): boolean => getVisibleDashboardEntries(entries ?? []).length > 0;

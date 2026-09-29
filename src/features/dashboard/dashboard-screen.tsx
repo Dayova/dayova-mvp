@@ -79,6 +79,7 @@ const getEntryUrl = (entry: DayEntry, selectedDayLabel: string) => {
 	return `/entry/${encodeURIComponent(entry.id)}?${query}`;
 };
 
+/** Coordinates the independent next-step hero and synchronized calendar/day agenda. */
 export function DashboardScreen() {
 	const { colors } = useDayovaTheme();
 	const router = useRouter();

@@ -5,6 +5,7 @@ import { Text } from "~/components/ui/text";
 import { cn } from "~/lib/utils";
 
 /** Calendar orientation only: the existing week slider owns day selection. */
+/** Shows the selected month and an action to return to today's date. */
 export function DashboardCalendarHeader({
 	selectedDate,
 	onToday,

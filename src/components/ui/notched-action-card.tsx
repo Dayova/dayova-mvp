@@ -103,6 +103,7 @@ const CUBIC_ARC = 0.5522847498;
 
 const pathNumber = (value: number) => Number(value.toFixed(3)).toString();
 
+/** Builds the card outline around the configured action width and rounded notch. */
 function buildNotchedCardPath({
 	actionOffsetBottom,
 	actionOffsetRight,
@@ -207,6 +208,7 @@ function DecorativeAction({
 	);
 }
 
+/** Positions the action in its measured width and height without changing card content. */
 function ActionFrame({
 	actionOffsetBottom,
 	actionOffsetRight,
@@ -243,6 +245,7 @@ function ActionFrame({
 	);
 }
 
+/** Provides the notch action hit area and forwards the card's interaction contract. */
 function ActionPressableFrame({
 	actionAccessibilityHint,
 	actionAccessibilityLabel,
@@ -329,6 +332,7 @@ function ActionGradient({ children }: { children: ReactNode }) {
 	);
 }
 
+/** Renders a measured notched surface with a separately sized accessible action. */
 export function NotchedActionCard({
 	actionIcon,
 	actionOffsetBottom = 0,
@@ -564,6 +568,7 @@ export function NotchedActionCard({
 	);
 }
 
+/** Uses the shared notch geometry with the compact default card height. */
 export function CompactNotchedActionCard({
 	cardHeight = COMPACT_CARD_HEIGHT,
 	...props

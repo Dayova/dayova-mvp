@@ -309,9 +309,9 @@ describe("TodayLearningCard", () => {
 		);
 		expect(screen.getByText(label)).toBeTruthy();
 		expect(screen.getByText("17 min")).toBeTruthy();
-		expect(screen.getByRole("button").props.accessibilityLabel).toContain(
-			label,
-		);
+		const accessibleLabel = screen.getByRole("button").props.accessibilityLabel;
+		expect(accessibleLabel.split(label)).toHaveLength(2);
+		expect(accessibleLabel).toContain("17 Minuten");
 	});
 	test("does not flash the no-plan prompt before data loads", async () => {
 		const screen = await render(

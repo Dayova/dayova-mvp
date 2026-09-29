@@ -116,6 +116,7 @@ function DayCircle({
 	);
 }
 
+/** Renders stationary weekday labels outside the moving week strip. */
 export function CalendarWeekdays() {
 	return (
 		<View className="mb-2 flex-row" testID="calendar-weekdays">
@@ -131,6 +132,7 @@ export function CalendarWeekdays() {
 	);
 }
 
+/** Renders a controlled week with animated selection and entry markers. */
 export function WeekCalendar({
 	weekKey,
 	todayKey,
