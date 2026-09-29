@@ -42,7 +42,7 @@ export function DashboardCalendarHeader({
 				accessibilityLabel="Heute"
 				accessibilityHint="Zeigt den heutigen Tag und die aktuelle Woche an."
 			>
-				<Text className="font-normal text-body-3 text-secondary-text group-active:text-secondary-text">
+				<Text className="font-normal text-body-3 text-text group-active:text-text">
 					Heute
 				</Text>
 			</Button>
