@@ -223,4 +223,3 @@ Gemeinsamer QA-Stand, nicht isolierter PR-Head. Einzelbilder zeigen erhaltene Au
 #708: vollständige native Busy-/Success-/Error- und Screenreader-Abnahme fehlt. #709: kein erfolgreicher neuer Wissenscheck-/Tastatur-/Großschrift-Nachweis. #662: Infrastrukturänderung; relevante CI-/Konfigurationsprotokolle statt sachfremder UI-Bilder erforderlich. #719: separater Android-Schatten-Task enthält den Reporter-Vorher-Beleg; kein neuer exakter Nachher-Beleg in dieser Sammlung. Fehlende Belege bleiben offen.
 
 #657: sieben defekte Branch-Bildverweise durch Commit fd3939533693f168a2bfe943aaadbeae9f8e2343 ersetzt. Browserprüfung am 23.09.2026: alle sieben Bilder geladen (natürliche Breite > 0), erste Vergleichssektion zusätzlich visuell geprüft. Drei exakte historische Vergleichspaare, Trial weiterhin nur Nachher.
-

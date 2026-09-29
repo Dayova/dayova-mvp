@@ -523,4 +523,3 @@ Quelle: DAY-445
 ## Bewusst nicht erneut veröffentlicht
 
 DAY-393/DAY-399: Profilaufnahme mit privater E-Mail; DAY-400: E-Mail-Verifizierung mit privater E-Mail. Originalanhänge bleiben in Linear. DAY-377 enthält Video statt Vorher-Standbild; hier nicht als Bewegungsnachweis ausgewertet. DAY-402 enthält auch Intro-Bilder außerhalb des Welcome-PR-Scopes.
-
