@@ -97,6 +97,14 @@ const config: ExpoConfig = {
 		"expo-router",
 		"expo-status-bar",
 		[
+			"expo-audio",
+			{
+				enableBackgroundPlayback: true,
+				enableMicrophonePermission: false,
+				enableRecording: false,
+			},
+		],
+		[
 			"@clerk/expo",
 			{
 				// Dayova uses its own email/password authentication flow. Clerk's
