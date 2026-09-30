@@ -5,6 +5,11 @@ import { DashboardScreen } from "./dashboard-screen";
 const mockPush = jest.fn();
 const mockNextStep = jest.fn();
 const mockScroll = jest.fn();
+const mockDayQuery = jest.fn();
+const mockSelectionHaptic = jest.fn();
+jest.mock("~/lib/safe-haptics", () => ({
+	triggerSelectionHaptic: (...args: unknown[]) => mockSelectionHaptic(...args),
+}));
 jest.mock("react-native-reanimated", () => ({
 	useReducedMotion: () => false,
 }));
@@ -51,12 +56,14 @@ jest.mock("#convex/_generated/api", () => ({
 }));
 jest.mock("convex/react", () => ({
 	useConvexAuth: () => ({ isAuthenticated: true }),
-	useQuery: (query: string) =>
-		query === "plans"
+	useQuery: (query: string, args: unknown) => {
+		if (query === "days") mockDayQuery(args);
+		return query === "plans"
 			? mockHasPlan
 				? [{ id: "plan", subject: "Italienisch" }]
 				: []
-			: { "2026-09-29": [mockEntry], "2026-09-30": [] },
+			: { "2026-09-29": [mockEntry], "2026-09-30": [] };
+	},
 }));
 jest.mock("./use-next-learning-step", () => ({
 	useNextLearningStep: (...args: unknown[]) => {
@@ -173,6 +180,59 @@ async function renderWithPagers() {
 function pageEvent(keys: string[], key: string) {
 	return { nativeEvent: { contentOffset: { x: keys.indexOf(key) * 400 } } };
 }
+
+test("previewing and reversing a week changes visuals without query churn or haptics", async () => {
+	const screen = await renderWithPagers();
+	const originalQuery = mockDayQuery.mock.calls.at(-1)?.[0];
+	const pager = screen.getByTestId("calendar-week-pager");
+	await fireEvent(pager, "scrollBeginDrag");
+	await fireEvent(pager, "scroll", pageEvent(pager.props.data, "2026-11-02"));
+	expect(
+		screen.getByTestId("calendar-day-pager").props.extraData.selectedKey,
+	).toBe("2026-11-03");
+	expect(mockDayQuery.mock.calls.at(-1)?.[0]).toEqual(originalQuery);
+	expect(mockSelectionHaptic).not.toHaveBeenCalled();
+	// The synchronized day strip finishing its command must not commit the week preview.
+	const day = screen.getByTestId("calendar-day-pager");
+	await fireEvent(
+		day,
+		"momentumScrollEnd",
+		pageEvent(day.props.data, "2026-11-03"),
+	);
+	expect(mockDayQuery.mock.calls.at(-1)?.[0]).toEqual(originalQuery);
+	await fireEvent(
+		screen.getByTestId("calendar-week-pager"),
+		"momentumScrollEnd",
+		pageEvent(pager.props.data, "2026-09-28"),
+	);
+	expect(mockDayQuery.mock.calls.at(-1)?.[0]).toEqual(originalQuery);
+	expect(mockSelectionHaptic).not.toHaveBeenCalled();
+});
+
+test("a settled week updates its query and haptic once, retaining the selected weekday", async () => {
+	const screen = await renderWithPagers();
+	const originalQuery = mockDayQuery.mock.calls.at(-1)?.[0];
+	const pager = screen.getByTestId("calendar-week-pager");
+	await fireEvent(pager, "scrollBeginDrag");
+	await fireEvent(pager, "scroll", pageEvent(pager.props.data, "2026-11-02"));
+	const settled = pageEvent(pager.props.data, "2026-11-02");
+	await fireEvent(
+		screen.getByTestId("calendar-week-pager"),
+		"momentumScrollEnd",
+		settled,
+	);
+	expect(
+		screen.getByTestId("calendar-day-pager").props.extraData.selectedKey,
+	).toBe("2026-11-03");
+	expect(mockDayQuery.mock.calls.at(-1)?.[0]).not.toEqual(originalQuery);
+	expect(mockSelectionHaptic).toHaveBeenCalledTimes(1);
+	await fireEvent(
+		screen.getByTestId("calendar-week-pager"),
+		"momentumScrollEnd",
+		settled,
+	);
+	expect(mockSelectionHaptic).toHaveBeenCalledTimes(1);
+});
 
 test("hero opens its session and agenda opens its plan, both returning to Today", async () => {
 	const screen = await renderWithPagers();
