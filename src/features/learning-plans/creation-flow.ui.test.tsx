@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render } from "@testing-library/react-native";
 import NewEntryScreen from "~/app/(creation)/entry/new";
 import NewLearningPlanScreen from "~/app/(creation)/learning-plans/new";
+import { ROUTES } from "~/lib/routes";
 
 let mockParams: Record<string, string> = {};
 let mockProgress: { currentStep: number; onBack: () => void };
@@ -14,6 +15,7 @@ const mockRouter = {
 	canGoBack: () => true,
 };
 const mockCreateEntry = jest.fn<() => Promise<string>>();
+const mockRedirect = jest.fn();
 const mockUpdateEntry = jest.fn<() => Promise<void>>();
 const mockCapture = jest.fn();
 const mockAvailability = { status: "available" };
@@ -45,6 +47,10 @@ jest.mock("expo-router", () => ({
 	useRouter: () => mockRouter,
 	useLocalSearchParams: () => mockParams,
 	Stack: { Screen: () => null },
+	Redirect: ({ href }: { href: string }) => {
+		mockRedirect(href);
+		return null;
+	},
 }));
 jest.mock("~/features/learning-plans/creation-progress-shell", () => ({
 	useLearningPlanCreationProgress: (configuration: typeof mockProgress) => {
@@ -144,6 +150,20 @@ function followReplacement() {
 	mockRouter.replace.mockClear();
 	return url.pathname;
 }
+
+test("legacy homework creation links return to plans without opening a form", async () => {
+	mockParams = { type: "homework" };
+	await render(<NewEntryScreen />);
+	expect(mockRedirect).toHaveBeenCalledWith(ROUTES.learningPlans);
+	expect(mockCreateEntry).not.toHaveBeenCalled();
+});
+
+test("entry creation without a type starts the learning-plan exam flow", async () => {
+	mockParams = {};
+	const screen = await render(<NewEntryScreen />);
+	expect(mockRedirect).not.toHaveBeenCalled();
+	expect(screen.getByText("Welche Art von Prüfung ist es?")).toBeOnTheScreen();
+});
 
 describe("exam creation across the topics boundary", () => {
 	test("returns from 60% to 50% and can continue again with the same exam", async () => {

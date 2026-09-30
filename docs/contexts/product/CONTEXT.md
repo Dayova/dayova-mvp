@@ -148,6 +148,7 @@ _Avoid_: Treating Generalprobe as a fourth learner-facing phase separate from Pr
 
 ## Contracts and Constraints
 
+- The dashboard and plan-overview add actions start exam-based learning-plan creation directly. The app no longer offers new homework entry; legacy homework remains visible and deletable, while an empty homework tab is hidden. Old `/entry/new?type=homework` links return to the plan overview instead of opening a creation form.
 - Saving an exam is independent from generating a `Persönlicher Lernplan`. Without uploaded school material, keep the exam and a resumable material-missing plan draft in the overview; do not analyze material or create plan sessions.
 - Learning-plan setup asks the learner for the required exam topics before school-material upload. Persist that answer on both the exam entry and its material-missing plan draft so back navigation and later resume retain it. The missing-material prompt maps those topics into concrete upload guidance. Retain the draft when an upload fails or the last school document is removed.
 - Visible Back, iOS edge-swipe, and Android system Back share one creation intent. Later setup screens return to the preceding saved step; leaving the first step of an existing draft requires pause confirmation. Every unaccepted draft remains under `In Erstellung` in the learning-plan overview and resumes at the next incomplete step without presenting setup work as a finished plan.
