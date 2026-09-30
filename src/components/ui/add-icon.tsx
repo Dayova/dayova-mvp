@@ -12,6 +12,10 @@ import { useDayovaTheme } from "~/lib/theme";
 
 const PRIMARY_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 
+// DAY-495: Hugeicons' semantic Plus wrapper supports one stroke color, but the
+// approved add action needs a two-stop stroke gradient. Keep this custom glyph
+// limited to that variant; all other add icons use the Hugeicons wrapper.
+// https://linear.app/dayova/issue/DAY-495/dokumentierte-hugeicons-ausnahme-fur-das-dayova-verlaufs-plus
 function GradientPlus() {
 	return (
 		<Svg width={24} height={24} viewBox="0 0 24 24">
