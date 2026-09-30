@@ -141,6 +141,8 @@ export default defineSchema({
 		schoolType: v.optional(v.string()),
 		state: v.optional(v.string()),
 		avatarUrl: v.optional(v.string()),
+		// Preserves existing device-platform metadata in production profiles.
+		operatingSystems: v.optional(v.array(v.string())),
 		validationStudentCode: v.optional(v.string()),
 		validationRole: v.optional(v.union(v.literal("founder"))),
 		aiConsentStatus: v.optional(
