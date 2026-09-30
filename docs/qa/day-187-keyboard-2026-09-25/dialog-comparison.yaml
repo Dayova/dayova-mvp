@@ -2,6 +2,8 @@ appId: de.dayova.app-dev
 name: DAY-187 native exam type and subject dialog comparison
 ---
 - tapOn:
+    point: 88%,12%
+- tapOn:
     text: Prüfungsart hinzufügen schließen
     optional: true
 - assertVisible: Prüfungsart hinzufügen
