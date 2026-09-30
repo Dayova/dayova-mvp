@@ -191,13 +191,83 @@ test("programmatic acknowledgements do not commit another pager's preview", asyn
 	expect(onSettled).toHaveBeenLastCalledWith(keys[1]);
 });
 
-test("quiet settlement calls the latest callback after preview acknowledgement", async () => {
+test("quiet settlement survives recreated equal keys and calls the latest callback after preview acknowledgement", async () => {
 	jest.useFakeTimers();
 	try {
+		const React = jest.requireActual<typeof import("react")>("react");
+		function ControlledPager({
+			onSettled,
+		}: {
+			onSettled: (key: string) => void;
+		}) {
+			const [selected, setSelected] = React.useState(keys[0]);
+			return (
+				<CalendarPager
+					{...props}
+					keys={[...keys]}
+					selectedKey={selected}
+					onSelect={setSelected}
+					onSettled={onSettled}
+				/>
+			);
+		}
 		const previous = jest.fn();
 		const current = jest.fn();
+		const screen = await render(<ControlledPager onSettled={previous} />);
+		await fireEvent(screen.getByTestId("pager-viewport"), "layout", {
+			nativeEvent: { layout: { width: 400 } },
+		});
+		await fireEvent(screen.getByTestId("pager"), "scroll", {
+			nativeEvent: { contentOffset: { x: 400 } },
+		});
+		await screen.rerender(<ControlledPager onSettled={current} />);
+		await act(() => jest.advanceTimersByTime(120));
+		expect(previous).not.toHaveBeenCalled();
+		expect(current).toHaveBeenCalledWith(keys[1]);
+	} finally {
+		jest.useRealTimers();
+	}
+});
+
+test("native settlement acknowledges duplicate ends once and resets for new navigation", async () => {
+	jest.useFakeTimers();
+	try {
+		const onSettled = jest.fn();
 		const screen = await render(
-			<CalendarPager {...props} onSettled={previous} />,
+			<CalendarPager {...props} onSettled={onSettled} />,
+		);
+		await fireEvent(screen.getByTestId("pager-viewport"), "layout", {
+			nativeEvent: { layout: { width: 400 } },
+		});
+		const pager = screen.getByTestId("pager");
+		const event = { nativeEvent: { contentOffset: { x: 400 } } };
+		await fireEvent(pager, "scroll", event);
+		await act(() => jest.advanceTimersByTime(120));
+		await fireEvent(pager, "momentumScrollEnd", event);
+		await fireEvent(pager, "momentumScrollEnd", event);
+		expect(onSettled.mock.calls).toEqual([[keys[1]]]);
+		await fireEvent(pager, "scrollBeginDrag");
+		await fireEvent(pager, "momentumScrollEnd", event);
+		expect(onSettled.mock.calls).toEqual([[keys[1]], [keys[1]]]);
+		await fireEvent(pager, "scroll", {
+			nativeEvent: { contentOffset: { x: 600 } },
+		});
+		await fireEvent(pager, "momentumScrollEnd", event);
+		expect(onSettled).toHaveBeenCalledTimes(3);
+	} finally {
+		jest.useRealTimers();
+	}
+});
+
+test.each([
+	"keys",
+	"width",
+])("pending quiet settlement cancels when %s change", async (change) => {
+	jest.useFakeTimers();
+	try {
+		const onSettled = jest.fn();
+		const screen = await render(
+			<CalendarPager {...props} onSettled={onSettled} />,
 		);
 		await fireEvent(screen.getByTestId("pager-viewport"), "layout", {
 			nativeEvent: { layout: { width: 400 } },
@@ -205,12 +275,20 @@ test("quiet settlement calls the latest callback after preview acknowledgement",
 		await fireEvent(screen.getByTestId("pager"), "scroll", {
 			nativeEvent: { contentOffset: { x: 400 } },
 		});
-		await screen.rerender(
-			<CalendarPager {...props} selectedKey={keys[1]} onSettled={current} />,
-		);
+		if (change === "keys")
+			await screen.rerender(
+				<CalendarPager
+					{...props}
+					keys={[keys[0], keys[2]]}
+					onSettled={onSettled}
+				/>,
+			);
+		else
+			await fireEvent(screen.getByTestId("pager-viewport"), "layout", {
+				nativeEvent: { layout: { width: 360 } },
+			});
 		await act(() => jest.advanceTimersByTime(120));
-		expect(previous).not.toHaveBeenCalled();
-		expect(current).toHaveBeenCalledWith(keys[1]);
+		expect(onSettled).not.toHaveBeenCalled();
 	} finally {
 		jest.useRealTimers();
 	}

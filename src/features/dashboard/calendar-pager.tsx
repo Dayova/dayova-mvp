@@ -40,6 +40,7 @@ export function CalendarPager({
 	const visibleIndex = useRef(index);
 	const programmaticTarget = useRef<number | null>(null);
 	const externalSelection = useRef<number | null>(null);
+	const settledNativeIndex = useRef<number | null>(null);
 	const phase = useRef<"idle" | "dragging" | "decelerating">("idle");
 	const nativeSettlement = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const cancelNativeSettlement = useCallback(() => {
@@ -47,9 +48,19 @@ export function CalendarPager({
 			clearTimeout(nativeSettlement.current);
 		nativeSettlement.current = null;
 	}, []);
+	useEffect(() => cancelNativeSettlement, [cancelNativeSettlement]);
+	const settlementGeometry = useRef({ keys, width });
 	useEffect(() => {
-		if (width <= 0 || keys.length === 0) cancelNativeSettlement();
-		return cancelNativeSettlement;
+		const previous = settlementGeometry.current;
+		const keysChanged =
+			previous.keys !== keys &&
+			(previous.keys.length !== keys.length ||
+				keys.some((key, i) => key !== previous.keys[i]));
+		if (previous.width !== width || keysChanged) {
+			cancelNativeSettlement();
+			settledNativeIndex.current = null;
+		}
+		settlementGeometry.current = { keys, width };
 	}, [cancelNativeSettlement, keys, width]);
 	const [moving, setMoving] = useState(false);
 	const listWidth = useRef(0);
@@ -78,6 +89,7 @@ export function CalendarPager({
 		cancelNativeSettlement();
 		programmaticTarget.current = index;
 		externalSelection.current = index;
+		settledNativeIndex.current = null;
 		setMoving(!reducedMotion);
 		visibleIndex.current = index;
 		list.current?.scrollToOffset({
@@ -111,7 +123,14 @@ export function CalendarPager({
 			phase.current = "idle";
 			setMoving(false);
 			selectOffset(offset);
-			if (keys[next] && external !== next) onSettled?.(keys[next]);
+			if (
+				keys[next] &&
+				external !== next &&
+				settledNativeIndex.current !== next
+			) {
+				settledNativeIndex.current = next;
+				onSettled?.(keys[next]);
+			}
 		},
 		[cancelNativeSettlement, keys, onSettled, selectOffset, width],
 	);
@@ -155,6 +174,7 @@ export function CalendarPager({
 						cancelNativeSettlement();
 						programmaticTarget.current = null;
 						externalSelection.current = null;
+						settledNativeIndex.current = null;
 						phase.current = "dragging";
 						setMoving(true);
 					}}
@@ -195,6 +215,11 @@ export function CalendarPager({
 							// A new non-touch scroll can interrupt a completed command.
 							externalSelection.current = null;
 						}
+						if (
+							settledNativeIndex.current !== null &&
+							Math.abs(offset - settledNativeIndex.current * width) >= 1
+						)
+							settledNativeIndex.current = null;
 						// Accessibility, keyboard and pointer scrolls need no touch drag.
 						selectOffset(offset);
 						setMoving(true);
