@@ -9,8 +9,10 @@ import {
 	getDashboardRelevantDayKeys,
 	getDashboardWeekDayKeys,
 	getDashboardWeekProgress,
+	getDashboardWeekSelection,
 	getNextLearningStepAccessibilityLabel,
 	getVisibleDashboardEntries,
+	hasDashboardDayEntries,
 	isDashboardAgendaItemPast,
 	sortDashboardAgendaItems,
 	toDashboardAgendaItem,
@@ -24,6 +26,91 @@ const entry = (overrides: Partial<DayEntry>): DayEntry =>
 	}) as DayEntry;
 
 describe("dashboard agenda", () => {
+	it.each([
+		["2026-09-28", -1, "2026-09-25"],
+		["2026-10-04", 1, "2026-10-05"],
+		["2026-09-26", 1, "2026-10-03"],
+		["2026-10-03", -1, "2026-09-26"],
+	])("selects an available day when moving from %s by %i weeks", (selectedDayKey, weekDelta, expected) => {
+		const dayPagerKeys = getDashboardCalendarDayKeys({
+			anchorDayKey: "2026-10-01",
+			radiusInDays: 6,
+		});
+		expect(
+			getDashboardWeekSelection({ selectedDayKey, weekDelta, dayPagerKeys }),
+		).toBe(expected);
+	});
+
+	it("does not select a day outside the calendar window", () => {
+		expect(
+			getDashboardWeekSelection({
+				selectedDayKey: "2026-10-01",
+				weekDelta: 10,
+				dayPagerKeys: ["2026-10-01"],
+			}),
+		).toBeUndefined();
+	});
+
+	it("marks days with open or completed entries, but not empty or timetable-only days", () => {
+		expect(hasDashboardDayEntries(undefined)).toBe(false);
+		expect(hasDashboardDayEntries([])).toBe(false);
+		expect(
+			hasDashboardDayEntries([entry({ executionStatus: "notStarted" })]),
+		).toBe(true);
+		expect(
+			hasDashboardDayEntries([entry({ executionStatus: "completed" })]),
+		).toBe(true);
+		expect(hasDashboardDayEntries([entry({ completed: true })])).toBe(true);
+		expect(hasDashboardDayEntries([entry({ source: "timetable" })])).toBe(
+			false,
+		);
+	});
+
+	it("loads every day in a selected historical week for entry markers", () => {
+		const keys = getDashboardRelevantDayKeys({
+			selectedDayKey: "2026-08-12",
+			todayKey: "2026-09-29",
+		});
+		for (const key of getDashboardWeekDayKeys("2026-08-12"))
+			expect(keys).toContain(key);
+		expect(keys.length).toBeLessThanOrEqual(31);
+	});
+	it("keeps today's overdue open step ahead of tomorrow and skips completed steps", () => {
+		const today = toDashboardAgendaItem(
+			"2026-09-28",
+			entry({ kind: "Lernen", time: "08:00", executionStatus: "started" }),
+		);
+		const tomorrow = toDashboardAgendaItem(
+			"2026-09-29",
+			entry({ kind: "Lernen", time: "09:00" }),
+		);
+		const select = (items: (typeof today)[]) =>
+			findNextActionableAgendaItem({
+				items,
+				todayKey: "2026-09-28",
+				currentMinutes: 20 * 60,
+			});
+		expect(select([tomorrow, today])).toBe(today);
+		expect(
+			select([
+				tomorrow,
+				{ ...today, entry: { ...today.entry, executionStatus: "completed" } },
+			]),
+		).toBe(tomorrow);
+		expect(
+			select([
+				{
+					...today,
+					entry: {
+						...today.entry,
+						executionStatus: undefined,
+						completed: true,
+					},
+				},
+			]),
+		).toBeUndefined();
+		expect(select([{ ...today, dayKey: "2026-09-27" }])).toBeUndefined();
+	});
 	it("omits unavailable date and time details from the next-step announcement", () => {
 		expect(
 			getNextLearningStepAccessibilityLabel({
@@ -100,9 +187,13 @@ describe("dashboard agenda", () => {
 			"2026-07-31",
 			"2026-08-01",
 			"2026-08-02",
+			"2026-08-10",
 			"2026-08-11",
 			"2026-08-12",
 			"2026-08-13",
+			"2026-08-14",
+			"2026-08-15",
+			"2026-08-16",
 		]);
 	});
 

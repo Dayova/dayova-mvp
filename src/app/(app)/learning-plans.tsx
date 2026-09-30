@@ -1,6 +1,6 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { ScrollView, TouchableOpacity, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -19,7 +19,7 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { CreateTypePickerModal } from "~/components/create-type-picker-modal";
 import { AddIcon } from "~/components/ui/add-icon";
-import { Button } from "~/components/ui/button";
+import { BackButton, Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import {
 	ArrowUpRight,
@@ -43,7 +43,8 @@ import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
-import { ROUTES } from "~/lib/routes";
+import { dismissToOrReplace } from "~/lib/navigation";
+import { getSafeReturnTo, ROUTES } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
 
 const PLAN_ACTION_RAIL_WIDTH = 104;
@@ -740,6 +741,8 @@ function HomeworkCard({
 }
 
 export default function LearningPlansScreen() {
+	const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
+	const returnTarget = getSafeReturnTo(returnTo);
 	const insets = useSafeAreaInsets();
 	const { colors } = useDayovaTheme();
 	const { user } = useAuthSession();
@@ -846,6 +849,15 @@ export default function LearningPlansScreen() {
 				}}
 			>
 				<View className="mt-7 flex-row items-center justify-between">
+					{returnTarget ? (
+						<BackButton
+							accessibilityLabel="Zurück zu Heute"
+							onPress={() => {
+								router.setParams({ returnTo: undefined });
+								dismissToOrReplace(router, returnTarget);
+							}}
+						/>
+					) : null}
 					<Text className="font-poppins font-semibold text-heading-1 text-text">
 						Deine Pläne
 					</Text>

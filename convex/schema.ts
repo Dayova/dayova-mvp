@@ -584,6 +584,8 @@ export default defineSchema({
 		phase: sessionPhaseValidator,
 		title: v.string(),
 		dateKey: v.string(),
+		// Optional during backfill; null marks an invalid legacy date.
+		berlinDayKey: v.optional(v.union(v.string(), v.null())),
 		dateLabel: v.string(),
 		startTime: v.string(),
 		durationMinutes: v.number(),
@@ -621,6 +623,10 @@ export default defineSchema({
 		updatedAt: v.number(),
 	})
 		.index("by_learningPlanId_and_sortOrder", ["learningPlanId", "sortOrder"])
+		.index("by_ownerTokenIdentifier_and_berlinDayKey", [
+			"ownerTokenIdentifier",
+			"berlinDayKey",
+		])
 		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
 		.index("by_dateKey", ["dateKey"]),
 	learningSessionContentItems: defineTable({
