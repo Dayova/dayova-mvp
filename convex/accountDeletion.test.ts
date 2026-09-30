@@ -73,6 +73,52 @@ test("accepts one idempotent verified internal deletion request", async () => {
 		stage: "revokeSessions",
 		policyVersion: "DAY-357-draft-2026-09-18",
 	});
+	expect(first.requestId).toMatch(
+		/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+	);
+	expect(first.requestId).not.toBe(String(requests[0]._id));
+	expect(first.requestId).not.toBe(userIdentity.subject);
+});
+
+test("keeps a completed request opaque when no user row existed", async () => {
+	const backend = convexTest(schema, modules);
+	const user = backend.withIdentity(userIdentity);
+	const accepted = await user.mutation(
+		internal.accountDeletion.enqueueVerifiedDeletion,
+		{},
+	);
+	expect(accepted.requestId).not.toBe(userIdentity.subject);
+	expect(accepted.requestId).not.toBe(userIdentity.tokenIdentifier);
+	await backend.run(async (ctx) => {
+		const request = await ctx.db
+			.query("accountDeletionRequests")
+			.withIndex("by_requestId", (query) =>
+				query.eq("requestId", accepted.requestId),
+			)
+			.unique();
+		if (!request) throw new Error("deletion request missing");
+		await ctx.db.patch("accountDeletionRequests", request._id, {
+			status: "processing",
+			stage: "deleteData",
+		});
+	});
+	expect(
+		await backend.mutation(internal.accountDeletion.deleteOwnerDataBatch, {
+			requestId: accepted.requestId,
+		}),
+	).toMatchObject({ done: true });
+	expect(
+		await backend.mutation(internal.accountDeletion.completeRequest, {
+			requestId: accepted.requestId,
+		}),
+	).toBe(true);
+	const requests = await backend.run((ctx) =>
+		ctx.db.query("accountDeletionRequests").take(10),
+	);
+	expect(requests).toHaveLength(1);
+	expect(requests[0]).not.toHaveProperty("ownerTokenIdentifier");
+	expect(requests[0]).not.toHaveProperty("clerkUserId");
+	expect(requests[0].requestId).toBe(accepted.requestId);
 });
 
 test("legacy public entry point cannot bypass server verification", async () => {
@@ -168,6 +214,25 @@ test("deletes account data in bounded internal batches and preserves other users
 			ownerTokenIdentifier: otherIdentity.tokenIdentifier,
 			title: "Other entry",
 		});
+		await ctx.db.insert("userLearningTimes", {
+			createdAt: 1,
+			dayOfWeek: 1,
+			endTime: "17:00",
+			ownerTokenIdentifier: userIdentity.tokenIdentifier,
+			startTime: "16:00",
+			updatedAt: 1,
+		});
+		for (const [id, status] of [
+			[userId, "pending"],
+			[otherUserId, "review"],
+		] as const)
+			await ctx.db.insert("crmStudentUpdates", {
+				userId: id,
+				revision: 1,
+				status,
+				nextAttemptAt: 1,
+				attempts: 0,
+			});
 	});
 
 	let done = false;
@@ -190,6 +255,7 @@ test("deletes account data in bounded internal batches and preserves other users
 		onboardingAnswers: await ctx.db.query("userOnboardingAnswers").take(100),
 		requests: await ctx.db.query("accountDeletionRequests").take(10),
 		users: await ctx.db.query("users").take(10),
+		crmUpdates: await ctx.db.query("crmStudentUpdates").take(100),
 	}));
 	expect(remaining.dayEntries).toMatchObject([
 		{ ownerTokenIdentifier: otherIdentity.tokenIdentifier },
@@ -198,10 +264,13 @@ test("deletes account data in bounded internal batches and preserves other users
 	expect(remaining.users).toMatchObject([
 		{ tokenIdentifier: otherIdentity.tokenIdentifier },
 	]);
+	expect(remaining.crmUpdates).toMatchObject([
+		{ userId: otherUserId, status: "review" },
+	]);
 	expect(remaining.requests[0]).toMatchObject({
 		status: "completed",
 		stage: "complete",
-		deletedRecords: 32,
+		deletedRecords: 35,
 	});
 	expect(remaining.requests[0]).not.toHaveProperty("ownerTokenIdentifier");
 	expect(remaining.requests[0]).not.toHaveProperty("clerkUserId");

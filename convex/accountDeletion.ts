@@ -80,10 +80,12 @@ export const assertAccountActive = async (
 };
 
 export const assertOwnerAccountActive = internalQuery({
-	args: { ownerTokenIdentifier: v.string() },
+	args: {},
 	returns: v.null(),
-	handler: async (ctx, args) => {
-		await assertAccountActive(ctx, args.ownerTokenIdentifier);
+	handler: async (ctx) => {
+		const identity = await ctx.auth.getUserIdentity();
+		if (!identity) throwUserFacingError("Nicht authentifiziert.");
+		await assertAccountActive(ctx, identity.tokenIdentifier);
 		return null;
 	},
 });
@@ -143,7 +145,8 @@ export const enqueueVerifiedDeletion = internalMutation({
 				query.eq("tokenIdentifier", identity.tokenIdentifier),
 			)
 			.unique();
-		const requestId = user ? String(user._id) : identity.subject;
+		// Keep the audit key opaque even when no Convex user row exists yet.
+		const requestId = crypto.randomUUID();
 		const now = Date.now();
 		await ctx.db.insert("accountDeletionRequests", {
 			requestId,
@@ -578,6 +581,21 @@ export const deleteOwnerDataBatch = internalMutation({
 		);
 
 		if (user) {
+			const crmSignups = await ctx.db
+				.query("crmStudentSignups")
+				.withIndex("by_userId", (q) => q.eq("userId", user._id))
+				.take(DELETE_BATCH_SIZE);
+			deletedRecords += await deleteRows(ctx, "crmStudentSignups", crmSignups);
+			const crmLinks = await ctx.db
+				.query("crmStudentLinks")
+				.withIndex("by_userId", (q) => q.eq("userId", user._id))
+				.take(DELETE_BATCH_SIZE);
+			deletedRecords += await deleteRows(ctx, "crmStudentLinks", crmLinks);
+			const crmUpdates = await ctx.db
+				.query("crmStudentUpdates")
+				.withIndex("by_userId", (q) => q.eq("userId", user._id))
+				.take(DELETE_BATCH_SIZE);
+			deletedRecords += await deleteRows(ctx, "crmStudentUpdates", crmUpdates);
 			const userOnboardingAnswers = await ctx.db
 				.query("userOnboardingAnswers")
 				.withIndex("by_userId", (query) => query.eq("userId", user._id))

@@ -33,6 +33,13 @@ environment variables.
    request id, policy version, timestamps, processor outcomes, counts, and a
    machine-readable error code remain as the minimum operational audit record.
 
+The current pipeline also removes the user's local CRM signup, link, and update
+rows. It does **not** delete or anonymize the corresponding contact in Notion
+or Loops. A completed app-account request is therefore not evidence that those
+independent processor records were deleted. Keep the CRM integration disabled
+for live use until DAY-357 defines their treatment and DAY-358 implements and
+tests the approved behavior.
+
 Each completed stage is durable and safe to repeat. HTTP 404 responses are
 treated as successful deletion. Failures use capped exponential delays and move
 to `manualReview` after eight failed attempts. Logs contain request id, stage,
@@ -56,5 +63,8 @@ relevant store separately.
 
 Before enabling this pipeline in production, DAY-357 must approve the final
 retention/deletion matrix and its version. Replace the draft policy identifier,
+implement the approved expiry of completed operational audit records and the
+approved Notion/Loops contact handling,
 verify every production secret, execute a sandbox deletion for Clerk,
-RevenueCat, and PostHog, and attach evidence to DAY-358.
+RevenueCat, PostHog, and any enabled CRM processor, and attach evidence to
+DAY-358.

@@ -395,7 +395,6 @@ export default function ProfileScreen() {
 				confirmLabel="Konto löschen"
 				confirmDisabled={!deletionPassword}
 				scrollable
-				size="medium"
 				isBusy={isDeletingAccount}
 				errorMessage={deleteError}
 				onClose={() => {
