@@ -8,6 +8,7 @@ import {
 	type QueryCtx,
 	query,
 } from "./_generated/server";
+import { assertAccountActive } from "./accountDeletion";
 import {
 	type AnswerRating,
 	evaluateMultipleChoiceAnswer,
@@ -143,6 +144,7 @@ const requireOwnerTokenIdentifier = async (ctx: QueryCtx | MutationCtx) => {
 	if (identity === null) {
 		throwUserFacingError("Nicht authentifiziert.");
 	}
+	await assertAccountActive(ctx, identity.tokenIdentifier);
 
 	return identity.tokenIdentifier;
 };

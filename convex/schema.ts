@@ -131,6 +131,45 @@ const sessionContentChoiceValidator = v.object({
 });
 
 export default defineSchema({
+	accountDeletionRequests: defineTable({
+		requestId: v.string(),
+		ownerTokenIdentifier: v.optional(v.string()),
+		clerkUserId: v.optional(v.string()),
+		status: v.union(
+			v.literal("queued"),
+			v.literal("processing"),
+			v.literal("retryScheduled"),
+			v.literal("manualReview"),
+			v.literal("completed"),
+		),
+		stage: v.union(
+			v.literal("revokeSessions"),
+			v.literal("deleteClerkIdentity"),
+			v.literal("deleteRevenueCat"),
+			v.literal("deletePostHog"),
+			v.literal("deleteData"),
+			v.literal("complete"),
+		),
+		attemptCount: v.number(),
+		deletedRecords: v.number(),
+		lastErrorCode: v.optional(v.string()),
+		clerkStatus: v.optional(
+			v.union(v.literal("completed"), v.literal("notConfigured")),
+		),
+		revenueCatStatus: v.optional(
+			v.union(v.literal("completed"), v.literal("notConfigured")),
+		),
+		postHogStatus: v.optional(
+			v.union(v.literal("completed"), v.literal("notConfigured")),
+		),
+		policyVersion: v.string(),
+		requestedAt: v.number(),
+		updatedAt: v.number(),
+		nextAttemptAt: v.optional(v.number()),
+		completedAt: v.optional(v.number()),
+	})
+		.index("by_requestId", ["requestId"])
+		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
 	crmStudentSignups: defineTable({
 		userId: v.id("users"),
 		status: v.union(v.literal("pending"), v.literal("review")),
@@ -252,6 +291,7 @@ export default defineSchema({
 	})
 		.index("by_learningPlanSessionId", ["learningPlanSessionId"])
 		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
+		.index("by_recordedByTokenIdentifier", ["recordedByTokenIdentifier"])
 		.index("by_recordedAt", ["recordedAt"]),
 	onboardingQuestions: defineTable({
 		key: v.string(),

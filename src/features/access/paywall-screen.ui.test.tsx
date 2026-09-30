@@ -58,16 +58,43 @@ jest.mock("react-native-safe-area-context", () => ({
 
 jest.mock("~/components/ui/confirmation-sheet", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
-	const { Text: NativeText } =
-		jest.requireActual<typeof import("react-native")>("react-native");
+	const {
+		Text: NativeText,
+		View: NativeView,
+		Pressable,
+	} = jest.requireActual<typeof import("react-native")>("react-native");
 	return {
 		ConfirmationSheet: ({
 			title,
 			visible,
+			children,
+			confirmDisabled,
+			onConfirm,
 		}: {
 			title: ReactNode;
 			visible: boolean;
-		}) => (visible ? React.createElement(NativeText, null, title) : null),
+			children?: ReactNode;
+			confirmDisabled?: boolean;
+			onConfirm: () => void;
+		}) =>
+			visible
+				? React.createElement(
+						NativeView,
+						null,
+						React.createElement(NativeText, null, title),
+						children,
+						React.createElement(
+							Pressable,
+							{
+								accessibilityRole: "button",
+								accessibilityLabel: "Löschung bestätigen",
+								disabled: confirmDisabled,
+								onPress: onConfirm,
+							},
+							React.createElement(NativeText, null, "Bestätigen"),
+						),
+					)
+				: null,
 	};
 });
 
@@ -76,6 +103,9 @@ jest.mock("~/components/ui/dayova-sheet-frame", () => {
 	const { Text: NativeText, View: NativeView } =
 		jest.requireActual<typeof import("react-native")>("react-native");
 	return {
+		DayovaSheetInput:
+			jest.requireActual<typeof import("react-native")>("react-native")
+				.TextInput,
 		DayovaSheetFrame: ({
 			children,
 			description,
@@ -204,5 +234,16 @@ describe("PaywallScreen", () => {
 		await waitFor(() => {
 			expect(screen.getByText("Konto wirklich löschen?")).toBeOnTheScreen();
 		});
+		const confirm = screen.getByRole("button", { name: "Löschung bestätigen" });
+		await fireEvent.press(confirm);
+		expect(mockDeleteAccount).not.toHaveBeenCalled();
+		await fireEvent.changeText(
+			screen.getByLabelText("Aktuelles Passwort zur Bestätigung"),
+			"test-password",
+		);
+		await fireEvent.press(confirm);
+		await waitFor(() =>
+			expect(mockDeleteAccount).toHaveBeenCalledWith("test-password"),
+		);
 	});
 });

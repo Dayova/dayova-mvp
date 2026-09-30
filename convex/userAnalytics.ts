@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { query } from "./_generated/server";
+import { assertAccountActive } from "./accountDeletion";
 import {
 	type AdaptiveTopicEvidence,
 	deriveAdaptiveDimensionStatus,
@@ -537,6 +538,7 @@ export const getOverview = query({
 		if (!identity) {
 			throwUserFacingError("Nicht authentifiziert.");
 		}
+		await assertAccountActive(ctx, identity.tokenIdentifier);
 		if (parseDayKey(args.todayKey) === null) {
 			throwUserFacingError("Ungültiger Kalendertag.");
 		}
@@ -821,6 +823,7 @@ export const getTopicQuestionEvidence = query({
 	handler: async (ctx, args) => {
 		const identity = await ctx.auth.getUserIdentity();
 		if (!identity) throwUserFacingError("Nicht authentifiziert.");
+		await assertAccountActive(ctx, identity.tokenIdentifier);
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (
 			!plan ||
@@ -933,6 +936,7 @@ export const getExamAnalysis = query({
 		if (!identity) {
 			throwUserFacingError("Nicht authentifiziert.");
 		}
+		await assertAccountActive(ctx, identity.tokenIdentifier);
 		if (parseDayKey(args.todayKey) === null) {
 			throwUserFacingError("Ungültiger Kalendertag.");
 		}
