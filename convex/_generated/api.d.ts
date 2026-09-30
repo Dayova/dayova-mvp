@@ -24,6 +24,8 @@ import type * as crmSync from "../crmSync.js";
 import type * as crmSyncState from "../crmSyncState.js";
 import type * as crmUpdates from "../crmUpdates.js";
 import type * as crons from "../crons.js";
+import type * as dashboardMigrations from "../dashboardMigrations.js";
+import type * as dashboardNextStep from "../dashboardNextStep.js";
 import type * as dayEntries from "../dayEntries.js";
 import type * as dayKeyVariants from "../dayKeyVariants.js";
 import type * as diagnosticReadiness from "../diagnosticReadiness.js";
@@ -89,6 +91,8 @@ declare const fullApi: ApiFromModules<{
   crmSyncState: typeof crmSyncState;
   crmUpdates: typeof crmUpdates;
   crons: typeof crons;
+  dashboardMigrations: typeof dashboardMigrations;
+  dashboardNextStep: typeof dashboardNextStep;
   dayEntries: typeof dayEntries;
   dayKeyVariants: typeof dayKeyVariants;
   diagnosticReadiness: typeof diagnosticReadiness;
@@ -160,4 +164,5 @@ export declare const internal: FilterApi<
 
 export declare const components: {
   convexFilesControl: import("@gilhrpenner/convex-files-control/_generated/component.js").ComponentApi<"convexFilesControl">;
+  migrations: import("@convex-dev/migrations/_generated/component.js").ComponentApi<"migrations">;
 };

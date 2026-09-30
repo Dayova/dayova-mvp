@@ -132,6 +132,12 @@ these actions. A screen-local clone is not an allowed visual variant; add a
 shared variant and update this context if a new interaction contract is truly
 needed.
 
+DAY-490's approved Today calendar navigation is a scoped exception: the
+`DashboardCalendarHeader` reset-to-today control uses the shared ghost Button
+with a bordered card surface and theme text, preserving the approved light
+pill without making it a general-purpose CTA variant. See
+[the dashboard isolation contract](../../dashboard-main-isolation.md).
+
 The empty timetable uses one full-width gradient import button and a full-width
 neutral manual-entry button. File and camera are equal sources inside the shared
 `ActionSheet`, following the school-material upload pattern. Use source rows

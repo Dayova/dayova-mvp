@@ -282,6 +282,7 @@ const getRollingSessionSchedule = async (
 			if (!conflict) {
 				return {
 					dateKey,
+					berlinDayKey: dateKey,
 					dateLabel: formatDateLabel(cursor),
 					startTime: candidate.startTime,
 					durationMinutes: candidate.durationMinutes,

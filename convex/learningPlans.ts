@@ -2174,6 +2174,7 @@ export const replaceGeneratedSessions = internalMutation({
 				ownerTokenIdentifier: plan.ownerTokenIdentifier,
 				learningPlanId: args.learningPlanId,
 				...session,
+				berlinDayKey: getBerlinDayKey(session.dateKey),
 				...(session.compositionVariant === "split"
 					? { knowledgeValidationStatus: "pending" as const }
 					: {}),
@@ -2457,6 +2458,7 @@ export const updateSession = mutation({
 		await ctx.db.patch("learningPlanSessions", args.id, {
 			phase: args.phase,
 			dateKey: args.dateKey,
+			berlinDayKey: getBerlinDayKey(args.dateKey),
 			dateLabel: args.dateLabel,
 			startTime: args.startTime,
 			durationMinutes: args.durationMinutes,
@@ -2547,6 +2549,7 @@ export const addSession = mutation({
 			title: "Zusatzübung",
 			sessionPurpose: "learning",
 			dateKey,
+			berlinDayKey: getBerlinDayKey(dateKey),
 			dateLabel: formatDateLabel(nextDate),
 			startTime,
 			durationMinutes,
@@ -2794,6 +2797,7 @@ export const adjustMissedSession = mutation({
 				: `Recovery: ${session.title}`,
 			sessionPurpose: session.sessionPurpose ?? "learning",
 			dateKey: args.dateKey,
+			berlinDayKey: getBerlinDayKey(args.dateKey),
 			dateLabel: args.dateLabel,
 			startTime: args.startTime,
 			durationMinutes: args.durationMinutes,
