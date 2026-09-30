@@ -12,6 +12,7 @@
 *.jpg binary
 *.jpeg binary
 *.mp3 binary
+*.m4a binary
 *.mp4 binary
 *.otf binary
 *.pdf binary
