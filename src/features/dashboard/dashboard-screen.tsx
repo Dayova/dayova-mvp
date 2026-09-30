@@ -144,29 +144,31 @@ export function DashboardScreen() {
 			? user.name.trim().split(/\s+/)[0]
 			: null;
 
-	const commitSelectedDay = useCallback(
-		(dayKey: string) => {
-			const date = parseDayKey(dayKey);
-			if (!date || dayKey === selectedDayKey) return;
-			setSelectedDayKey(dayKey);
-		},
-		[selectedDayKey],
-	);
+	const commitSelectedDay = useCallback((dayKey: string) => {
+		if (!parseDayKey(dayKey)) return;
+		// Queue even a return to the rendered day: another selection may be pending.
+		setSelectedDayKey(dayKey);
+	}, []);
 
 	const selectWeekPage = useCallback(
-		(nextPageIndex: number) => {
-			const weekDelta = nextPageIndex - selectedWeekPageIndex;
-			if (weekDelta === 0) return;
-			const nextDayKey = getDashboardWeekSelection({
-				selectedDayKey,
-				weekDelta,
-				dayPagerKeys,
+		(weekKey: string) => {
+			const nextPageIndex = weekPageKeys.indexOf(weekKey);
+			if (nextPageIndex < 0) return;
+			setSelectedDayKey((currentDayKey) => {
+				const currentWeekKey = getDashboardWeekDayKeys(currentDayKey)[0];
+				const currentPageIndex = weekPageKeys.indexOf(currentWeekKey);
+				if (currentPageIndex < 0) return currentDayKey;
+				return (
+					getDashboardWeekSelection({
+						selectedDayKey: currentDayKey,
+						weekDelta: nextPageIndex - currentPageIndex,
+						dayPagerKeys,
+					}) ?? currentDayKey
+				);
 			});
-			if (!nextDayKey) return;
-			commitSelectedDay(nextDayKey);
 			triggerDaySelectionHaptic();
 		},
-		[commitSelectedDay, dayPagerKeys, selectedDayKey, selectedWeekPageIndex],
+		[dayPagerKeys, weekPageKeys],
 	);
 
 	const openItem = useCallback(
@@ -262,7 +264,7 @@ export function DashboardScreen() {
 							keys={weekPageKeys}
 							selectedKey={weekPageKeys[selectedWeekPageIndex]}
 							minimumHeight={68}
-							onSelect={(key) => selectWeekPage(weekPageKeys.indexOf(key))}
+							onSelect={selectWeekPage}
 							renderPage={(weekKey) => (
 								<WeekCalendar
 									weekKey={weekKey}
