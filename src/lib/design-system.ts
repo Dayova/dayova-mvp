@@ -26,7 +26,7 @@ export const DAYOVA_DESIGN_SYSTEM = {
 		wrong: "#FF9500",
 		wrongSubtle: "#FFECD6",
 		destructive: "#FF3B30",
-		dangerAction: "#D12013",
+		dangerAction: "#B01B10",
 		dangerSubtle: "#FFF0EE",
 		info: "#C9A100",
 		infoSubtle: "#FFF8CC",

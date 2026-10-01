@@ -163,8 +163,9 @@ Use it for all app-rendered cancellation actions instead of solid neutral fills.
 Native system picker cancellation remains platform-owned. The approved subject
 and learning-time swipe adaptations are preserved as follow-up patches until
 their screen prerequisites are integrated; this shared layer does not add those
-screens. Light danger action is saturated red `#D12013` on `#FFF0EE`;
-dark tokens remain unchanged. Both pairs meet 4.5:1 text contrast.
+screens. Light danger action is saturated red `#B01B10` on `#FFF0EE`;
+dark tokens remain unchanged. Both pairs meet 4.5:1 text contrast, including
+80%-opacity active/hover states on the theme background and surface.
 
 The empty timetable uses one full-width gradient import button and a full-width
 neutral manual-entry button. File and camera are equal sources inside the shared
