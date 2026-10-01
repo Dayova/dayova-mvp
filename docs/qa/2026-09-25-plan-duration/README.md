@@ -1,5 +1,19 @@
 # Ten-minute learning-plan generation contract
 
+## Review isolation (1 October 2026)
+
+PR #750 is now isolated directly on `main` at
+`a553f8f3a1c0999929803b4815b7ea0c932ab2db`.
+The duration validator uses an existing scheduler constant and does not depend
+on the PDF extraction fix in #749. No other QA-stack product changes are included.
+The replay, screenshots, and full-suite results below are historical evidence
+from 25 September, not fresh acceptance of this isolated branch. No backend was
+deployed during isolation. The PR is Ready for Review, not approved for deployment.
+
+Current isolation validation: all eight duration regression cases, TypeScript,
+targeted ESLint/Biome and diff checks passed. Independent standards and scope
+reviews found no issues. CodeRabbit review of the rewritten head remains separate.
+
 ## Defect and fix
 
 The generation prompt permits ten-minute units and the scheduler supports them,
@@ -38,8 +52,8 @@ review, an explicit Retry, and successful generation. Videos are not published
 with this change. PNGs below are still-image evidence only.
 
 This fix does not complete grade-11 QA, adaptive/reminder acceptance, Android
-parity, or the separate product-quality review. Keep the PR draft until its
-required review/evidence gates are met.
+parity, or the separate product-quality review. Those broader acceptance gates
+are not certified by this isolated schema fix.
 
 ### Subsequent grade-10 diagnostic replay
 
