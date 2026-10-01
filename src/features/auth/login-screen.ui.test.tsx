@@ -1100,7 +1100,22 @@ describe("OnboardingScreen", () => {
 		mockOnboarding.answers.schoolType = "prefer_not_to_say";
 		mockOnboarding.answers.grade = "9";
 		mockOnboarding.answers.email = "test@example.com";
+		mockOnboarding.introIndex = 0;
 		mockStackScreens.length = 0;
+	});
+
+	test("offers a visible way back from registration and each intro page", async () => {
+		const screen = await render(<OnboardingScreen />);
+
+		await fireEvent.press(screen.getByRole("button", { name: "Zurück" }));
+		expect(mockRouter.back).toHaveBeenCalledTimes(1);
+
+		mockRouter.back.mockClear();
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Zurück" }));
+
+		expect(mockOnboarding.setIntroIndex).toHaveBeenLastCalledWith(0);
+		expect(mockRouter.back).not.toHaveBeenCalled();
 	});
 
 	test("keeps the native route gesture only on the onboarding entry step", async () => {
