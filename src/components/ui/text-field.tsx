@@ -23,6 +23,10 @@ type BaseTextFieldProps = Omit<InputProps, "className"> & {
 	accessoryClassName?: string;
 };
 
+/**
+ * Renders a labeled single-line input with optional validation and accessory.
+ * On iOS, native font metrics take precedence over a supplied line height.
+ */
 function InsetTextField({
 	label,
 	message,
