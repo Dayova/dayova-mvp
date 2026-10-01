@@ -797,6 +797,144 @@ test("legacy theory content advances to practice instead of replaying the same p
 	});
 });
 
+test.each([
+	{ earlierWindow: true, expectedDate: "2026-06-03", restoreExisting: false },
+	{ earlierWindow: false, expectedDate: "2026-06-04", restoreExisting: false },
+	{ earlierWindow: false, expectedDate: "2026-06-04", restoreExisting: true },
+])("creates practice when the last scheduled theory session is completed early ($expectedDate, restore: $restoreExisting)", async ({
+	earlierWindow,
+	expectedDate,
+	restoreExisting,
+}) => {
+	const backend = convexTest(schema, modules);
+	const t = backend.withIdentity(user);
+	const { learningPlanId, session } = await createAcceptedPlanWithSession(t, {
+		phase: "theory",
+		dateKey: "2026-06-04",
+		dateLabel: "4. Juni 2026",
+		startTime: "17:00",
+		durationMinutes: 15,
+	});
+	if (earlierWindow) {
+		await t.mutation(api.learningTimes.upsertMine, {
+			dayOfWeek: 3,
+			startTime: "17:00",
+			endTime: "18:00",
+		});
+	}
+	await t.mutation(api.learningTimes.upsertMine, {
+		dayOfWeek: 4,
+		startTime: "17:00",
+		endTime: "17:15",
+	});
+	await t.run(async (ctx) => {
+		await ctx.db.patch("learningPlans", learningPlanId, {
+			rollingPlanEnabled: !restoreExisting,
+			topicMap: [
+				{
+					id: "steigung",
+					title: "Steigung berechnen",
+					learningGoal: "Steigungen aus zwei Punkten berechnen.",
+					keywords: ["Steigung"],
+					priority: "high",
+					requiredEvidenceDimensions: ["understanding", "problemSolving"],
+				},
+			],
+		});
+		await ctx.db.patch("learningPlanSessions", session.id, {
+			planningStatus: "committed",
+			targetTopicIds: ["steigung"],
+			targetEvidenceDimension: "understanding",
+		});
+	});
+	await t.mutation(api.learningPlans.startSession, { sessionId: session.id });
+	await t.mutation(api.learningPlans.recordSessionOutcome, {
+		sessionId: session.id,
+		outcome: "completed",
+	});
+	if (restoreExisting) {
+		await t.run(async (ctx) => {
+			await ctx.db.patch("learningPlans", learningPlanId, {
+				rollingPlanEnabled: true,
+			});
+		});
+		expect(
+			await t.mutation(api.learningPlans.restoreNextSession, {
+				learningPlanId,
+			}),
+		).toBe(true);
+	}
+	const snapshot = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	const next = snapshot?.sessions.find(
+		(entry) =>
+			entry.executionStatus === "notStarted" &&
+			entry.planningStatus === "committed",
+	);
+	expect(next).toMatchObject({
+		phase: "practice",
+		dateKey: expectedDate,
+		contentGenerationStatus: "queued",
+	});
+	await expect(
+		t.mutation(api.learningPlans.restoreNextSession, { learningPlanId }),
+	).resolves.toBe(true);
+	expect(
+		(
+			await t.query(api.learningPlans.getSnapshot, { id: learningPlanId })
+		)?.sessions.map((entry) => entry.id),
+	).toEqual(snapshot?.sessions.map((entry) => entry.id));
+	await expect(
+		backend
+			.withIdentity({ tokenIdentifier: "another:user" })
+			.mutation(api.learningPlans.restoreNextSession, { learningPlanId }),
+	).rejects.toThrow("Lernplan nicht gefunden");
+});
+
+test.each([
+	"no availability",
+	"exam passed",
+	"occupied slot",
+])("does not invent a recovery slot: %s", async (scenario) => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const { learningPlanId, session } = await createAcceptedPlanWithSession(t);
+	await t.mutation(api.learningPlans.startSession, { sessionId: session.id });
+	await t.mutation(api.learningPlans.recordSessionOutcome, {
+		sessionId: session.id,
+		outcome: "completed",
+	});
+	await t.run(async (ctx) => {
+		await ctx.db.patch("learningPlans", learningPlanId, {
+			rollingPlanEnabled: true,
+		});
+	});
+	if (scenario !== "no availability") {
+		await t.mutation(api.learningTimes.upsertMine, {
+			dayOfWeek: 4,
+			startTime: "17:00",
+			endTime: "17:15",
+		});
+	}
+	if (scenario === "exam passed")
+		vi.setSystemTime(new Date("2026-06-06T10:00:00Z"));
+	if (scenario === "occupied slot") {
+		await t.mutation(api.dayEntries.create, {
+			dayKey: "2026-06-04",
+			title: "Termin",
+			time: "17:00",
+			durationMinutes: 15,
+		});
+	}
+	await expect(
+		t.mutation(api.learningPlans.restoreNextSession, { learningPlanId }),
+	).resolves.toBe(false);
+	expect(
+		(await t.query(api.learningPlans.getSnapshot, { id: learningPlanId }))
+			?.sessions,
+	).toHaveLength(1);
+});
+
 test("atomically claims one session content generation at a time", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);
