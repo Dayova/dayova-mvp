@@ -272,7 +272,7 @@ export default function LearningPlanGeneratingScreen() {
 		return true;
 	};
 	useBackIntent(true, goBack, {
-		allowRouteRemoval: plan?.status === "generated",
+		allowRouteRemoval: snapshot?.plan.status === "generated",
 	});
 	useLearningPlanCreationProgress({
 		active: true,

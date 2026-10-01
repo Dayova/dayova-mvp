@@ -25,23 +25,16 @@ jest.mock("convex/react", () => ({
 			reference as Parameters<typeof getFunctionName>[0],
 		);
 		if (name === "learningTimes:listMine") return mockTimes;
-		if (name === "learningPlans:listAnswers") return [];
-		if (name === "learningPlans:getGenerationProgress")
-			return {
-				contentGeneration: {
-					stage: "ready",
-					totalSessionCount: 1,
-					readySessionCount: 1,
-					failedSessionCount: 0,
-				},
-			};
 		return {
-			status: mockStatus,
-			diagnosticPlacement: "firstSession",
-			topicMap: [],
-			examTypeLabel: "Test",
-			examDateKey: "2026-09-30",
-			targetStudyMinutes: 60,
+			plan: {
+				status: mockStatus,
+				diagnosticPlacement: "firstSession",
+				topicMap: [],
+				examTypeLabel: "Test",
+				examDateKey: "2026-09-30",
+				targetStudyMinutes: mockStatus === "generated" ? 60 : undefined,
+			},
+			answers: [],
 		};
 	},
 }));
@@ -85,7 +78,7 @@ test.each([
 	undefined,
 ])("opens an already generated plan without waiting for learning times (%p)", async (times) => {
 	mockTimes = times;
-	render(<GeneratingScreen />);
+	await render(<GeneratingScreen />);
 	await waitFor(() =>
 		expect(mockReplace).toHaveBeenCalledWith("/learning-plans/plan-1/review"),
 	);
@@ -96,10 +89,10 @@ test.each([
 	});
 });
 
-test("does not start a new generation while learning times are still loading", async () => {
+test("keeps the route guard while required automatic preparation is loading", async () => {
 	mockStatus = "questionsReady";
 	mockTimes = undefined;
-	render(<GeneratingScreen />);
+	await render(<GeneratingScreen />);
 	expect(mockReplace).not.toHaveBeenCalled();
 	expect(mockAction).not.toHaveBeenCalled();
 	await waitFor(() =>

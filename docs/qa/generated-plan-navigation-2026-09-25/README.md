@@ -55,3 +55,24 @@ for this replay. Captured about 12:24 Europe/Berlin on 25 September.
 Metro 8088 currently runs from `/private/tmp/dayova-generated-plan-navigation`
 on branch `codex/generated-plan-navigation-20260925`, not an isolated old PR.
 It includes the entire shared QA baseline plus this navigation correction.
+# Review isolation — 1 October 2026
+
+PR #747 is isolated on `main` at `a553f8f3a1c0999929803b4815b7ea0c932ab2db`.
+Main already routes generated plans before waiting for learning times and has
+no QA-only automatic-default-time preparation effect. Those portions of the
+old patch need no new production changes. The remaining fix releases the
+existing navigation-removal guard when the snapshot reports `generated`.
+
+Tests use main's snapshot query instead of the QA branch's separate queries.
+They retain checks for navigation with empty/loading learning times and no
+regeneration, and for an active guard while required automatic preparation is
+still loading. Main's existing generation policy otherwise stays unchanged.
+
+The evidence above is historical September QA evidence, not acceptance of the
+isolated head. No backend deployment, native replay, OTA, or paid build occurred
+during isolation. Shared QA integration branch #759 is not rewritten by this fix.
+
+Current validation: three rendered navigation regression tests, TypeScript,
+targeted ESLint/Biome and diff checks passed. Independent Standards and Spec
+reviews found no blocking issues. The hook is mocked: these tests do not prove
+native navigation transition timing.
