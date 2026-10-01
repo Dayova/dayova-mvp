@@ -1,6 +1,6 @@
 # Popup action follow-up — 24 September 2026
 
-## Proposed isolation — 1 October 2026
+## Approved isolation — 1 October 2026
 
 The shared-only layer is based on #727 (`5f294ce7`), not combined QA #728.
 It retains the original cancel variant, shared confirmation cancellation,
@@ -19,8 +19,9 @@ These patches are review artifacts, **not active application code or completed
 consumer PRs**. Once the relevant prerequisites are merged, replay each on a scoped
 branch against current main, resolve any intervening changes, validate and open
 a Ready-for-Review PR. Do not apply them blindly or import combined-QA ancestry.
-Publishing this narrowed #729 awaits Philipp's confirmation of the split; the
-remote #729 is unchanged until then. No merge, deployment or fresh native evidence.
+Philipp approved publishing this narrowed #729 as a stack layer on #727.
+The consumer adaptations remain explicit follow-up work, not completed features.
+No merge, deployment or fresh native evidence.
 
 Local shared-layer validation: 2 rendered button tests and 7 theme/contrast tests
 passed; TypeScript, targeted ESLint/Biome and diff check passed. Independent
