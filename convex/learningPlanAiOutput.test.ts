@@ -78,24 +78,23 @@ describe("knowledge-check generation recovery", () => {
 			.mockResolvedValueOnce({ topics: [{ id: "groessen-vergleichen" }] });
 		const log = vi.spyOn(console, "error").mockImplementation(() => {});
 		try {
-			await expect(
-				retry(generate, "Bitte erneut versuchen.", "generation_processing"),
-			).resolves.toEqual({ topics: [{ id: "groessen-vergleichen" }] });
+			await expect(retry(generate, "Bitte erneut versuchen.")).resolves.toEqual(
+				{ topics: [{ id: "groessen-vergleichen" }] },
+			);
 			expect(generate.mock.calls).toEqual([[0], [1]]);
 		} finally {
 			log.mockRestore();
 		}
 	});
-	test("bounds malformed-output retries and preserves the safe error code", async () => {
+	test("bounds malformed-output retries and preserves the safe error message", async () => {
 		const generate = vi.fn().mockRejectedValue(malformedTopicId());
 		const log = vi.spyOn(console, "error").mockImplementation(() => {});
 		try {
 			await expect(
-				retry(generate, "Bitte erneut versuchen.", "generation_processing"),
+				retry(generate, "Bitte erneut versuchen."),
 			).rejects.toMatchObject({
 				data: {
 					message: "Bitte erneut versuchen.",
-					code: "generation_processing",
 				},
 			});
 			expect(generate).toHaveBeenCalledTimes(3);
