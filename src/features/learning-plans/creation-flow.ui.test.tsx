@@ -5,7 +5,7 @@ import NewLearningPlanScreen from "~/app/(creation)/learning-plans/new";
 
 let mockParams: Record<string, string> = {};
 let mockProgress: { currentStep: number; onBack: () => void };
-const mockRouter = {
+let mockRouter = {
 	replace: jest.fn(),
 	push: jest.fn(),
 	dismissTo: jest.fn(),
@@ -295,5 +295,52 @@ describe("exam creation across the topics boundary", () => {
 		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans");
 		expect(removalAllowedAtDispatch).toBe(true);
 		expect(mockRouter.replace).not.toHaveBeenCalled();
+	});
+
+	test("restores protection and permits retry after a material-later navigation failure", async () => {
+		mockParams = { learningPlanId: "plan-1", step: "material" };
+		mockSnapshot = {
+			plan: { topicDescription: "Zellteilung und Mitose" },
+			documents: [],
+		};
+		const screen = await render(<NewLearningPlanScreen />);
+		mockRouter.dismissTo.mockImplementationOnce(() => {
+			throw new Error("Navigation fehlgeschlagen");
+		});
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Später hinzufügen" }),
+		);
+		expect(
+			screen.getByText(
+				"Die Ansicht konnte nicht geöffnet werden. Bitte versuche es erneut.",
+			),
+		).toBeOnTheScreen();
+		expect(mockRemovalAllowed).toBe(false);
+		expect(
+			screen.getByRole("button", { name: "Später hinzufügen" }),
+		).toBeEnabled();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Später hinzufügen" }),
+		);
+		expect(mockRouter.dismissTo).toHaveBeenCalledTimes(2);
+		expect(mockRemovalAllowed).toBe(true);
+	});
+
+	test("dispatches a successful material-later exit only once across router identity changes", async () => {
+		mockParams = { learningPlanId: "plan-1", step: "material" };
+		mockSnapshot = {
+			plan: { topicDescription: "Zellteilung und Mitose" },
+			documents: [],
+		};
+		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Später hinzufügen" }),
+		);
+		mockRouter = { ...mockRouter };
+		await screen.rerender(<NewLearningPlanScreen />);
+		expect(mockRouter.dismissTo).toHaveBeenCalledTimes(1);
+		expect(
+			screen.getByRole("button", { name: "Später hinzufügen", busy: true }),
+		).toBeDisabled();
 	});
 });

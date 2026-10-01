@@ -180,6 +180,7 @@ export function MaterialUploadActionCard(props: MaterialUploadActionCardProps) {
 	);
 }
 
+/** Offers upload, continuation, or postponement without losing the saved draft. */
 export function MaterialUploadStep({
 	canUpload,
 	canContinue,
@@ -258,6 +259,7 @@ export function MaterialUploadStep({
 				) : (
 					<Button
 						accessibilityHint="Speichert den Lernplan-Entwurf. Material kann später hochgeladen werden."
+						accessibilityState={{ busy: isBusy, disabled: !canUpload }}
 						variant="neutral"
 						disabled={!canUpload}
 						onPress={onSkip}

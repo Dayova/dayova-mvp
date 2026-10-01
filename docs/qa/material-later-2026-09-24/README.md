@@ -2,13 +2,21 @@
 
 Issue: https://linear.app/dayova/issue/DAY-472/spater-hinzufugen-verlasst-den-materialschritt-nicht
 
-## Reproduction and fix
+## Current isolated branch — 2026-10-01
+
+PR #733 now builds directly on main `a553f8f3`; #735 is its dependent stack layer. No combined-QA branch is a prerequisite.
+
+CodeRabbit's navigation-error and duplicate-dispatch cases were reproduced with two failing rendered tests. The exit effect now dispatches once, restores route protection and retry controls on a thrown navigation error, and keeps the material action busy while leaving. Both destinations remain unchanged.
+
+Current validation: 2 Jest suites / 13 tests, TypeScript, targeted ESLint/Biome and diff check. These tests mock the router and do not certify native transition timing. No fresh native run, backend deploy or OTA is claimed.
+
+## Historical combined-QA reproduction and fix (2026-09-24)
 
 On the combined QA base `d14454a20724a22bdd077d5d4c494a586312916a`, tapping the enabled “Später hinzufügen” button left the material screen visible. The native Maestro reproduction failed at `notVisible: Schulmaterial hinzufügen` (local run `2026-09-24_172619`). A temporary handler probe confirmed the click reached the new-exam completion handler; that probe was removed.
 
 The explicit completion now commits a narrowly scoped route-removal permission before dispatching navigation. Validation of the saved plan and topics still runs first. Ordinary Back/swipe protection is not disabled. New exams retain the success destination; resumed drafts retain the Plans destination.
 
-## Verification
+## Historical verification (not the isolated head)
 
 - iPhone simulator, iOS 26.4, development client `de.dayova.app-dev`, QA backend: the original material-button reproduction passed (`2026-09-24_175527`). The actual resulting screen was “Deine Prüfung ist eingetragen”.
 - After “Fertig”, Plans still showed the saved draft with “Schulmaterial fehlt”. No material upload or AI generation is claimed by this test.
@@ -17,7 +25,7 @@ The explicit completion now commits a narrowly scoped route-removal permission b
 - TypeScript `--noEmit`, Biome on both changed source files, and `git diff --check` passed.
 - No fresh Android device test or production deployment is claimed.
 
-## Visual evidence
+## Historical visual evidence
 
 The before screenshot is the user's original report; a still image alone does not prove a failed tap. The red native test above supplies that behavioral evidence.
 

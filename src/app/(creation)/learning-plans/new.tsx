@@ -73,6 +73,7 @@ type PendingUploadRequest = {
 	action: PendingUploadAction;
 };
 
+/** Collects topics and material while protecting saved drafts from accidental exits. */
 export default function NewLearningPlanScreen() {
 	const router = useRouter();
 	const params = useLocalSearchParams<{
@@ -127,6 +128,7 @@ export default function NewLearningPlanScreen() {
 	);
 	const [isBusy, setIsBusy] = useState(false);
 	const [isPostponingMaterial, setIsPostponingMaterial] = useState(false);
+	const hasDispatchedExitRef = useRef(false);
 	const [isUploading, setIsUploading] = useState(false);
 	const [isUploadSheetVisible, setIsUploadSheetVisible] = useState(false);
 	const [isPauseConfirmationVisible, setIsPauseConfirmationVisible] =
@@ -534,6 +536,7 @@ export default function NewLearningPlanScreen() {
 	};
 
 	const finishWithMaterialLater = () => {
+		if (!canUpload) return;
 		void runWithErrorHandling(
 			"Der Lernplan-Entwurf konnte nicht gespeichert werden.",
 			async () => {
@@ -584,6 +587,7 @@ export default function NewLearningPlanScreen() {
 	};
 
 	const goBack = () => {
+		if (isPostponingMaterial) return true;
 		const intent = getLearningPlanCreationBackIntent({
 			step: setupStep,
 			hasSavedDraft: Boolean(learningPlanId),
@@ -609,13 +613,25 @@ export default function NewLearningPlanScreen() {
 	// Commit the explicit exit intent before removing this protected native route.
 	// Ordinary Back/swipe still follows the saved-draft pause confirmation.
 	useEffect(() => {
-		if (!isPostponingMaterial) return;
-		if (setupOrigin === "resumedDraft") {
-			dismissToOrReplace(router, ROUTES.learningPlans);
-		} else {
-			router.replace(
-				examEntrySuccessPath({ dayKey: examDateKey, examDateLabel }),
-			);
+		if (!isPostponingMaterial || hasDispatchedExitRef.current) return;
+		hasDispatchedExitRef.current = true;
+		try {
+			if (setupOrigin === "resumedDraft") {
+				dismissToOrReplace(router, ROUTES.learningPlans);
+			} else {
+				router.replace(
+					examEntrySuccessPath({ dayKey: examDateKey, examDateLabel }),
+				);
+			}
+		} catch {
+			// Recover after the failed external navigation dispatch has unwound.
+			queueMicrotask(() => {
+				hasDispatchedExitRef.current = false;
+				setIsPostponingMaterial(false);
+				setErrorMessage(
+					"Die Ansicht konnte nicht geöffnet werden. Bitte versuche es erneut.",
+				);
+			});
 		}
 	}, [isPostponingMaterial, setupOrigin, router, examDateKey, examDateLabel]);
 	useLearningPlanCreationProgress({
@@ -645,7 +661,7 @@ export default function NewLearningPlanScreen() {
 						<RequiredTopicsStep
 							canContinue={canContinueTopics}
 							errorMessage={errorMessage}
-							isBusy={isBusy}
+							isBusy={isBusy || isPostponingMaterial}
 							onChangeTopics={setTopicsInput}
 							onContinue={() => void continueToMaterial()}
 							topics={topics}
@@ -656,7 +672,7 @@ export default function NewLearningPlanScreen() {
 							canContinue={canContinueUpload}
 							documents={snapshot?.documents ?? []}
 							errorMessage={errorMessage}
-							isBusy={isBusy}
+							isBusy={isBusy || isPostponingMaterial}
 							isUploading={isUploading}
 							onContinue={continueToAnalysis}
 							onOpenUpload={() => setIsUploadSheetVisible(true)}
