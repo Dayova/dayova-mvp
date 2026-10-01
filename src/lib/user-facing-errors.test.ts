@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 import { setDiagnosticSink } from "./diagnostics";
 import {
+	extractUserFacingErrorCode,
 	getUserFacingErrorMessage,
 	USER_FACING_ERROR_KIND,
 } from "./user-facing-errors";
@@ -24,6 +25,17 @@ describe("getUserFacingErrorMessage", () => {
 		).toBe(
 			'Dieser Zeitraum überschneidet sich mit "Mathe Hausaufgabe" am 23. Mai 2026 von 16:00 bis 16:30.',
 		);
+	});
+
+	test("extracts a recognized recovery code independently from its message", () => {
+		const error = new Error("Server Error");
+		(error as Error & { data: unknown }).data = {
+			kind: USER_FACING_ERROR_KIND,
+			message: "Dieser Text darf sich ändern.",
+			code: "aiConsentRequired",
+		};
+
+		expect(extractUserFacingErrorCode(error)).toBe("aiConsentRequired");
 	});
 
 	test("does not show production Convex diagnostic wrappers to learners", () => {

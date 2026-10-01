@@ -189,7 +189,9 @@ export function MaterialUploadStep({
 	isUploading,
 	onContinue,
 	onOpenUpload,
+	onRequestAiConsent,
 	onRemoveDocument,
+	requiresAiConsent = false,
 	onSkip,
 	openingUploadAction,
 	showSkip = true,
@@ -202,7 +204,9 @@ export function MaterialUploadStep({
 	isUploading: boolean;
 	onContinue: () => void;
 	onOpenUpload: () => void;
+	onRequestAiConsent?: () => void;
 	onRemoveDocument: (id: Id<"learningPlanDocuments">) => void;
+	requiresAiConsent?: boolean;
 	onSkip: () => void;
 	openingUploadAction: PendingUploadAction | null;
 	showSkip?: boolean;
@@ -250,10 +254,19 @@ export function MaterialUploadStep({
 			) : null}
 
 			<SetupError message={errorMessage} />
+			{requiresAiConsent && onRequestAiConsent ? (
+				<Button
+					accessibilityHint="Öffnet die Informationen zur KI-Datenverarbeitung und die Auswahl zur Zustimmung."
+					className="mt-4 w-full"
+					onPress={onRequestAiConsent}
+				>
+					<Text>KI-Datenschutz bestätigen</Text>
+				</Button>
+			) : null}
 			<View className="mt-auto w-full gap-3 pt-8">
 				{hasSchoolMaterial ? (
 					<SetupContinueButton
-						canContinue={canContinue}
+						canContinue={canContinue && !requiresAiConsent}
 						isBusy={isBusy}
 						onPress={onContinue}
 					/>

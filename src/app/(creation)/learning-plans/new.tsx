@@ -16,6 +16,7 @@ import {
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import { Attachment, ScanImage } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
+import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
 import {
 	getLearningPlanCreationBackIntent,
@@ -54,6 +55,8 @@ import {
 	useBackIntent,
 } from "~/lib/navigation";
 import { ROUTES } from "~/lib/routes";
+import { AI_CONSENT_REQUIRED_ERROR_CODE } from "~/lib/user-facing-error-contract";
+import type { UserFacingErrorCode } from "~/lib/user-facing-error-contract";
 import { ACCEPTED_FILE_TYPES, validateUploadFile } from "~/lib/upload-policy";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 
@@ -86,10 +89,12 @@ export default function NewLearningPlanScreen() {
 		durationMinutes?: string;
 		topicDescription?: string;
 		teacherGuidance?: string;
+		errorCode?: UserFacingErrorCode;
 		fromExamEntry?: string;
 		errorMessage?: string;
 	}>();
 	const { user } = useAuthSession();
+	const { requestAiConsentDisclosure } = useAiConsent();
 	const { capture } = useValidationAnalytics();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const createDraftPlan = useMutation(api.learningPlans.createDraft);
@@ -134,9 +139,15 @@ export default function NewLearningPlanScreen() {
 	const topicActionGateRef = useRef(createAsyncActionGate());
 	const [openingUploadAction, setOpeningUploadAction] =
 		useState<PendingUploadAction | null>(null);
-	const [errorMessage, setErrorMessage] = useState<string | null>(
-		params.errorMessage ?? null,
+	const [setupError, setSetupError] = useState<{
+		code: UserFacingErrorCode | null;
+		message: string;
+	} | null>(() =>
+		params.errorMessage
+			? { code: params.errorCode ?? null, message: params.errorMessage }
+			: null,
 	);
+	const errorMessage = setupError?.message ?? null;
 
 	const hasExamEntry = Boolean(examDayEntryId || learningPlanId);
 	const snapshot = (useQuery(
@@ -183,9 +194,12 @@ export default function NewLearningPlanScreen() {
 			setSetupStep("materialUpload");
 		}
 		if (params.errorMessage) {
-			setErrorMessage(params.errorMessage);
+			setSetupError({
+				code: params.errorCode ?? null,
+				message: params.errorMessage,
+			});
 		}
-	}, [params.errorMessage, params.step]);
+	}, [params.errorCode, params.errorMessage, params.step]);
 
 	const ensurePlan = async (
 		topicDescription = params.topicDescription ?? "",
@@ -220,11 +234,11 @@ export default function NewLearningPlanScreen() {
 		task: () => Promise<void>,
 	) => {
 		setIsBusy(true);
-		setErrorMessage(null);
+		setSetupError(null);
 		try {
 			await task();
 		} catch (error) {
-			setErrorMessage(getErrorMessage(error, fallback));
+			setSetupError({ code: null, message: getErrorMessage(error, fallback) });
 		} finally {
 			setIsBusy(false);
 		}
@@ -369,7 +383,7 @@ export default function NewLearningPlanScreen() {
 			return;
 		}
 
-		setErrorMessage(null);
+		setSetupError(null);
 		try {
 			const result = await DocumentPicker.getDocumentAsync({
 				type: [...ACCEPTED_FILE_TYPES],
@@ -398,12 +412,13 @@ export default function NewLearningPlanScreen() {
 				},
 			);
 		} catch (error) {
-			setErrorMessage(
-				getErrorMessage(
+			setSetupError({
+				code: null,
+				message: getErrorMessage(
 					error,
 					"Die Dateiauswahl konnte nicht geöffnet werden.",
 				),
-			);
+			});
 		} finally {
 			setIsUploading(false);
 			setOpeningUploadAction(null);
@@ -416,7 +431,7 @@ export default function NewLearningPlanScreen() {
 			return;
 		}
 
-		setErrorMessage(null);
+		setSetupError(null);
 		try {
 			const permission = await ImagePicker.requestCameraPermissionsAsync();
 			if (!permission.granted) {
@@ -451,9 +466,13 @@ export default function NewLearningPlanScreen() {
 				},
 			);
 		} catch (error) {
-			setErrorMessage(
-				getErrorMessage(error, "Die Kamera konnte nicht geöffnet werden."),
-			);
+			setSetupError({
+				code: null,
+				message: getErrorMessage(
+					error,
+					"Die Kamera konnte nicht geöffnet werden.",
+				),
+			});
 		} finally {
 			setIsUploading(false);
 			setOpeningUploadAction(null);
@@ -500,7 +519,7 @@ export default function NewLearningPlanScreen() {
 
 		await topicActionGateRef.current.run(async () => {
 			setIsBusy(true);
-			setErrorMessage(null);
+			setSetupError(null);
 			try {
 				if (learningPlanId) {
 					await retryOnceAfterAuthResume(() =>
@@ -513,18 +532,20 @@ export default function NewLearningPlanScreen() {
 					await ensurePlan(topics);
 				}
 				router.setParams({
+					errorCode: undefined,
 					errorMessage: undefined,
 					step: "material",
 					topicDescription: topics,
 				});
 				setSetupStep("materialUpload");
 			} catch (error) {
-				setErrorMessage(
-					getErrorMessage(
+				setSetupError({
+					code: null,
+					message: getErrorMessage(
 						error,
 						"Die Prüfungsthemen konnten nicht gespeichert werden.",
 					),
-				);
+				});
 			} finally {
 				setIsBusy(false);
 			}
@@ -594,8 +615,12 @@ export default function NewLearningPlanScreen() {
 		});
 		if (intent.kind === "ignore") return true;
 		if (intent.kind === "previousStep") {
-			setErrorMessage(null);
-			router.setParams({ errorMessage: undefined, step: "topic" });
+			setSetupError(null);
+			router.setParams({
+				errorCode: undefined,
+				errorMessage: undefined,
+				step: "topic",
+			});
 			setSetupStep(intent.step);
 			return true;
 		}
@@ -616,6 +641,14 @@ export default function NewLearningPlanScreen() {
 	const continueToAnalysis = () => {
 		if (!learningPlanId || !canContinueUpload) return;
 		router.push(learningPlanStepPath(learningPlanId, "analysis"));
+	};
+
+	const requestCurrentAiConsent = () => {
+		void requestAiConsentDisclosure().then((allowed) => {
+			if (!allowed) return;
+			setSetupError(null);
+			router.setParams({ errorCode: undefined, errorMessage: undefined });
+		});
 	};
 
 	if (!hasExamEntry) return null;
@@ -649,9 +682,13 @@ export default function NewLearningPlanScreen() {
 							isUploading={isUploading}
 							onContinue={continueToAnalysis}
 							onOpenUpload={() => setIsUploadSheetVisible(true)}
+							onRequestAiConsent={requestCurrentAiConsent}
 							onRemoveDocument={(id) => void removeUploadedDocument(id)}
 							onSkip={finishWithMaterialLater}
 							openingUploadAction={openingUploadAction}
+							requiresAiConsent={
+								setupError?.code === AI_CONSENT_REQUIRED_ERROR_CODE
+							}
 							showSkip={setupOrigin === "newExam"}
 						/>
 					)}
