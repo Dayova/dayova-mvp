@@ -6,6 +6,10 @@ import { api } from "./_generated/api";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
+type TestBackend = ReturnType<ReturnType<typeof convexTest>["withIdentity"]>;
+
+const syncTestUser = (t: TestBackend) =>
+	t.mutation(api.users.syncCurrentUser, { birthDate: "01.01.2000" });
 
 const user = {
 	subject: "clerk_trial_user",
@@ -24,7 +28,7 @@ test("authenticated user activates 14 days of account access", async () => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date("2026-07-28T10:00:00.000Z"));
 	const t = convexTest(schema, modules).withIdentity(user);
-	await t.mutation(api.users.syncCurrentUser, {});
+	await syncTestUser(t);
 
 	const access = await t.mutation(api.entitlements.activateMyTrial, {
 		termsVersion: "2026-07-28",
@@ -44,7 +48,7 @@ test("activating an existing trial never restarts its clock", async () => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date("2026-07-28T10:00:00.000Z"));
 	const t = convexTest(schema, modules).withIdentity(user);
-	await t.mutation(api.users.syncCurrentUser, {});
+	await syncTestUser(t);
 	const firstAccess = await t.mutation(api.entitlements.activateMyTrial, {
 		termsVersion: "2026-07-28",
 	});
@@ -59,7 +63,7 @@ test("activating an existing trial never restarts its clock", async () => {
 
 test("authenticated account without an entitlement requires activation", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
-	await t.mutation(api.users.syncCurrentUser, {});
+	await syncTestUser(t);
 
 	await expect(
 		t.query(api.entitlements.getMyAccess, {
@@ -75,7 +79,7 @@ test("trial access expires exactly 14 days after activation", async () => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date("2026-07-28T10:00:00.000Z"));
 	const t = convexTest(schema, modules).withIdentity(user);
-	await t.mutation(api.users.syncCurrentUser, {});
+	await syncTestUser(t);
 	await t.mutation(api.entitlements.activateMyTrial, {
 		termsVersion: "2026-07-28",
 	});
@@ -123,7 +127,7 @@ test("verified RevenueCat subscription unlocks a new account without starting a 
 		})),
 	);
 	const t = convexTest(schema, modules).withIdentity(user);
-	await t.mutation(api.users.syncCurrentUser, {});
+	await syncTestUser(t);
 
 	await t.action(api.revenueCat.syncMyEntitlement, {});
 
@@ -187,7 +191,7 @@ test("RevenueCat web billing does not unlock mobile app access", async () => {
 		})),
 	);
 	const t = convexTest(schema, modules).withIdentity(user);
-	await t.mutation(api.users.syncCurrentUser, {});
+	await syncTestUser(t);
 
 	await expect(t.action(api.revenueCat.syncMyEntitlement, {})).resolves.toEqual(
 		{
@@ -236,7 +240,7 @@ test("RevenueCat subscription grace keeps full access during a billing issue", a
 		})),
 	);
 	const t = convexTest(schema, modules).withIdentity(user);
-	await t.mutation(api.users.syncCurrentUser, {});
+	await syncTestUser(t);
 	await t.mutation(api.entitlements.activateMyTrial, {
 		termsVersion: "2026-07-28",
 	});
@@ -286,7 +290,7 @@ test("authorized RevenueCat webhook refreshes access while the app is closed", a
 		})),
 	);
 	const t = convexTest(schema, modules).withIdentity(user);
-	await t.mutation(api.users.syncCurrentUser, {});
+	await syncTestUser(t);
 	await t.mutation(api.entitlements.activateMyTrial, {
 		termsVersion: "2026-07-28",
 	});
@@ -372,7 +376,7 @@ test("TRANSFER webhook grants the destination and revokes the source account", a
 	const source = backend.withIdentity(sourceUser);
 	const destination = backend.withIdentity(user);
 	for (const client of [source, destination]) {
-		await client.mutation(api.users.syncCurrentUser, {});
+		await syncTestUser(client);
 		await client.mutation(api.entitlements.activateMyTrial, {
 			termsVersion: "2026-07-28",
 		});
@@ -434,7 +438,7 @@ test("activating an expired entitlement preserves its real access state", async 
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date("2026-07-28T10:00:00.000Z"));
 	const t = convexTest(schema, modules).withIdentity(user);
-	await t.mutation(api.users.syncCurrentUser, {});
+	await syncTestUser(t);
 	await t.mutation(api.entitlements.activateMyTrial, {
 		termsVersion: "2026-07-28",
 	});
@@ -460,7 +464,7 @@ test("RevenueCat webhook returns 503 when subscriber synchronization fails", asy
 		vi.fn(async () => Promise.reject(new Error("offline"))),
 	);
 	const t = convexTest(schema, modules).withIdentity(user);
-	await t.mutation(api.users.syncCurrentUser, {});
+	await syncTestUser(t);
 	await t.mutation(api.entitlements.activateMyTrial, {
 		termsVersion: "2026-07-28",
 	});
@@ -487,7 +491,7 @@ test("Day 12 creates an in-app trial reminder exactly once", async () => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date("2026-07-28T10:00:00.000Z"));
 	const t = convexTest(schema, modules).withIdentity(user);
-	await t.mutation(api.users.syncCurrentUser, {});
+	await syncTestUser(t);
 	await t.mutation(api.entitlements.activateMyTrial, {
 		termsVersion: "2026-07-28",
 	});

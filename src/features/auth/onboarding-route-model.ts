@@ -56,10 +56,13 @@ type TextStep = {
 
 type WheelStep = {
 	kind: "wheel";
-	id: "state" | "schoolType" | "grade";
+	id: "state" | "schoolType" | "grade" | "birthDate";
 	title: string;
 	description: string;
-	field: Extract<keyof OnboardingAnswers, "state" | "schoolType" | "grade">;
+	field: Extract<
+		keyof OnboardingAnswers,
+		"state" | "schoolType" | "grade" | "birthDate"
+	>;
 };
 
 export type OnboardingProfileStep =
@@ -141,6 +144,13 @@ export const ONBOARDING_PROFILE_STEPS = [
 		description:
 			"Wir speichern nur die Schulart, nicht den Namen deiner Schule.",
 		field: "schoolType",
+	},
+	{
+		kind: "wheel",
+		id: "birthDate",
+		title: "Wann bist du geboren?",
+		description: "Du musst mindestens 13 Jahre alt sein, um Dayova zu nutzen.",
+		field: "birthDate",
 	},
 	{
 		kind: "text",

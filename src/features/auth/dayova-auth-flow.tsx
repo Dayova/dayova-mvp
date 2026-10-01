@@ -115,6 +115,7 @@ import {
 	type LearningDayLabel,
 } from "~/features/learning-times/learning-time-days";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
+import { getLatestEligibleBirthDate } from "~/lib/age-assurance";
 import {
 	ONBOARDING_CREATION_PATH,
 	PASSWORD_RESET_SUCCESS_PATH,
@@ -3325,12 +3326,59 @@ function PayoffAnswer() {
 	);
 }
 
+function BirthDateAnswer() {
+	const { answers, setAnswer } = useOnboarding();
+	const [pickerVisible, setPickerVisible] = useState(false);
+	const [pendingDate, setPendingDate] = useState(getLatestEligibleBirthDate);
+	const maximumDate = getLatestEligibleBirthDate();
+	const openPicker = () => {
+		const [day, month, year] = answers.birthDate.split(".").map(Number);
+		const savedDate = new Date(year, month - 1, day);
+		setPendingDate(
+			answers.birthDate &&
+				!Number.isNaN(savedDate.getTime()) &&
+				savedDate <= maximumDate
+				? savedDate
+				: maximumDate,
+		);
+		setPickerVisible(true);
+	};
+	return (
+		<View className="w-full items-center">
+			<Button accessibilityLabel="Geburtsdatum auswählen" onPress={openPicker}>
+				<Text>{answers.birthDate || "Geburtsdatum auswählen"}</Text>
+			</Button>
+			<DateTimePickerSheet
+				visible={pickerVisible}
+				value={pendingDate}
+				mode="date"
+				maximumDate={maximumDate}
+				doneLabel="Geburtsdatum übernehmen"
+				onChange={(event, selectedDate) => {
+					if (event.type === "set" && selectedDate)
+						setPendingDate(selectedDate);
+				}}
+				onClose={() => setPickerVisible(false)}
+				onConfirm={(selectedDate) => {
+					setAnswer(
+						"birthDate",
+						`${String(selectedDate.getDate()).padStart(2, "0")}.${String(
+							selectedDate.getMonth() + 1,
+						).padStart(2, "0")}.${selectedDate.getFullYear()}`,
+					);
+				}}
+			/>
+		</View>
+	);
+}
+
 function WheelAnswer({
 	step,
 }: {
 	step: Extract<OnboardingProfileStep, { kind: "wheel" }>;
 }) {
 	const { answers, setAnswer } = useOnboarding();
+	if (step.field === "birthDate") return <BirthDateAnswer />;
 
 	if (step.field === "grade") {
 		return (

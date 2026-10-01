@@ -9,7 +9,7 @@ import {
 } from "./onboarding-route-model";
 
 describe("onboarding native route model", () => {
-	test("keeps the accepted 11-step profile/account sequence", () => {
+	test("keeps the accepted 12-step profile/account sequence", () => {
 		expect(ONBOARDING_PROFILE_STEPS.map((step) => step.id)).toEqual([
 			"name",
 			"studyTime",
@@ -20,6 +20,7 @@ describe("onboarding native route model", () => {
 			"grade",
 			"state",
 			"schoolType",
+			"birthDate",
 			"email",
 			"password",
 		]);
@@ -30,14 +31,14 @@ describe("onboarding native route model", () => {
 		expect(getNextOnboardingStep("name")?.id).toBe("studyTime");
 		expect(getNextOnboardingStep("password")).toBeNull();
 		expect(getOnboardingStepProgress("name")).toEqual({
-			progress: 1 / 11,
-			stepCount: 11,
+			progress: 1 / 12,
+			stepCount: 12,
 			stepNumber: 1,
 		});
 		expect(getOnboardingStepProgress("password")).toEqual({
 			progress: 1,
-			stepCount: 11,
-			stepNumber: 11,
+			stepCount: 12,
+			stepNumber: 12,
 		});
 	});
 

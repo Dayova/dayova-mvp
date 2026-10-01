@@ -18,6 +18,7 @@ export type OnboardingAnswers = {
 	schoolType: SupportedSchoolType | "";
 	grade: string;
 	name: string;
+	birthDate: string;
 	email: string;
 	password: string;
 };
@@ -32,6 +33,7 @@ const emptyAnswers: OnboardingAnswers = {
 	schoolType: "",
 	grade: "",
 	name: "",
+	birthDate: "",
 	email: "",
 	password: "",
 };

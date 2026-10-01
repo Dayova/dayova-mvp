@@ -114,7 +114,7 @@ async function signup() {
 	const t = convexTest(schema, modules);
 	const userId = await t
 		.withIdentity(identity)
-		.mutation(api.users.syncCurrentUser, {});
+		.mutation(api.users.syncCurrentUser, { birthDate: "01.01.2000" });
 	vi.stubEnv("NOTION_CRM_TOKEN", "test-only");
 	vi.stubEnv("NOTION_CRM_DATA_SOURCE_ID", source);
 	return { t, userId };
@@ -162,7 +162,9 @@ test("live signup schedules background reconciliation without performing network
 		const t = convexTest(schema, modules);
 		const fetchMock = vi.fn();
 		vi.stubGlobal("fetch", fetchMock);
-		await t.withIdentity(identity).mutation(api.users.syncCurrentUser, {});
+		await t
+			.withIdentity(identity)
+			.mutation(api.users.syncCurrentUser, { birthDate: "01.01.2000" });
 		await t.withIdentity(identity).mutation(api.users.syncCurrentUser, {});
 		const scheduled = await t.run((ctx) =>
 			ctx.db.system.query("_scheduled_functions").take(2),
@@ -211,7 +213,7 @@ test("dry-run holds a second new signup with the same email instead of proposing
 			subject: "user_second",
 			tokenIdentifier: "issuer|user_second",
 		})
-		.mutation(api.users.syncCurrentUser, {});
+		.mutation(api.users.syncCurrentUser, { birthDate: "01.01.2000" });
 	const { creates } = mockNotion();
 	expect(
 		await t.action(internal.crmSync.reconcile, { dryRun: true }),

@@ -71,4 +71,3 @@ Coverage: 32.97-second video; 33 full-timeline frames sampled at 1 fps (1-second
 Full original recording, reviewed locally:
 
 Coverage: 46.16-second video; 46 full-timeline frames sampled at 1 fps (1-second interval); 3 contact sheet(s); 11 additional frames from 00:00:13.500 to 00:00:15.500 at 5 fps; no audio stream.
-

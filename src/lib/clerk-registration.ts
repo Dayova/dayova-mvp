@@ -1,3 +1,4 @@
+import { requireEligibleBirthDate } from "./age-assurance";
 import { isGermanFederalState } from "./federal-states";
 import { isSupportedGrade } from "./grades";
 import {
@@ -10,6 +11,7 @@ export type ClerkRegistrationInput = {
 	password: string;
 	name?: string;
 	phone?: string;
+	birthDate?: string;
 	grade?: string;
 	schoolType?: SupportedSchoolType;
 	state?: string;
@@ -45,6 +47,7 @@ export const splitClerkName = (name?: string) => {
 };
 
 export const prepareClerkRegistration = (input: ClerkRegistrationInput) => {
+	const birthDate = requireEligibleBirthDate(input.birthDate);
 	const grade = input.grade?.trim();
 	if (grade && !isSupportedGrade(grade)) {
 		throw new Error("Bitte wähle eine gültige Klassenstufe aus.");
@@ -65,6 +68,7 @@ export const prepareClerkRegistration = (input: ClerkRegistrationInput) => {
 	const profile = {
 		name: input.name?.trim(),
 		phone: input.phone?.trim(),
+		birthDate,
 		grade,
 		schoolType,
 		state,

@@ -105,6 +105,7 @@ const mockOnboarding = {
 		schoolType: "prefer_not_to_say",
 		grade: "9",
 		name: "Test User",
+		birthDate: "01.01.2000",
 		email: "test@example.com",
 		password: "sicher123",
 	},
@@ -292,12 +293,14 @@ jest.mock("~/components/ui/date-time-picker-sheet", () => {
 		DateTimePickerSheet: ({
 			visible,
 			value,
+			maximumDate,
 			onChange,
 			onClose,
 			onConfirm,
 		}: {
 			visible: boolean;
 			value: Date;
+			maximumDate?: Date;
 			onChange: (event: { type: "set" }, date: Date) => void;
 			onClose: () => void;
 			onConfirm?: (date: Date) => void;
@@ -305,7 +308,10 @@ jest.mock("~/components/ui/date-time-picker-sheet", () => {
 			visible
 				? React.createElement(
 						ReactNative.View,
-						null,
+						{
+							accessibilityHint: maximumDate?.toISOString(),
+							testID: maximumDate ? "birth-date-picker-sheet" : undefined,
+						},
 						React.createElement(ReactNative.Pressable, {
 							accessibilityLabel: "Testzeit 18:05 auswählen",
 							accessibilityRole: "button",
@@ -1099,6 +1105,7 @@ describe("OnboardingScreen", () => {
 		mockOnboarding.answers.state = "Sachsen";
 		mockOnboarding.answers.schoolType = "prefer_not_to_say";
 		mockOnboarding.answers.grade = "9";
+		mockOnboarding.answers.birthDate = "01.01.2000";
 		mockOnboarding.answers.email = "test@example.com";
 		mockStackScreens.length = 0;
 	});
@@ -1127,7 +1134,7 @@ describe("OnboardingScreen", () => {
 			}),
 		).toBeOnTheScreen();
 		expect(
-			screen.getByText("Danach 11 kurze, bewusste Schritte · etwa 2 Minuten"),
+			screen.getByText("Danach 12 kurze, bewusste Schritte · etwa 2 Minuten"),
 		).toBeOnTheScreen();
 
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
@@ -1181,7 +1188,7 @@ describe("OnboardingScreen", () => {
 		const screen = await render(<OnboardingStepScreen stepId="name" />);
 
 		expect(screen.getByTestId("onboarding-name-input")).toBeOnTheScreen();
-		expect(screen.getByText("1 von 11")).toBeOnTheScreen();
+		expect(screen.getByText("1 von 12")).toBeOnTheScreen();
 		expect(screen.getByRole("progressbar")).toBeOnTheScreen();
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 
@@ -1348,6 +1355,22 @@ describe("OnboardingScreen", () => {
 		expect(
 			screen.getByTestId("onboarding-school-type-picker"),
 		).toBeOnTheScreen();
+	});
+
+	test("requires age 13 and limits the birth-date picker", async () => {
+		mockOnboarding.answers.birthDate = `01.01.${new Date().getFullYear() - 12}`;
+		const screen = await render(<OnboardingStepScreen stepId="birthDate" />);
+		expect(
+			screen.getByText("Du musst mindestens 13 Jahre alt sein, um Dayova zu nutzen."),
+		).toBeOnTheScreen();
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Geburtsdatum auswählen" }),
+		);
+		const maximumDate = new Date(
+			screen.getByTestId("birth-date-picker-sheet").props.accessibilityHint,
+		);
+		expect(maximumDate.getFullYear()).toBe(new Date().getFullYear() - 13);
 	});
 
 	test("shows the exact operational schedule before registration", async () => {
