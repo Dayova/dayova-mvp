@@ -1,5 +1,21 @@
 # Gallery-to-diagnostic QA — 2026-09-25
 
+## Review isolation (1 October 2026)
+
+PR #745 is isolated on the actual material-processing prerequisite #636 at
+`4105944e84b9fe0a665a89330af60abbcbb11651`, not the shared QA branch #744.
+It retains the original keyword and bounded structured-output retry fixes only.
+The tests use the parent's existing user-facing error contract; the unrelated
+QA-only error-code extension is not imported. The 13 output/retry tests,
+TypeScript and targeted ESLint/Biome checks passed on this isolated layer.
+Independent Standards and Spec reviews found no remaining issues.
+
+All native replay, deployment and wider-suite results below are historical
+25 September evidence, not fresh native acceptance of this isolated head.
+No backend deployment occurred during isolation. #636 remains owned by its
+author and retains its Draft status; #745 being Ready for Review does not
+make the parent or the stack merge-ready.
+
 ## Scope and observed defect
 
 - iPhone simulator, iOS 26.4, development client build 1.
