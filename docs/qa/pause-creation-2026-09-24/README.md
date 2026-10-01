@@ -2,11 +2,17 @@
 
 Issue: https://linear.app/dayova/issue/DAY-473/spater-fortsetzen-im-lernplan-pausendialog-fuhrt-nicht-zuruck-zu-plane
 
+## Current isolated stack — 2026-10-01
+
+Stack #809 is main → #733 → #735. The layer was rebased onto #733's navigation-error recovery: both explicit exit intents share its one-shot dispatch and restore route protection on failure. A rendered pause-failure/retry regression supplements the existing successful-pause and material-later cases. No UI redesign or backend change.
+
+The evidence below is historical combined-QA evidence, not a fresh native run against the isolated parent. Mocked-router tests do not certify native animation timing. No deployment or OTA was performed.
+
 ## Cause and fix
 
 The pause confirmation dispatched `dismissTo` while the native removal guard was still active. Confirming pause now commits an explicit `pause` exit intent before navigating. It shares the ordered exit mechanism from DAY-472, while retaining the different destination for a new exam's material-later action. Ordinary Back and cancel do not grant removal permission. No backend changes or deletion of drafts.
 
-## Evidence
+## Historical evidence (2026-09-24)
 
 - Baseline `8e11e1bd`: native iPhone iOS 26.4 / `de.dayova.app-dev` test tapped Back, asserted and tapped “Später fortsetzen”, then failed to find “Deine Pläne” (Maestro run `2026-09-24_180422`).
 - Same native test with fix: passed, including destination assertion (`2026-09-24_180647`). Saved draft remains visible in Plans.

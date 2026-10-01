@@ -165,6 +165,7 @@ export default function NewLearningPlanScreen() {
 		isMeaningfulTopicDescription(topics);
 	const canContinueTopics =
 		canWrite &&
+		!confirmedExit &&
 		!isBusy &&
 		!openingUploadAction &&
 		isMeaningfulTopicDescription(topics);

@@ -266,7 +266,7 @@ describe("exam creation across the topics boundary", () => {
 			plan: { topicDescription: "Zellteilung und Mitose" },
 			documents: [],
 		};
-		await render(<NewLearningPlanScreen />);
+		const screen = await render(<NewLearningPlanScreen />);
 		await act(() => mockProgress.onBack());
 		expect(mockPauseVisible).toBe(true);
 		expect(mockRemovalAllowed).toBe(false);
@@ -278,6 +278,34 @@ describe("exam creation across the topics boundary", () => {
 		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans");
 		expect(allowedAtDispatch).toBe(true);
 		expect(mockPauseVisible).toBe(false);
+		expect(
+			screen.getByRole("button", { name: "Weiter, wird geladen", busy: true }),
+		).toBeDisabled();
+	});
+
+	test("allows a failed pause exit to be retried with protection restored", async () => {
+		mockParams = { learningPlanId: "plan-1", step: "topic" };
+		mockSnapshot = {
+			plan: { topicDescription: "Zellteilung und Mitose" },
+			documents: [],
+		};
+		const screen = await render(<NewLearningPlanScreen />);
+		await act(() => mockProgress.onBack());
+		mockRouter.dismissTo.mockImplementationOnce(() => {
+			throw new Error("Navigation fehlgeschlagen");
+		});
+		await act(() => mockConfirmPause());
+		expect(mockRemovalAllowed).toBe(false);
+		expect(
+			screen.getByText(
+				"Die Ansicht konnte nicht geöffnet werden. Bitte versuche es erneut.",
+			),
+		).toBeOnTheScreen();
+		await act(() => mockProgress.onBack());
+		expect(mockPauseVisible).toBe(true);
+		await act(() => mockConfirmPause());
+		expect(mockRouter.dismissTo).toHaveBeenCalledTimes(2);
+		expect(mockRemovalAllowed).toBe(true);
 	});
 
 	test("releases removal protection before completing a new exam with material later", async () => {
