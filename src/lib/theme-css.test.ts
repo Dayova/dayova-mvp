@@ -24,6 +24,26 @@ describe("theme CSS", () => {
 			return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
 		};
 		for (const colors of [DAYOVA_DESIGN_SYSTEM.colors, DARK_THEME_COLORS]) {
+			const composite = (foreground: string, background: string) =>
+				`#${[1, 3, 5]
+					.map((offset) =>
+						Math.round(
+							Number.parseInt(foreground.slice(offset, offset + 2), 16) * 0.8 +
+								Number.parseInt(background.slice(offset, offset + 2), 16) * 0.2,
+						)
+							.toString(16)
+							.padStart(2, "0"),
+					)
+					.join("")}`;
+			for (const background of [colors.background, colors.surface]) {
+				const interactive = [
+					luminance(composite(colors.dangerAction, background)),
+					luminance(composite(colors.dangerSubtle, background)),
+				].sort((a, b) => a - b);
+				expect(
+					(interactive[1] + 0.05) / (interactive[0] + 0.05),
+				).toBeGreaterThanOrEqual(4.5);
+			}
 			const values = [
 				luminance(colors.dangerAction),
 				luminance(colors.dangerSubtle),

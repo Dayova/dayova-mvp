@@ -23,6 +23,7 @@ const buttonVariants = cva(
 	{
 		variants: {
 			variant: {
+				cancel: "border border-border bg-card active:bg-muted",
 				default: cn(
 					"border-hairline border-white bg-primary active:opacity-90",
 					Platform.select({ web: "hover:opacity-90" }),
@@ -82,6 +83,7 @@ const buttonTextVariants = cva(
 	{
 		variants: {
 			variant: {
+				cancel: "text-text",
 				default: "text-white",
 				neutral: "text-background",
 				destructive: "text-danger-action",
