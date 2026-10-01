@@ -54,7 +54,11 @@ import {
 	useBackIntent,
 } from "~/lib/navigation";
 import { ROUTES } from "~/lib/routes";
-import { ACCEPTED_FILE_TYPES, validateUploadFile } from "~/lib/upload-policy";
+import {
+	ACCEPTED_FILE_TYPES,
+	LEARNING_PLAN_UPLOAD_LIMITS,
+	validateUploadFile,
+} from "~/lib/upload-policy";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 
 const UPLOAD_TIMEOUT_MS = 45_000;
@@ -235,10 +239,14 @@ export default function NewLearningPlanScreen() {
 		const fileSizeBytes = asset.size ?? file.info().size ?? 0;
 		const fileType = asset.mimeType || "application/octet-stream";
 
-		const validation = validateUploadFile({
-			name: asset.name,
-			size: fileSizeBytes,
-		});
+		const validation = validateUploadFile(
+			{
+				name: asset.name,
+				size: fileSizeBytes,
+				type: fileType,
+			},
+			LEARNING_PLAN_UPLOAD_LIMITS,
+		);
 		if (!validation.valid) throw new Error(validation.message);
 
 		return { asset, file, fileSizeBytes, fileType };

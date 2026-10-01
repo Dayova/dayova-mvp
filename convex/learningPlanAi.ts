@@ -67,7 +67,12 @@ import {
 } from "./learningTopicMap";
 import { areSemanticallyDuplicateQuestions } from "./questionNovelty";
 
-const MAX_UPLOAD_FILE_BYTES = 7 * 1024 * 1024;
+const MAX_UPLOAD_DOCUMENT_BYTES = 25 * 1024 * 1024;
+const MAX_UPLOAD_IMAGE_BYTES = 7 * 1024 * 1024;
+const getMaxUploadFileBytes = (mediaType: string) =>
+	mediaType.startsWith("image/")
+		? MAX_UPLOAD_IMAGE_BYTES
+		: MAX_UPLOAD_DOCUMENT_BYTES;
 const MAX_EXTRACTED_TEXT_CHARS = 90_000;
 const MAX_PROMPT_CONTEXT_CHARS = 70_000;
 const MAX_SESSION_TITLE_CHARS = 28;
@@ -910,9 +915,12 @@ const buildModelInputFromDocuments = async (
 	const textSections: string[] = [];
 
 	for (const document of documents) {
-		if (document.fileSizeBytes > MAX_UPLOAD_FILE_BYTES) {
+		const mediaType = resolveMediaType(document.fileType, document.fileName);
+		const maxFileBytes = getMaxUploadFileBytes(mediaType);
+		const maxFileLabel = `${maxFileBytes / 1024 / 1024} MiB`;
+		if (document.fileSizeBytes > maxFileBytes) {
 			throwUserFacingError(
-				`Die Datei "${document.fileName}" ist zu groß für die KI-Verarbeitung.`,
+				`Die Datei "${document.fileName}" ist zu groß für die KI-Verarbeitung (maximal ${maxFileLabel}).`,
 			);
 		}
 
@@ -946,13 +954,12 @@ const buildModelInputFromDocuments = async (
 		}
 
 		const arrayBuffer = await response.arrayBuffer();
-		if (arrayBuffer.byteLength > MAX_UPLOAD_FILE_BYTES) {
+		if (arrayBuffer.byteLength > maxFileBytes) {
 			throwUserFacingError(
-				`Die Datei "${document.fileName}" ist zu groß für die KI-Verarbeitung.`,
+				`Die Datei "${document.fileName}" ist zu groß für die KI-Verarbeitung (maximal ${maxFileLabel}).`,
 			);
 		}
 
-		const mediaType = resolveMediaType(document.fileType, document.fileName);
 		const buffer = Buffer.from(arrayBuffer);
 
 		try {
@@ -1694,6 +1701,7 @@ const normalizeSessions = (
 export const __testOnlyLearningPlanAi = {
 	normalizeSessions,
 	getEmptyScheduleErrorMessage,
+	getMaxUploadFileBytes,
 	generatedTaskChoiceSchema,
 	generatedTaskItemSchema,
 	normalizeTaskChoiceText,
