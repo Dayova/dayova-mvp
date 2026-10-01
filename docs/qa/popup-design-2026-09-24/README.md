@@ -1,5 +1,23 @@
 # Popup header and destructive-action design evidence
 
+## Isolated review (1 October 2026)
+
+PR #727 is rebased as a focused patch on `main` at
+`a553f8f3a1c0999929803b4815b7ea0c932ab2db`. Its merged former parent #726 is no
+longer a separate dependency. No new design decision is introduced here.
+The superseded wide learning-plan delete rail is intentionally omitted: the
+later approved trash-icon restoration (#737) is already on main and preserved
+byte-for-byte. The dashboard's documented Today-button exception also remains.
+
+The screenshots and native observations below are historical September evidence,
+not fresh acceptance of this isolated branch. No native replay, deployment, OTA,
+or paid build is claimed. The PR stays Ready for Review.
+
+Current isolation validation: TypeScript, seven theme tests, 30 UI tests across
+five suites, targeted ESLint/Biome and diff checks passed. ESLint skips the
+Tailwind config by configuration (no source errors). Independent Standards and
+Spec reviews found no blocking issues. Native acceptance limits below remain.
+
 Date: 2026-09-24. Base: PR #726, `dcb4787691a3c92e7906763b53d173cd1bcfb988`.
 
 User-approved design: close control above the full-width title, preserve the grey drag handle, use tinted/outlined red destructive pills without decorative icons. Shared tokens preserve the existing status/error colors.
@@ -24,7 +42,7 @@ Observed: grey handle retained; X above title; full-width title/description; red
 - Native dark-mode and enlarged-system-font attempts did not yield usable dialog captures; they are **not** claimed as passed.
 - Busy/error rendering, VoiceOver/TalkBack traversal, iPad, every individual destructive-action surface, and authenticated end-to-end delete behavior are **not** certified by these screenshots.
 - No before image has been fabricated. User-provided references are design inputs, not a captured baseline build.
-- Not merged or deployed; this is a stacked follow-up to #726.
+- Historical capture: not merged or deployed; originally a follow-up to #726.
 
 ## Review
 

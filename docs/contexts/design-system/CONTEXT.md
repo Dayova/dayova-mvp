@@ -153,6 +153,10 @@ icon. `danger-action` and `danger-subtle` are paired action tokens in both theme
 the existing error/status `destructive` token is unchanged. Loading indicators
 use `dangerAction`. Keep confirmations and disabled/busy guards unchanged.
 
+The learning-plan swipe rail retains its existing compact trash-icon control
+(104px rail), as restored by the later approved #737 change already on main.
+Do not reintroduce the superseded wide delete-label rail from the original #727.
+
 The empty timetable uses one full-width gradient import button and a full-width
 neutral manual-entry button. File and camera are equal sources inside the shared
 `ActionSheet`, following the school-material upload pattern. Use source rows
