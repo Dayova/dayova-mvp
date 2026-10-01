@@ -1,9 +1,22 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render } from "@testing-library/react-native";
-import NewEntryScreen from "~/app/(creation)/entry/new";
+import {
+	CommonActions,
+	createNavigatorFactory,
+	NavigationContainer,
+	type NavigatorScreenParams,
+	StackActions,
+	StackRouter,
+	useNavigationBuilder,
+} from "expo-router/react-navigation";
+import { type ReactNode, useEffect } from "react";
+import { Text, View } from "react-native";
 import NewLearningPlanScreen from "~/app/(creation)/learning-plans/new";
+import { EntryDraftProvider } from "~/features/entries/entry-draft";
+import { EntryStartScreen } from "~/features/entries/entry-start-screen";
+import { EntryStepScreen } from "~/features/entries/entry-step-screen";
 
-let mockParams: Record<string, string> = {};
+let mockParams: Record<string, string | string[]> = {};
 let mockProgress: { currentStep: number; onBack: () => void };
 const mockRouter = {
 	replace: jest.fn(),
@@ -21,6 +34,13 @@ let mockSnapshot:
 	| { plan: { topicDescription: string }; documents: never[] }
 	| undefined;
 let mockPauseVisible = false;
+let mockBackIntentEnabled = false;
+let mockConfirmPause: (() => void) | null = null;
+let mockIncomingLink: ((url: string) => void) | null = null;
+let mockOpenEntry: (
+	params: Record<string, string | string[]>,
+	mode?: "navigate" | "push",
+) => void;
 jest.mock("convex/react", () => ({
 	useConvexAuth: () => ({ isAuthenticated: true }),
 	useConvex: () => ({ query: async () => mockAvailability }),
@@ -41,21 +61,65 @@ jest.mock("convex/react", () => ({
 	},
 	useAction: () => jest.fn(),
 }));
+jest.mock("expo-linking", () => ({
+	...jest.requireActual<typeof import("expo-linking")>("expo-linking"),
+	parse: (url: string) => {
+		const parsed = new URL(url);
+		return {
+			hostname: parsed.hostname,
+			path: parsed.pathname.replace(/^\//, ""),
+		};
+	},
+	addEventListener: (
+		_type: "url",
+		listener: (event: { url: string }) => void,
+	) => {
+		mockIncomingLink = (url) => listener({ url });
+		return { remove: () => (mockIncomingLink = null) };
+	},
+}));
 jest.mock("expo-router", () => ({
-	useRouter: () => mockRouter,
+	useRouter: () => {
+		// Learning-plan assertions use their existing router fixture outside a navigator.
+		const { NavigationContext } = jest.requireActual<
+			typeof import("expo-router/react-navigation")
+		>("expo-router/react-navigation");
+		const { useContext } = jest.requireActual<typeof import("react")>("react");
+		const navigation = useContext(NavigationContext);
+		return navigation
+			? {
+					...mockRouter,
+					navigate: (path: string) =>
+						navigation.navigate(path.split("/").at(-1) as never),
+					back: () => navigation.goBack(),
+					canGoBack: () => navigation.canGoBack(),
+				}
+			: mockRouter;
+	},
 	useLocalSearchParams: () => mockParams,
 	Stack: { Screen: () => null },
+	Redirect: () => null,
 }));
 jest.mock("~/features/learning-plans/creation-progress-shell", () => ({
 	useLearningPlanCreationProgress: (configuration: typeof mockProgress) => {
-		mockProgress = configuration;
+		const { NavigationContext } = jest.requireActual<
+			typeof import("expo-router/react-navigation")
+		>("expo-router/react-navigation");
+		const { useContext } = jest.requireActual<typeof import("react")>("react");
+		const navigation = useContext(NavigationContext);
+		// Subscribe to focus even while the previous screen remains mounted.
+		const focused = navigation?.isFocused() ?? true;
+		if (focused) mockProgress = configuration;
 	},
 }));
 jest.mock("~/lib/navigation", () => ({
 	...jest.requireActual<typeof import("~/lib/navigation-actions")>(
 		"~/lib/navigation-actions",
 	),
-	useBackIntent: (_enabled: boolean, onBack: () => boolean) => onBack,
+	useBackIntent: (enabled: boolean, onBack: () => boolean) => {
+		mockBackIntentEnabled = enabled;
+		return onBack;
+	},
 }));
 jest.mock("~/context/AuthContext", () => ({
 	useAuthSession: () => ({ user: { id: "user" } }),
@@ -100,8 +164,15 @@ jest.mock("~/components/ui/screen", () => {
 });
 jest.mock("~/components/ui/action-sheet", () => ({ ActionSheet: () => null }));
 jest.mock("~/components/ui/confirmation-sheet", () => ({
-	ConfirmationSheet: ({ visible }: { visible: boolean }) => {
+	ConfirmationSheet: ({
+		visible,
+		onConfirm,
+	}: {
+		visible: boolean;
+		onConfirm: () => void;
+	}) => {
 		mockPauseVisible = visible;
+		mockConfirmPause = visible ? onConfirm : null;
 		return null;
 	},
 }));
@@ -121,18 +192,72 @@ jest.mock("~/lib/theme", () => ({
 	}),
 }));
 
+function EntryTestNavigator({ children }: { children: ReactNode }) {
+	const { state, navigation, descriptors, NavigationContent } =
+		useNavigationBuilder(StackRouter, { children });
+	useEffect(() => {
+		mockOpenEntry = (params, mode = "navigate") => {
+			mockParams = params;
+			navigation.dispatch(
+				mode === "push"
+					? StackActions.push("index", params)
+					: CommonActions.navigate({ name: "index", params }),
+			);
+		};
+	}, [navigation]);
+	return (
+		<NavigationContent>
+			<Text testID="entry-history">
+				{state.routes.map((route) => route.name).join(",")}
+			</Text>
+			{state.routes.map((route, index) => (
+				<View
+					key={route.key}
+					style={{ display: index === state.index ? "flex" : "none" }}
+				>
+					{descriptors[route.key].render()}
+				</View>
+			))}
+		</NavigationContent>
+	);
+}
+const EntryStack = createNavigatorFactory(EntryTestNavigator)();
+const Subject = () => <EntryStepScreen step="examDetails" />;
+const DateStep = () => <EntryStepScreen step="basics" />;
+const Availability = () => <EntryStepScreen step="learningAvailability" />;
+const Planning = () => <EntryStepScreen step="planning" />;
+function NewEntryScreen() {
+	return (
+		<NavigationContainer>
+			<EntryDraftProvider>
+				<EntryStack.Navigator>
+					<EntryStack.Screen name="index" component={EntryStartScreen} />
+					<EntryStack.Screen name="subject" component={Subject} />
+					<EntryStack.Screen name="date" component={DateStep} />
+					<EntryStack.Screen name="availability" component={Availability} />
+					<EntryStack.Screen name="planning" component={Planning} />
+				</EntryStack.Navigator>
+			</EntryDraftProvider>
+		</NavigationContainer>
+	);
+}
+
 beforeEach(() => {
 	jest.clearAllMocks();
 	mockCreateEntry.mockResolvedValue("exam-1");
 	mockUpdateEntry.mockResolvedValue(undefined);
 	mockSnapshot = undefined;
 	mockPauseVisible = false;
+	mockBackIntentEnabled = false;
+	mockConfirmPause = null;
 	mockParams = {
 		type: "exam",
 		step: "learningAvailability",
+		examDayEntryId: "exam-1",
 		subject: "Biologie",
 		examTypeLabel: "Klassenarbeit",
 		dayKey: "2026-09-30",
+		durationMinutes: "90",
 	};
 });
 
@@ -175,8 +300,8 @@ describe("exam creation across the topics boundary", () => {
 			topicDescription: "Zellteilung und Mitose",
 			examDayEntryId: "exam-1",
 		});
-		expect(mockCreateEntry).toHaveBeenCalledTimes(1);
-		expect(mockUpdateEntry).toHaveBeenCalledTimes(1);
+		expect(mockCreateEntry).not.toHaveBeenCalled();
+		expect(mockUpdateEntry).toHaveBeenCalledTimes(2);
 		await screen.unmount();
 	});
 
@@ -221,6 +346,26 @@ describe("exam creation across the topics boundary", () => {
 		expect(mockRouter.replace).not.toHaveBeenCalled();
 	});
 
+	test("returns to Plans from material opened on a saved plan card", async () => {
+		mockParams = {
+			learningPlanId: "plan-1",
+			step: "material",
+			origin: "learningPlans",
+		};
+		mockSnapshot = {
+			plan: { topicDescription: "Zellteilung und Mitose" },
+			documents: [],
+		};
+		mockRouter.dismissTo.mockImplementationOnce(() => {
+			expect(mockBackIntentEnabled).toBe(false);
+		});
+		await render(<NewLearningPlanScreen />);
+		await act(() => mockProgress.onBack());
+		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans");
+		expect(mockRouter.setParams).not.toHaveBeenCalled();
+		expect(mockPauseVisible).toBe(false);
+	});
+
 	test("still confirms pausing a saved learning-plan draft", async () => {
 		mockParams = {
 			learningPlanId: "plan-1",
@@ -232,10 +377,375 @@ describe("exam creation across the topics boundary", () => {
 			plan: { topicDescription: "Zellteilung und Mitose" },
 			documents: [],
 		};
+		mockRouter.dismissTo.mockImplementationOnce(() => {
+			expect(mockBackIntentEnabled).toBe(false);
+		});
 		await render(<NewLearningPlanScreen />);
 		await act(() => mockProgress.onBack());
 		expect(mockPauseVisible).toBe(true);
 		expect(mockRouter.replace).not.toHaveBeenCalled();
 		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+		await act(() => mockConfirmPause?.());
+		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans");
 	});
+});
+
+describe("entry native history and shared answers", () => {
+	test("creates one history entry per step and retains answers after native Back", async () => {
+		mockParams = { type: "exam" };
+		const screen = await render(<NewEntryScreen />);
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+		await fireEvent.press(screen.getByRole("radio", { name: "Klausur" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(screen.getByTestId("entry-history").props.children).toBe(
+			"index,subject",
+		);
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+		await fireEvent.press(screen.getByRole("radio", { name: "Chemie" }));
+		await act(() => mockProgress.onBack());
+		expect(screen.getByTestId("entry-history").props.children).toBe("index");
+		expect(
+			screen.getByRole("radio", { name: "Klausur" }).props.accessibilityState
+				.selected,
+		).toBe(true);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(
+			screen.getByRole("radio", { name: "Chemie" }).props.accessibilityState
+				.selected,
+		).toBe(true);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(screen.getByTestId("entry-history").props.children).toBe(
+			"index,subject,date",
+		);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(screen.getByTestId("entry-history").props.children).toBe(
+			"index,subject,date,availability",
+		);
+		await act(() => mockProgress.onBack());
+		expect(
+			screen.getByText("Wann findet die Prüfung statt?"),
+		).toBeOnTheScreen();
+		expect(screen.getByTestId("entry-history").props.children).toBe(
+			"index,subject,date",
+		);
+	});
+
+	test("resumes with the full predecessor history and the saved exam identity", async () => {
+		mockParams.examDayEntryId = "exam-1";
+		const screen = await render(<NewEntryScreen />);
+		expect(screen.getByTestId("entry-history").props.children).toBe(
+			"index,subject,date,availability",
+		);
+		await act(() => mockProgress.onBack());
+		await act(() => mockProgress.onBack());
+		await act(() => mockProgress.onBack());
+		expect(screen.getByTestId("entry-history").props.children).toBe("index");
+		expect(
+			screen.getByRole("radio", { name: "Klassenarbeit" }).props
+				.accessibilityState.selected,
+		).toBe(true);
+		expect(mockCreateEntry).not.toHaveBeenCalled();
+	});
+
+	test("starts incomplete resume links at the first step", async () => {
+		delete mockParams.subject;
+		const screen = await render(<NewEntryScreen />);
+		expect(screen.getByTestId("entry-history").props.children).toBe("index");
+		expect(
+			screen.getByText("Welche Art von Prüfung ist es?"),
+		).toBeOnTheScreen();
+	});
+
+	const invalidResumeCases: [string, Record<string, string>, string[]][] = [
+		["missing exam ID", {}, ["examDayEntryId"]],
+		["missing date", {}, ["dayKey"]],
+		["invalid date", { dayKey: "2026-02-30" }, []],
+		["missing duration", {}, ["durationMinutes"]],
+		["invalid duration", { durationMinutes: "0" }, []],
+	];
+	test.each(
+		invalidResumeCases,
+	)("starts a clean flow for a resume with %s", async (_reason, overrides, omitted) => {
+		const params: Record<string, string> = {
+			type: "exam",
+			step: "learningAvailability",
+			examDayEntryId: "exam-1",
+			subject: "Biologie",
+			examTypeLabel: "Klassenarbeit",
+			dayKey: "2026-09-30",
+			durationMinutes: "90",
+			...overrides,
+		};
+		for (const key of omitted) delete params[key];
+		mockParams = params;
+		const screen = await render(<NewEntryScreen />);
+		expect(screen.getByTestId("entry-history").props.children).toBe("index");
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+		expect(
+			screen.getByRole("radio", { name: "Klassenarbeit" }).props
+				.accessibilityState.selected,
+		).toBe(false);
+		expect(mockUpdateEntry).not.toHaveBeenCalled();
+	});
+
+	test("never updates an old exam from an incomplete resume link", async () => {
+		mockParams = {
+			type: "exam",
+			step: "learningAvailability",
+			examDayEntryId: "exam-1",
+			subject: "Biologie",
+			examTypeLabel: "Klassenarbeit",
+		};
+		const screen = await render(<NewEntryScreen />);
+		await fireEvent.press(screen.getByRole("radio", { name: "Klausur" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(screen.getByRole("radio", { name: "Chemie" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(mockCreateEntry).toHaveBeenCalledTimes(1);
+		expect(mockUpdateEntry).not.toHaveBeenCalled();
+	});
+
+	test("a new flow cannot inherit answers from a discarded flow", async () => {
+		mockParams = { type: "exam" };
+		let screen = await render(<NewEntryScreen />);
+		await fireEvent.press(screen.getByRole("radio", { name: "Klausur" }));
+		await screen.unmount();
+		screen = await render(<NewEntryScreen />);
+		expect(
+			screen.getByRole("radio", { name: "Klausur" }).props.accessibilityState
+				.selected,
+		).toBe(false);
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+	});
+
+	test("a second entry URL clears the retained exam and its native history", async () => {
+		mockParams = { type: "exam" };
+		const screen = await render(<NewEntryScreen />);
+		await fireEvent.press(screen.getByRole("radio", { name: "Klausur" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(screen.getByRole("radio", { name: "Chemie" }));
+		await act(() => mockOpenEntry({ type: "homework" }));
+		expect(screen.getByTestId("entry-history").props.children).toBe("index");
+		expect(screen.getByText("Hausaufgabe eintragen")).toBeOnTheScreen();
+		expect(screen.queryByText("Welche Art von Prüfung ist es?")).toBeNull();
+	});
+
+	test("a new route for the same entry URL starts a clean draft", async () => {
+		mockParams = { type: "exam" };
+		const screen = await render(<NewEntryScreen />);
+		await fireEvent.press(screen.getByRole("radio", { name: "Klausur" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await act(() => mockOpenEntry({ type: "exam" }, "push"));
+		expect(screen.getByTestId("entry-history").props.children).toBe("index");
+		expect(
+			screen.getByRole("radio", { name: "Klausur" }).props.accessibilityState
+				.selected,
+		).toBe(false);
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+	});
+
+	test("an incoming link reopens the same route and URL with a clean draft", async () => {
+		mockParams = { type: "exam" };
+		const screen = await render(<NewEntryScreen />);
+		await fireEvent.press(screen.getByRole("radio", { name: "Klausur" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await act(() => {
+			mockIncomingLink?.("de.dayova.app:///entry/new?type=exam");
+			mockOpenEntry({ type: "exam" });
+		});
+		expect(screen.getByTestId("entry-history").props.children).toBe("index");
+		expect(
+			screen.getByRole("radio", { name: "Klausur" }).props.accessibilityState
+				.selected,
+		).toBe(false);
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+	});
+
+	test("a fresh entry after a saved resume cannot update that exam", async () => {
+		const screen = await render(<NewEntryScreen />);
+		expect(screen.getByTestId("entry-history").props.children).toBe(
+			"index,subject,date,availability",
+		);
+		await act(() => mockOpenEntry({ type: "exam" }));
+		expect(screen.getByTestId("entry-history").props.children).toBe("index");
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+		await fireEvent.press(screen.getByRole("radio", { name: "Klausur" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(screen.getByRole("radio", { name: "Chemie" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(mockCreateEntry).toHaveBeenCalledTimes(1);
+		expect(mockUpdateEntry).not.toHaveBeenCalled();
+	});
+
+	test("an old save finishing after a new entry URL cannot redirect the new flow", async () => {
+		let finishSave: () => void = () => {};
+		mockUpdateEntry.mockImplementationOnce(
+			() =>
+				new Promise<void>((resolve) => {
+					finishSave = resolve;
+				}),
+		);
+		const screen = await render(<NewEntryScreen />);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(mockUpdateEntry).toHaveBeenCalledTimes(1);
+		await act(() => mockOpenEntry({ type: "homework" }));
+		expect(screen.getByTestId("entry-history").props.children).toBe("index");
+		await act(() => finishSave());
+		expect(mockRouter.replace).not.toHaveBeenCalled();
+		expect(screen.getByText("Hausaufgabe eintragen")).toBeOnTheScreen();
+	});
+
+	test("keeps homework answers and native history across its planning step", async () => {
+		mockParams = { type: "homework", subject: "Biologie" };
+		const screen = await render(<NewEntryScreen />);
+		await fireEvent.changeText(
+			screen.getByPlaceholderText("Kurze Notiz hinzufügen"),
+			"Arbeitsblatt 7",
+		);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(screen.getByTestId("entry-history").props.children).toBe(
+			"index,planning",
+		);
+		// Homework's visible Back delegates to the same navigator.
+		await fireEvent.press(screen.getByRole("button", { name: "Zurück" }));
+		expect(screen.getByTestId("entry-history").props.children).toBe("index");
+		expect(screen.getByDisplayValue("Arbeitsblatt 7")).toBeOnTheScreen();
+	});
+
+	test("blocks repeated saves and Back while a save is pending, then recovers after failure", async () => {
+		let rejectSave: (reason: Error) => void = () => {};
+		mockUpdateEntry.mockImplementationOnce(
+			() =>
+				new Promise((_resolve, reject) => {
+					rejectSave = reject;
+				}),
+		);
+		const screen = await render(<NewEntryScreen />);
+		const submit = screen.getByRole("button", { name: "Weiter" });
+		await fireEvent.press(submit);
+		await fireEvent.press(submit);
+		await act(() => mockProgress.onBack());
+		expect(screen.getByTestId("entry-history").props.children).toBe(
+			"index,subject,date,availability",
+		);
+		expect(mockUpdateEntry).toHaveBeenCalledTimes(1);
+		await act(() => rejectSave(new Error("Offline")));
+		expect(screen.getByText("Offline")).toBeOnTheScreen();
+		await act(() => mockProgress.onBack());
+		expect(
+			screen.getByText("Wann findet die Prüfung statt?"),
+		).toBeOnTheScreen();
+	});
+});
+
+function parseEntryUrl(url: string) {
+	const { getStateFromPath } = jest.requireActual<
+		typeof import("expo-router/build/fork/getStateFromPath")
+	>("expo-router/build/fork/getStateFromPath");
+	const state = getStateFromPath<{
+		"(creation)": NavigatorScreenParams<{
+			"entry/new": NavigatorScreenParams<{
+				index: Record<string, string | string[]> | undefined;
+				subject: undefined;
+				date: undefined;
+				availability: undefined;
+			}>;
+		}>;
+	}>(url, {
+		screens: {
+			"(creation)": {
+				path: "",
+				screens: {
+					"entry/new": {
+						path: "entry/new",
+						screens: {
+							index: "",
+							subject: "subject",
+							date: "date",
+							availability: "availability",
+						},
+					},
+				},
+			},
+		},
+	});
+	const layout = state?.routes[0].state?.routes[0];
+	expect(layout?.params).toBeUndefined();
+	return (layout?.state?.routes[0].params ?? {}) as Record<
+		string,
+		string | string[]
+	>;
+}
+
+test("initializes a cold resume from leaf URL params when the parent layout has none", async () => {
+	const params = parseEntryUrl(
+		"/entry/new?type=exam&step=learningAvailability&subject=Chemie&examTypeLabel=Klausur&examDayEntryId=exam-1&dayKey=2026-10-01&durationMinutes=90",
+	);
+	expect(params).toMatchObject({
+		type: "exam",
+		examDayEntryId: "exam-1",
+		subject: "Chemie",
+		durationMinutes: "90",
+	});
+	mockParams = params;
+	const screen = await render(<NewEntryScreen />);
+	expect(screen.getByTestId("entry-history").props.children).toBe(
+		"index,subject,date,availability",
+	);
+	await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+	expect(mockUpdateEntry).toHaveBeenCalledWith(
+		expect.objectContaining({
+			id: "exam-1",
+			subject: "Chemie",
+			examTypeLabel: "Klausur",
+			dayKey: "2026-10-01",
+			durationMinutes: 90,
+		}),
+	);
+	expect(mockCreateEntry).not.toHaveBeenCalled();
+});
+
+test.each([
+	"examDayEntryId",
+	"subject",
+	"examTypeLabel",
+])("starts cleanly when a cold resume URL repeats %s", async (repeatedKey) => {
+	const params = parseEntryUrl(
+		`/entry/new?type=exam&step=learningAvailability&subject=Chemie&examTypeLabel=Klausur&examDayEntryId=exam-1&dayKey=2026-10-01&durationMinutes=90&${repeatedKey}=second`,
+	);
+	expect(params[repeatedKey]).toEqual([expect.any(String), "second"]);
+	mockParams = params;
+	const screen = await render(<NewEntryScreen />);
+	expect(screen.getByTestId("entry-history").props.children).toBe("index");
+	expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+	expect(mockUpdateEntry).not.toHaveBeenCalled();
+});
+
+test("starts a clean exam when a cold resume URL repeats its type", async () => {
+	const params = parseEntryUrl(
+		"/entry/new?type=exam&type=exam&step=learningAvailability&subject=Chemie&examTypeLabel=Klausur&examDayEntryId=exam-1&dayKey=2026-10-01&durationMinutes=90",
+	);
+	expect(params.type).toEqual(["exam", "exam"]);
+	mockParams = params;
+	const screen = await render(<NewEntryScreen />);
+	expect(screen.getByTestId("entry-history").props.children).toBe("index");
+	expect(screen.getByText("Welche Art von Prüfung ist es?")).toBeOnTheScreen();
+	expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+	expect(mockUpdateEntry).not.toHaveBeenCalled();
+});
+
+test("starts cleanly when repeated exam IDs imply a resume without a step", async () => {
+	const params = parseEntryUrl(
+		"/entry/new?type=exam&subject=Chemie&examTypeLabel=Klausur&examDayEntryId=exam-1&examDayEntryId=exam-2&dayKey=2026-10-01&durationMinutes=90",
+	);
+	expect(params.examDayEntryId).toEqual(["exam-1", "exam-2"]);
+	mockParams = params;
+	const screen = await render(<NewEntryScreen />);
+	expect(screen.getByTestId("entry-history").props.children).toBe("index");
+	expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+	expect(mockUpdateEntry).not.toHaveBeenCalled();
 });

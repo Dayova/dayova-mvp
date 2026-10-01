@@ -1,0 +1,10 @@
+appId: com.dayova.dev
+---
+- assertVisible: Welches Fach ist es?
+- swipe:
+    start: 0%, 50%
+    end: 85%, 50%
+    duration: 500
+- assertVisible: Welche Art von Prüfung ist es?
+- back
+- assertVisible: Entry native stack verification

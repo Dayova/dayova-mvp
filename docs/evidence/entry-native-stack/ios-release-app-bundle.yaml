@@ -1,0 +1,9 @@
+appId: de.dayova.app
+---
+- extendedWaitUntil:
+    visible: Einstellungen
+    timeout: 30000
+- tapOn: Einstellungen
+- tapOn: App-Informationen
+- assertVisible: ota-staging
+- assertVisible: App-Bundle

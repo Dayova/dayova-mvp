@@ -1,0 +1,12 @@
+appId: de.dayova.app
+# With the release app terminated, open either of these malformed URLs, then
+# run this assertion flow. Both must start a fresh exam with no selected type.
+# dayova:///entry/new?type=exam&type=exam&step=learningAvailability&subject=Chemie&examTypeLabel=Klausur&examDayEntryId=exam-1&dayKey=2026-10-01&durationMinutes=90
+# dayova:///entry/new?type=exam&step=learningAvailability&subject=Chemie&examTypeLabel=Klausur&examDayEntryId=exam-1&dayKey=2026-10-01
+---
+- extendedWaitUntil:
+    visible: Welche Art von Prüfung ist es?
+    timeout: 30000
+- assertVisible:
+    text: Weiter
+    enabled: false

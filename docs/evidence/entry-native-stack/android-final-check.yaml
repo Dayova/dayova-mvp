@@ -1,0 +1,26 @@
+appId: com.dayova.dev
+---
+- assertVisible: Entry native stack verification
+- tapOn: Resume exam
+- back
+- assertVisible: Wann findet die Prüfung statt?
+- tapOn: '30. September 2026'
+- back
+- assertVisible: Wann findet die Prüfung statt?
+- tapOn: Weiter
+- assertVisible: Ist genug Lernzeit eingeplant?
+- tapOn: Weiter
+- swipe:
+    start: 0%, 50%
+    end: 85%, 50%
+    duration: 500
+- assertVisible: Ist genug Lernzeit eingeplant?
+- extendedWaitUntil:
+    visible: Topics destination fixture
+    timeout: 30000
+- tapOn: Native back
+- assertVisible: Entry native stack verification
+- tapOn: Resume exam
+- back
+- back
+- assertVisible: Welches Fach ist es?

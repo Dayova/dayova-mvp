@@ -1,0 +1,7 @@
+Running on DAY_169_Pixel_9
+ > Flow android-cancel-check
+Assert that "Welches Fach ist es?" is visible... COMPLETED
+Swipe from (0%, 50%) to (85%, 50%) in 500 ms... COMPLETED
+Assert that "Welche Art von Prüfung ist es?" is visible... COMPLETED
+Press back... COMPLETED
+Assert that "Entry native stack verification" is visible... COMPLETED
