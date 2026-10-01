@@ -1,0 +1,602 @@
+{
+  "coverage_statement": "Coverage: 173.13-second video; 80 full-timeline frames sampled at 0.462079 fps (2.164134-second interval); 5 contact sheet(s); no audio stream.",
+  "created_at": "2026-09-24T12:10:38.558171+00:00",
+  "focused_intervals": [],
+  "full_timeline_sampling": {
+    "contact_sheet_count": 5,
+    "contact_sheets": [
+      "full/contact-sheets/contact-sheet-001.png",
+      "full/contact-sheets/contact-sheet-002.png",
+      "full/contact-sheets/contact-sheet-003.png",
+      "full/contact-sheets/contact-sheet-004.png",
+      "full/contact-sheets/contact-sheet-005.png"
+    ],
+    "end_seconds": 173.1307,
+    "fps": 0.462078649,
+    "frame_count": 80,
+    "frames": [
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-001.png",
+        "index": 1,
+        "path": "full/frames/frame-0001.png",
+        "timestamp": "00:00:00.000",
+        "timestamp_seconds": 0.0
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-001.png",
+        "index": 2,
+        "path": "full/frames/frame-0002.png",
+        "timestamp": "00:00:02.164",
+        "timestamp_seconds": 2.164134
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-001.png",
+        "index": 3,
+        "path": "full/frames/frame-0003.png",
+        "timestamp": "00:00:04.328",
+        "timestamp_seconds": 4.328267
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-001.png",
+        "index": 4,
+        "path": "full/frames/frame-0004.png",
+        "timestamp": "00:00:06.492",
+        "timestamp_seconds": 6.492401
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-001.png",
+        "index": 5,
+        "path": "full/frames/frame-0005.png",
+        "timestamp": "00:00:08.657",
+        "timestamp_seconds": 8.656535
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-001.png",
+        "index": 6,
+        "path": "full/frames/frame-0006.png",
+        "timestamp": "00:00:10.821",
+        "timestamp_seconds": 10.820669
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-001.png",
+        "index": 7,
+        "path": "full/frames/frame-0007.png",
+        "timestamp": "00:00:12.985",
+        "timestamp_seconds": 12.984803
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-001.png",
+        "index": 8,
+        "path": "full/frames/frame-0008.png",
+        "timestamp": "00:00:15.149",
+        "timestamp_seconds": 15.148936
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-001.png",
+        "index": 9,
+        "path": "full/frames/frame-0009.png",
+        "timestamp": "00:00:17.313",
+        "timestamp_seconds": 17.31307
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-001.png",
+        "index": 10,
+        "path": "full/frames/frame-0010.png",
+        "timestamp": "00:00:19.477",
+        "timestamp_seconds": 19.477204
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-001.png",
+        "index": 11,
+        "path": "full/frames/frame-0011.png",
+        "timestamp": "00:00:21.641",
+        "timestamp_seconds": 21.641337
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-001.png",
+        "index": 12,
+        "path": "full/frames/frame-0012.png",
+        "timestamp": "00:00:23.805",
+        "timestamp_seconds": 23.805471
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-001.png",
+        "index": 13,
+        "path": "full/frames/frame-0013.png",
+        "timestamp": "00:00:25.970",
+        "timestamp_seconds": 25.969605
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-001.png",
+        "index": 14,
+        "path": "full/frames/frame-0014.png",
+        "timestamp": "00:00:28.134",
+        "timestamp_seconds": 28.133739
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-001.png",
+        "index": 15,
+        "path": "full/frames/frame-0015.png",
+        "timestamp": "00:00:30.298",
+        "timestamp_seconds": 30.297873
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-001.png",
+        "index": 16,
+        "path": "full/frames/frame-0016.png",
+        "timestamp": "00:00:32.462",
+        "timestamp_seconds": 32.462006
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-002.png",
+        "index": 17,
+        "path": "full/frames/frame-0017.png",
+        "timestamp": "00:00:34.626",
+        "timestamp_seconds": 34.62614
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-002.png",
+        "index": 18,
+        "path": "full/frames/frame-0018.png",
+        "timestamp": "00:00:36.790",
+        "timestamp_seconds": 36.790274
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-002.png",
+        "index": 19,
+        "path": "full/frames/frame-0019.png",
+        "timestamp": "00:00:38.954",
+        "timestamp_seconds": 38.954408
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-002.png",
+        "index": 20,
+        "path": "full/frames/frame-0020.png",
+        "timestamp": "00:00:41.119",
+        "timestamp_seconds": 41.118541
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-002.png",
+        "index": 21,
+        "path": "full/frames/frame-0021.png",
+        "timestamp": "00:00:43.283",
+        "timestamp_seconds": 43.282675
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-002.png",
+        "index": 22,
+        "path": "full/frames/frame-0022.png",
+        "timestamp": "00:00:45.447",
+        "timestamp_seconds": 45.446809
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-002.png",
+        "index": 23,
+        "path": "full/frames/frame-0023.png",
+        "timestamp": "00:00:47.611",
+        "timestamp_seconds": 47.610943
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-002.png",
+        "index": 24,
+        "path": "full/frames/frame-0024.png",
+        "timestamp": "00:00:49.775",
+        "timestamp_seconds": 49.775076
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-002.png",
+        "index": 25,
+        "path": "full/frames/frame-0025.png",
+        "timestamp": "00:00:51.939",
+        "timestamp_seconds": 51.93921
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-002.png",
+        "index": 26,
+        "path": "full/frames/frame-0026.png",
+        "timestamp": "00:00:54.103",
+        "timestamp_seconds": 54.103344
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-002.png",
+        "index": 27,
+        "path": "full/frames/frame-0027.png",
+        "timestamp": "00:00:56.267",
+        "timestamp_seconds": 56.267477
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-002.png",
+        "index": 28,
+        "path": "full/frames/frame-0028.png",
+        "timestamp": "00:00:58.432",
+        "timestamp_seconds": 58.431611
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-002.png",
+        "index": 29,
+        "path": "full/frames/frame-0029.png",
+        "timestamp": "00:01:00.596",
+        "timestamp_seconds": 60.595745
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-002.png",
+        "index": 30,
+        "path": "full/frames/frame-0030.png",
+        "timestamp": "00:01:02.760",
+        "timestamp_seconds": 62.759879
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-002.png",
+        "index": 31,
+        "path": "full/frames/frame-0031.png",
+        "timestamp": "00:01:04.924",
+        "timestamp_seconds": 64.924013
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-002.png",
+        "index": 32,
+        "path": "full/frames/frame-0032.png",
+        "timestamp": "00:01:07.088",
+        "timestamp_seconds": 67.088146
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-003.png",
+        "index": 33,
+        "path": "full/frames/frame-0033.png",
+        "timestamp": "00:01:09.252",
+        "timestamp_seconds": 69.25228
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-003.png",
+        "index": 34,
+        "path": "full/frames/frame-0034.png",
+        "timestamp": "00:01:11.416",
+        "timestamp_seconds": 71.416414
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-003.png",
+        "index": 35,
+        "path": "full/frames/frame-0035.png",
+        "timestamp": "00:01:13.581",
+        "timestamp_seconds": 73.580547
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-003.png",
+        "index": 36,
+        "path": "full/frames/frame-0036.png",
+        "timestamp": "00:01:15.745",
+        "timestamp_seconds": 75.744681
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-003.png",
+        "index": 37,
+        "path": "full/frames/frame-0037.png",
+        "timestamp": "00:01:17.909",
+        "timestamp_seconds": 77.908815
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-003.png",
+        "index": 38,
+        "path": "full/frames/frame-0038.png",
+        "timestamp": "00:01:20.073",
+        "timestamp_seconds": 80.072949
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-003.png",
+        "index": 39,
+        "path": "full/frames/frame-0039.png",
+        "timestamp": "00:01:22.237",
+        "timestamp_seconds": 82.237082
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-003.png",
+        "index": 40,
+        "path": "full/frames/frame-0040.png",
+        "timestamp": "00:01:24.401",
+        "timestamp_seconds": 84.401216
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-003.png",
+        "index": 41,
+        "path": "full/frames/frame-0041.png",
+        "timestamp": "00:01:26.565",
+        "timestamp_seconds": 86.56535
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-003.png",
+        "index": 42,
+        "path": "full/frames/frame-0042.png",
+        "timestamp": "00:01:28.729",
+        "timestamp_seconds": 88.729484
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-003.png",
+        "index": 43,
+        "path": "full/frames/frame-0043.png",
+        "timestamp": "00:01:30.894",
+        "timestamp_seconds": 90.893618
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-003.png",
+        "index": 44,
+        "path": "full/frames/frame-0044.png",
+        "timestamp": "00:01:33.058",
+        "timestamp_seconds": 93.057751
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-003.png",
+        "index": 45,
+        "path": "full/frames/frame-0045.png",
+        "timestamp": "00:01:35.222",
+        "timestamp_seconds": 95.221885
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-003.png",
+        "index": 46,
+        "path": "full/frames/frame-0046.png",
+        "timestamp": "00:01:37.386",
+        "timestamp_seconds": 97.386019
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-003.png",
+        "index": 47,
+        "path": "full/frames/frame-0047.png",
+        "timestamp": "00:01:39.550",
+        "timestamp_seconds": 99.550152
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-003.png",
+        "index": 48,
+        "path": "full/frames/frame-0048.png",
+        "timestamp": "00:01:41.714",
+        "timestamp_seconds": 101.714286
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-004.png",
+        "index": 49,
+        "path": "full/frames/frame-0049.png",
+        "timestamp": "00:01:43.878",
+        "timestamp_seconds": 103.87842
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-004.png",
+        "index": 50,
+        "path": "full/frames/frame-0050.png",
+        "timestamp": "00:01:46.043",
+        "timestamp_seconds": 106.042554
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-004.png",
+        "index": 51,
+        "path": "full/frames/frame-0051.png",
+        "timestamp": "00:01:48.207",
+        "timestamp_seconds": 108.206688
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-004.png",
+        "index": 52,
+        "path": "full/frames/frame-0052.png",
+        "timestamp": "00:01:50.371",
+        "timestamp_seconds": 110.370821
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-004.png",
+        "index": 53,
+        "path": "full/frames/frame-0053.png",
+        "timestamp": "00:01:52.535",
+        "timestamp_seconds": 112.534955
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-004.png",
+        "index": 54,
+        "path": "full/frames/frame-0054.png",
+        "timestamp": "00:01:54.699",
+        "timestamp_seconds": 114.699089
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-004.png",
+        "index": 55,
+        "path": "full/frames/frame-0055.png",
+        "timestamp": "00:01:56.863",
+        "timestamp_seconds": 116.863223
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-004.png",
+        "index": 56,
+        "path": "full/frames/frame-0056.png",
+        "timestamp": "00:01:59.027",
+        "timestamp_seconds": 119.027356
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-004.png",
+        "index": 57,
+        "path": "full/frames/frame-0057.png",
+        "timestamp": "00:02:01.191",
+        "timestamp_seconds": 121.19149
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-004.png",
+        "index": 58,
+        "path": "full/frames/frame-0058.png",
+        "timestamp": "00:02:03.356",
+        "timestamp_seconds": 123.355624
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-004.png",
+        "index": 59,
+        "path": "full/frames/frame-0059.png",
+        "timestamp": "00:02:05.520",
+        "timestamp_seconds": 125.519757
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-004.png",
+        "index": 60,
+        "path": "full/frames/frame-0060.png",
+        "timestamp": "00:02:07.684",
+        "timestamp_seconds": 127.683891
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-004.png",
+        "index": 61,
+        "path": "full/frames/frame-0061.png",
+        "timestamp": "00:02:09.848",
+        "timestamp_seconds": 129.848025
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-004.png",
+        "index": 62,
+        "path": "full/frames/frame-0062.png",
+        "timestamp": "00:02:12.012",
+        "timestamp_seconds": 132.012159
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-004.png",
+        "index": 63,
+        "path": "full/frames/frame-0063.png",
+        "timestamp": "00:02:14.176",
+        "timestamp_seconds": 134.176292
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-004.png",
+        "index": 64,
+        "path": "full/frames/frame-0064.png",
+        "timestamp": "00:02:16.340",
+        "timestamp_seconds": 136.340426
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-005.png",
+        "index": 65,
+        "path": "full/frames/frame-0065.png",
+        "timestamp": "00:02:18.505",
+        "timestamp_seconds": 138.50456
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-005.png",
+        "index": 66,
+        "path": "full/frames/frame-0066.png",
+        "timestamp": "00:02:20.669",
+        "timestamp_seconds": 140.668694
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-005.png",
+        "index": 67,
+        "path": "full/frames/frame-0067.png",
+        "timestamp": "00:02:22.833",
+        "timestamp_seconds": 142.832828
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-005.png",
+        "index": 68,
+        "path": "full/frames/frame-0068.png",
+        "timestamp": "00:02:24.997",
+        "timestamp_seconds": 144.996961
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-005.png",
+        "index": 69,
+        "path": "full/frames/frame-0069.png",
+        "timestamp": "00:02:27.161",
+        "timestamp_seconds": 147.161095
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-005.png",
+        "index": 70,
+        "path": "full/frames/frame-0070.png",
+        "timestamp": "00:02:29.325",
+        "timestamp_seconds": 149.325229
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-005.png",
+        "index": 71,
+        "path": "full/frames/frame-0071.png",
+        "timestamp": "00:02:31.489",
+        "timestamp_seconds": 151.489362
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-005.png",
+        "index": 72,
+        "path": "full/frames/frame-0072.png",
+        "timestamp": "00:02:33.653",
+        "timestamp_seconds": 153.653496
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-005.png",
+        "index": 73,
+        "path": "full/frames/frame-0073.png",
+        "timestamp": "00:02:35.818",
+        "timestamp_seconds": 155.81763
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-005.png",
+        "index": 74,
+        "path": "full/frames/frame-0074.png",
+        "timestamp": "00:02:37.982",
+        "timestamp_seconds": 157.981764
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-005.png",
+        "index": 75,
+        "path": "full/frames/frame-0075.png",
+        "timestamp": "00:02:40.146",
+        "timestamp_seconds": 160.145897
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-005.png",
+        "index": 76,
+        "path": "full/frames/frame-0076.png",
+        "timestamp": "00:02:42.310",
+        "timestamp_seconds": 162.310031
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-005.png",
+        "index": 77,
+        "path": "full/frames/frame-0077.png",
+        "timestamp": "00:02:44.474",
+        "timestamp_seconds": 164.474165
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-005.png",
+        "index": 78,
+        "path": "full/frames/frame-0078.png",
+        "timestamp": "00:02:46.638",
+        "timestamp_seconds": 166.638299
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-005.png",
+        "index": 79,
+        "path": "full/frames/frame-0079.png",
+        "timestamp": "00:02:48.802",
+        "timestamp_seconds": 168.802433
+      },
+      {
+        "contact_sheet": "full/contact-sheets/contact-sheet-005.png",
+        "index": 80,
+        "path": "full/frames/frame-0080.png",
+        "timestamp": "00:02:50.967",
+        "timestamp_seconds": 170.966566
+      }
+    ],
+    "interval_seconds": 2.16413375,
+    "start_seconds": 0
+  },
+  "probe": {
+    "audio_codec": null,
+    "audio_present": false,
+    "duration_seconds": 173.1307,
+    "frame_rate": 1.5190835594149392,
+    "height": 2424,
+    "video_codec": "h264",
+    "width": 1080
+  },
+  "question": "Two selected Android images upload and processing result",
+  "schema_version": 1,
+  "source": {
+    "filename": "android-gallery-upload.mp4",
+    "sha256": "1f13d04e79d5ab95cb7ca8772fb7d755a9fc7044793b1b006be1b2bdc77f9ff5"
+  },
+  "transcription": {
+    "reason": "No audio stream detected.",
+    "status": "not_applicable"
+  },
+  "updated_at": "2026-09-24T12:10:38.558325+00:00"
+}
