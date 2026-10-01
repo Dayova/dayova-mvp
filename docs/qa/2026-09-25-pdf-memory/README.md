@@ -1,6 +1,25 @@
 # DAY-403: metadata-heavy PDF memory regression
 
-## Scope and build provenance
+## Review isolation (1 October 2026)
+
+PR #749 is isolated directly on `main` at
+`a553f8f3a1c0999929803b4815b7ea0c932ab2db`. The existing extraction hook on main
+supports this fix without #748 or the combined QA stack. The main upload limit
+remains **7 MiB** and the extracted-text budget remains **90,000 characters**;
+this PR does not include the separate upload-limit changes. The 25 MiB parser
+fixture is a helper-level stress test, not a claim that main accepts that upload.
+
+All native replay, deployment and full-suite details below describe the historical
+25 September QA build. They are not fresh runtime acceptance of this isolated
+branch. No backend deployment occurred during isolation. Ready for Review does
+not mean approved for deployment.
+
+Current validation: six PDF tests (including the real-parser metadata stress
+test), TypeScript, targeted ESLint/Biome and diff checks passed. Independent
+Standards and Spec reviews found no actionable issues. No fresh deployed-runtime
+or native acceptance is claimed.
+
+## Historical scope and build provenance
 
 QA only, 2026-09-25. Frontend: `76f5bd4bd7f0b98f1298de0d6ec6341161f16986`
 (combined simulator scope, excluding podcasts). Android: emulator-5554,
@@ -26,7 +45,8 @@ at 618,144 KiB with `getMetadata()` versus 199,152 KiB without it.
 PDF text now uses PDF.js directly, skips metadata and attachments, processes pages
 sequentially, respects the existing text budget, and destroys resources even on
 errors. Office formats retain officeparser. Empty/scanned or failed text extraction
-retains the existing vision fallback. The 25 MiB upload limit is unchanged.
+retains the existing vision fallback. The then-current QA upload limit of 25 MiB
+was unchanged by the parser fix.
 PDF.js is externalized for Convex so its worker and native runtime dependencies
 remain available. The initial bundled deployment failed analysis; the corrected
 externalized deployment succeeded.
@@ -55,6 +75,6 @@ externalized deployment succeeded.
 
 These are still screenshots, not proof of the complete interaction timeline.
 Before/after screen recordings for this fix and the distinct Dayova product-quality
-review are still missing; keep this PR draft. This result does not certify all
+review are still missing. This result does not certify all
 possible PDF layouts, iOS PDF processing, grade 10/11 onboarding, adaptive consent,
 or the remaining Android touch/display matrix.
