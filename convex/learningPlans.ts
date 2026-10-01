@@ -75,6 +75,14 @@ const contentGenerationStatusValidator = v.union(
 	v.literal("failed"),
 );
 
+const contentGenerationFailureReasonValidator = v.union(
+	v.literal("insufficientMaterial"),
+	v.literal("materialProcessing"),
+	v.literal("schedulingConstraints"),
+	v.literal("generationProcessing"),
+	v.literal("unknown"),
+);
+
 const preparationDepthValidator = v.union(
 	v.literal("compact"),
 	v.literal("thorough"),
@@ -1218,6 +1226,7 @@ export const getSnapshot = query({
 					? {
 							stage: plan.contentGenerationStage,
 							startedAt: plan.contentGenerationStartedAt,
+							failureReason: plan.contentGenerationFailureReason,
 							totalSessionCount: committedSessionCount,
 							readySessionCount,
 							failedSessionCount,
@@ -1876,6 +1885,7 @@ export const storeKnowledgeQuestions = internalMutation({
 			contentGenerationStage: undefined,
 			contentGenerationId: undefined,
 			contentGenerationStartedAt: undefined,
+			contentGenerationFailureReason: undefined,
 			status: "questionsReady",
 			updatedAt: Date.now(),
 		});
@@ -1917,6 +1927,7 @@ export const beginContentGeneration = internalMutation({
 			contentGenerationStage: "content",
 			contentGenerationId: args.generationId,
 			contentGenerationStartedAt: now,
+			contentGenerationFailureReason: undefined,
 			updatedAt: now,
 		});
 		return now;
@@ -1927,6 +1938,7 @@ export const clearEmptyContentGeneration = internalMutation({
 	args: {
 		learningPlanId: v.id("learningPlans"),
 		generationId: v.string(),
+		failureReason: contentGenerationFailureReasonValidator,
 	},
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier =
@@ -1951,6 +1963,7 @@ export const clearEmptyContentGeneration = internalMutation({
 			contentGenerationStage: "failed",
 			contentGenerationId: undefined,
 			contentGenerationStartedAt: Date.now(),
+			contentGenerationFailureReason: args.failureReason,
 			updatedAt: Date.now(),
 		});
 		return true;
@@ -2215,6 +2228,7 @@ export const replaceGeneratedSessions = internalMutation({
 			contentGenerationStage: args.deferReadyUntilContent
 				? "content"
 				: undefined,
+			contentGenerationFailureReason: undefined,
 			updatedAt: now,
 		});
 
@@ -2331,6 +2345,11 @@ export const finalizeContentGeneration = internalMutation({
 				: failedSessionCount > 0
 					? "failed"
 					: "content",
+			contentGenerationFailureReason: isReady
+				? undefined
+				: failedSessionCount > 0
+					? "generationProcessing"
+					: plan.contentGenerationFailureReason,
 			...(isReady
 				? {
 						contentGenerationId: undefined,
@@ -2382,6 +2401,7 @@ export const claimIncompleteContentGenerationSessions = internalMutation({
 			contentGenerationStage: "content",
 			contentGenerationId: args.generationId,
 			contentGenerationStartedAt: now,
+			contentGenerationFailureReason: undefined,
 			updatedAt: now,
 		});
 		return sessionIds;
@@ -2392,6 +2412,7 @@ export const markContentGenerationClaimFailed = internalMutation({
 	args: {
 		learningPlanId: v.id("learningPlans"),
 		generationId: v.string(),
+		failureReason: contentGenerationFailureReasonValidator,
 	},
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier =
@@ -2407,6 +2428,7 @@ export const markContentGenerationClaimFailed = internalMutation({
 			contentGenerationStage: "failed",
 			contentGenerationId: undefined,
 			contentGenerationStartedAt: undefined,
+			contentGenerationFailureReason: args.failureReason,
 			updatedAt: Date.now(),
 		});
 		return true;

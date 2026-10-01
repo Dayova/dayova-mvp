@@ -73,6 +73,19 @@ export const extractUserFacingErrorMessage = (error: unknown) => {
 	);
 };
 
+export const extractUserFacingErrorCode = (error: unknown) => {
+	const data = getErrorData(error);
+	if (
+		isRecord(data) &&
+		data.kind === USER_FACING_ERROR_KIND &&
+		typeof data.code === "string"
+	) {
+		return data.code;
+	}
+
+	return null;
+};
+
 export const getUserFacingErrorMessage = (
 	error: unknown,
 	fallback: string,

@@ -107,6 +107,14 @@ const contentGenerationStageValidator = v.union(
 	v.literal("failed"),
 );
 
+const contentGenerationFailureReasonValidator = v.union(
+	v.literal("insufficientMaterial"),
+	v.literal("materialProcessing"),
+	v.literal("schedulingConstraints"),
+	v.literal("generationProcessing"),
+	v.literal("unknown"),
+);
+
 const learningPlanSessionPlanningStatusValidator = v.union(
 	v.literal("committed"),
 	v.literal("provisional"),
@@ -478,6 +486,9 @@ export default defineSchema({
 		contentGenerationStage: v.optional(contentGenerationStageValidator),
 		contentGenerationId: v.optional(v.string()),
 		contentGenerationStartedAt: v.optional(v.number()),
+		contentGenerationFailureReason: v.optional(
+			contentGenerationFailureReasonValidator,
+		),
 		sessionCompositionVariant: v.optional(sessionCompositionVariantValidator),
 		examDayEntryId: v.optional(v.id("dayEntries")),
 		acceptedAt: v.optional(v.number()),
