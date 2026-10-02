@@ -44,6 +44,7 @@ import type {
 } from "~/features/learning-plans/types";
 import { usePrepareSessionContent } from "~/features/learning-plans/use-prepare-session-content";
 import { getErrorMessage } from "~/features/learning-plans/utils";
+import { LearningTimeQuickAddSheet } from "~/features/learning-times/learning-time-quick-add-sheet";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import { dismissToOrReplace, useBackIntent } from "~/lib/navigation";
@@ -573,6 +574,9 @@ export default function LearningSessionContentScreen() {
 		}
 	};
 
+	const [isLearningTimeEditorOpen, setIsLearningTimeEditorOpen] =
+		useState(false);
+
 	const completeAndOpenLearningPlan = async (openLearningTimes = false) => {
 		if (!sessionId || isBusy) return;
 
@@ -597,12 +601,7 @@ export default function LearningSessionContentScreen() {
 			}
 			const destination = getLearningSessionCompletionDestination(planId);
 			if (openLearningTimes) {
-				const returnTo = planId
-					? `/learning-plans/${planId}`
-					: "/learning-plans";
-				router.replace(
-					`/learning-times?returnTo=${encodeURIComponent(returnTo)}`,
-				);
+				setIsLearningTimeEditorOpen(true);
 			} else {
 				router.dismissTo(destination);
 			}
@@ -1028,6 +1027,11 @@ export default function LearningSessionContentScreen() {
 					</Text>
 				) : null}
 			</ScrollView>
+			{isLearningTimeEditorOpen ? (
+				<LearningTimeQuickAddSheet
+					onClose={() => setIsLearningTimeEditorOpen(false)}
+				/>
+			) : null}
 			{showQuestionActions && content ? (
 				<KeyboardAvoidingView
 					behavior={Platform.OS === "ios" ? "padding" : undefined}

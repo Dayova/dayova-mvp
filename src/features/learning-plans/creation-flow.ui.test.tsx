@@ -123,13 +123,14 @@ jest.mock("~/lib/theme", () => ({
 
 beforeEach(() => {
 	jest.clearAllMocks();
+	mockAvailability.status = "available";
 	mockCreateEntry.mockResolvedValue("exam-1");
 	mockUpdateEntry.mockResolvedValue(undefined);
 	mockSnapshot = undefined;
 	mockPauseVisible = false;
 	mockParams = {
 		type: "exam",
-		step: "learningAvailability",
+		step: "basics",
 		subject: "Biologie",
 		examTypeLabel: "Klassenarbeit",
 		dayKey: "2026-09-30",
@@ -146,9 +147,21 @@ function followReplacement() {
 }
 
 describe("exam creation across the topics boundary", () => {
-	test("returns from 60% to 50% and can continue again with the same exam", async () => {
+	test.each([
+		"available",
+		"missing",
+		"occupied",
+	])("continues directly from date to topics with %s availability", async (status) => {
+		mockAvailability.status = status;
+		const screen = await render(<NewEntryScreen />);
+		expect(screen.queryByText("Ist genug Lernzeit eingeplant?")).toBeNull();
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(followReplacement()).toBe("/learning-plans/new");
+	});
+
+	test("returns from topics to the date and can continue again with the same exam", async () => {
 		let screen = await render(<NewEntryScreen />);
-		expect(mockProgress.currentStep).toBe(2.5);
+		expect(mockProgress.currentStep).toBe(2);
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		expect(followReplacement()).toBe("/learning-plans/new");
 		await screen.unmount();
@@ -163,9 +176,9 @@ describe("exam creation across the topics boundary", () => {
 		expect(followReplacement()).toBe("/entry/new");
 		await screen.unmount();
 		screen = await render(<NewEntryScreen />);
-		expect(mockProgress.currentStep).toBe(2.5);
+		expect(mockProgress.currentStep).toBe(2);
 		expect(
-			screen.getByText("Ist genug Lernzeit eingeplant?"),
+			screen.getByText("Wann findet die Prüfung statt?"),
 		).toBeOnTheScreen();
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		expect(followReplacement()).toBe("/learning-plans/new");
@@ -185,10 +198,8 @@ describe("exam creation across the topics boundary", () => {
 		mockParams.durationMinutes = "90";
 		const screen = await render(<NewEntryScreen />);
 		await act(() => mockProgress.onBack());
-		expect(mockProgress.currentStep).toBe(2);
-		await act(() => mockProgress.onBack());
+		expect(mockProgress.currentStep).toBe(1.5);
 		await fireEvent.press(screen.getByRole("radio", { name: "Chemie" }));
-		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		mockUpdateEntry.mockRejectedValueOnce(
 			new Error("Speichern fehlgeschlagen"),

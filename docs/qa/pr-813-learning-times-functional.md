@@ -56,19 +56,27 @@ from actual study starts or new notification scheduling in this PR.
 
 Job: invite a learner with no personal windows to choose suitable times.
 Hierarchy: completion/result first, optional explanation second, existing primary
-return-to-plan action remains available. No modal and no forced setup.
+return-to-plan action remains available. A centered, subtle light-blue card uses
+the existing system-subtle token. No automatic modal and no forced setup.
+
+The entire pre-plan “Ist genug Lernzeit eingeplant?” screen is removed, including
+its availability request and gating. Exam date continues directly to topics.
+Returning from topics returns to the date without creating a second exam.
+Actual scheduling still protects against collisions; that is not a setup screen.
 
 Copy:
 
-> Dein nächster Schritt braucht einen Platz im Alltag.
+> Wann passt Lernen in deinen Alltag?
 >
-> Wenn du festlegst, wann du lernst, fällt der Anfang leichter. Verteile das
-> Lernen auf mehrere Tage – so bleibt mehr im Gedächtnis. Trage deine Lernzeiten
-> ein, damit Dayova deinen Plan danach ausrichten kann.
+> Feste Lernzeiten helfen dir, regelmäßig anzufangen. Wenn du an mehreren Tagen
+> lernst, kannst du dir den Stoff besser merken. Wähle Zeiten, die zu deinem
+> Alltag passen.
 
-Optional action: **Lernzeiten eintragen**. It first persists session completion,
-then opens Settings with a return path to the plan. No action means no navigation
-or database change. The hint is absent with saved times and while the query loads;
+Optional action: **Lernzeiten jetzt eintragen**. It first persists session completion,
+then opens a sheet on the completion screen, reusing the learning-time day/time
+fields. Only Save writes a learning window; closing leaves completion available.
+Errors remain in the sheet and allow retry. “Zum Lernplan” remains available.
+The hint is absent with even one saved time and while the query loads;
 query failure hides only the optional hint. It is shown after diagnostic sessions,
 not after ordinary theory/practice. No account-wide reminder frequency is invented.
 
@@ -103,9 +111,16 @@ Automated results and actual native evidence are reported separately below.
 | Today after 16:00 | Remaining window remains usable before tomorrow's exam |
 | Explicit personal times | Override proposals, including chosen days; other owners' times never leak |
 | Wissenscheck complete, no times | Benefit explanation and voluntary action; Zum Lernplan still usable |
-| Reminder action | Completion saved before Settings; closing Settings returns to plan |
+| Reminder action | Completion saved before opening the inline day/time sheet; closing returns to completion, Save persists the window |
+| Time picker | Editor dismisses before the wheel opens; closing the wheel restores the draft |
 | Reminder loading/query error | Completion screen remains usable |
 | Times already saved | No reminder |
+
+Follow-up validation (removal of availability screen and inline reminder):
+369 Jest UI tests, 963 Vitest tests, TypeScript and scoped ESLint passed.
+Native end-to-end Wissenscheck acceptance remains open: the earlier simulator run
+stopped at school-material upload, before the completion screen. These automated
+results do not certify the new native sheet/clock interaction.
 | Routine | No daily check-in or behavior-derived schedule popup |
 
 ## Verification

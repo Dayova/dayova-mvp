@@ -30,7 +30,7 @@ describe("voluntary learning-time reminder", () => {
 					</Button>
 				</>,
 			);
-			expect(screen.queryByText("Lernzeiten eintragen")).toBeNull();
+			expect(screen.queryByText("Lernzeiten jetzt eintragen")).toBeNull();
 			await fireEvent.press(
 				screen.getByRole("button", { name: "Zum Lernplan" }),
 			);
@@ -39,18 +39,16 @@ describe("voluntary learning-time reminder", () => {
 			log.mockRestore();
 		}
 	});
-	test("explains the benefit and opens settings only on explicit action", async () => {
+	test("explains the benefit and opens the editor only on explicit action", async () => {
 		mockTimes = [];
 		const onOpen = jest.fn();
 		const screen = await render(
 			<LearningTimeReminder onOpen={onOpen} disabled={false} />,
 		);
-		expect(
-			screen.getByText(/Verteile das Lernen auf mehrere Tage/),
-		).toBeTruthy();
+		expect(screen.getByText(/Feste Lernzeiten helfen dir/)).toBeTruthy();
 		expect(onOpen).not.toHaveBeenCalled();
 		await fireEvent.press(
-			screen.getByRole("button", { name: "Lernzeiten eintragen" }),
+			screen.getByRole("button", { name: "Lernzeiten jetzt eintragen" }),
 		);
 		expect(onOpen).toHaveBeenCalledTimes(1);
 	});
@@ -62,7 +60,7 @@ describe("voluntary learning-time reminder", () => {
 		const screen = await render(
 			<LearningTimeReminder onOpen={jest.fn()} disabled={false} />,
 		);
-		expect(screen.queryByText("Lernzeiten eintragen")).toBeNull();
+		expect(screen.queryByText("Lernzeiten jetzt eintragen")).toBeNull();
 	});
 	test("blocks navigation while completion is saving", async () => {
 		mockTimes = [];
@@ -70,7 +68,7 @@ describe("voluntary learning-time reminder", () => {
 			<LearningTimeReminder onOpen={jest.fn()} disabled />,
 		);
 		expect(
-			screen.getByRole("button", { name: "Lernzeiten eintragen" }),
+			screen.getByRole("button", { name: "Lernzeiten jetzt eintragen" }),
 		).toBeDisabled();
 	});
 });

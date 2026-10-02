@@ -20,20 +20,20 @@ function LearningTimeReminderContent({
 	// No prompt while loading or when the learner already chose their times.
 	if (!times || times.length > 0) return null;
 	return (
-		<View className="mt-6 w-full gap-3">
+		<View className="mt-6 w-full items-center gap-4 rounded-[24px] bg-system-subtle p-6">
 			<Text
 				accessibilityRole="header"
 				className="text-center font-semibold text-body-2 text-text"
 			>
-				Dein nächster Schritt braucht einen Platz im Alltag.
+				Wann passt Lernen in deinen Alltag?
 			</Text>
 			<Text className="text-center text-body-3 text-secondary-text">
-				Wenn du festlegst, wann du lernst, fällt der Anfang leichter. Verteile
-				das Lernen auf mehrere Tage – so bleibt mehr im Gedächtnis. Trage deine
-				Lernzeiten ein, damit Dayova deinen Plan danach ausrichten kann.
+				Feste Lernzeiten helfen dir, regelmäßig anzufangen. Wenn du an mehreren
+				Tagen lernst, kannst du dir den Stoff besser merken. Wähle Zeiten, die
+				zu deinem Alltag passen.
 			</Text>
-			<Button variant="ghost" disabled={disabled} onPress={onOpen}>
-				<Text>Lernzeiten eintragen</Text>
+			<Button className="w-full" disabled={disabled} onPress={onOpen}>
+				<Text>Lernzeiten jetzt eintragen</Text>
 			</Button>
 		</View>
 	);
