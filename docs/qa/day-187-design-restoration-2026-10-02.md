@@ -22,9 +22,31 @@ screenshots; old arbitrary radii are not reintroduced.
 
 Validation: 84 Jest suites / 383 tests pass. Targeted cases cover one continuous
 list, persistence IDs, pending catalog replacement, common checked semantics,
-custom exam cancellation and wrapping labels. Native replay is pending below.
+custom exam cancellation and wrapping labels. TypeScript, targeted ESLint,
+Biome and `git diff --check` pass.
 
-## Decision brief
+### Native replay of the creation-flow follow-up
+
+Code commit: `96bd672b2f6bd0c2d36b2897baba2bea7bd30b5d`. Tested on the
+combined local review branch at `d2e61d1ec17a220b77f081ed7fecc32832fc7f10`
+(also includes #813, #815 and #817), iOS 26.4, light appearance.
+Maestro completed successfully: select Test, open the exam-type add sheet,
+verify its input, cancel, continue to subject selection, verify Mathematik
+and absence of the separate personal-subject heading. No exam or subject saved.
+
+Fresh still-image evidence:
+
+- [Exam type selected](day-187-exam-selection-2026-10-02/exam-type-after.png)
+- [Add exam type with keyboard](day-187-exam-selection-2026-10-02/exam-add-after.png)
+- [Subject selection](day-187-exam-selection-2026-10-02/exam-subject-after.png)
+
+The subject screenshot shows the top of the list, not a populated personal-subject
+catalog. Pending personal selections and the continuous list are additionally
+covered by UI tests. These are navigation and layout checks, not fresh end-to-end
+CRUD acceptance or isolated-PR device evidence. Dark mode, Android, enlarged text
+and physical-device accessibility checks were not repeated for this follow-up.
+
+## Earlier Settings restoration: decision brief
 
 - Job: manage reusable personal subjects from Settings.
 - Hierarchy: page/header add action, explanation, subject cards with rename.
@@ -64,7 +86,7 @@ Empty/loading/error states and the separate creation-flow storage choice remain.
   live region and named progressbar with a regression assertion.
 - Spec review: no missing requirements or scope findings; historical custom
   gradient SVG intentionally maps to the current solid-cyan Hugeicons wrapper.
-- The local combined review simulator received this implementation. Opening the
+- At the earlier Settings validation, the local combined review simulator received this implementation. Opening the
   route on iOS 26.4 reached onboarding, not the authenticated subject screen.
   Native visual/keyboard/swipe acceptance is therefore still open pending login.
 - Android, enlarged text and VoiceOver/TalkBack device checks remain open.
