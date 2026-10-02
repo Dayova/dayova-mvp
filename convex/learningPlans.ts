@@ -39,13 +39,13 @@ import {
 	learningTopicValidator,
 	normalizeLearningTopics,
 } from "./learningTopicMap";
-import { resolveSubjectSelection } from "./personalSubjects";
 import {
 	addPersonalSubjectReference,
 	deleteDayEntryWithPersonalSubjectReference,
 	deleteLearningPlanWithPersonalSubjectReference,
 	replacePersonalSubjectReference,
 } from "./personalSubjectReferences";
+import { resolveSubjectSelection } from "./personalSubjects";
 import { assertNoScheduleConflict, isExamEntry } from "./scheduleConflicts";
 import {
 	getActiveTimetableLessons,
