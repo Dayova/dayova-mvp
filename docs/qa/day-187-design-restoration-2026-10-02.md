@@ -1,5 +1,45 @@
 # DAY-187: restore the demonstrated personal-subject UI
 
+## Return-navigation and review follow-up
+
+PR #816 code head: `476b8cd342498b468b1f22ea5dfa46b87ad43df0`.
+The back action now uses the shared Settings fallback when no navigation history
+exists. Component regression tests cover no-history return, add, rename, confirmed
+deletion and canceled deletion. Existing-history navigation remains unchanged.
+
+Native replay passed on the iOS 26.4 review simulator, combined integration head
+`e9e085a1a296212c919a6746ed2e1dc177321eca`:
+
+- Settings → personal subjects → add → cancel → back → Settings.
+- Settings → personal subjects → edit → save unchanged name → back → Settings.
+- Settings → personal subjects → edit → delete → cancel confirmation → back → Settings.
+
+This native replay was non-destructive: it does not prove a real rename or
+confirmed deletion against the local database. Those mutations are covered by
+component/Convex tests. Earlier failed attempts encountered development-only
+Fast Refresh/navigation errors and a notification error banner covering Cancel;
+after reconnecting the app to the correct Metro server and dismissing that
+banner, the complete flow passed. The independent notification error was not
+changed by this PR. A direct-link return to a different existing history was
+not accepted as evidence of returning from Settings.
+
+Validation: 84 UI suites / 386 tests; 132 Vitest files / 950 tests; TypeScript,
+scoped ESLint/Biome and diff checks pass. The new calendar-reference regression
+failed before the fix and passes afterward, covering initial association,
+replacement, repeat-sync deduplication, rename propagation and unlink on removal.
+Convex-specific review confirmed the fix stays inside the existing authenticated
+transaction and uses the indexed reference helper; no new public API or schema.
+
+CodeRabbit's full review reported two actionable findings. Both are fixed:
+calendar resync maintains personal-subject references and the old storage-choice
+image is labeled historical. Its follow-up review request was **rate limited**;
+a green status is not a fresh approval of these fixes. Its nonblocking canonical
+Notion-link suggestion is still pending a verified record of Philipp's latest
+decision. Keep draft pending the new review and Philipp's screenshots.
+
+The older evidence and counts below describe earlier checkpoints, not the
+current review status.
+
 ## Compact editor actions
 
 Philipp requested a single compact action row in the subject editor:
