@@ -3,6 +3,8 @@ import { act, fireEvent, render } from "@testing-library/react-native";
 import PersonalSubjectsScreen from "~/app/personal-subjects";
 
 const mockBack = jest.fn();
+const mockReplace = jest.fn();
+let mockCanGoBack = true;
 const mockSwipeClose = jest.fn();
 let mockEditorDismiss: (() => void) | undefined;
 jest.mock("react-native-gesture-handler/ReanimatedSwipeable", () => {
@@ -32,13 +34,21 @@ beforeEach(() => {
 	mockResponse = mockQueryError;
 	mockMutation.mockReset();
 	mockBack.mockClear();
+	mockReplace.mockClear();
+	mockCanGoBack = true;
 });
 jest.mock("convex/react", () => ({
 	useConvexAuth: () => ({ isAuthenticated: true, isLoading: false }),
 	useQueries: () => ({ subjects: mockResponse }),
 	useMutation: () => mockMutation,
 }));
-jest.mock("expo-router", () => ({ useRouter: () => ({ back: mockBack }) }));
+jest.mock("expo-router", () => ({
+	useRouter: () => ({
+		back: mockBack,
+		canGoBack: () => mockCanGoBack,
+		replace: mockReplace,
+	}),
+}));
 jest.mock("react-native-safe-area-context", () => ({
 	useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
@@ -162,7 +172,58 @@ test("settings displays a recoverable load error instead of crashing or claiming
 	expect(mockBack).toHaveBeenCalledTimes(1);
 });
 
+test("back returns to settings when the screen was opened directly without history", async () => {
+	mockCanGoBack = false;
+	mockResponse = { personal: [], reusableTimetableSubjects: [] };
+	const screen = await render(<PersonalSubjectsScreen />);
+	await fireEvent.press(screen.getByRole("button", { name: "Zurück" }));
+	expect(mockReplace).toHaveBeenCalledWith("/settings");
+	expect(mockBack).not.toHaveBeenCalled();
+});
+
+test.each([
+	"rename",
+	"delete",
+	"cancel-delete",
+])("back still reaches settings after %s", async (action) => {
+	mockCanGoBack = false;
+	mockResponse = {
+		personal: [{ id: "italian-id", name: "Italienisch" }],
+		reusableTimetableSubjects: [],
+	};
+	mockMutation.mockResolvedValue(undefined);
+	const screen = await render(<PersonalSubjectsScreen />);
+	await fireEvent.press(
+		screen.getByRole("button", { name: "Italienisch umbenennen" }),
+	);
+	if (action === "rename") {
+		await fireEvent.changeText(
+			screen.getByLabelText("Neuer Fachname"),
+			"Italienisch LK",
+		);
+		await fireEvent.press(screen.getByRole("button", { name: "Speichern" }));
+		expect(mockMutation).toHaveBeenCalledWith({
+			id: "italian-id",
+			name: "Italienisch LK",
+		});
+	} else {
+		await fireEvent.press(screen.getByRole("button", { name: "Löschen" }));
+		await act(() => mockEditorDismiss?.());
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: action === "delete" ? "Löschen bestätigen" : "Löschen abbrechen",
+			}),
+		);
+	}
+	expect(screen.queryByText("Fach bearbeiten")).toBeNull();
+	expect(screen.queryByText("Löschen bestätigen")).toBeNull();
+	await fireEvent.press(screen.getByRole("button", { name: "Zurück" }));
+	expect(mockReplace).toHaveBeenCalledWith("/settings");
+	expect(mockBack).not.toHaveBeenCalled();
+});
+
 test("empty settings offers both the header plus and a first-subject action", async () => {
+	mockCanGoBack = false;
 	mockResponse = { personal: [], reusableTimetableSubjects: [] };
 	mockMutation.mockResolvedValue({
 		kind: "personal",
@@ -189,6 +250,8 @@ test("empty settings offers both the header plus and a first-subject action", as
 	});
 	expect(mockMutation).toHaveBeenCalledWith({ name: "Spanisch" });
 	expect(screen.queryByText("Fach dauerhaft hinzufügen?")).toBeNull();
+	await fireEvent.press(screen.getByRole("button", { name: "Zurück" }));
+	expect(mockReplace).toHaveBeenCalledWith("/settings");
 });
 
 test("swipe deletion closes the rail and requires confirmation; cancellation does not mutate", async () => {

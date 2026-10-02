@@ -34,6 +34,8 @@ import {
 import { SubjectAddFlow } from "~/features/subjects/subject-picker";
 import { useSubjectOptions } from "~/features/subjects/use-subject-options";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
+import { goBackOrReplace } from "~/lib/navigation-actions";
+import { ROUTES } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
 import { getUserFacingErrorMessage } from "~/lib/user-facing-errors";
 import { cn } from "~/lib/utils";
@@ -130,7 +132,7 @@ export default function PersonalSubjectsScreen() {
 				>
 					<ScreenHeader
 						title="Persönliche Fächer"
-						onBack={() => router.back()}
+						onBack={() => goBackOrReplace(router, ROUTES.settings)}
 						right={
 							<Pressable
 								accessibilityRole="button"
