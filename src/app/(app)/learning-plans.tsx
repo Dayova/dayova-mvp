@@ -17,8 +17,7 @@ import { SafeAreaView } from "react-native-screens/experimental";
 import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
-import { CreateEntryButton } from "~/components/create-entry-button";
-import { BackButton, Button } from "~/components/ui/button";
+import { Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import {
 	ArrowUpRight,
@@ -36,6 +35,7 @@ import { getLearningPlanCreationOverview } from "~/features/learning-plans/creat
 import { learningPlanResumePath } from "~/features/learning-plans/creation-routes";
 import { LearningPlanCardVisual } from "~/features/learning-plans/learning-plan-card-visual";
 import { MaterialRequiredSheet } from "~/features/learning-plans/material-required-sheet";
+import { PlansPageHeader } from "~/features/learning-plans/plans-page-header";
 import { getRollingLearningWindowLabel } from "~/features/learning-plans/rolling-learning-window";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
@@ -830,28 +830,22 @@ export default function LearningPlansScreen() {
 		>
 			<ThemedStatusBar />
 			<View
-				className="gap-6 px-6"
+				className="gap-6 px-6 pb-6"
+				// Match Today's runtime safe-area offset; static spacing stays in classes.
 				style={{
-					paddingTop: Math.max(insets.top - 4, 32),
-					paddingBottom: 18,
+					paddingTop: insets.top + 16,
 				}}
 			>
-				<View className="mt-7 flex-row items-center justify-between">
-					{returnTarget ? (
-						<BackButton
-							accessibilityLabel="Zurück zu Heute"
-							onPress={() => {
-								router.setParams({ returnTo: undefined });
-								dismissToOrReplace(router, returnTarget);
-							}}
-						/>
-					) : null}
-					<Text className="font-poppins font-semibold text-heading-1 text-text">
-						Deine Pläne
-					</Text>
-
-					<CreateEntryButton returnTo={ROUTES.learningPlans} />
-				</View>
+				<PlansPageHeader
+					onBack={
+						returnTarget
+							? () => {
+									router.setParams({ returnTo: undefined });
+									dismissToOrReplace(router, returnTarget);
+								}
+							: undefined
+					}
+				/>
 
 				{showHomeworkTab ? (
 					<PlansTabSwitch activeTab={visibleTab} onChange={setActiveTab} />
