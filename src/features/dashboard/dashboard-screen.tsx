@@ -203,22 +203,17 @@ export function DashboardScreen() {
 				// Safe-area padding is runtime device geometry.
 				style={{ paddingTop: insets.top + 16 }}
 			>
-				<View className="flex-row items-center justify-between gap-6">
-					<View className="min-w-0 flex-1 justify-center gap-1">
-						<Text
-							accessibilityRole="header"
-							className="font-poppins font-semibold text-heading-2 text-text"
-							numberOfLines={1}
-						>
-							{firstName ? `Hallo ${firstName}` : "Dein Tag"}
-						</Text>
-						<Text variant="small" className="font-poppins text-secondary-text">
-							{getTodaySummary(entriesByDay?.[todayKey])}
-						</Text>
-					</View>
-					<View className="shrink-0">
-						<CreateEntryButton returnTo={ROUTES.home} />
-					</View>
+				<View className="min-w-0 justify-center gap-1">
+					<Text
+						accessibilityRole="header"
+						className="font-poppins font-semibold text-heading-2 text-text"
+						numberOfLines={1}
+					>
+						{firstName ? `Hallo ${firstName}` : "Dein Tag"}
+					</Text>
+					<Text variant="small" className="font-poppins text-secondary-text">
+						{getTodaySummary(entriesByDay?.[todayKey])}
+					</Text>
 				</View>
 			</View>
 			<ScrollView
@@ -245,6 +240,7 @@ export function DashboardScreen() {
 				</View>
 				<View className="px-6" testID="dashboard-calendar">
 					<DashboardCalendarHeader
+						createAction={<CreateEntryButton compact returnTo={ROUTES.home} />}
 						selectedDate={selectedDate}
 						onToday={() => {
 							if (!dayPagerKeys.includes(todayKey)) {

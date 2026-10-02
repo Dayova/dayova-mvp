@@ -14,6 +14,7 @@ describe("DashboardCalendarHeader", () => {
 		const onToday = jest.fn();
 		const screen = await render(
 			<DashboardCalendarHeader
+				createAction={null}
 				selectedDate={new Date(2026, 11, 31)}
 				onToday={onToday}
 			/>,
@@ -21,6 +22,7 @@ describe("DashboardCalendarHeader", () => {
 		expect(screen.getByText("Dezember 2026")).toBeTruthy();
 		await screen.rerender(
 			<DashboardCalendarHeader
+				createAction={null}
 				selectedDate={new Date(2027, 0, 1)}
 				onToday={onToday}
 			/>,
@@ -43,6 +45,7 @@ describe("DashboardCalendarHeader", () => {
 		mockStack = true;
 		const screen = await render(
 			<DashboardCalendarHeader
+				createAction={null}
 				selectedDate={new Date(2026, 8, 28)}
 				onToday={jest.fn()}
 			/>,
@@ -54,5 +57,29 @@ describe("DashboardCalendarHeader", () => {
 			screen.getByText("September 2026").props.numberOfLines,
 		).toBeUndefined();
 		mockStack = false;
+	});
+
+	test("groups the create action directly beside Today", async () => {
+		const React = jest.requireActual<typeof import("react")>("react");
+		const { TouchableOpacity } =
+			jest.requireActual<typeof import("react-native")>("react-native");
+		const screen = await render(
+			<DashboardCalendarHeader
+				createAction={React.createElement(TouchableOpacity, {
+					accessibilityLabel: "Lernplan erstellen",
+					accessibilityRole: "button",
+				})}
+				selectedDate={new Date(2026, 8, 28)}
+				onToday={jest.fn()}
+			/>,
+		);
+
+		expect(screen.getAllByRole("button")).toHaveLength(2);
+		expect(
+			screen.getByRole("button", { name: "Heute" }).parent?.props.className,
+		).toContain("gap-2");
+		expect(
+			screen.getByRole("button", { name: "Lernplan erstellen" }).parent,
+		).toBe(screen.getByRole("button", { name: "Heute" }).parent);
 	});
 });

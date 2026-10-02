@@ -17,7 +17,7 @@ jest.mock("~/components/ui/icon", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
 	return {
 		Plus: (props: Record<string, unknown>) =>
-			React.createElement("Icon", props),
+			React.createElement("Icon", { ...props, testID: "plus-icon" }),
 	};
 });
 
@@ -99,5 +99,12 @@ describe("CreateEntryButton", () => {
 		expect(mockPush).toHaveBeenCalledWith(
 			withReturnTo(ROUTES.createExam, ROUTES.learningPlans),
 		);
+	});
+
+	test("uses a slightly smaller icon in the calendar treatment", async () => {
+		const screen = await render(
+			<CreateEntryButton compact returnTo={ROUTES.home} />,
+		);
+		expect(screen.getByTestId("plus-icon").props.size).toBe(24);
 	});
 });

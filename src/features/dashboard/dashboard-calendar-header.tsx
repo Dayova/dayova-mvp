@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { View } from "react-native";
 import { Button } from "~/components/ui/button";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
@@ -5,11 +6,13 @@ import { Text } from "~/components/ui/text";
 import { cn } from "~/lib/utils";
 
 /** Calendar orientation only: the existing week slider owns day selection. */
-/** Shows the selected month and an action to return to today's date. */
+/** Shows the selected month and keeps the calendar actions together. */
 export function DashboardCalendarHeader({
+	createAction,
 	selectedDate,
 	onToday,
 }: {
+	createAction: ReactNode;
 	selectedDate: Date;
 	onToday: () => void;
 }) {
@@ -34,19 +37,22 @@ export function DashboardCalendarHeader({
 					year: "numeric",
 				}).format(selectedDate)}
 			</Text>
-			<Button
-				variant="ghost"
-				className="min-h-9 border border-border bg-card px-3 py-1"
-				size="sm"
-				hitSlop={6}
-				onPress={onToday}
-				accessibilityLabel="Heute"
-				accessibilityHint="Zeigt den heutigen Tag und die aktuelle Woche an."
-			>
-				<Text className="font-normal text-body-3 text-text group-active:text-text dark:text-white dark:group-active:text-white">
-					Heute
-				</Text>
-			</Button>
+			<View className="flex-row items-center gap-2">
+				<Button
+					variant="ghost"
+					className="min-h-9 border border-border bg-card px-3 py-1"
+					size="sm"
+					hitSlop={6}
+					onPress={onToday}
+					accessibilityLabel="Heute"
+					accessibilityHint="Zeigt den heutigen Tag und die aktuelle Woche an."
+				>
+					<Text className="font-normal text-body-3 text-text group-active:text-text dark:text-white dark:group-active:text-white">
+						Heute
+					</Text>
+				</Button>
+				{createAction}
+			</View>
 		</View>
 	);
 }
