@@ -356,21 +356,93 @@ test("settings mode offers only permanent saving and promotes timetable-only sub
 	await act(() =>
 		fireEvent.changeText(screen.getByLabelText("Name des Fachs"), "Latein"),
 	);
-	await act(() =>
-		fireEvent.press(screen.getByRole("button", { name: "Weiter" })),
-	);
-	expect(onSelect).not.toHaveBeenCalled();
 	expect(
 		screen.queryByRole("button", { name: "Nur diesmal verwenden" }),
 	).toBeNull();
 	await act(async () => {
-		fireEvent.press(
-			screen.getByRole("button", { name: "Dauerhaft hinzufügen" }),
-		);
+		fireEvent.press(screen.getByRole("button", { name: "Fach hinzufügen" }));
 	});
 	expect(onSavePermanent).toHaveBeenCalledWith("Latein");
 	expect(onSelect).toHaveBeenCalledWith({
 		name: "Latein",
 		personalSubjectId: "latin-id",
 	});
+});
+
+test("settings direct save keeps errors and typed text, then allows retry", async () => {
+	const onSelect = jest.fn();
+	const onSavePermanent = jest
+		.fn<(name: string) => Promise<SubjectSelection>>()
+		.mockRejectedValueOnce(
+			new Error("[CONVEX M(personalSubjects:create)] Server Error"),
+		)
+		.mockResolvedValueOnce({ name: "Italienisch" });
+	const screen = await render(
+		<SubjectAddFlow
+			permanentOnly
+			options={[]}
+			onCancel={jest.fn()}
+			onSelect={onSelect}
+			onSavePermanent={onSavePermanent}
+		/>,
+	);
+	await act(() =>
+		fireEvent.changeText(
+			screen.getByLabelText("Name des Fachs"),
+			"Italienisch",
+		),
+	);
+	await act(async () =>
+		fireEvent.press(screen.getByRole("button", { name: "Fach hinzufügen" })),
+	);
+	expect(onSelect).not.toHaveBeenCalled();
+	expect(screen.getByLabelText("Name des Fachs")).toHaveProp(
+		"value",
+		"Italienisch",
+	);
+	expect(
+		screen.getByText(
+			"Das Fach konnte nicht gespeichert werden. Bitte versuche es erneut.",
+		),
+	).toBeOnTheScreen();
+	await act(async () =>
+		fireEvent.press(screen.getByRole("button", { name: "Fach hinzufügen" })),
+	);
+	expect(onSelect).toHaveBeenCalledWith({ name: "Italienisch" });
+});
+
+test("settings blocks duplicate submits and cancellation during a pending save", async () => {
+	let resolveSave!: (value: SubjectSelection) => void;
+	const onSavePermanent = jest.fn<(name: string) => Promise<SubjectSelection>>(
+		() =>
+			new Promise((resolve) => {
+				resolveSave = resolve;
+			}),
+	);
+	const onCancel = jest.fn();
+	const screen = await render(
+		<SubjectAddFlow
+			permanentOnly
+			options={[]}
+			onCancel={onCancel}
+			onSelect={jest.fn()}
+			onSavePermanent={onSavePermanent}
+		/>,
+	);
+	await act(() =>
+		fireEvent.changeText(
+			screen.getByLabelText("Name des Fachs"),
+			"Italienisch",
+		),
+	);
+	await act(async () => {
+		await fireEvent(screen.getByLabelText("Name des Fachs"), "submitEditing");
+		await fireEvent(screen.getByLabelText("Name des Fachs"), "submitEditing");
+	});
+	expect(onSavePermanent).toHaveBeenCalledTimes(1);
+	await act(() =>
+		fireEvent.press(screen.getByRole("button", { name: "Abbrechen" })),
+	);
+	expect(onCancel).not.toHaveBeenCalled();
+	await act(async () => resolveSave({ name: "Italienisch" }));
 });

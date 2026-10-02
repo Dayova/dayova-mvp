@@ -24,6 +24,7 @@ type ConfirmationSheetProps = {
 	confirmTone?: "primary" | "destructive";
 	closeAccessibilityLabel?: string;
 	actionLayout?: ConfirmationActionLayout;
+	actionAppearance?: "default" | "outlined";
 	maxWidth?: number;
 	scrollable?: boolean;
 };
@@ -41,6 +42,7 @@ function ConfirmationSheet({
 	confirmTone = "destructive",
 	closeAccessibilityLabel = "Bestätigung schließen",
 	actionLayout: requestedActionLayout = "inline",
+	actionAppearance = "default",
 	maxWidth,
 	scrollable = true,
 }: ConfirmationSheetProps) {
@@ -62,13 +64,21 @@ function ConfirmationSheet({
 			className={actionLayout === "stacked" ? "w-full" : "flex-1"}
 			disabled={isBusy}
 			onPress={onConfirm}
-			variant={confirmTone === "destructive" ? "destructive" : "default"}
+			variant={
+				confirmTone === "destructive"
+					? actionAppearance === "outlined"
+						? "destructive-outline"
+						: "destructive"
+					: "default"
+			}
 		>
 			{isBusy ? (
 				<ActivityIndicator
 					color={
 						confirmTone === "destructive"
-							? colors.background
+							? actionAppearance === "outlined"
+								? colors.dangerAction
+								: colors.background
 							: DAYOVA_DESIGN_SYSTEM.colors.light1
 					}
 				/>
@@ -86,7 +96,7 @@ function ConfirmationSheet({
 			)}
 			disabled={isBusy}
 			onPress={safeClose}
-			variant="neutral"
+			variant={actionAppearance === "outlined" ? "cancel" : "neutral"}
 		>
 			<Text className="shrink text-center">{cancelLabel}</Text>
 		</Button>

@@ -178,6 +178,18 @@ acknowledges a real transition without becoming recurring friction.
 
 ## Product-surface previews
 
+### Personal-subject action appearance
+
+DAY-187 restores the September device-review treatment in the independent
+personal-subject feature. Shared Button variants `cancel` (bordered card,
+theme text) and `destructive-outline` (danger border/text on subtle fill) are
+opt-in exceptions to the general solid/gradient CTA appearances above.
+They reuse the reviewed #729 palette: light `#B01B10` / `#FFF0EE`, dark
+`hsl(4 100% 75%)` / `hsl(4 55% 16%)`. Existing destructive defaults do not
+change. ConfirmationSheet exposes `actionAppearance="outlined"` for this
+consumer; other callers retain their current appearance.
+See [restoration scope and provenance](../../qa/day-187-design-restoration-2026-10-02.md).
+
 Onboarding artwork or other explanatory UI that depicts a live Dayova product
 surface must render the same shared presentation module through an explicit
 screen/artwork contract. Do not recreate the product card, learning path,

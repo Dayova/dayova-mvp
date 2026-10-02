@@ -8,6 +8,7 @@ import {
 	type TextInput,
 	View,
 } from "react-native";
+import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -16,7 +17,7 @@ import { Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
 import { ErrorMessage } from "~/components/ui/error-message";
-import { BookOpen, Pencil, Plus, Trash2 } from "~/components/ui/icon";
+import { BookOpen, Pencil, Plus } from "~/components/ui/icon";
 import { Input } from "~/components/ui/input";
 import { PortraitContent } from "~/components/ui/portrait-content";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
@@ -63,6 +64,10 @@ export default function PersonalSubjectsScreen() {
 		setErrorMessage(null);
 		setRenamedValue(subject.name);
 		setEditingSubject(subject);
+	};
+	const startDelete = (subject: EditingSubject) => {
+		setErrorMessage(null);
+		setDeletingSubject(subject);
 	};
 	const runAction = (task: () => Promise<void>) => {
 		void actionGateRef.current.run(async () => {
@@ -127,7 +132,7 @@ export default function PersonalSubjectsScreen() {
 								onPress={() => setIsAdding(true)}
 								className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
 							>
-								<Plus size={28} color={colors.text} strokeWidth={1.8} />
+								<Plus size={28} color={colors.primary} strokeWidth={1.8} />
 							</Pressable>
 						}
 					/>
@@ -155,8 +160,8 @@ export default function PersonalSubjectsScreen() {
 						<ErrorMessage>{loadError}</ErrorMessage>
 					) : personalOptions.length === 0 ? (
 						<Surface className="items-center border border-border px-6 py-10">
-							<View className="h-14 w-14 items-center justify-center rounded-full bg-accent">
-								<BookOpen size={26} color={colors.primary} strokeWidth={2} />
+							<View className="h-14 w-14 items-center justify-center rounded-full bg-muted">
+								<BookOpen size={26} color={colors.text} strokeWidth={2} />
 							</View>
 							<Text className="mt-5 text-center font-poppins font-semibold text-body-2 text-text">
 								Noch keine persönlichen Fächer
@@ -166,65 +171,76 @@ export default function PersonalSubjectsScreen() {
 								wieder auswählen kannst.
 							</Text>
 							<Button
+								accessibilityLabel="Fach hinzufügen"
 								onPress={() => setIsAdding(true)}
 								size="sm"
 								className="mt-5"
 							>
-								<Plus size={18} color="#FFFFFF" strokeWidth={2.4} />
-								<Text className="text-body-4">
-									Persönliches Fach hinzufügen
-								</Text>
+								<Text>Fach hinzufügen</Text>
 							</Button>
 						</Surface>
 					) : (
 						<View className="gap-3">
 							{personalOptions.map((subject) => (
-								<Surface
+								<ReanimatedSwipeable
 									key={subject.key}
-									className="min-h-18 flex-row items-center border border-border px-5 py-3"
+									overshootRight={false}
+									rightThreshold={40}
+									renderRightActions={(_progress, _translation, swipeable) => (
+										<Button
+											accessibilityLabel={`${subject.name} löschen`}
+											variant="destructive-outline"
+											className="ml-2 min-w-24 self-stretch px-3"
+											onPress={() => {
+												swipeable.close();
+												startDelete({
+													id: subject.personalSubjectId as Id<"personalSubjects">,
+													name: subject.name,
+												});
+											}}
+										>
+											<Text className="shrink text-center">Löschen</Text>
+										</Button>
+									)}
 								>
-									<View className="h-10 w-10 items-center justify-center rounded-full bg-accent">
-										<BookOpen
-											size={20}
-											color={colors.primary}
-											strokeWidth={2}
-										/>
-									</View>
-									<Text className="ml-4 flex-1 font-poppins font-semibold text-body-2 text-text">
-										{subject.name}
-									</Text>
-									<Pressable
-										accessibilityLabel={`${subject.name} umbenennen`}
-										accessibilityRole="button"
-										className="h-11 w-11 items-center justify-center rounded-full active:bg-muted"
-										onPress={() =>
-											startRename({
-												id: subject.personalSubjectId as Id<"personalSubjects">,
-												name: subject.name,
-											})
-										}
-									>
-										<Pencil size={19} color={colors.text} strokeWidth={2} />
-									</Pressable>
-									<Pressable
-										accessibilityLabel={`${subject.name} löschen`}
-										accessibilityRole="button"
-										className="h-11 w-11 items-center justify-center rounded-full active:bg-muted"
-										onPress={() => {
-											setErrorMessage(null);
-											setDeletingSubject({
-												id: subject.personalSubjectId as Id<"personalSubjects">,
-												name: subject.name,
-											});
-										}}
-									>
-										<Trash2
-											size={19}
-											color={colors.destructive}
-											strokeWidth={2}
-										/>
-									</Pressable>
-								</Surface>
+									<Surface className="min-h-18 flex-row items-center border border-border px-5 py-3">
+										<View className="h-10 w-10 items-center justify-center rounded-full bg-muted">
+											<subject.Icon
+												size={20}
+												color={colors.text}
+												strokeWidth={2}
+											/>
+										</View>
+										<Text className="ml-4 flex-1 font-poppins font-semibold text-body-2 text-text">
+											{subject.name}
+										</Text>
+										<Pressable
+											accessibilityLabel={`${subject.name} umbenennen`}
+											accessibilityHint="Weitere Aktion: Fach löschen."
+											accessibilityActions={[
+												{ name: "delete", label: `${subject.name} löschen` },
+											]}
+											onAccessibilityAction={(event) => {
+												if (event.nativeEvent.actionName === "delete") {
+													startDelete({
+														id: subject.personalSubjectId as Id<"personalSubjects">,
+														name: subject.name,
+													});
+												}
+											}}
+											accessibilityRole="button"
+											className="h-11 w-11 items-center justify-center rounded-full active:bg-muted"
+											onPress={() =>
+												startRename({
+													id: subject.personalSubjectId as Id<"personalSubjects">,
+													name: subject.name,
+												})
+											}
+										>
+											<Pencil size={19} color={colors.text} strokeWidth={2} />
+										</Pressable>
+									</Surface>
+								</ReanimatedSwipeable>
 							))}
 						</View>
 					)}
@@ -283,6 +299,7 @@ export default function PersonalSubjectsScreen() {
 			</DayovaSheetFrame>
 
 			<ConfirmationSheet
+				actionAppearance="outlined"
 				visible={Boolean(deletingSubject)}
 				title="Persönliches Fach löschen?"
 				description={`${deletingSubject?.name ?? "Das Fach"} wird nicht mehr zur Auswahl angeboten. Bereits gespeicherte Einträge behalten ihren bisherigen Fachnamen.`}

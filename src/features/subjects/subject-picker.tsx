@@ -13,11 +13,11 @@ import { ErrorMessage } from "~/components/ui/error-message";
 import { Check } from "~/components/ui/icon";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
+import { getSubjectIcon } from "~/features/subjects/subject-catalog";
 import {
 	correctSubjectName,
 	normalizeSubjectName,
 } from "~/features/subjects/subject-definitions";
-import { getSubjectIcon } from "~/features/subjects/subject-catalog";
 import {
 	type SubjectOption,
 	type SubjectSelection,
@@ -197,6 +197,7 @@ function SubjectAddFlow({
 	onSavePermanent: (name: string) => Promise<SubjectSelection>;
 }) {
 	const inputRef = useRef<TextInput>(null);
+	const savingRef = useRef(false);
 	const [name, setName] = useState("");
 	const [step, setStep] = useState<"input" | "confirm">("input");
 	const [isBusy, setIsBusy] = useState(false);
@@ -207,7 +208,13 @@ function SubjectAddFlow({
 		Keyboard.dismiss();
 		onSelect(selection);
 	};
+	const cancel = () => {
+		if (savingRef.current) return;
+		Keyboard.dismiss();
+		onCancel();
+	};
 	const continueFromInput = () => {
+		if (savingRef.current) return;
 		setErrorMessage(null);
 		if (!cleanedName) {
 			setErrorMessage("Gib einen Fachnamen ein.");
@@ -232,16 +239,21 @@ function SubjectAddFlow({
 			});
 			return;
 		}
+		if (permanentOnly) {
+			void savePermanent(existing?.name ?? cleanedName);
+			return;
+		}
 		Keyboard.dismiss();
 		setName(existing?.name ?? cleanedName);
 		setStep("confirm");
 	};
-	const savePermanent = async () => {
-		if (isBusy) return;
+	const savePermanent = async (value = cleanedName) => {
+		if (savingRef.current) return;
+		savingRef.current = true;
 		setIsBusy(true);
 		setErrorMessage(null);
 		try {
-			finish(await onSavePermanent(cleanedName));
+			finish(await onSavePermanent(value));
 		} catch (error) {
 			setErrorMessage(
 				getUserFacingErrorMessage(
@@ -251,6 +263,7 @@ function SubjectAddFlow({
 				),
 			);
 		} finally {
+			savingRef.current = false;
 			setIsBusy(false);
 		}
 	};
@@ -264,12 +277,11 @@ function SubjectAddFlow({
 			description={
 				step === "confirm"
 					? `${cleanedName} kann künftig bei Prüfungen, Hausaufgaben, Lernplänen und im Stundenplan ausgewählt werden.`
-					: "Gib ein Fach ein, das noch nicht in der Liste steht."
+					: permanentOnly
+						? "Dein persönliches Fach wird gespeichert und steht dir bei Prüfungen, Hausaufgaben, Lernplänen und im Stundenplan zur Verfügung."
+						: "Gib ein Fach ein, das noch nicht in der Liste steht."
 			}
-			onClose={() => {
-				Keyboard.dismiss();
-				onCancel();
-			}}
+			onClose={cancel}
 			onPresented={() => inputRef.current?.focus()}
 			dismissible={!isBusy}
 			closeAccessibilityLabel="Fach hinzufügen schließen"
@@ -286,15 +298,30 @@ function SubjectAddFlow({
 							spellCheck
 							maxLength={MAX_SUBJECT_NAME_LENGTH}
 							placeholder="Zum Beispiel Französisch"
-							returnKeyType="next"
+							returnKeyType={permanentOnly ? "done" : "next"}
+							editable={!isBusy}
 							value={name}
 							onChangeText={setName}
 							onSubmitEditing={continueFromInput}
 						/>
 					</View>
 					{errorMessage ? <ErrorMessage>{errorMessage}</ErrorMessage> : null}
-					<Button disabled={!cleanedName} onPress={continueFromInput}>
-						<Text>Weiter</Text>
+					<Button
+						accessibilityState={{ busy: isBusy }}
+						disabled={!cleanedName || isBusy}
+						onPress={continueFromInput}
+					>
+						{isBusy ? <ActivityIndicator color="#FFFFFF" /> : null}
+						<Text>
+							{isBusy
+								? "Wird gespeichert …"
+								: permanentOnly
+									? "Fach hinzufügen"
+									: "Weiter"}
+						</Text>
+					</Button>
+					<Button disabled={isBusy} variant="cancel" onPress={cancel}>
+						<Text>Abbrechen</Text>
 					</Button>
 				</View>
 			) : (
@@ -321,7 +348,7 @@ function SubjectAddFlow({
 							<Text>Nur diesmal verwenden</Text>
 						</Button>
 					) : null}
-					<Button disabled={isBusy} variant="ghost" onPress={onCancel}>
+					<Button disabled={isBusy} variant="cancel" onPress={cancel}>
 						<Text>Abbrechen</Text>
 					</Button>
 				</View>

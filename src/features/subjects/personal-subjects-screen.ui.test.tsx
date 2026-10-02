@@ -3,6 +3,25 @@ import { act, fireEvent, render } from "@testing-library/react-native";
 import PersonalSubjectsScreen from "~/app/personal-subjects";
 
 const mockBack = jest.fn();
+const mockSwipeClose = jest.fn();
+jest.mock("react-native-gesture-handler/ReanimatedSwipeable", () => {
+	return ({
+		children,
+		renderRightActions,
+	}: {
+		children: React.ReactNode;
+		renderRightActions: (...args: unknown[]) => React.ReactNode;
+	}) => {
+		const { View } =
+			jest.requireActual<typeof import("react-native")>("react-native");
+		return (
+			<View>
+				{children}
+				{renderRightActions(null, null, { close: mockSwipeClose })}
+			</View>
+		);
+	};
+});
 const mockQueryError = new Error(
 	"[CONVEX Q(personalSubjects:list)] Server Error",
 );
@@ -28,6 +47,7 @@ jest.mock("~/lib/theme", () => ({
 jest.mock("~/lib/diagnostics", () => ({ logDiagnosticError: jest.fn() }));
 jest.mock("~/components/ui/icon", () => ({
 	BookOpen: () => null,
+	Language: () => null,
 	Plus: () => null,
 	Pencil: () => null,
 	Trash2: () => null,
@@ -62,7 +82,33 @@ jest.mock("~/components/ui/dayova-sheet-frame", () => ({
 	},
 }));
 jest.mock("~/components/ui/confirmation-sheet", () => ({
-	ConfirmationSheet: () => null,
+	ConfirmationSheet: ({
+		visible,
+		onClose,
+		onConfirm,
+	}: {
+		visible: boolean;
+		onClose: () => void;
+		onConfirm: () => void;
+	}) => {
+		const { View, Pressable, Text } =
+			jest.requireActual<typeof import("react-native")>("react-native");
+		return visible ? (
+			<View>
+				<Text>Löschen bestätigen</Text>
+				<Pressable
+					accessibilityRole="button"
+					accessibilityLabel="Löschen bestätigen"
+					onPress={onConfirm}
+				/>
+				<Pressable
+					accessibilityRole="button"
+					accessibilityLabel="Löschen abbrechen"
+					onPress={onClose}
+				/>
+			</View>
+		) : null;
+	},
 }));
 jest.mock("~/components/ui/portrait-content", () => ({
 	PortraitContent: ({ children }: { children: React.ReactNode }) => children,
@@ -119,27 +165,56 @@ test("empty settings offers both the header plus and a first-subject action", as
 		name: "Spanisch",
 	});
 	const screen = await render(<PersonalSubjectsScreen />);
-	const actions = screen.getAllByRole("button", {
-		name: "Persönliches Fach hinzufügen",
-	});
-	expect(actions).toHaveLength(2);
-	await act(() => fireEvent.press(actions[1]));
+	expect(
+		screen.getByRole("button", { name: "Persönliches Fach hinzufügen" }),
+	).toBeOnTheScreen();
 	await act(() =>
-		fireEvent.changeText(screen.getByLabelText("Name des Fachs"), "spanisch"),
+		fireEvent.press(screen.getByRole("button", { name: "Fach hinzufügen" })),
 	);
 	await act(() =>
-		fireEvent.press(screen.getByRole("button", { name: "Weiter" })),
+		fireEvent.changeText(screen.getByLabelText("Name des Fachs"), "spanisch"),
 	);
 	expect(
 		screen.queryByRole("button", { name: "Nur diesmal verwenden" }),
 	).toBeNull();
 	await act(async () => {
 		fireEvent.press(
-			screen.getByRole("button", { name: "Dauerhaft hinzufügen" }),
+			screen.getAllByRole("button", { name: "Fach hinzufügen" })[1],
 		);
 	});
 	expect(mockMutation).toHaveBeenCalledWith({ name: "Spanisch" });
 	expect(screen.queryByText("Fach dauerhaft hinzufügen?")).toBeNull();
+});
+
+test("swipe deletion closes the rail and requires confirmation; cancellation does not mutate", async () => {
+	mockResponse = {
+		personal: [{ id: "italian-id", name: "Italienisch" }],
+		reusableTimetableSubjects: [],
+	};
+	const screen = await render(<PersonalSubjectsScreen />);
+	await act(() =>
+		fireEvent.press(
+			screen.getByRole("button", { name: "Italienisch löschen" }),
+		),
+	);
+	expect(mockSwipeClose).toHaveBeenCalled();
+	expect(mockMutation).not.toHaveBeenCalled();
+	await act(() =>
+		fireEvent.press(screen.getByRole("button", { name: "Löschen abbrechen" })),
+	);
+	expect(mockMutation).not.toHaveBeenCalled();
+	await act(() =>
+		fireEvent(
+			screen.getByRole("button", { name: "Italienisch umbenennen" }),
+			"accessibilityAction",
+			{ nativeEvent: { actionName: "delete" } },
+		),
+	);
+	expect(screen.getByText("Löschen bestätigen")).toBeOnTheScreen();
+	await act(async () =>
+		fireEvent.press(screen.getByRole("button", { name: "Löschen bestätigen" })),
+	);
+	expect(mockMutation).toHaveBeenCalledWith({ id: "italian-id" });
 });
 
 test("the header plus remains available when a personal subject already exists", async () => {
