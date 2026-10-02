@@ -1,5 +1,5 @@
 import { useConvex, useConvexAuth, useMutation, useQuery } from "convex/react";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { Redirect, Stack, useLocalSearchParams, useRouter } from "expo-router";
 import {
 	type ReactNode,
 	useCallback,
@@ -276,7 +276,7 @@ function StickyActionFooter({
 	);
 }
 
-export default function NewEntryScreen() {
+function EntryCreationContent() {
 	const router = useRouter();
 	const convex = useConvex();
 	const insets = useSafeAreaInsets();
@@ -299,7 +299,7 @@ export default function NewEntryScreen() {
 		durationMinutes?: string;
 		topicDescription?: string;
 	}>();
-	const entryType: EntryType = params.type === "exam" ? "exam" : "homework";
+	const entryType: EntryType = params.type === "homework" ? "homework" : "exam";
 	const isHomework = entryType === "homework";
 	const savedExamIdRef = useRef(
 		!isHomework
@@ -1203,4 +1203,12 @@ export default function NewEntryScreen() {
 			{renderSelectSheet()}
 		</View>
 	);
+}
+
+export default function NewEntryScreen() {
+	const { type } = useLocalSearchParams<{ type?: string }>();
+	if (type === "homework") {
+		return <Redirect href={ROUTES.learningPlans} />;
+	}
+	return <EntryCreationContent />;
 }

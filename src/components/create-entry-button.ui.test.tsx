@@ -9,55 +9,19 @@ jest.mock("expo-router", () => ({
 	useRouter: () => ({ push: mockPush }),
 }));
 
-jest.mock("~/lib/theme", () => ({
-	useDayovaTheme: () => ({ colors: { text: "#101828" } }),
-}));
-
-jest.mock("~/components/ui/icon", () => {
+jest.mock("~/components/ui/add-icon", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
+	const { View } =
+		jest.requireActual<typeof import("react-native")>("react-native");
 	return {
-		Plus: (props: Record<string, unknown>) =>
-			React.createElement("Icon", props),
+		AddIcon: ({ outlinedGradient }: { outlinedGradient: boolean }) =>
+			React.createElement(View, {
+				testID: outlinedGradient
+					? "outlined-gradient-add-icon"
+					: "plain-add-icon",
+			}),
 	};
 });
-
-jest.mock("~/components/create-type-picker-modal", () => ({
-	CreateTypePickerModal: ({
-		visible,
-		onSelect,
-	}: {
-		visible: boolean;
-		onSelect: (type: "homework" | "exam") => void;
-	}) => {
-		const React = jest.requireActual<typeof import("react")>("react");
-		const { Text, TouchableOpacity } =
-			jest.requireActual<typeof import("react-native")>("react-native");
-		return visible
-			? React.createElement(
-					React.Fragment,
-					null,
-					React.createElement(
-						TouchableOpacity,
-						{
-							accessibilityRole: "button",
-							accessibilityLabel: "Prüfung auswählen",
-							onPress: () => onSelect("exam"),
-						},
-						React.createElement(Text, null, "Prüfung"),
-					),
-					React.createElement(
-						TouchableOpacity,
-						{
-							accessibilityRole: "button",
-							accessibilityLabel: "Hausaufgabe auswählen",
-							onPress: () => onSelect("homework"),
-						},
-						React.createElement(Text, null, "Hausaufgabe"),
-					),
-				)
-			: null;
-	},
-}));
 
 describe("CreateEntryButton", () => {
 	beforeEach(() => {
@@ -66,6 +30,7 @@ describe("CreateEntryButton", () => {
 
 	test("opens learning-plan creation directly without a picker", async () => {
 		const screen = await render(<CreateEntryButton returnTo={ROUTES.home} />);
+		expect(screen.getByTestId("outlined-gradient-add-icon")).toBeTruthy();
 
 		await act(() =>
 			fireEvent.press(

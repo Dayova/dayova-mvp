@@ -17,12 +17,11 @@ import { SafeAreaView } from "react-native-screens/experimental";
 import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
-import { CreateTypePickerModal } from "~/components/create-type-picker-modal";
+import { CreateEntryButton } from "~/components/create-entry-button";
 import { BackButton, Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import {
 	ArrowUpRight,
-	ClipboardEdit,
 	Clock3,
 	Plus,
 	PropertyEdit,
@@ -58,7 +57,6 @@ const PLANS_TAB_SWITCH_GAP = 12;
 const PLANS_TAB_INDICATOR_HEIGHT = 44;
 
 type PlanTab = "learningPlans" | "homework";
-type CreateType = "homework" | "exam";
 
 type LearningPlanOverview = {
 	id: Id<"learningPlans">;
@@ -749,7 +747,6 @@ export default function LearningPlansScreen() {
 	const removePlan = useMutation(api.learningPlans.removePlan);
 	const removeHomework = useMutation(api.dayEntries.remove);
 	const [activeTab, setActiveTab] = useState<PlanTab>("learningPlans");
-	const [showCreateTypePicker, setShowCreateTypePicker] = useState(false);
 	const [materialUploadTarget, setMaterialUploadTarget] =
 		useState<LearningPlanOverview | null>(null);
 	const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
@@ -768,6 +765,8 @@ export default function LearningPlansScreen() {
 	);
 	const visiblePlans = plans ?? [];
 	const visibleHomework = homework ?? [];
+	const showHomeworkTab = visibleHomework.length > 0;
+	const visibleTab = showHomeworkTab ? activeTab : "learningPlans";
 	const creationPlans = visiblePlans.filter((plan) =>
 		Boolean(getLearningPlanCreationOverview(plan)),
 	);
@@ -823,16 +822,6 @@ export default function LearningPlansScreen() {
 			}
 		});
 	};
-	const openCreateTypePicker = () => {
-		setShowCreateTypePicker(true);
-	};
-	const selectCreateType = (type: CreateType) => {
-		setShowCreateTypePicker(false);
-		router.push(
-			type === "homework" ? ROUTES.createHomework : ROUTES.createExam,
-		);
-	};
-
 	return (
 		<SafeAreaView
 			edges={{ bottom: true }}
@@ -861,19 +850,12 @@ export default function LearningPlansScreen() {
 						Deine Pläne
 					</Text>
 
-					<TouchableOpacity
-						accessibilityRole="button"
-						accessibilityLabel="Neuen Eintrag erstellen."
-						accessibilityHint="Öffnet den Eintragserstellungsdialog, um entweder eine Prüfung oder Hausaufgabe zu erstellen."
-						activeOpacity={0.88}
-						onPress={openCreateTypePicker}
-						className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
-					>
-						<Plus size={28} color={colors.text} strokeWidth={1.8} />
-					</TouchableOpacity>
+					<CreateEntryButton returnTo={ROUTES.learningPlans} />
 				</View>
 
-				<PlansTabSwitch activeTab={activeTab} onChange={setActiveTab} />
+				{showHomeworkTab ? (
+					<PlansTabSwitch activeTab={visibleTab} onChange={setActiveTab} />
+				) : null}
 			</View>
 
 			<ScrollView
@@ -881,7 +863,7 @@ export default function LearningPlansScreen() {
 				contentContainerClassName="px-6 pb-6"
 				showsVerticalScrollIndicator={false}
 			>
-				{activeTab === "learningPlans" ? (
+				{visibleTab === "learningPlans" ? (
 					<View className="gap-7">
 						{visiblePlans.length > 0 ? (
 							<>
@@ -956,59 +938,20 @@ export default function LearningPlansScreen() {
 					</View>
 				) : (
 					<View className="gap-3">
-						{visibleHomework.length > 0 ? (
-							visibleHomework.map((homeworkEntry) => (
-								<HomeworkCard
-									key={homeworkEntry.id}
-									homework={homeworkEntry}
-									todayKey={todayKey}
-									onDelete={() => confirmDeleteHomework(homeworkEntry)}
-									onPress={() =>
-										router.push(`/entry/${homeworkEntry.id}` as const)
-									}
-								/>
-							))
-						) : (
-							<View className="items-center gap-3 rounded-[30px] border border-border bg-card px-5 py-7">
-								<View className="h-16 w-16 items-center justify-center rounded-full bg-accent">
-									<ClipboardEdit
-										size={30}
-										color={DAYOVA_DESIGN_SYSTEM.colors.primary}
-										strokeWidth={2.2}
-									/>
-								</View>
-								<Text className="text-center font-poppins font-semibold text-body-1 text-text">
-									Noch keine Hausaufgaben
-								</Text>
-								<Text className="text-center font-poppins text-body-3 text-secondary-text">
-									Trage deine nächste Hausaufgabe ein, damit sie hier als
-									Übersicht erscheint.
-								</Text>
-								<Button
-									accessibilityLabel="Hausaufgabe erstellen"
-									onPress={() => router.push(ROUTES.createHomework)}
-									size="sm"
-									className="mt-2"
-								>
-									<Plus
-										size={18}
-										color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-										strokeWidth={2.4}
-									/>
-									<Text className="font-poppins font-semibold text-body-4">
-										Neue Hausaufgabe eintragen
-									</Text>
-								</Button>
-							</View>
-						)}
+						{visibleHomework.map((homeworkEntry) => (
+							<HomeworkCard
+								key={homeworkEntry.id}
+								homework={homeworkEntry}
+								todayKey={todayKey}
+								onDelete={() => confirmDeleteHomework(homeworkEntry)}
+								onPress={() =>
+									router.push(`/entry/${homeworkEntry.id}` as const)
+								}
+							/>
+						))}
 					</View>
 				)}
 			</ScrollView>
-			<CreateTypePickerModal
-				visible={showCreateTypePicker}
-				onRequestClose={() => setShowCreateTypePicker(false)}
-				onSelect={selectCreateType}
-			/>
 			<MaterialRequiredSheet
 				onClose={() => setMaterialUploadTarget(null)}
 				onUpload={continueToMaterialUpload}
