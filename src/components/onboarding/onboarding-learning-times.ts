@@ -10,11 +10,14 @@ export const ONBOARDING_DURATION_OPTIONS = [
 	15, 30, 45, 60, 90, 120, 150, 180, 210, 240,
 ] as const;
 
+export const getOnboardingDurationDisplay = (minutes: number) => ({
+	value: String(minutes < 60 ? minutes : minutes / 60).replace(".", ","),
+	unit: minutes < 60 ? "Minuten" : minutes === 60 ? "Stunde" : "Stunden",
+});
+
 export const formatOnboardingDuration = (minutes: number) => {
-	const hours = Math.floor(minutes / 60);
-	const rest = minutes % 60;
-	if (!hours) return `${rest} Minuten`;
-	return `${hours} ${hours === 1 ? "Stunde" : "Stunden"}${rest ? ` ${rest} ${rest === 1 ? "Minute" : "Minuten"}` : ""}`;
+	const { value, unit } = getOnboardingDurationDisplay(minutes);
+	return `${value} ${unit}`;
 };
 
 const parseTimeToMinutes = (value: string) => {

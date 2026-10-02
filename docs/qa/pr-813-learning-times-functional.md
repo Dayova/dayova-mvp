@@ -10,6 +10,9 @@ explanation screen, custom-duration sheet, subject UI or Settings redesign.
   240 minutes in the existing carousel. No option above four hours and no free
   hours/minutes entry. Historic 10/20-minute answers remain readable; the previous
   unreleased >240-minute experiment now fails validation rather than truncating.
+  Display: 15/30/45 Minuten, then 1 Stunde, 1,5 / 2 / 2,5 / 3 / 3,5 / 4 Stunden.
+  Carousel preview, confirmation, recovery and summary use matching units;
+  persistence remains integer minutes.
 - Recurring weekdays define which days receive that duration.
 - Preferred start time plus duration defines each window's exact end. Existing
   onboarding persistence and explicit confirmation remain; windows must finish
