@@ -2,7 +2,7 @@
 
 Related: [DAY-394](https://linear.app/dayova/issue/DAY-394).
 Base: `main` at `a553f8f3a1c0999929803b4815b7ea0c932ab2db`.
-Date: 2026-10-02. Status: implementation tested; native acceptance blocked.
+Date: 2026-10-02. Status: implementation tested; partial iOS screenshot evidence attached; full native acceptance open.
 
 ## Scope and decision
 
@@ -46,7 +46,32 @@ Combined settings-list, settings-screen and profile-screen suites: 3 suites,
 12 tests passed. The profile logout-error test intentionally logs its simulated
 503 error. TypeScript, targeted ESLint, Biome and diff checks passed.
 
-## Native evidence blocker
+## Before/after screenshots — 2026-10-02
+
+User-supplied still screenshots, published with permission after deterministic
+black-bar redaction of names and email addresses. Originals remain local.
+Dimensions and all pixels outside the redacted rectangles are unchanged; PNG
+metadata was removed. These are not AI-generated or retouched UI images.
+
+| Surface | Before | After |
+| --- | --- | --- |
+| Settings | ![Settings before](evidence/settings-before.png) | ![Settings after](evidence/settings-after.png) |
+| Profile | ![Profile before](evidence/profile-before.png) | ![Profile after](evidence/profile-after.png) |
+
+Before: `IMG_1933.PNG` (settings) and `IMG_1929.PNG` (profile), physical iPhone,
+1179 × 2556; exact device, OS and app revision unknown.
+After: supplied simulator screenshots at 17:59:26 (settings) and 17:59:30
+(profile), 1206 × 2622, Dayova Jakob Review iPhone on iOS 26.4.
+The combined local review revision is `0d138ac69a961a20350c4271a2372a9a86733276`,
+including PRs #813, #815, #816 and #817, not an isolated #815 build.
+The visible personal-subjects entry belongs to #816, not this border change.
+
+Visible evidence: outer borders on the App/settings groups and on the profile
+account group, with existing input borders retained. Settings captures have
+different scroll positions; they do not prove every lower group after the fix.
+These stills establish neither interactions nor a complete native acceptance.
+
+## Earlier native evidence blocker
 
 A dedicated iOS 26.4 simulator was created to avoid disturbing other QA sessions.
 Installation of the existing development client failed with
@@ -55,8 +80,9 @@ only that newly created empty simulator, the host reported about 190 MiB free.
 No existing apps, simulator data, or user files were deleted. The temporary
 component fixture and entry-point modification were removed.
 
-No new native before/after screenshots or recordings were captured. Android,
-dark-mode pixels, large text and full authenticated flows remain unverified.
+No new native screenshots or recordings were captured during that earlier attempt.
+The user-supplied iOS stills above now provide partial visual evidence. Recordings,
+Android, dark-mode pixels, large text and full authenticated flows remain unverified.
 There is no claim of full-suite CI, successful native export, release or merge.
 
 ## Review gate and repeatable acceptance
