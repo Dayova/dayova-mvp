@@ -44,6 +44,7 @@ import {
 	addPersonalSubjectReference,
 	deleteDayEntryWithPersonalSubjectReference,
 	deleteLearningPlanWithPersonalSubjectReference,
+	replacePersonalSubjectReference,
 } from "./personalSubjectReferences";
 import { assertNoScheduleConflict, isExamEntry } from "./scheduleConflicts";
 import {
@@ -825,6 +826,12 @@ const syncSessionDayEntry = async (
 	}
 
 	const executionStatus = getSessionExecutionStatus(session);
+	await replacePersonalSubjectReference(ctx, {
+		ownerTokenIdentifier: session.ownerTokenIdentifier,
+		previousPersonalSubjectId: existingEntry.personalSubjectId,
+		nextPersonalSubjectId: plan.personalSubjectId,
+		target: { targetKind: "dayEntry", dayEntryId: session.dayEntryId },
+	});
 	await ctx.db.patch("dayEntries", session.dayEntryId, {
 		dayKey: session.dateKey,
 		title: getSessionDayEntryTitle(plan, session),
