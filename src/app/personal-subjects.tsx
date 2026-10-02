@@ -286,7 +286,7 @@ export default function PersonalSubjectsScreen() {
 				closeAccessibilityLabel={
 					deletingSubject ? "Bestätigung schließen" : "Bearbeiten schließen"
 				}
-				onPresented={() => renameInputRef.current?.focus()}
+				onOpening={() => renameInputRef.current?.focus()}
 				scrollable
 			>
 				{deletingSubject ? (

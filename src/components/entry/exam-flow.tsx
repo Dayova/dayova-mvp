@@ -100,7 +100,7 @@ function ExamTypePicker({
 			<DayovaSheetFrame
 				visible={showAdd}
 				onClose={close}
-				onPresented={() => inputRef.current?.focus()}
+				onOpening={() => inputRef.current?.focus()}
 				title="Prüfungsart hinzufügen"
 				description="Gib eine Prüfungsart ein, die noch nicht in der Liste steht. Sie wird für diese Prüfung verwendet."
 				closeAccessibilityLabel="Prüfungsart hinzufügen schließen"

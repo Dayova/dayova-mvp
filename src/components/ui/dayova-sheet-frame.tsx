@@ -24,6 +24,7 @@ import {
 	AccessibilityInfo,
 	BackHandler,
 	findNodeHandle,
+	Keyboard,
 	type LayoutChangeEvent,
 	Platform,
 	StyleSheet,
@@ -49,7 +50,9 @@ type DayovaSheetFrameProps = {
 	visible: boolean;
 	onClose: () => void;
 	onDismiss?: () => void;
-	onPresented?: () => void;
+	// Native content is mounted and its opening animation has started: safe to
+	// focus an input without waiting for a second, serial keyboard animation.
+	onOpening?: () => void;
 	title?: ReactNode;
 	description?: ReactNode;
 	children?: ReactNode;
@@ -84,7 +87,7 @@ function DayovaSheetFrame({
 	visible,
 	onClose,
 	onDismiss,
-	onPresented,
+	onOpening,
 	title,
 	description,
 	children,
@@ -102,6 +105,7 @@ function DayovaSheetFrame({
 	const initialFocusRef = useRef<View>(null);
 	const initialFocusFrameRef = useRef<number | null>(null);
 	const didMoveFocusRef = useRef(false);
+	const didStartOpeningRef = useRef(false);
 	const sheetId = useId();
 	const sheetAccessibility = useSheetAccessibility();
 	const setSheetOpen = sheetAccessibility?.setSheetOpen;
@@ -172,6 +176,7 @@ function DayovaSheetFrame({
 
 		if (phaseRef.current === "opening" || phaseRef.current === "presented") {
 			phaseRef.current = "closing";
+			Keyboard.dismiss();
 			sheetRef.current?.dismiss();
 			return;
 		}
@@ -193,6 +198,7 @@ function DayovaSheetFrame({
 
 	const dismiss = useCallback(() => {
 		if (!dismissible) return;
+		Keyboard.dismiss();
 		if (phaseRef.current === "closed") {
 			desiredVisibleRef.current = false;
 			setIsNativeSheetActive(false);
@@ -222,6 +228,7 @@ function DayovaSheetFrame({
 		phaseRef.current = "closed";
 		setIsNativeSheetActive(shouldReopen);
 		didMoveFocusRef.current = false;
+		didStartOpeningRef.current = false;
 		setSheetOpen?.(sheetId, false);
 		if (initialFocusFrameRef.current !== null) {
 			cancelAnimationFrame(initialFocusFrameRef.current);
@@ -262,13 +269,30 @@ function DayovaSheetFrame({
 			if (didMoveFocusRef.current) return;
 
 			didMoveFocusRef.current = true;
-			onPresented?.();
 			initialFocusFrameRef.current = requestAnimationFrame(() => {
 				moveAccessibilityFocus(initialFocusRef.current);
 				initialFocusFrameRef.current = null;
 			});
 		},
-		[moveAccessibilityFocus, onPresented, setSheetOpen, sheetId],
+		[moveAccessibilityFocus, setSheetOpen, sheetId],
+	);
+
+	const handleAnimate = useCallback(
+		(fromIndex: number, toIndex: number) => {
+			if (toIndex === -1) {
+				Keyboard.dismiss();
+				return;
+			}
+			if (
+				fromIndex === -1 &&
+				desiredVisibleRef.current &&
+				!didStartOpeningRef.current
+			) {
+				didStartOpeningRef.current = true;
+				onOpening?.();
+			}
+		},
+		[onOpening],
 	);
 
 	const handleAccessibilityAction = useCallback(
@@ -436,6 +460,7 @@ function DayovaSheetFrame({
 			maxDynamicContentSize={maximumHeight}
 			topInset={insets.top}
 			onChange={handleChange}
+			onAnimate={handleAnimate}
 			onDismiss={handleDismiss}
 			style={{
 				borderTopLeftRadius: DAYOVA_DESIGN_SYSTEM.radius.rectangle,

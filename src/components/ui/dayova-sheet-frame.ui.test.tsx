@@ -8,7 +8,13 @@ import {
 } from "@jest/globals";
 import { act, fireEvent, render } from "@testing-library/react-native";
 import type { ReactElement, ReactNode } from "react";
-import { AccessibilityInfo, BackHandler, Platform, View } from "react-native";
+import {
+	AccessibilityInfo,
+	BackHandler,
+	Keyboard,
+	Platform,
+	View,
+} from "react-native";
 import { DayovaSheetFrame } from "./dayova-sheet-frame";
 import { Input } from "./input";
 import {
@@ -554,21 +560,51 @@ describe("DayovaSheetFrame", () => {
 				.accessibilityElementsHidden,
 		).toBe(false);
 	});
-	test("allows input focus only after native presentation, once per opening", async () => {
-		const onPresented = jest.fn();
-		await render(
+	test("starts input focus with the opening animation, once per opening", async () => {
+		const onOpening = jest.fn();
+		const view = await render(
 			<DayovaSheetFrame
 				visible
 				onClose={jest.fn()}
-				onPresented={onPresented}
+				onOpening={onOpening}
 				title="Fach hinzufügen"
 			/>,
 		);
 		await act(flushAnimationFrames);
-		expect(onPresented).not.toHaveBeenCalled();
+		expect(onOpening).not.toHaveBeenCalled();
+		await act(() =>
+			view.getByTestId("bottom-sheet-modal").props.onAnimate?.(-1, 0),
+		);
+		expect(onOpening).toHaveBeenCalledTimes(1);
 		await act(() => mockSheetHarness.onChange?.(0));
-		expect(onPresented).toHaveBeenCalledTimes(1);
+		expect(onOpening).toHaveBeenCalledTimes(1);
 		await act(() => mockSheetHarness.onChange?.(1));
-		expect(onPresented).toHaveBeenCalledTimes(1);
+		expect(onOpening).toHaveBeenCalledTimes(1);
+		await act(() =>
+			view.getByTestId("bottom-sheet-modal").props.onAnimate?.(0, 1),
+		);
+		expect(onOpening).toHaveBeenCalledTimes(1);
+	});
+	test("dismisses the keyboard when a drag starts closing the sheet", async () => {
+		const dismissKeyboard = jest.spyOn(Keyboard, "dismiss");
+		const view = await render(<DayovaSheetFrame visible onClose={jest.fn()} />);
+		await act(flushAnimationFrames);
+		await act(() => mockSheetHarness.onChange?.(0));
+		await act(() =>
+			view.getByTestId("bottom-sheet-modal").props.onAnimate?.(0, -1),
+		);
+		expect(dismissKeyboard).toHaveBeenCalledTimes(1);
+	});
+	test("dismisses the keyboard before a controlled sheet close", async () => {
+		const dismissKeyboard = jest.spyOn(Keyboard, "dismiss");
+		const onClose = jest.fn();
+		const view = await render(<DayovaSheetFrame visible onClose={onClose} />);
+		await act(flushAnimationFrames);
+		await act(() => mockSheetHarness.onChange?.(0));
+		await view.rerender(<DayovaSheetFrame visible={false} onClose={onClose} />);
+		expect(dismissKeyboard).toHaveBeenCalled();
+		expect(dismissKeyboard.mock.invocationCallOrder[0]).toBeLessThan(
+			mockSheetHarness.dismiss.mock.invocationCallOrder[0],
+		);
 	});
 });

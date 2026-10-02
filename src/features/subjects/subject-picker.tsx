@@ -200,7 +200,7 @@ function SubjectAddFlow({
 			title="Fach hinzufügen"
 			description="Dein persönliches Fach wird gespeichert und steht dir bei Prüfungen, Hausaufgaben, Lernplänen und im Stundenplan zur Verfügung."
 			onClose={cancel}
-			onPresented={() => inputRef.current?.focus()}
+			onOpening={() => inputRef.current?.focus()}
 			dismissible={!isBusy}
 			closeAccessibilityLabel="Fach hinzufügen schließen"
 			scrollable
