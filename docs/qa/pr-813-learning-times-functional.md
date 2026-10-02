@@ -6,6 +6,13 @@ explanation screen, custom-duration sheet, subject UI or Settings redesign.
 
 ## Three answers
 
+Scope confirmed by Philipp on 3 October 2026: #813 defines how the first
+learning times are derived during onboarding, not a new per-plan session budget.
+The three inputs remain **duration per learning day**, **weekdays** and
+**preferred start time**. Grade supplies fallback planning hours. Do not rename
+the daily-duration question to duration per learning unit or multiply the chosen
+duration by the number of plans. No new overflow or overnight policy is added.
+
 - Duration per chosen learning day: 15, 30, 45, 60, 90, 120, 150, 180, 210 or
   240 minutes in the existing carousel. No option above four hours and no free
   hours/minutes entry. Historic 10/20-minute answers remain readable; the previous
@@ -40,6 +47,11 @@ to automatic proposals, not silent truncation of explicitly chosen personal
 windows. Proposals are computed, not inserted into `userLearningTimes`; Settings
 therefore does not claim that the learner already chose them. The grade windows
 are a product policy, not a scientific recommendation about children's bedtime.
+
+Explicit precedence example: a grade-5 learner chooses 60 minutes on Monday and
+Wednesday starting at 20:00. Their initial personal windows are 20:00–21:00 on
+those two days, even though the grade fallback ends at 20:00. The app neither
+moves that choice to 16:00 nor cuts it off at the grade boundary.
 
 Availability, initial plan generation and rolling follow-up scheduling share
 `getPlanningLearningTimes`. Existing occupied appointments and active timetable
