@@ -6,8 +6,10 @@ import {
 	type BottomSheetFooterProps,
 	BottomSheetModal,
 	BottomSheetScrollView,
+	BottomSheetTextInput,
 	BottomSheetView,
 } from "@gorhom/bottom-sheet";
+import { cssInterop } from "nativewind";
 import type { ReactNode, RefObject } from "react";
 import {
 	useCallback,
@@ -29,6 +31,7 @@ import {
 	View,
 } from "react-native";
 import { CloseButton } from "~/components/ui/close-button";
+import { InputComponentContext } from "~/components/ui/input";
 import { useSheetAccessibility } from "~/components/ui/sheet-accessibility";
 import { useSheetSafeAreaInsets } from "~/components/ui/sheet-safe-area";
 import { Text } from "~/components/ui/text";
@@ -38,6 +41,7 @@ import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
 const DEFAULT_MAX_SHEET_WIDTH = 560;
+const SheetTextInput = cssInterop(BottomSheetTextInput, { className: "style" });
 
 type DayovaSheetPhase = "closed" | "opening" | "presented" | "closing";
 
@@ -45,6 +49,7 @@ type DayovaSheetFrameProps = {
 	visible: boolean;
 	onClose: () => void;
 	onDismiss?: () => void;
+	onPresented?: () => void;
 	title?: ReactNode;
 	description?: ReactNode;
 	children?: ReactNode;
@@ -79,6 +84,7 @@ function DayovaSheetFrame({
 	visible,
 	onClose,
 	onDismiss,
+	onPresented,
 	title,
 	description,
 	children,
@@ -256,12 +262,13 @@ function DayovaSheetFrame({
 			if (didMoveFocusRef.current) return;
 
 			didMoveFocusRef.current = true;
+			onPresented?.();
 			initialFocusFrameRef.current = requestAnimationFrame(() => {
 				moveAccessibilityFocus(initialFocusRef.current);
 				initialFocusFrameRef.current = null;
 			});
 		},
-		[moveAccessibilityFocus, setSheetOpen, sheetId],
+		[moveAccessibilityFocus, onPresented, setSheetOpen, sheetId],
 	);
 
 	const handleAccessibilityAction = useCallback(
@@ -427,6 +434,7 @@ function DayovaSheetFrame({
 			keyboardBehavior="interactive"
 			keyboardBlurBehavior="restore"
 			maxDynamicContentSize={maximumHeight}
+			topInset={insets.top}
 			onChange={handleChange}
 			onDismiss={handleDismiss}
 			style={{
@@ -437,27 +445,31 @@ function DayovaSheetFrame({
 				width: sheetWidth,
 			}}
 		>
-			{scrollable ? (
-				<BottomSheetScrollView
-					bounces={false}
-					keyboardShouldPersistTaps="handled"
-					nestedScrollEnabled
-					showsVerticalScrollIndicator
-					enableFooterMarginAdjustment={hasFixedFooter}
-					// Gorhom includes this measured inset in dynamic sizing and scrolling,
-					// so the last content never sits behind the floating action area.
-					contentContainerStyle={{
-						paddingBottom: footer ? (hasFixedFooter ? 8 : 0) : bottomPadding,
-					}}
-					testID="dayova-sheet-scroll-content"
-				>
-					{content}
-				</BottomSheetScrollView>
-			) : (
-				<BottomSheetView style={{ paddingBottom: footer ? 0 : bottomPadding }}>
-					{content}
-				</BottomSheetView>
-			)}
+			<InputComponentContext.Provider value={SheetTextInput}>
+				{scrollable ? (
+					<BottomSheetScrollView
+						bounces={false}
+						keyboardShouldPersistTaps="handled"
+						nestedScrollEnabled
+						showsVerticalScrollIndicator
+						enableFooterMarginAdjustment={hasFixedFooter}
+						// Gorhom includes this measured inset in dynamic sizing and scrolling,
+						// so the last content never sits behind the floating action area.
+						contentContainerStyle={{
+							paddingBottom: footer ? (hasFixedFooter ? 8 : 0) : bottomPadding,
+						}}
+						testID="dayova-sheet-scroll-content"
+					>
+						{content}
+					</BottomSheetScrollView>
+				) : (
+					<BottomSheetView
+						style={{ paddingBottom: footer ? 0 : bottomPadding }}
+					>
+						{content}
+					</BottomSheetView>
+				)}
+			</InputComponentContext.Provider>
 		</BottomSheetModal>
 	);
 }

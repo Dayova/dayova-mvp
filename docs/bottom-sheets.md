@@ -16,6 +16,9 @@ subject and exam-type selector.
   At font scales of 1.5 or more, the close control gets its own row so long
   headings retain the full text width. Only the native date/time wheel opts out
   of the surrounding scroll view.
+- Shared `Input` fields automatically use Gorhom's keyboard-aware input while
+  they are inside `DayovaSheetFrame`. Use `onPresented` when a form should focus
+  its first field only after the native sheet has opened.
 - Actions use Gorhom's measured footer and content inset, keeping the last row
   clear of the buttons. At font scales of 1.5 or more, viewports below 480 points,
   or measured action areas exceeding 40% of the maximum sheet height, actions

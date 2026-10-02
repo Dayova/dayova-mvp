@@ -1,7 +1,11 @@
+import type { Id } from "#convex/_generated/dataModel";
+
 export type TimetableLessonDraft = {
 	key: string;
 	dayOfWeek: number;
 	subject: string;
+	personalSubjectId?: Id<"personalSubjects">;
+	subjectIsOneTime?: boolean;
 	startTime: string;
 	endTime: string;
 	room: string;
