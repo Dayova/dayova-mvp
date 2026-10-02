@@ -119,10 +119,8 @@ function SubjectAddFlow({
 	onCancel,
 	onSelect,
 	onSavePermanent,
-	permanentOnly = false,
 }: {
 	options: SubjectOption[];
-	permanentOnly?: boolean;
 	onCancel: () => void;
 	onSelect: (selection: SubjectSelection) => void;
 	onSavePermanent: (name: string) => Promise<SubjectSelection>;
@@ -130,15 +128,10 @@ function SubjectAddFlow({
 	const inputRef = useRef<TextInput>(null);
 	const savingRef = useRef(false);
 	const [name, setName] = useState("");
-	const [step, setStep] = useState<"input" | "confirm">("input");
 	const [isBusy, setIsBusy] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const cleanedName = correctSubjectName(name);
-	const submitLabel = isBusy
-		? "Wird gespeichert …"
-		: permanentOnly
-			? "Fach hinzufügen"
-			: "Weiter";
+	const submitLabel = isBusy ? "Wird gespeichert …" : "Fach hinzufügen";
 
 	const finish = (selection: SubjectSelection) => {
 		Keyboard.dismiss();
@@ -166,7 +159,10 @@ function SubjectAddFlow({
 					normalizeSubjectName(option.name) ===
 					normalizeSubjectName(cleanedName),
 			);
-		if (existing && (!permanentOnly || existing.kind !== "timetable")) {
+		if (
+			existing &&
+			(existing.kind === "builtIn" || existing.personalSubjectId)
+		) {
 			finish({
 				name: existing.name,
 				...(existing.personalSubjectId
@@ -175,13 +171,7 @@ function SubjectAddFlow({
 			});
 			return;
 		}
-		if (permanentOnly) {
-			void savePermanent(existing?.name ?? cleanedName);
-			return;
-		}
-		Keyboard.dismiss();
-		setName(existing?.name ?? cleanedName);
-		setStep("confirm");
+		void savePermanent(existing?.name ?? cleanedName);
 	};
 	const savePermanent = async (value = cleanedName) => {
 		if (savingRef.current) return;
@@ -207,91 +197,53 @@ function SubjectAddFlow({
 	return (
 		<DayovaSheetFrame
 			visible
-			title={
-				step === "input" ? "Fach hinzufügen" : "Fach dauerhaft hinzufügen?"
-			}
-			description={
-				step === "confirm"
-					? `${cleanedName} kann künftig bei Prüfungen, Hausaufgaben, Lernplänen und im Stundenplan ausgewählt werden.`
-					: permanentOnly
-						? "Dein persönliches Fach wird gespeichert und steht dir bei Prüfungen, Hausaufgaben, Lernplänen und im Stundenplan zur Verfügung."
-						: "Gib ein Fach ein, das noch nicht in der Liste steht."
-			}
+			title="Fach hinzufügen"
+			description="Dein persönliches Fach wird gespeichert und steht dir bei Prüfungen, Hausaufgaben, Lernplänen und im Stundenplan zur Verfügung."
 			onClose={cancel}
 			onPresented={() => inputRef.current?.focus()}
 			dismissible={!isBusy}
 			closeAccessibilityLabel="Fach hinzufügen schließen"
 			scrollable
 		>
-			{step === "input" ? (
-				<View className="gap-4">
-					<View className="min-h-16 flex-row items-center rounded-input border border-border bg-card px-5">
-						<Input
-							ref={inputRef}
-							accessibilityLabel="Name des Fachs"
-							autoCapitalize="sentences"
-							autoCorrect
-							spellCheck
-							maxLength={MAX_SUBJECT_NAME_LENGTH}
-							placeholder="Zum Beispiel Französisch"
-							returnKeyType={permanentOnly ? "done" : "next"}
-							editable={!isBusy}
-							value={name}
-							onChangeText={setName}
-							onSubmitEditing={continueFromInput}
+			<View className="gap-4">
+				<View className="min-h-16 flex-row items-center rounded-input border border-border bg-card px-5">
+					<Input
+						ref={inputRef}
+						accessibilityLabel="Name des Fachs"
+						autoCapitalize="sentences"
+						autoCorrect
+						spellCheck
+						maxLength={MAX_SUBJECT_NAME_LENGTH}
+						placeholder="Zum Beispiel Französisch"
+						returnKeyType="done"
+						editable={!isBusy}
+						value={name}
+						onChangeText={setName}
+						onSubmitEditing={continueFromInput}
+					/>
+				</View>
+				{errorMessage ? <ErrorMessage>{errorMessage}</ErrorMessage> : null}
+				<Button
+					accessibilityState={{ busy: isBusy }}
+					accessibilityLabel={submitLabel}
+					accessibilityLiveRegion={isBusy ? "polite" : undefined}
+					disabled={!cleanedName || isBusy}
+					onPress={continueFromInput}
+				>
+					{isBusy ? (
+						<ActivityIndicator
+							accessible
+							color="#FFFFFF"
+							accessibilityRole="progressbar"
+							accessibilityLabel="Fach wird gespeichert"
 						/>
-					</View>
-					{errorMessage ? <ErrorMessage>{errorMessage}</ErrorMessage> : null}
-					<Button
-						accessibilityState={{ busy: isBusy }}
-						accessibilityLabel={submitLabel}
-						accessibilityLiveRegion={isBusy ? "polite" : undefined}
-						disabled={!cleanedName || isBusy}
-						onPress={continueFromInput}
-					>
-						{isBusy ? (
-							<ActivityIndicator
-								accessible
-								color="#FFFFFF"
-								accessibilityRole="progressbar"
-								accessibilityLabel="Fach wird gespeichert"
-							/>
-						) : null}
-						<Text>{submitLabel}</Text>
-					</Button>
-					<Button disabled={isBusy} variant="cancel" onPress={cancel}>
-						<Text>Abbrechen</Text>
-					</Button>
-				</View>
-			) : (
-				<View className="gap-3">
-					{errorMessage ? (
-						<ErrorMessage className="mb-2">{errorMessage}</ErrorMessage>
 					) : null}
-					<Button
-						accessibilityState={{ busy: isBusy, disabled: isBusy }}
-						disabled={isBusy}
-						onPress={() => void savePermanent()}
-					>
-						{isBusy ? <ActivityIndicator color="#FFFFFF" /> : null}
-						<Text>
-							{isBusy ? "Wird gespeichert …" : "Dauerhaft hinzufügen"}
-						</Text>
-					</Button>
-					{!permanentOnly ? (
-						<Button
-							disabled={isBusy}
-							variant="outline"
-							onPress={() => finish({ name: cleanedName, isOneTime: true })}
-						>
-							<Text>Nur diesmal verwenden</Text>
-						</Button>
-					) : null}
-					<Button disabled={isBusy} variant="cancel" onPress={cancel}>
-						<Text>Abbrechen</Text>
-					</Button>
-				</View>
-			)}
+					<Text>{submitLabel}</Text>
+				</Button>
+				<Button disabled={isBusy} variant="cancel" onPress={cancel}>
+					<Text>Abbrechen</Text>
+				</Button>
+			</View>
 		</DayovaSheetFrame>
 	);
 }

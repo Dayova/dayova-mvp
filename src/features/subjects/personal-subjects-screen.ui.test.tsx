@@ -4,6 +4,7 @@ import PersonalSubjectsScreen from "~/app/personal-subjects";
 
 const mockBack = jest.fn();
 const mockSwipeClose = jest.fn();
+let mockEditorDismiss: (() => void) | undefined;
 jest.mock("react-native-gesture-handler/ReanimatedSwipeable", () => {
 	return ({
 		children,
@@ -64,12 +65,15 @@ jest.mock("~/components/ui/dayova-sheet-frame", () => ({
 		title,
 		description,
 		children,
+		onDismiss,
 	}: {
 		visible: boolean;
 		title: string;
 		description?: string;
 		children?: React.ReactNode;
+		onDismiss?: () => void;
 	}) => {
+		if (title === "Fach bearbeiten") mockEditorDismiss = onDismiss;
 		const { View, Text } =
 			jest.requireActual<typeof import("react-native")>("react-native");
 		return visible ? (
@@ -230,4 +234,38 @@ test("the header plus remains available when a personal subject already exists",
 		),
 	);
 	expect(screen.getByLabelText("Name des Fachs")).toBeOnTheScreen();
+});
+
+test("editor offers deletion, waits for dismissal, and only deletes after confirmation", async () => {
+	const subject = { id: "italian-id", name: "Italienisch" };
+	mockResponse = { personal: [subject], reusableTimetableSubjects: [] };
+	const screen = await render(<PersonalSubjectsScreen />);
+	await fireEvent.press(
+		screen.getByRole("button", { name: "Italienisch umbenennen" }),
+	);
+	expect(screen.getByText("Fach bearbeiten")).toBeOnTheScreen();
+	await fireEvent.changeText(
+		screen.getByLabelText("Neuer Fachname"),
+		"Nicht gespeichert",
+	);
+	await fireEvent.press(screen.getByRole("button", { name: "Fach löschen" }));
+	expect(screen.queryByText("Fach bearbeiten")).toBeNull();
+	expect(screen.queryByText("Löschen bestätigen")).toBeNull();
+	expect(mockMutation).not.toHaveBeenCalled();
+	await act(() => mockEditorDismiss?.());
+	expect(screen.getByText("Löschen bestätigen")).toBeOnTheScreen();
+	await fireEvent.press(
+		screen.getByRole("button", { name: "Löschen abbrechen" }),
+	);
+	expect(mockMutation).not.toHaveBeenCalled();
+	await fireEvent.press(
+		screen.getByRole("button", { name: "Italienisch umbenennen" }),
+	);
+	await fireEvent.press(screen.getByRole("button", { name: "Fach löschen" }));
+	await act(() => mockEditorDismiss?.());
+	await fireEvent.press(
+		screen.getByRole("button", { name: "Löschen bestätigen" }),
+	);
+	expect(mockMutation).toHaveBeenCalledTimes(1);
+	expect(mockMutation).toHaveBeenCalledWith({ id: subject.id });
 });

@@ -183,8 +183,13 @@ acknowledges a real transition without becoming recurring friction.
 Exam-type and subject selection share `SelectionOptionRow`: identical card
 geometry, icon treatment, radio checked semantics and cyan check indicator with
 `onPrimary` contrast. The subject catalog is one continuous list, without a
-separate personal-subject heading. One-time scope remains supporting row copy;
-persisted IDs and storage choices are not changed by the visual grouping.
+separate personal-subject heading. Adding a subject always saves it for reuse;
+there is no permanent-versus-one-time choice or extra confirmation step.
+Existing built-in/personal matches are reused; timetable-only or legacy one-time
+matches are persisted when explicitly added. Legacy selections remain readable
+without silently migrating existing entries. The settings pencil opens "Fach
+bearbeiten" with save and delete actions. Delete opens the existing confirmation
+only after the editor's native dismissal; swipe deletion remains available.
 
 DAY-187 restores the September device-review treatment in the independent
 personal-subject feature. Shared Button variants `cancel` (bordered card,

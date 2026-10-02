@@ -1,5 +1,41 @@
 # DAY-187: restore the demonstrated personal-subject UI
 
+## Latest follow-up: always save subjects; delete from the editor
+
+Philipp explicitly superseded the earlier creation-flow scope on 2026-10-02.
+Baseline: `45a84d3e14011e2afe26476a7d083dd8f625b716`.
+This change belongs only to #816; learning-times PRs #813/#817 are untouched.
+
+- Job: create a reusable subject and manage it through the settings pencil.
+- Hierarchy: name first, save/add primary, delete secondary with confirmation.
+- Friction removed: no "Dauerhaft hinzufügen?" step, no "Nur diesmal verwenden".
+- Decision: one shared direct-save add flow in all consumers, with existing
+  typo correction, ID propagation, duplicate-submit gate and error/retry behavior.
+  Existing built-ins/personal subjects are reused; other newly added names are
+  saved before selection succeeds. No one-time fallback on save failure.
+- Editor: "Fach bearbeiten" includes "Fach löschen". It dismisses first, then
+  opens the existing confirmation using the stored subject ID/name, not an
+  unsaved rename draft. Cancel does not mutate. Swipe deletion is retained.
+- Existing historical one-time selections remain readable. No data migration,
+  backend changes or deletion of linked exams/homework/plans is introduced.
+
+Validation: full UI suite (84 suites / 382 tests), focused subject UI tests
+(4 suites / 21 tests), TypeScript, scoped Biome/ESLint and diff check pass.
+Local review confirms all add-flow consumers use the same direct-save contract;
+no changes to the learning-times branches or shared sheet implementation.
+Tests include direct inline persistence during a catalog
+error, timetable promotion, errors/retry, duplicate submissions and editor →
+dismissal → confirmation → cancel/delete. Native sheet timing and fresh visual
+acceptance remain separate from mocked component tests. Earlier screenshots
+below are historical and do not validate this follow-up.
+No fresh native replay was performed: this worktree has no local runtime env
+configured; the existing simulator/Metro serves a separate combined review
+checkout. It was not repointed or presented as evidence for this working tree.
+Keep draft pending fresh device acceptance.
+
+The older descriptions below record prior decisions; their one-time/permanent
+choice is superseded by this section.
+
 ## Follow-up: new-exam selection screens
 
 User confirmed Settings is correct and requested the missing creation-flow

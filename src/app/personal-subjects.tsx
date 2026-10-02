@@ -59,6 +59,7 @@ export default function PersonalSubjectsScreen() {
 	const [isBusy, setIsBusy] = useState(false);
 	const actionGateRef = useRef(createAsyncActionGate());
 	const renameInputRef = useRef<TextInput>(null);
+	const pendingDeleteRef = useRef<EditingSubject | null>(null);
 
 	const startRename = (subject: EditingSubject) => {
 		setErrorMessage(null);
@@ -250,7 +251,6 @@ export default function PersonalSubjectsScreen() {
 			{isAdding ? (
 				<SubjectAddFlow
 					options={options}
-					permanentOnly
 					onCancel={() => setIsAdding(false)}
 					onSelect={() => setIsAdding(false)}
 					onSavePermanent={savePermanent}
@@ -259,13 +259,18 @@ export default function PersonalSubjectsScreen() {
 
 			<DayovaSheetFrame
 				visible={Boolean(editingSubject)}
-				title="Fach umbenennen"
+				title="Fach bearbeiten"
 				description="Der neue Name wird auch bei verknüpften Prüfungen, Hausaufgaben, Lernplänen und Stundenplan-Einträgen angezeigt."
 				onClose={() => {
 					if (!isBusy) setEditingSubject(null);
 				}}
 				dismissible={!isBusy}
-				closeAccessibilityLabel="Umbenennen schließen"
+				closeAccessibilityLabel="Bearbeiten schließen"
+				onDismiss={() => {
+					const subject = pendingDeleteRef.current;
+					pendingDeleteRef.current = null;
+					if (subject) startDelete(subject);
+				}}
 				onPresented={() => renameInputRef.current?.focus()}
 				scrollable
 			>
@@ -294,6 +299,18 @@ export default function PersonalSubjectsScreen() {
 					>
 						{isBusy ? <ActivityIndicator color="#FFFFFF" /> : null}
 						<Text>{isBusy ? "Wird gespeichert …" : "Namen speichern"}</Text>
+					</Button>
+					<Button
+						variant="destructive-outline"
+						disabled={isBusy}
+						onPress={() => {
+							if (isBusy || !editingSubject) return;
+							pendingDeleteRef.current = editingSubject;
+							Keyboard.dismiss();
+							setEditingSubject(null);
+						}}
+					>
+						<Text>Fach löschen</Text>
 					</Button>
 				</View>
 			</DayovaSheetFrame>
