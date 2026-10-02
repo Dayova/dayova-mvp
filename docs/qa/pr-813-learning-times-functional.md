@@ -110,6 +110,20 @@ Automated results and actual native evidence are reported separately below.
 
 ## Verification
 
+### User-provided after screenshots, 2 October 2026, 22:43
+
+Philipp supplied four unmodified screenshots from “Dayova Jakob Review iPhone”.
+They show onboarding step 2 of 11: 30 Minuten (preview with disabled Weiter),
+then 2, 3 and 4 Stunden (with enabled Weiter). These are after-state still images,
+not a before/after comparison or proof of persistence, transition behavior or the
+complete Wissenscheck flow. The images contain no visible account details.
+
+| 30 Minuten | 2 Stunden | 3 Stunden | 4 Stunden |
+| --- | --- | --- | --- |
+| ![30 Minuten](../evidence/pr-813-learning-duration/after-30-minutes.png) | ![2 Stunden](../evidence/pr-813-learning-duration/after-2-hours.png) | ![3 Stunden](../evidence/pr-813-learning-duration/after-3-hours.png) | ![4 Stunden](../evidence/pr-813-learning-duration/after-4-hours.png) |
+
+### Automated verification
+
 - Full Vitest run: 130 files, 963 tests passed.
 - Full Jest UI run: 80 suites, 357 tests passed.
 - TypeScript, scoped ESLint/Biome and whitespace checks passed.
