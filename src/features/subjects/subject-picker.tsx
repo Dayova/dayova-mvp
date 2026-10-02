@@ -203,6 +203,11 @@ function SubjectAddFlow({
 	const [isBusy, setIsBusy] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const cleanedName = correctSubjectName(name);
+	const submitLabel = isBusy
+		? "Wird gespeichert …"
+		: permanentOnly
+			? "Fach hinzufügen"
+			: "Weiter";
 
 	const finish = (selection: SubjectSelection) => {
 		Keyboard.dismiss();
@@ -308,17 +313,20 @@ function SubjectAddFlow({
 					{errorMessage ? <ErrorMessage>{errorMessage}</ErrorMessage> : null}
 					<Button
 						accessibilityState={{ busy: isBusy }}
+						accessibilityLabel={submitLabel}
+						accessibilityLiveRegion={isBusy ? "polite" : undefined}
 						disabled={!cleanedName || isBusy}
 						onPress={continueFromInput}
 					>
-						{isBusy ? <ActivityIndicator color="#FFFFFF" /> : null}
-						<Text>
-							{isBusy
-								? "Wird gespeichert …"
-								: permanentOnly
-									? "Fach hinzufügen"
-									: "Weiter"}
-						</Text>
+						{isBusy ? (
+							<ActivityIndicator
+								accessible
+								color="#FFFFFF"
+								accessibilityRole="progressbar"
+								accessibilityLabel="Fach wird gespeichert"
+							/>
+						) : null}
+						<Text>{submitLabel}</Text>
 					</Button>
 					<Button disabled={isBusy} variant="cancel" onPress={cancel}>
 						<Text>Abbrechen</Text>

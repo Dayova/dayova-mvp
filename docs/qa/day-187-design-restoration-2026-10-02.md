@@ -33,5 +33,17 @@ Empty/loading/error states and the separate creation-flow storage choice remain.
 
 ## Validation
 
-Pending final automated checks and native inspection. Historical images are
-references, not evidence for this revision. No backend deployment is required.
+- TypeScript and targeted ESLint pass; 83 Jest suites / 378 tests pass.
+- Seven theme tests pass, including light/dark danger contrast at idle and
+  80% pressed opacity and CSS/runtime synchronization.
+- Standards review identified missing save-progress announcement; added a polite
+  live region and named progressbar with a regression assertion.
+- Spec review: no missing requirements or scope findings; historical custom
+  gradient SVG intentionally maps to the current solid-cyan Hugeicons wrapper.
+- The local combined review simulator received this implementation. Opening the
+  route on iOS 26.4 reached onboarding, not the authenticated subject screen.
+  Native visual/keyboard/swipe acceptance is therefore still open pending login.
+- Android, enlarged text and VoiceOver/TalkBack device checks remain open.
+
+Historical images are references, not evidence for this revision. No production
+deployment, account modification, subject deletion or full native approval.

@@ -35,16 +35,25 @@ jest.mock("~/components/ui/button", () => ({
 		children,
 		disabled,
 		onPress,
+		accessibilityLiveRegion,
+		accessibilityState,
+		accessibilityLabel,
 	}: {
 		children: React.ReactNode;
 		disabled?: boolean;
 		onPress?: () => void;
+		accessibilityLiveRegion?: "none" | "polite" | "assertive";
+		accessibilityState?: { busy?: boolean; disabled?: boolean };
+		accessibilityLabel?: string;
 	}) => {
 		const ReactNative =
 			jest.requireActual<typeof import("react-native")>("react-native");
 		return (
 			<ReactNative.Pressable
 				accessibilityRole="button"
+				accessibilityLiveRegion={accessibilityLiveRegion}
+				accessibilityState={accessibilityState}
+				accessibilityLabel={accessibilityLabel}
 				disabled={disabled}
 				onPress={onPress}
 			>
@@ -440,6 +449,13 @@ test("settings blocks duplicate submits and cancellation during a pending save",
 		await fireEvent(screen.getByLabelText("Name des Fachs"), "submitEditing");
 	});
 	expect(onSavePermanent).toHaveBeenCalledTimes(1);
+	expect(screen.getByRole("button", { name: "Wird gespeichert …" })).toHaveProp(
+		"accessibilityLiveRegion",
+		"polite",
+	);
+	expect(
+		screen.getByRole("progressbar", { name: "Fach wird gespeichert" }),
+	).toBeOnTheScreen();
 	await act(() =>
 		fireEvent.press(screen.getByRole("button", { name: "Abbrechen" })),
 	);
