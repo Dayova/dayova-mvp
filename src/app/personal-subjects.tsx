@@ -14,7 +14,7 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
-import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
+import { ConfirmationSheetContent } from "~/components/ui/confirmation-sheet";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
 import { ErrorMessage } from "~/components/ui/error-message";
 import { BookOpen, Pencil, Plus } from "~/components/ui/icon";
@@ -53,6 +53,7 @@ export default function PersonalSubjectsScreen() {
 	const { isLoading, loadError, personalOptions, options, savePermanent } =
 		useSubjectOptions();
 	const [isAdding, setIsAdding] = useState(false);
+	const [isSubjectSheetVisible, setIsSubjectSheetVisible] = useState(false);
 	const renameSubject = useMutation(api.personalSubjects.rename);
 	const removeSubject = useMutation(api.personalSubjects.remove);
 	const [editingSubject, setEditingSubject] = useState<EditingSubject | null>(
@@ -66,16 +67,18 @@ export default function PersonalSubjectsScreen() {
 	const [isBusy, setIsBusy] = useState(false);
 	const actionGateRef = useRef(createAsyncActionGate());
 	const renameInputRef = useRef<TextInput>(null);
-	const pendingDeleteRef = useRef<EditingSubject | null>(null);
 
 	const startRename = (subject: EditingSubject) => {
 		setErrorMessage(null);
 		setRenamedValue(subject.name);
 		setEditingSubject(subject);
+		setDeletingSubject(null);
+		setIsSubjectSheetVisible(true);
 	};
 	const startDelete = (subject: EditingSubject) => {
 		setErrorMessage(null);
 		setDeletingSubject(subject);
+		setIsSubjectSheetVisible(true);
 	};
 	const runAction = (task: () => Promise<void>) => {
 		void actionGateRef.current.run(async () => {
@@ -104,20 +107,20 @@ export default function PersonalSubjectsScreen() {
 			return;
 		}
 		if (name === editingSubject.name) {
-			setEditingSubject(null);
+			setIsSubjectSheetVisible(false);
 			return;
 		}
 		runAction(async () => {
 			await renameSubject({ id: editingSubject.id, name });
 			Keyboard.dismiss();
-			setEditingSubject(null);
+			setIsSubjectSheetVisible(false);
 		});
 	};
 	const confirmDelete = () => {
 		if (!deletingSubject) return;
 		runAction(async () => {
 			await removeSubject({ id: deletingSubject.id });
-			setDeletingSubject(null);
+			setIsSubjectSheetVisible(false);
 		});
 	};
 
@@ -265,84 +268,89 @@ export default function PersonalSubjectsScreen() {
 			) : null}
 
 			<DayovaSheetFrame
-				visible={Boolean(editingSubject)}
-				title="Fach bearbeiten"
-				description="Der neue Name wird auch bei verknüpften Prüfungen, Hausaufgaben, Lernplänen und Stundenplan-Einträgen angezeigt."
+				visible={isSubjectSheetVisible}
+				title={
+					deletingSubject ? "Persönliches Fach löschen?" : "Fach bearbeiten"
+				}
+				description={
+					deletingSubject
+						? undefined
+						: "Der neue Name wird auch bei verknüpften Prüfungen, Hausaufgaben, Lernplänen und Stundenplan-Einträgen angezeigt."
+				}
 				onClose={() => {
-					if (!isBusy) setEditingSubject(null);
+					if (!isBusy) {
+						setIsSubjectSheetVisible(false);
+					}
 				}}
 				dismissible={!isBusy}
-				closeAccessibilityLabel="Bearbeiten schließen"
-				onDismiss={() => {
-					const subject = pendingDeleteRef.current;
-					pendingDeleteRef.current = null;
-					if (subject) startDelete(subject);
-				}}
+				closeAccessibilityLabel={
+					deletingSubject ? "Bestätigung schließen" : "Bearbeiten schließen"
+				}
 				onPresented={() => renameInputRef.current?.focus()}
 				scrollable
 			>
-				<View className="gap-4">
-					<View className="min-h-16 flex-row items-center rounded-input border border-border bg-card px-5">
-						<Input
-							ref={renameInputRef}
-							accessibilityLabel="Neuer Fachname"
-							autoCapitalize="sentences"
-							autoCorrect
-							spellCheck
-							maxLength={60}
-							returnKeyType="done"
-							value={renamedValue}
-							onChangeText={setRenamedValue}
-							onSubmitEditing={confirmRename}
-						/>
-					</View>
-					{editingSubject && errorMessage ? (
-						<ErrorMessage>{errorMessage}</ErrorMessage>
-					) : null}
-					<View
-						className={cn("gap-3", !shouldStackInlineContent && "flex-row")}
-					>
-						<Button
-							className={cn(!shouldStackInlineContent && "flex-1")}
-							variant="destructive-outline"
-							disabled={isBusy}
-							onPress={() => {
-								if (isBusy || !editingSubject) return;
-								pendingDeleteRef.current = editingSubject;
-								Keyboard.dismiss();
-								setEditingSubject(null);
-							}}
+				{deletingSubject ? (
+					<ConfirmationSheetContent
+						actionAppearance="outlined"
+						description={`${deletingSubject.name} wird nicht mehr zur Auswahl angeboten. Bereits gespeicherte Einträge behalten ihren bisherigen Fachnamen.`}
+						confirmLabel="Fach löschen"
+						isBusy={isBusy}
+						errorMessage={errorMessage}
+						onClose={() => {
+							if (!isBusy) setIsSubjectSheetVisible(false);
+						}}
+						onConfirm={confirmDelete}
+					/>
+				) : (
+					<View className="gap-4">
+						<View className="min-h-16 flex-row items-center rounded-input border border-border bg-card px-5">
+							<Input
+								ref={renameInputRef}
+								accessibilityLabel="Neuer Fachname"
+								autoCapitalize="sentences"
+								autoCorrect
+								spellCheck
+								maxLength={60}
+								returnKeyType="done"
+								value={renamedValue}
+								onChangeText={setRenamedValue}
+								onSubmitEditing={confirmRename}
+							/>
+						</View>
+						{editingSubject && errorMessage ? (
+							<ErrorMessage>{errorMessage}</ErrorMessage>
+						) : null}
+						<View
+							className={cn("gap-3", !shouldStackInlineContent && "flex-row")}
 						>
-							<Text>Löschen</Text>
-						</Button>
-						<Button
-							className={cn(!shouldStackInlineContent && "flex-1")}
-							accessibilityState={{ busy: isBusy }}
-							disabled={!cleanSubjectName(renamedValue) || isBusy}
-							onPress={confirmRename}
-						>
-							{isBusy ? <ActivityIndicator color="#FFFFFF" /> : null}
-							<Text className="shrink text-center">
-								{isBusy ? "Speichert …" : "Speichern"}
-							</Text>
-						</Button>
+							<Button
+								className={cn(!shouldStackInlineContent && "flex-1")}
+								variant="destructive-outline"
+								disabled={isBusy}
+								onPress={() => {
+									if (isBusy || !editingSubject) return;
+									startDelete(editingSubject);
+									Keyboard.dismiss();
+									setEditingSubject(null);
+								}}
+							>
+								<Text>Löschen</Text>
+							</Button>
+							<Button
+								className={cn(!shouldStackInlineContent && "flex-1")}
+								accessibilityState={{ busy: isBusy }}
+								disabled={!cleanSubjectName(renamedValue) || isBusy}
+								onPress={confirmRename}
+							>
+								{isBusy ? <ActivityIndicator color="#FFFFFF" /> : null}
+								<Text className="shrink text-center">
+									{isBusy ? "Speichert …" : "Speichern"}
+								</Text>
+							</Button>
+						</View>
 					</View>
-				</View>
+				)}
 			</DayovaSheetFrame>
-
-			<ConfirmationSheet
-				actionAppearance="outlined"
-				visible={Boolean(deletingSubject)}
-				title="Persönliches Fach löschen?"
-				description={`${deletingSubject?.name ?? "Das Fach"} wird nicht mehr zur Auswahl angeboten. Bereits gespeicherte Einträge behalten ihren bisherigen Fachnamen.`}
-				confirmLabel="Fach löschen"
-				isBusy={isBusy}
-				errorMessage={deletingSubject ? errorMessage : null}
-				onClose={() => {
-					if (!isBusy) setDeletingSubject(null);
-				}}
-				onConfirm={confirmDelete}
-			/>
 		</>
 	);
 }

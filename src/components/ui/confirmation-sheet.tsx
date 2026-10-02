@@ -29,7 +29,7 @@ type ConfirmationSheetProps = {
 	scrollable?: boolean;
 };
 
-function ConfirmationSheet({
+function ConfirmationPresentation({
 	visible,
 	title,
 	description,
@@ -45,7 +45,8 @@ function ConfirmationSheet({
 	actionAppearance = "default",
 	maxWidth,
 	scrollable = true,
-}: ConfirmationSheetProps) {
+	embedded = false,
+}: ConfirmationSheetProps & { embedded?: boolean }) {
 	const { colors } = useDayovaTheme();
 	const { shouldStackInlineContent } = useContentSizeLayout();
 	const actionLayout = shouldStackInlineContent
@@ -117,6 +118,17 @@ function ConfirmationSheet({
 		/>
 	) : null;
 
+	if (embedded) {
+		return (
+			<View className="gap-6">
+				<Text className="font-poppins text-body-3 text-secondary-text">
+					{description}
+				</Text>
+				{error}
+				{actions}
+			</View>
+		);
+	}
 	return (
 		<DayovaSheetFrame
 			visible={visible}
@@ -141,4 +153,15 @@ function ConfirmationSheet({
 	);
 }
 
-export { ConfirmationSheet };
+function ConfirmationSheet(props: ConfirmationSheetProps) {
+	return <ConfirmationPresentation {...props} />;
+}
+
+/** Confirmation inside an already presented sheet; keeps its backdrop mounted. */
+function ConfirmationSheetContent(
+	props: Omit<ConfirmationSheetProps, "visible" | "title">,
+) {
+	return <ConfirmationPresentation {...props} visible title={null} embedded />;
+}
+
+export { ConfirmationSheet, ConfirmationSheetContent };

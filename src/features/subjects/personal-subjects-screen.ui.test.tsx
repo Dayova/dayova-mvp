@@ -6,7 +6,7 @@ const mockBack = jest.fn();
 const mockReplace = jest.fn();
 let mockCanGoBack = true;
 const mockSwipeClose = jest.fn();
-let mockEditorDismiss: (() => void) | undefined;
+const mockSheetVisibility: boolean[] = [];
 jest.mock("react-native-gesture-handler/ReanimatedSwipeable", () => {
 	return ({
 		children,
@@ -36,6 +36,7 @@ beforeEach(() => {
 	mockBack.mockClear();
 	mockReplace.mockClear();
 	mockCanGoBack = true;
+	mockSheetVisibility.length = 0;
 });
 jest.mock("convex/react", () => ({
 	useConvexAuth: () => ({ isAuthenticated: true, isLoading: false }),
@@ -75,15 +76,13 @@ jest.mock("~/components/ui/dayova-sheet-frame", () => ({
 		title,
 		description,
 		children,
-		onDismiss,
 	}: {
 		visible: boolean;
 		title: string;
 		description?: string;
 		children?: React.ReactNode;
-		onDismiss?: () => void;
 	}) => {
-		if (title === "Fach bearbeiten") mockEditorDismiss = onDismiss;
+		mockSheetVisibility.push(visible);
 		const { View, Text } =
 			jest.requireActual<typeof import("react-native")>("react-native");
 		return visible ? (
@@ -96,18 +95,16 @@ jest.mock("~/components/ui/dayova-sheet-frame", () => ({
 	},
 }));
 jest.mock("~/components/ui/confirmation-sheet", () => ({
-	ConfirmationSheet: ({
-		visible,
+	ConfirmationSheetContent: ({
 		onClose,
 		onConfirm,
 	}: {
-		visible: boolean;
 		onClose: () => void;
 		onConfirm: () => void;
 	}) => {
 		const { View, Pressable, Text } =
 			jest.requireActual<typeof import("react-native")>("react-native");
-		return visible ? (
+		return (
 			<View>
 				<Text>Löschen bestätigen</Text>
 				<Pressable
@@ -121,7 +118,7 @@ jest.mock("~/components/ui/confirmation-sheet", () => ({
 					onPress={onClose}
 				/>
 			</View>
-		) : null;
+		);
 	},
 }));
 jest.mock("~/components/ui/portrait-content", () => ({
@@ -208,7 +205,6 @@ test.each([
 		});
 	} else {
 		await fireEvent.press(screen.getByRole("button", { name: "Löschen" }));
-		await act(() => mockEditorDismiss?.());
 		await fireEvent.press(
 			screen.getByRole("button", {
 				name: action === "delete" ? "Löschen bestätigen" : "Löschen abbrechen",
@@ -300,7 +296,7 @@ test("the header plus remains available when a personal subject already exists",
 	expect(screen.getByLabelText("Name des Fachs")).toBeOnTheScreen();
 });
 
-test("editor offers deletion, waits for dismissal, and only deletes after confirmation", async () => {
+test("editor keeps the sheet open when switching to deletion confirmation", async () => {
 	const subject = { id: "italian-id", name: "Italienisch" };
 	mockResponse = { personal: [subject], reusableTimetableSubjects: [] };
 	const screen = await render(<PersonalSubjectsScreen />);
@@ -313,12 +309,13 @@ test("editor offers deletion, waits for dismissal, and only deletes after confir
 		"Nicht gespeichert",
 	);
 	expect(screen.getByRole("button", { name: "Speichern" })).toBeOnTheScreen();
+	mockSheetVisibility.length = 0;
 	await fireEvent.press(screen.getByRole("button", { name: "Löschen" }));
+	expect(mockSheetVisibility.length).toBeGreaterThan(0);
+	expect(mockSheetVisibility.every(Boolean)).toBe(true);
 	expect(screen.queryByText("Fach bearbeiten")).toBeNull();
-	expect(screen.queryByText("Löschen bestätigen")).toBeNull();
-	expect(mockMutation).not.toHaveBeenCalled();
-	await act(() => mockEditorDismiss?.());
 	expect(screen.getByText("Löschen bestätigen")).toBeOnTheScreen();
+	expect(mockMutation).not.toHaveBeenCalled();
 	await fireEvent.press(
 		screen.getByRole("button", { name: "Löschen abbrechen" }),
 	);
@@ -327,7 +324,6 @@ test("editor offers deletion, waits for dismissal, and only deletes after confir
 		screen.getByRole("button", { name: "Italienisch umbenennen" }),
 	);
 	await fireEvent.press(screen.getByRole("button", { name: "Löschen" }));
-	await act(() => mockEditorDismiss?.());
 	await fireEvent.press(
 		screen.getByRole("button", { name: "Löschen bestätigen" }),
 	);
