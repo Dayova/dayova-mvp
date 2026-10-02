@@ -21,6 +21,7 @@ let mockSnapshot:
 	| { plan: { topicDescription: string }; documents: never[] }
 	| undefined;
 let mockPauseVisible = false;
+let mockPauseLabels: string[] = [];
 let mockScreenOptions: { gestureEnabled?: boolean };
 jest.mock("convex/react", () => ({
 	useConvexAuth: () => ({ isAuthenticated: true }),
@@ -106,8 +107,17 @@ jest.mock("~/components/ui/screen", () => {
 });
 jest.mock("~/components/ui/action-sheet", () => ({ ActionSheet: () => null }));
 jest.mock("~/components/ui/confirmation-sheet", () => ({
-	ConfirmationSheet: ({ visible }: { visible: boolean }) => {
+	ConfirmationSheet: ({
+		visible,
+		cancelLabel,
+		confirmLabel,
+	}: {
+		visible: boolean;
+		cancelLabel: string;
+		confirmLabel: string;
+	}) => {
 		mockPauseVisible = visible;
+		mockPauseLabels = [cancelLabel, confirmLabel];
 		return null;
 	},
 }));
@@ -133,6 +143,7 @@ beforeEach(() => {
 	mockUpdateEntry.mockResolvedValue(undefined);
 	mockSnapshot = undefined;
 	mockPauseVisible = false;
+	mockPauseLabels = [];
 	mockParams = {
 		type: "exam",
 		step: "learningAvailability",
@@ -248,6 +259,7 @@ describe("exam creation across the topics boundary", () => {
 		await render(<NewLearningPlanScreen />);
 		await act(() => mockProgress.onBack());
 		expect(mockPauseVisible).toBe(true);
+		expect(mockPauseLabels).toEqual(["Bearbeiten", "Später"]);
 		expect(mockRouter.replace).not.toHaveBeenCalled();
 		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
 	});

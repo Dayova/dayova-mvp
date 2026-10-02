@@ -704,8 +704,8 @@ export default function NewLearningPlanScreen() {
 				visible={isPauseConfirmationVisible}
 				title="Lernplan-Erstellung pausieren?"
 				description="Deine bisherigen Angaben und Unterlagen bleiben gespeichert. Du kannst die Erstellung später unter Lernpläne fortsetzen."
-				cancelLabel="Weiter bearbeiten"
-				confirmLabel="Später fortsetzen"
+				cancelLabel="Bearbeiten"
+				confirmLabel="Später"
 				confirmTone="primary"
 				onClose={() => setIsPauseConfirmationVisible(false)}
 				onConfirm={() => {
