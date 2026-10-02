@@ -19,7 +19,10 @@ import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
 import { ErrorMessage } from "~/components/ui/error-message";
 import { BookOpen, Pencil, Plus } from "~/components/ui/icon";
 import { Input } from "~/components/ui/input";
-import { PortraitContent } from "~/components/ui/portrait-content";
+import {
+	PortraitContent,
+	useContentSizeLayout,
+} from "~/components/ui/portrait-content";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
@@ -33,6 +36,7 @@ import { useSubjectOptions } from "~/features/subjects/use-subject-options";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { useDayovaTheme } from "~/lib/theme";
 import { getUserFacingErrorMessage } from "~/lib/user-facing-errors";
+import { cn } from "~/lib/utils";
 
 type EditingSubject = {
 	id: Id<"personalSubjects">;
@@ -43,6 +47,7 @@ export default function PersonalSubjectsScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const { colors } = useDayovaTheme();
+	const { shouldStackInlineContent } = useContentSizeLayout();
 	const { isLoading, loadError, personalOptions, options, savePermanent } =
 		useSubjectOptions();
 	const [isAdding, setIsAdding] = useState(false);
@@ -292,26 +297,36 @@ export default function PersonalSubjectsScreen() {
 					{editingSubject && errorMessage ? (
 						<ErrorMessage>{errorMessage}</ErrorMessage>
 					) : null}
-					<Button
-						accessibilityState={{ busy: isBusy, disabled: isBusy }}
-						disabled={!cleanSubjectName(renamedValue) || isBusy}
-						onPress={confirmRename}
+					<View
+						className={cn("gap-3", !shouldStackInlineContent && "flex-row")}
 					>
-						{isBusy ? <ActivityIndicator color="#FFFFFF" /> : null}
-						<Text>{isBusy ? "Wird gespeichert …" : "Namen speichern"}</Text>
-					</Button>
-					<Button
-						variant="destructive-outline"
-						disabled={isBusy}
-						onPress={() => {
-							if (isBusy || !editingSubject) return;
-							pendingDeleteRef.current = editingSubject;
-							Keyboard.dismiss();
-							setEditingSubject(null);
-						}}
-					>
-						<Text>Fach löschen</Text>
-					</Button>
+						<Button
+							size="sm"
+							className={cn(!shouldStackInlineContent && "flex-1")}
+							variant="destructive-outline"
+							disabled={isBusy}
+							onPress={() => {
+								if (isBusy || !editingSubject) return;
+								pendingDeleteRef.current = editingSubject;
+								Keyboard.dismiss();
+								setEditingSubject(null);
+							}}
+						>
+							<Text>Löschen</Text>
+						</Button>
+						<Button
+							size="sm"
+							className={cn(!shouldStackInlineContent && "flex-1")}
+							accessibilityState={{ busy: isBusy }}
+							disabled={!cleanSubjectName(renamedValue) || isBusy}
+							onPress={confirmRename}
+						>
+							{isBusy ? <ActivityIndicator color="#FFFFFF" /> : null}
+							<Text className="shrink text-center">
+								{isBusy ? "Speichert …" : "Speichern"}
+							</Text>
+						</Button>
+					</View>
 				</View>
 			</DayovaSheetFrame>
 

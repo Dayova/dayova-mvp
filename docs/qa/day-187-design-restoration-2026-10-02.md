@@ -1,5 +1,14 @@
 # DAY-187: restore the demonstrated personal-subject UI
 
+## Compact editor actions
+
+Philipp requested a single compact action row in the subject editor:
+"Löschen" left, "Speichern" right, equal widths with 12px spacing and the
+existing shared small Button size (minimum 48px touch height). Saving remains
+the primary action; deletion retains its outlined danger appearance and
+confirmation. Large content sizes use the existing vertical-reflow rule.
+Only layout and labels change; persistence and confirmation behavior stay intact.
+
 ## Latest follow-up: always save subjects; delete from the editor
 
 Philipp explicitly superseded the earlier creation-flow scope on 2026-10-02.

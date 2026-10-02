@@ -116,6 +116,7 @@ jest.mock("~/components/ui/confirmation-sheet", () => ({
 }));
 jest.mock("~/components/ui/portrait-content", () => ({
 	PortraitContent: ({ children }: { children: React.ReactNode }) => children,
+	useContentSizeLayout: () => ({ shouldStackInlineContent: false }),
 }));
 jest.mock("~/components/ui/screen", () => ({
 	Screen: ({ children }: { children: React.ReactNode }) => children,
@@ -248,7 +249,8 @@ test("editor offers deletion, waits for dismissal, and only deletes after confir
 		screen.getByLabelText("Neuer Fachname"),
 		"Nicht gespeichert",
 	);
-	await fireEvent.press(screen.getByRole("button", { name: "Fach löschen" }));
+	expect(screen.getByRole("button", { name: "Speichern" })).toBeOnTheScreen();
+	await fireEvent.press(screen.getByRole("button", { name: "Löschen" }));
 	expect(screen.queryByText("Fach bearbeiten")).toBeNull();
 	expect(screen.queryByText("Löschen bestätigen")).toBeNull();
 	expect(mockMutation).not.toHaveBeenCalled();
@@ -261,7 +263,7 @@ test("editor offers deletion, waits for dismissal, and only deletes after confir
 	await fireEvent.press(
 		screen.getByRole("button", { name: "Italienisch umbenennen" }),
 	);
-	await fireEvent.press(screen.getByRole("button", { name: "Fach löschen" }));
+	await fireEvent.press(screen.getByRole("button", { name: "Löschen" }));
 	await act(() => mockEditorDismiss?.());
 	await fireEvent.press(
 		screen.getByRole("button", { name: "Löschen bestätigen" }),
