@@ -180,6 +180,12 @@ acknowledges a real transition without becoming recurring friction.
 
 ### Personal-subject action appearance
 
+Exam-type and subject selection share `SelectionOptionRow`: identical card
+geometry, icon treatment, radio checked semantics and cyan check indicator with
+`onPrimary` contrast. The subject catalog is one continuous list, without a
+separate personal-subject heading. One-time scope remains supporting row copy;
+persisted IDs and storage choices are not changed by the visual grouping.
+
 DAY-187 restores the September device-review treatment in the independent
 personal-subject feature. Shared Button variants `cancel` (bordered card,
 theme text) and `destructive-outline` (danger border/text on subtle fill) are

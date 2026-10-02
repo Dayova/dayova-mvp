@@ -1,5 +1,29 @@
 # DAY-187: restore the demonstrated personal-subject UI
 
+## Follow-up: new-exam selection screens
+
+User confirmed Settings is correct and requested the missing creation-flow
+design in #816. Baseline: `e9630c6f44ce05c64122b2b90656157fbad2c27d`.
+The continuous subject list is present in historical `cc5460b4`; Jakob's
+[consistency feedback on #655](https://github.com/Dayova/dayova-mvp/pull/655#issuecomment-5820536081)
+asks for the same exam-type/subject add design.
+
+Job: choose the exam type, then its subject. Hierarchy: selectable options first,
+add-option row second, continue action in the existing flow. Primary action:
+select one option. Friction: remove the separate personal-subject heading and
+inconsistent dot/check radio treatments. Decision: shared SelectionOptionRow for
+both pickers; shared AddOptionButton and outlined cancellation in both dialogs.
+Do not alter Settings, backend persistence or the one-time/permanent choice.
+
+Newly saved selections remain visible while the catalog refreshes, without a
+duplicate timetable row. One-time scope remains supporting text within the row.
+The current contrast-safe `onPrimary` check color supersedes old white-check
+screenshots; old arbitrary radii are not reintroduced.
+
+Validation: 84 Jest suites / 383 tests pass. Targeted cases cover one continuous
+list, persistence IDs, pending catalog replacement, common checked semantics,
+custom exam cancellation and wrapping labels. Native replay is pending below.
+
 ## Decision brief
 
 - Job: manage reusable personal subjects from Settings.

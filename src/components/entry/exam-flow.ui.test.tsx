@@ -53,6 +53,17 @@ jest.mock("~/components/ui/button", () => ({
 }));
 
 describe("ExamTypePicker custom entry", () => {
+	test("uses the shared checked selection row for preset and custom exam types", async () => {
+		const screen = await render(
+			<ExamTypePicker selectedValue="Test" onSelect={jest.fn()} />,
+		);
+		expect(screen.getByRole("radio", { name: "Test" })).toBeChecked();
+		expect(screen.getByRole("radio", { name: "Klausur" })).not.toBeChecked();
+		await screen.rerender(
+			<ExamTypePicker selectedValue="Vokabeltest" onSelect={jest.fn()} />,
+		);
+		expect(screen.getByRole("radio", { name: "Vokabeltest" })).toBeChecked();
+	});
 	test("opens an add dialog without clearing the previous selection and cancels safely", async () => {
 		const onSelect = jest.fn();
 		const screen = await render(
@@ -136,12 +147,17 @@ jest.mock("~/components/ui/icon", () => {
 		NotebookPen: Icon,
 		Pencil: Icon,
 		Plus: Icon,
+		Check: Icon,
 	};
 });
 
 jest.mock("~/lib/theme", () => ({
 	useDayovaTheme: () => ({
-		colors: { primary: "#00BAFF", secondaryText: "#697586" },
+		colors: {
+			primary: "#00BAFF",
+			secondaryText: "#697586",
+			onPrimary: "#1A1A1A",
+		},
 	}),
 }));
 

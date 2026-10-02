@@ -2,7 +2,6 @@ import { useRef, useState } from "react";
 import {
 	ActivityIndicator,
 	Keyboard,
-	Pressable,
 	type TextInput,
 	View,
 } from "react-native";
@@ -10,8 +9,8 @@ import { AddOptionButton } from "~/components/ui/add-option-button";
 import { Button } from "~/components/ui/button";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
 import { ErrorMessage } from "~/components/ui/error-message";
-import { Check } from "~/components/ui/icon";
 import { Input } from "~/components/ui/input";
+import { SelectionOptionRow } from "~/components/ui/selection-option-row";
 import { Text } from "~/components/ui/text";
 import { getSubjectIcon } from "~/features/subjects/subject-catalog";
 import {
@@ -25,61 +24,8 @@ import {
 } from "~/features/subjects/use-subject-options";
 import { useDayovaTheme } from "~/lib/theme";
 import { getUserFacingErrorMessage } from "~/lib/user-facing-errors";
-import { cn } from "~/lib/utils";
 
 const MAX_SUBJECT_NAME_LENGTH = 60;
-
-function SubjectOptionRow({
-	option,
-	selected,
-	onPress,
-}: {
-	option: SubjectOption;
-	selected: boolean;
-	onPress: () => void;
-}) {
-	const { colors } = useDayovaTheme();
-	const Icon = option.Icon;
-
-	return (
-		<Pressable
-			accessibilityLabel={option.name}
-			accessibilityRole="radio"
-			accessibilityState={{ checked: selected }}
-			className={cn(
-				"min-h-16 flex-row items-center gap-4 rounded-3xl border px-5 py-3 active:opacity-80",
-				selected ? "border-primary/40 bg-accent" : "border-border bg-card",
-			)}
-			onPress={onPress}
-		>
-			<View className="h-9 w-9 items-center justify-center rounded-full bg-system-subtle">
-				<Icon
-					size={20}
-					color={selected ? colors.primary : colors.secondaryText}
-					strokeWidth={2}
-				/>
-			</View>
-			<Text
-				className={cn(
-					"flex-1 font-poppins text-body-2",
-					selected ? "font-semibold text-primary" : "text-text",
-				)}
-			>
-				{option.name}
-			</Text>
-			<View
-				className={cn(
-					"h-6 w-6 items-center justify-center rounded-full border-2",
-					selected ? "border-primary bg-primary" : "border-primary/40",
-				)}
-			>
-				{selected ? (
-					<Check size={14} color={colors.onPrimary} strokeWidth={2.5} />
-				) : null}
-			</View>
-		</Pressable>
-	);
-}
 
 function SubjectPickerContent({
 	options,
@@ -97,23 +43,33 @@ function SubjectPickerContent({
 	onAdd: () => void;
 }) {
 	const { colors } = useDayovaTheme();
-	const builtInOptions = options.filter((option) => option.kind === "builtIn");
-	const reusableOptions = options.filter((option) => option.kind !== "builtIn");
-	const selectedOneTimeOption =
-		selected.isOneTime &&
-		!options.some(
-			(option) =>
-				normalizeSubjectName(option.name) ===
-				normalizeSubjectName(selected.name),
-		)
-			? {
-					key: `one-time:${normalizeSubjectName(selected.name)}`,
-					name: selected.name,
-					isOneTime: true,
-					kind: "oneTime" as const,
-					Icon: getSubjectIcon(selected.name),
-				}
-			: null;
+	const visibleOptions = [...options];
+	// Keep a just-saved or one-time selection visible until the catalog catches up.
+	if (selected.name && (selected.personalSubjectId || selected.isOneTime)) {
+		const match = visibleOptions.findIndex((option) =>
+			selected.personalSubjectId
+				? option.personalSubjectId === selected.personalSubjectId
+				: normalizeSubjectName(option.name) ===
+					normalizeSubjectName(selected.name),
+		);
+		if (match < 0) {
+			const pendingOption: SubjectOption = {
+				...selected,
+				key: selected.personalSubjectId
+					? `personal:${selected.personalSubjectId}`
+					: `one-time:${normalizeSubjectName(selected.name)}`,
+				kind: selected.personalSubjectId ? "personal" : "oneTime",
+				Icon: getSubjectIcon(selected.name),
+			};
+			const sameName = visibleOptions.findIndex(
+				(option) =>
+					normalizeSubjectName(option.name) ===
+					normalizeSubjectName(selected.name),
+			);
+			if (sameName >= 0) visibleOptions[sameName] = pendingOption;
+			else visibleOptions.push(pendingOption);
+		}
+	}
 	const selectionFor = (option: SubjectOption): SubjectSelection => ({
 		name: option.name,
 		...(option.personalSubjectId
@@ -130,37 +86,12 @@ function SubjectPickerContent({
 
 	return (
 		<View accessibilityRole="radiogroup" className="gap-3">
-			{builtInOptions.map((option) => (
-				<SubjectOptionRow
+			{visibleOptions.map((option) => (
+				<SelectionOptionRow
 					key={option.key}
-					option={option}
-					selected={isSelected(option)}
-					onPress={() => onSelect(selectionFor(option))}
-				/>
-			))}
-
-			{selectedOneTimeOption ? (
-				<>
-					<Text className="pt-3 pl-1 font-poppins font-semibold text-body-4 text-secondary-text">
-						Nur für diesen Eintrag
-					</Text>
-					<SubjectOptionRow
-						option={selectedOneTimeOption}
-						selected
-						onPress={() => onSelect(selectionFor(selectedOneTimeOption))}
-					/>
-				</>
-			) : null}
-
-			{reusableOptions.length > 0 ? (
-				<Text className="pt-3 pl-1 font-poppins font-semibold text-body-4 text-secondary-text">
-					Persönliche Fächer
-				</Text>
-			) : null}
-			{reusableOptions.map((option) => (
-				<SubjectOptionRow
-					key={option.key}
-					option={option}
+					Icon={option.Icon}
+					label={option.name}
+					description={option.isOneTime ? "Nur für diesen Eintrag" : undefined}
 					selected={isSelected(option)}
 					onPress={() => onSelect(selectionFor(option))}
 				/>
@@ -453,7 +384,6 @@ function SubjectPickerSheet({
 export {
 	InlineSubjectPicker,
 	SubjectAddFlow,
-	SubjectOptionRow,
 	SubjectPickerContent,
 	SubjectPickerSheet,
 };

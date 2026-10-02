@@ -1,7 +1,11 @@
 import { describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import React from "react";
-import { InlineSubjectPicker, SubjectAddFlow } from "./subject-picker";
+import {
+	InlineSubjectPicker,
+	SubjectAddFlow,
+	SubjectPickerContent,
+} from "./subject-picker";
 import type { SubjectSelection } from "./use-subject-options";
 
 jest.mock("~/components/ui/dayova-sheet-frame", () => ({
@@ -115,6 +119,68 @@ const personalOption = {
 	kind: "personal" as const,
 	Icon: () => React.createElement("Icon"),
 };
+
+test("renders one continuous catalog without a personal-subject section", async () => {
+	const onSelect = jest.fn();
+	const screen = await render(
+		<SubjectPickerContent
+			options={[
+				{
+					...personalOption,
+					key: "builtin:math",
+					name: "Mathematik",
+					kind: "builtIn",
+					personalSubjectId: undefined,
+				},
+				personalOption,
+			]}
+			selected={{
+				name: "Französisch",
+				personalSubjectId: personalOption.personalSubjectId,
+			}}
+			isLoading={false}
+			onSelect={onSelect}
+			onAdd={jest.fn()}
+		/>,
+	);
+	expect(screen.queryByText("Persönliche Fächer")).toBeNull();
+	expect(
+		screen.getAllByRole("radio").map((row) => row.props.accessibilityLabel),
+	).toEqual(["Mathematik", "Französisch"]);
+	expect(screen.getByRole("radio", { name: "Französisch" })).toBeChecked();
+	await fireEvent.press(screen.getByRole("radio", { name: "Französisch" }));
+	expect(onSelect).toHaveBeenCalledWith({
+		name: "Französisch",
+		personalSubjectId: personalOption.personalSubjectId,
+	});
+});
+
+test("a newly saved subject stays selected before and after the reactive catalog catches up", async () => {
+	const props = {
+		selected: {
+			name: "Französisch",
+			personalSubjectId: personalOption.personalSubjectId,
+		},
+		isLoading: false,
+		onSelect: jest.fn(),
+		onAdd: jest.fn(),
+	};
+	const screen = await render(
+		<SubjectPickerContent
+			{...props}
+			options={[
+				{ ...personalOption, kind: "timetable", personalSubjectId: undefined },
+			]}
+		/>,
+	);
+	expect(screen.getAllByRole("radio", { name: "Französisch" })).toHaveLength(1);
+	expect(screen.getByRole("radio", { name: "Französisch" })).toBeChecked();
+	await screen.rerender(
+		<SubjectPickerContent {...props} options={[personalOption]} />,
+	);
+	expect(screen.getAllByRole("radio", { name: "Französisch" })).toHaveLength(1);
+	expect(screen.getByRole("radio", { name: "Französisch" })).toBeChecked();
+});
 
 describe("SubjectAddFlow", () => {
 	test("reuses an existing subject despite casing and whitespace", async () => {
