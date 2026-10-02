@@ -606,7 +606,15 @@ export default function NewLearningPlanScreen() {
 		return exitCreation();
 	};
 
-	useBackIntent(hasExamEntry, goBack);
+	const [isLeavingAfterPause, setIsLeavingAfterPause] = useState(false);
+	useBackIntent(hasExamEntry, goBack, {
+		allowRouteRemoval: isLeavingAfterPause,
+	});
+	useEffect(() => {
+		if (isLeavingAfterPause) {
+			dismissToOrReplace(router, ROUTES.learningPlans);
+		}
+	}, [isLeavingAfterPause, router]);
 	useLearningPlanCreationProgress({
 		active: true,
 		currentStep: currentProgressStep,
@@ -704,13 +712,13 @@ export default function NewLearningPlanScreen() {
 				visible={isPauseConfirmationVisible}
 				title="Lernplan-Erstellung pausieren?"
 				description="Deine bisherigen Angaben und Unterlagen bleiben gespeichert. Du kannst die Erstellung später unter Lernpläne fortsetzen."
-				cancelLabel="Bearbeiten"
+				cancelLabel="Fortsetzen"
 				confirmLabel="Später"
 				confirmTone="primary"
 				onClose={() => setIsPauseConfirmationVisible(false)}
 				onConfirm={() => {
 					setIsPauseConfirmationVisible(false);
-					dismissToOrReplace(router, ROUTES.learningPlans);
+					setIsLeavingAfterPause(true);
 				}}
 			/>
 		</Screen>

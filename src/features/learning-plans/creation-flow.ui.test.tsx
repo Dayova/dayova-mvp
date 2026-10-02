@@ -22,6 +22,8 @@ let mockSnapshot:
 	| undefined;
 let mockPauseVisible = false;
 let mockPauseLabels: string[] = [];
+let mockPauseActions: { onClose: () => void; onConfirm: () => void };
+let mockAllowRouteRemoval = false;
 let mockScreenOptions: { gestureEnabled?: boolean };
 jest.mock("convex/react", () => ({
 	useConvexAuth: () => ({ isAuthenticated: true }),
@@ -62,7 +64,14 @@ jest.mock("~/lib/navigation", () => ({
 	...jest.requireActual<typeof import("~/lib/navigation-actions")>(
 		"~/lib/navigation-actions",
 	),
-	useBackIntent: (_enabled: boolean, onBack: () => boolean) => onBack,
+	useBackIntent: (
+		_enabled: boolean,
+		onBack: () => boolean,
+		options?: { allowRouteRemoval?: boolean },
+	) => {
+		mockAllowRouteRemoval = options?.allowRouteRemoval ?? false;
+		return onBack;
+	},
 }));
 jest.mock("~/context/AuthContext", () => ({
 	useAuthSession: () => ({ user: { id: "user" } }),
@@ -111,13 +120,18 @@ jest.mock("~/components/ui/confirmation-sheet", () => ({
 		visible,
 		cancelLabel,
 		confirmLabel,
+		onClose,
+		onConfirm,
 	}: {
 		visible: boolean;
 		cancelLabel: string;
 		confirmLabel: string;
+		onClose: () => void;
+		onConfirm: () => void;
 	}) => {
 		mockPauseVisible = visible;
 		mockPauseLabels = [cancelLabel, confirmLabel];
+		mockPauseActions = { onClose, onConfirm };
 		return null;
 	},
 }));
@@ -139,11 +153,13 @@ jest.mock("~/lib/theme", () => ({
 
 beforeEach(() => {
 	jest.clearAllMocks();
+	mockRouter.dismissTo.mockReset();
 	mockCreateEntry.mockResolvedValue("exam-1");
 	mockUpdateEntry.mockResolvedValue(undefined);
 	mockSnapshot = undefined;
 	mockPauseVisible = false;
 	mockPauseLabels = [];
+	mockAllowRouteRemoval = false;
 	mockParams = {
 		type: "exam",
 		step: "learningAvailability",
@@ -259,8 +275,18 @@ describe("exam creation across the topics boundary", () => {
 		await render(<NewLearningPlanScreen />);
 		await act(() => mockProgress.onBack());
 		expect(mockPauseVisible).toBe(true);
-		expect(mockPauseLabels).toEqual(["Bearbeiten", "Später"]);
+		expect(mockPauseLabels).toEqual(["Fortsetzen", "Später"]);
 		expect(mockRouter.replace).not.toHaveBeenCalled();
 		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+		await act(() => mockPauseActions.onClose());
+		expect(mockPauseVisible).toBe(false);
+		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+		await act(() => mockProgress.onBack());
+		mockRouter.dismissTo.mockImplementation(() => {
+			expect(mockAllowRouteRemoval).toBe(true);
+		});
+		await act(() => mockPauseActions.onConfirm());
+		expect(mockPauseVisible).toBe(false);
+		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans");
 	});
 });

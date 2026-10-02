@@ -71,3 +71,20 @@ Themenseite; die Wiederaufnahme startete korrekt im Material-Schritt. Nach
 Korrektur dieser Testannahme bestanden alle beschriebenen nativen Schritte.
 Ein bereits vorhandener lokaler Notification-Fehlerbadge beim Start ist von
 diesem Frontend-Fix unabhängig und wird damit nicht als behoben behauptet.
+
+## Nachprüfung: Fortsetzen und Später
+
+Die Buttons heißen jetzt „Fortsetzen“ und „Später“. Fortsetzen schließt nur
+den Dialog. Später gibt nach ausdrücklicher Bestätigung den Removal-Guard
+frei und navigiert erst nach dem entsprechenden Render zur Lernplanübersicht.
+Der Screen-Test prüft beide Aktionen und die Freigabe vor `dismissTo`.
+Fünf Flow-Tests, TypeScript, gezieltes ESLint und Diff-Prüfung bestanden.
+
+Native Nachprüfung auf „Dayova PR819 Dialogtest“ (iOS 26.4) erfolgreich:
+Fortsetzen lässt die Themenseite geöffnet; anschließend führt Später zur
+Übersicht und schließt Dialog und Bearbeitung. Maestro Exit 0.
+Vorherige Versuche waren nicht als erfolgreiche Abnahme verwertbar: Der
+gemeinsame Simulator wurde zwischenzeitlich per App-Umschalter beendet;
+zusätzlich verdeckte ein vorhandener Entwickler-LogBox-Toast die Buttons.
+Nach Schließen dieses Toasts bestand der gezielte Test auf einer isolierten
+Gerätekopie. Der zugrunde liegende Notification-Fehler ist nicht Teil des Fixes.
