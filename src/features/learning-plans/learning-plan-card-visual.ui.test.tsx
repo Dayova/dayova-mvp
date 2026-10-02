@@ -1,5 +1,5 @@
 import { describe, expect, jest, test } from "@jest/globals";
-import { render } from "@testing-library/react-native";
+import { fireEvent, render, within } from "@testing-library/react-native";
 import { LearningPlanCardVisual } from "./learning-plan-card-visual";
 
 let mockShouldStackInlineContent = false;
@@ -21,6 +21,52 @@ jest.mock("~/lib/theme", () => ({
 }));
 
 describe("LearningPlanCardVisual", () => {
+	test("keeps edit, delete and opening as separate explicit actions", async () => {
+		const onPress = jest.fn();
+		const onEdit = jest.fn();
+		const onDelete = jest.fn();
+		const screen = await render(
+			<LearningPlanCardVisual
+				accessibilityLabel="Mathematik öffnen"
+				accessibilityHint="Öffnet den Lernplan"
+				model={{
+					subject: "Mathematik",
+					status: {
+						label: "Entwurf",
+						background: "white",
+						foreground: "black",
+					},
+					examDateLabel: "24. Oktober",
+					currentTitle: "Themen eintragen",
+					state: { kind: "creation", progressLabel: "In Erstellung" },
+				}}
+				onPress={onPress}
+				onEdit={onEdit}
+				onDelete={onDelete}
+			/>,
+		);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Mathematik: Lernplan bearbeiten" }),
+		);
+		expect(onEdit).toHaveBeenCalledTimes(1);
+		expect(onPress).not.toHaveBeenCalled();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Mathematik: Lernplan löschen" }),
+		);
+		expect(onDelete).toHaveBeenCalledTimes(1);
+		expect(onPress).not.toHaveBeenCalled();
+		// fireEvent on plain text climbs composite props, unlike native hit testing.
+		// The shared card owns the verified action-only native hit target.
+		expect(
+			within(
+				screen.getByRole("button", { name: "Mathematik öffnen" }),
+			).queryByText("Themen eintragen"),
+		).toBeNull();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Mathematik öffnen" }),
+		);
+		expect(onPress).toHaveBeenCalledTimes(1);
+	});
 	test("lets screen-mode status badges grow with scaled text", async () => {
 		const screen = await render(
 			<LearningPlanCardVisual

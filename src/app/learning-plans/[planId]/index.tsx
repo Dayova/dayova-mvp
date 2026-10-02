@@ -387,7 +387,7 @@ export default function LearningPlanSessionsScreen() {
 
 	return (
 		<Screen>
-			<Stack.Screen options={{ gestureEnabled: true }} />
+			<Stack.Screen options={{ gestureEnabled: false }} />
 			<ThemedStatusBar />
 			<View
 				className="px-4"

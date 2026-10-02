@@ -888,7 +888,7 @@ export default function NewEntryScreen() {
 
 	return (
 		<View className="flex-1 bg-background">
-			<Stack.Screen options={{ gestureEnabled: true }} />
+			<Stack.Screen options={{ gestureEnabled: false }} />
 			{!isHomework ? (
 				<View className="px-8 pb-8">
 					<Text className="font-poppins font-semibold text-heading-2 text-text">

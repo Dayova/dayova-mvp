@@ -21,6 +21,7 @@ let mockSnapshot:
 	| { plan: { topicDescription: string }; documents: never[] }
 	| undefined;
 let mockPauseVisible = false;
+let mockScreenOptions: { gestureEnabled?: boolean };
 jest.mock("convex/react", () => ({
 	useConvexAuth: () => ({ isAuthenticated: true }),
 	useConvex: () => ({ query: async () => mockAvailability }),
@@ -44,7 +45,12 @@ jest.mock("convex/react", () => ({
 jest.mock("expo-router", () => ({
 	useRouter: () => mockRouter,
 	useLocalSearchParams: () => mockParams,
-	Stack: { Screen: () => null },
+	Stack: {
+		Screen: ({ options }: { options: typeof mockScreenOptions }) => {
+			mockScreenOptions = options;
+			return null;
+		},
+	},
 }));
 jest.mock("~/features/learning-plans/creation-progress-shell", () => ({
 	useLearningPlanCreationProgress: (configuration: typeof mockProgress) => {
@@ -146,6 +152,13 @@ function followReplacement() {
 }
 
 describe("exam creation across the topics boundary", () => {
+	test("uses explicit back controls rather than interactive swipe removal", async () => {
+		const screen = await render(<NewEntryScreen />);
+		expect(mockScreenOptions.gestureEnabled).toBe(false);
+		await screen.unmount();
+		await render(<NewLearningPlanScreen />);
+		expect(mockScreenOptions.gestureEnabled).toBe(false);
+	});
 	test("returns from 60% to 50% and can continue again with the same exam", async () => {
 		let screen = await render(<NewEntryScreen />);
 		expect(mockProgress.currentStep).toBe(2.5);

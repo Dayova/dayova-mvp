@@ -4,7 +4,7 @@ import { LearningPlanCreationProgressShell } from "~/features/learning-plans/cre
 export default function LearningPlanCreationLayout() {
 	return (
 		<LearningPlanCreationProgressShell>
-			<Stack screenOptions={{ headerShown: false }} />
+			<Stack screenOptions={{ headerShown: false, gestureEnabled: false }} />
 		</LearningPlanCreationProgressShell>
 	);
 }

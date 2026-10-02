@@ -622,7 +622,7 @@ export default function NewLearningPlanScreen() {
 
 	return (
 		<Screen>
-			<Stack.Screen options={{ gestureEnabled: true }} />
+			<Stack.Screen options={{ gestureEnabled: false }} />
 			<ScreenScroll
 				key={setupStep}
 				includeTopSafeArea={false}

@@ -462,123 +462,50 @@ function LearningPlanCard({
 				: plan.currentSession?.goal ||
 					plan.currentSession?.title ||
 					plan.examTypeLabel;
-	const [isActionRailVisible, setIsActionRailVisible] = useState(false);
-	const translateX = useSharedValue(0);
-	const gestureStartX = useSharedValue(0);
-	const cardAnimatedStyle = useAnimatedStyle(() => ({
-		transform: [{ translateX: translateX.get() }],
-	}));
-	const actionRailAnimatedStyle = useAnimatedStyle(() => ({
-		opacity: interpolate(
-			-translateX.get(),
-			[0, 8, PLAN_ACTION_RAIL_WIDTH],
-			[0, 0, 1],
-			"clamp",
-		),
-	}));
-	const panGesture = Gesture.Pan()
-		.activeOffsetX([-10, 10])
-		.failOffsetY([-12, 12])
-		.onBegin(() => {
-			"worklet";
-			gestureStartX.set(translateX.get());
-			scheduleOnRN(setIsActionRailVisible, true);
-		})
-		.onUpdate((event) => {
-			"worklet";
-			translateX.set(
-				Math.max(
-					Math.min(gestureStartX.get() + event.translationX, 0),
-					-PLAN_ACTION_RAIL_WIDTH,
-				),
-			);
-		})
-		.onEnd(() => {
-			"worklet";
-			const shouldOpen = -translateX.get() >= PLAN_SWIPE_OPEN_THRESHOLD;
-			translateX.set(
-				shouldOpen
-					? withTiming(-PLAN_ACTION_RAIL_WIDTH, {
-							duration: 180,
-							easing: Easing.out(Easing.cubic),
-						})
-					: withSpring(
-							0,
-							{
-								damping: 20,
-								mass: 0.7,
-								overshootClamping: true,
-								stiffness: 260,
-							},
-							(finished) => {
-								"worklet";
-								if (finished) scheduleOnRN(setIsActionRailVisible, false);
-							},
-						),
-			);
-		});
 	const editPlan = () => {
-		translateX.set(0);
-		setIsActionRailVisible(false);
 		router.push(`/learning-plans/new?learningPlanId=${plan.id}` as const);
 	};
-	const deletePlan = () => {
-		translateX.set(0);
-		setIsActionRailVisible(false);
-		onDelete();
-	};
-
 	return (
 		<View className="relative rounded-[40px]">
-			{isActionRailVisible ? (
-				<LearningPlanActionRail
-					onDelete={deletePlan}
-					onEdit={editPlan}
-					style={actionRailAnimatedStyle}
-				/>
-			) : null}
-			<GestureDetector gesture={panGesture}>
-				<Animated.View style={cardAnimatedStyle}>
-					<LearningPlanCardVisual
-						accessibilityHint={
-							creationOverview
-								? "Setzt die gespeicherte Lernplan-Erstellung am nächsten offenen Schritt fort."
-								: needsSchoolMaterial
-									? "Öffnet einen Hinweis und bietet an, Schulmaterial hochzuladen."
-									: "Öffnet diesen Lernplan und zeigt die zugehörigen Lernsessions an."
-						}
-						accessibilityLabel={
-							creationOverview
-								? `${formatGermanUiText(plan.subject)}, ${creationOverview.badgeLabel}, ${plan.examDateLabel ?? "Termin wird geladen"}, ${creationOverview.progressLabel}`
-								: needsSchoolMaterial
-									? `${formatGermanUiText(plan.subject)}, Material fehlt, ${plan.examDateLabel ?? "Termin wird geladen"}, Lernmaterial hochladen`
-									: `${formatGermanUiText(plan.subject)}, ${status.label}, ${plan.examDateLabel ?? "Termin wird geladen"}, ${formatGermanUiText(currentTitle)}, ${rollingWindowLabel}, ${remainingDays === 1 ? "noch 1 Tag" : `noch ${remainingDays} Tage`}`
-						}
-						model={{
-							subject: formatGermanUiText(plan.subject),
-							status,
-							examDateLabel: plan.examDateLabel ?? "Termin wird geladen",
-							currentTitle: formatGermanUiText(currentTitle),
-							state: creationOverview
-								? {
-										kind: "creation",
-										progressLabel: creationOverview.progressLabel,
-									}
-								: needsSchoolMaterial
-									? { kind: "materialRequired" }
-									: {
-											kind: "ready",
-											durationMinutes:
-												plan.currentSession?.durationMinutes ?? null,
-											progress,
-											remainingDays,
-											rollingWindowLabel,
-										},
-						}}
-						onPress={onPress}
-					/>
-				</Animated.View>
-			</GestureDetector>
+			<LearningPlanCardVisual
+				accessibilityHint={
+					creationOverview
+						? "Setzt die gespeicherte Lernplan-Erstellung am nächsten offenen Schritt fort."
+						: needsSchoolMaterial
+							? "Öffnet einen Hinweis und bietet an, Schulmaterial hochzuladen."
+							: "Öffnet diesen Lernplan und zeigt die zugehörigen Lernsessions an."
+				}
+				accessibilityLabel={
+					creationOverview
+						? `${formatGermanUiText(plan.subject)}, ${creationOverview.badgeLabel}, ${plan.examDateLabel ?? "Termin wird geladen"}, ${creationOverview.progressLabel}`
+						: needsSchoolMaterial
+							? `${formatGermanUiText(plan.subject)}, Material fehlt, ${plan.examDateLabel ?? "Termin wird geladen"}, Lernmaterial hochladen`
+							: `${formatGermanUiText(plan.subject)}, ${status.label}, ${plan.examDateLabel ?? "Termin wird geladen"}, ${formatGermanUiText(currentTitle)}, ${rollingWindowLabel}, ${remainingDays === 1 ? "noch 1 Tag" : `noch ${remainingDays} Tage`}`
+				}
+				model={{
+					subject: formatGermanUiText(plan.subject),
+					status,
+					examDateLabel: plan.examDateLabel ?? "Termin wird geladen",
+					currentTitle: formatGermanUiText(currentTitle),
+					state: creationOverview
+						? {
+								kind: "creation",
+								progressLabel: creationOverview.progressLabel,
+							}
+						: needsSchoolMaterial
+							? { kind: "materialRequired" }
+							: {
+									kind: "ready",
+									durationMinutes: plan.currentSession?.durationMinutes ?? null,
+									progress,
+									remainingDays,
+									rollingWindowLabel,
+								},
+				}}
+				onPress={onPress}
+				onEdit={editPlan}
+				onDelete={onDelete}
+			/>
 		</View>
 	);
 }

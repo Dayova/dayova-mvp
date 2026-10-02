@@ -94,7 +94,7 @@ export default function LearningPlanScopeScreen() {
 
 	return (
 		<Screen>
-			<Stack.Screen options={{ gestureEnabled: true }} />
+			<Stack.Screen options={{ gestureEnabled: false }} />
 			<ScreenScroll
 				includeTopSafeArea={false}
 				topPadding={0}

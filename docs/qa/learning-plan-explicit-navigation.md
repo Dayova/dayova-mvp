@@ -1,0 +1,73 @@
+# Lernpläne: eindeutige Aktionen statt konkurrierender Wischgesten
+
+## Video-Befund (Philipp, 3. Oktober 2026)
+
+Quelle: `VIDEO-2026-10-02-11-02-09.mp4`, SHA-256
+`5f1f3ac9d09bd341367c6c9f06ccd94bbb3156d1eb7bce24a29c239664f82962`.
+Das private Original und extrahierte Bilder bleiben lokal.
+
+- 00:00.8–00:02.2: Mathematik-Karte wird nach links versetzt, Aktionen werden
+  sichtbar; anschließend öffnet sich die Lernplanansicht.
+- 00:03.4–00:05.2: Die noch offene Karte wird zurückgeschoben, anschließend
+  öffnet sich erneut die Lernplanansicht. 00:06–00:07 wiederholt das Muster.
+- 00:16–00:19: Die Materialseite wird seitlich zur Übersicht gezogen und
+  kehrt wieder zurück.
+- 00:29.8–00:31 und 00:33.2–00:34.4: Die Übersicht erscheint bereits,
+  anschließend kommt die Themenseite samt „Lernplan-Erstellung pausieren?“
+  zurück. Weitere Wiederholungen bis 00:46.
+
+Beobachtung und Ursache trennen: Es gibt keine sichtbaren Touch-Marker. Der
+Film belegt die Übergänge, aber nicht, ob beim Loslassen zusätzlich ein Tap
+erzeugt wurde. Philipps Beschreibung benennt das versehentliche Öffnen beim
+Wischen. Keine Aussage über Audioinhalte; Tonspur nicht transkribiert.
+
+Coverage: 47.01-second video; 47 full-timeline frames sampled at 1 fps (1-second interval); 3 contact sheet(s); 35 additional frames from 00:00:00.000 to 00:00:07.000 at 5 fps; 30 additional frames from 00:00:29.000 to 00:00:35.000 at 5 fps; audio stream detected; transcription not performed.
+
+Alle acht Kontaktbögen wurden angesehen. Zwischen den Stichproben liegende
+Einzelbilder und die exakte Fingergeste sind damit nicht vollständig erfasst.
+
+## Entscheidung
+
+- Aufgabe: Den richtigen Lernplan gezielt öffnen oder bearbeiten.
+- Hierarchie: Fach/Status, nächster Lernschritt, klar getrennte Aktionen.
+- Hauptaktion: Der vorhandene blaue Pfeil öffnet den Plan.
+- Reibung: Kein verdecktes Bearbeiten/Löschen durch seitliches Verschieben;
+  kein Antippen der gesamten Karte während einer Wischgeste.
+- Umsetzung: Sichtbare Bearbeiten-/Löschen-Schaltflächen oben auf der Karte;
+  keine horizontale Kartengeste. Löschen öffnet weiterhin die vorhandene
+  Bestätigung und löscht nicht unmittelbar.
+- Erstellung und Lernplanübersicht im Detail: Navigation über den vorhandenen
+  Zurück-Button, keine interaktive iOS-Zurückgeste. Der äußere Creation-Stack
+  ist ebenfalls geschützt. Android-Back und der Pausendialog bleiben erhalten.
+
+Keine Änderung an Auth-Onboarding, Kalendergesten, Hausaufgabenkarten,
+Lernzeiten, Backend oder Lernplan-Daten.
+
+## Prüfung
+
+Regressionstests wurden vor der Änderung rot ausgeführt: Creation-Screen
+meldete `gestureEnabled: true`; die Lernplankarte hatte keine getrennten
+Bearbeiten-/Löschen-Aktionen. Diese Tests prüfen die echte Screen-Konfiguration
+und die tatsächliche Karte, nicht die native Zustellung einer Fingerbewegung.
+Die native Abnahme wird separat dokumentiert; automatisierte Tests beweisen
+keinen vollständigen iOS-/Android-Gestentest.
+
+Automatisiert: 79 Jest-Suites / 353 Tests grün; TypeScript, gezieltes ESLint und
+`git diff --check` grün. Keine Backendänderung, daher kein Deployment erforderlich.
+Die sichtbaren 44pt-Aktionsflächen haben fachbezogene Accessibility-Labels;
+Artwork bleibt nicht-interaktiv. iOS-Light-Sichtprüfung durchgeführt, große
+Schrift und dekorative Darstellung durch bestehende UI-Tests abgedeckt.
+Android, VoiceOver und native Dark-/Großschrift-Abnahme nicht durchgeführt.
+
+Native iOS-Abnahme am 03.10.2026, „Dayova Jakob Review iPhone“, iOS 26.4:
+Maestro-Flow erfolgreich (Exit 0). Links-/Rechtswischen auf dem vorhandenen
+Mathematik-Entwurf und Tippen auf dessen Text bleiben in der Übersicht.
+Bearbeiten öffnet korrekt den gespeicherten Material-Schritt. Edge-Swipes in
+Material und Themen verlassen den Screen nicht und öffnen keinen Pausendialog.
+Der obere Zurück-Button führt Material → Themen → Pausendialog;
+„Weiter bearbeiten“ schließt diesen wieder. Keine Planinhalte gespeichert,
+keine Löschung ausgeführt. Der erste Test erwartete fälschlich direkt die
+Themenseite; die Wiederaufnahme startete korrekt im Material-Schritt. Nach
+Korrektur dieser Testannahme bestanden alle beschriebenen nativen Schritte.
+Ein bereits vorhandener lokaler Notification-Fehlerbadge beim Start ist von
+diesem Frontend-Fix unabhängig und wird damit nicht als behoben behauptet.

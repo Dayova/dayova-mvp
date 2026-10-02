@@ -65,6 +65,7 @@ function AppNavigator() {
 					>
 						<Stack.Screen name="(auth)" options={{ animation: "none" }} />
 						<Stack.Screen name="(app)" options={{ animation: "none" }} />
+						<Stack.Screen name="(creation)" options={{ gestureEnabled: false }} />
 						<Stack.Screen
 							name="subscription"
 							options={{
