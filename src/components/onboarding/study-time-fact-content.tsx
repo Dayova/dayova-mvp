@@ -16,7 +16,7 @@ function StudyTimeFactPanel({ body }: { body: string }) {
 			<View className="flex-row items-center gap-2 self-start rounded-full bg-primary/10 px-3 py-2">
 				<Sparkles size={16} color={COLORS.primary} strokeWidth={2} />
 				<Text className="font-poppins font-semibold text-body-5 text-primary">
-					Lernfakt
+					Deine Auswahl
 				</Text>
 			</View>
 
@@ -40,9 +40,6 @@ export function StudyTimeFactContent({
 				<View className="h-[60px] w-[60px] items-center justify-center rounded-full bg-wrong-subtle">
 					<Bulb size={32} color={COLORS.wrong} strokeWidth={1.5} />
 				</View>
-				<Text className="mt-2 font-poppins text-body-4 text-wrong">
-					Schon gewusst?
-				</Text>
 			</View>
 
 			<Text

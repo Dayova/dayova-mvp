@@ -123,6 +123,25 @@ describe("onboarding flow decisions", () => {
 		).toContain("vor Mitternacht");
 	});
 
+	test.each([
+		15, 210, 240, 270,
+	])("allows and persists the exact selected %i-minute duration", (minutes) => {
+		const value = answers({ studyTime: String(minutes) });
+		expect(
+			isOnboardingStepReady(
+				{
+					kind: "range",
+					field: "studyTime",
+					values: [15, 30, 45, 60, 90, 120, 150, 180, 210, 240],
+				},
+				value,
+			),
+		).toBe(true);
+		expect(getOnboardingPersistenceAnswers(value).dailySchoolTime).toBe(
+			`${minutes} min`,
+		);
+	});
+
 	test("maps the visible schedule to the backend's operational fields", () => {
 		expect(getOnboardingPersistenceAnswers(answers())).toEqual({
 			dailySchoolTime: "30 min",

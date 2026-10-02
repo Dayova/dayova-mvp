@@ -5,11 +5,40 @@ import {
 	getOnboardingLearningTimeSummary,
 	getOnboardingLearningTimeValidationError,
 	getOnboardingLearningTimeWindow,
+	parseOnboardingDurationMinutes,
 	parseOnboardingStudyDays,
 	toggleOnboardingStudyDay,
 } from "./onboarding-learning-times";
 
 describe("onboarding learning times", () => {
+	test.each([
+		15, 30, 60, 210, 240, 270, 1000, 1439,
+	])("retains exact duration %i", (minutes) => {
+		expect(parseOnboardingDurationMinutes(String(minutes))).toBe(minutes);
+	});
+	test.each([
+		"custom",
+		"37",
+		"270.5",
+		"1440",
+		"-15",
+		"15 min",
+	])("rejects invalid duration %s", (value) => {
+		expect(parseOnboardingDurationMinutes(value)).toBeNull();
+	});
+	test("summarizes more than four hours with its exact end time", () => {
+		expect(
+			getOnboardingLearningTimeSummary({
+				studyTime: "270",
+				studyDays: "Montag",
+				learningTime: "16:00",
+			}),
+		).toEqual({
+			daysLabel: "Montag",
+			durationLabel: "4 Stunden 30 Minuten",
+			windowLabel: "16:00–20:30 Uhr",
+		});
+	});
 	test("keeps multi-day choices ordered and toggles them without duplicates", () => {
 		expect(toggleOnboardingStudyDay("Donnerstag", "Montag")).toBe(
 			"Montag, Donnerstag",

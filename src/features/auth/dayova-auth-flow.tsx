@@ -58,11 +58,13 @@ import {
 	getDefaultOnboardingLearningStartTime,
 	getOnboardingLearningTimeSummary,
 	getOnboardingLearningTimeValidationError,
+	getOnboardingLearningTimeWindow,
 	ONBOARDING_DURATION_OPTIONS,
 	parseOnboardingStudyDays,
 	toggleOnboardingStudyDay,
 } from "~/components/onboarding/onboarding-learning-times";
 import { OnboardingSelect } from "~/components/onboarding/onboarding-select";
+import { StudyDurationAnswer } from "~/components/onboarding/study-duration-answer";
 import { StudyTimeFactContent } from "~/components/onboarding/study-time-fact-content";
 import { ReleaseInformationSheet } from "~/components/release-information-sheet";
 import { AnimatedFlowerLoader } from "~/components/ui/animated-flower-loader";
@@ -91,7 +93,6 @@ import {
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
 import { PasswordVisibilityButton } from "~/components/ui/password-visibility-button";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
-import { SnapCarouselSelector } from "~/components/ui/snap-carousel-selector";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import {
@@ -1383,7 +1384,13 @@ function QuestionStepView({
 				: "Konto erstellen"
 			: busy
 				? "Wird verarbeitet"
-				: "Weiter";
+				: step.kind === "fact"
+					? "Meine Lerntage wählen"
+					: step.kind === "schedule-explanation"
+						? "Uhrzeit wählen"
+						: step.kind === "payoff"
+							? "Lernzeiten übernehmen"
+							: "Weiter";
 	const primaryActionLabel = shouldOpenLearningTimePicker
 		? hasInvalidLearningTime
 			? "Frühere Startzeit wählen"
@@ -1493,8 +1500,14 @@ function QuestionStepView({
 						}}
 					>
 						{step.kind === "wheel" ? <WheelAnswer step={step} /> : null}
-						{step.kind === "range" ? <RangeAnswer step={step} /> : null}
+						{step.kind === "range" ? <StudyDurationAnswer /> : null}
 						{step.kind === "days" ? <StudyDaysAnswer /> : null}
+						{step.kind === "schedule-explanation" ? (
+							<Text className="px-4 text-center text-body-3 text-secondary-text">
+								So musst du nicht jeden Tag neu überlegen, wann du lernen
+								möchtest. Als Nächstes wählst du deine passende Uhrzeit.
+							</Text>
+						) : null}
 						{step.kind === "time" ? (
 							<LearningTimeAnswer
 								learningTime={answers.learningTime}
@@ -3003,77 +3016,6 @@ function OtpCodeInput({
 	);
 }
 
-function RangeAnswer({
-	step,
-}: {
-	step: Extract<OnboardingProfileStep, { kind: "range" }>;
-}) {
-	const { answers, setAnswer } = useOnboarding();
-	const hasExplicitSelection = answers.studyTime.trim().length > 0;
-	const parsedStudyTime = Number.parseInt(answers.studyTime, 10);
-	const defaultStudyTime = step.values.includes(30)
-		? 30
-		: (step.values[0] ?? 30);
-	const normalizedStudyTime = step.values.reduce(
-		(nearest, value) =>
-			Math.abs(value - parsedStudyTime) < Math.abs(nearest - parsedStudyTime)
-				? value
-				: nearest,
-		defaultStudyTime,
-	);
-	const displayedStudyTime = Number.isFinite(parsedStudyTime)
-		? normalizedStudyTime
-		: defaultStudyTime;
-	useEffect(() => {
-		if (
-			hasExplicitSelection &&
-			answers.studyTime !== String(displayedStudyTime)
-		) {
-			setAnswer("studyTime", String(displayedStudyTime));
-		}
-	}, [answers.studyTime, displayedStudyTime, hasExplicitSelection, setAnswer]);
-	const selectedIndex = Math.max(step.values.indexOf(displayedStudyTime), 0);
-	const selectedValue = step.values[selectedIndex] ?? step.values[0];
-
-	return (
-		<View className="w-full items-center">
-			<SnapCarouselSelector
-				accessibilityLabel="Tägliche Lernzeit"
-				accessibilityValue={
-					hasExplicitSelection
-						? `${displayedStudyTime} Minuten`
-						: `${displayedStudyTime} Minuten Vorschau, noch nicht ausgewählt`
-				}
-				decrementLabel="Weniger Lernzeit"
-				incrementLabel="Mehr Lernzeit"
-				items={step.values}
-				selectedIndex={selectedIndex}
-				getItemKey={(value) => String(value)}
-				getItemPrimaryLabel={(value) => String(value)}
-				getItemProgress={(_, index) => (index + 1) / step.values.length}
-				primaryLabel={String(displayedStudyTime)}
-				secondaryLabel="Minuten"
-				progress={
-					selectedValue === undefined
-						? 0
-						: (selectedIndex + 1) / step.values.length
-				}
-				onSelect={(value) => setAnswer("studyTime", String(value))}
-			/>
-			{hasExplicitSelection ? null : (
-				<Button
-					size="sm"
-					accessibilityLabel={`${displayedStudyTime} Minuten auswählen`}
-					className="mt-4 self-center"
-					onPress={() => setAnswer("studyTime", String(displayedStudyTime))}
-				>
-					<Text>{displayedStudyTime} Minuten auswählen</Text>
-				</Button>
-			)}
-		</View>
-	);
-}
-
 function AnimatedStudyDayPill({
 	label,
 	isSelected,
@@ -3184,23 +3126,28 @@ function StudyDaysAnswer() {
 	const selectedDays = new Set(parseOnboardingStudyDays(answers.studyDays));
 
 	return (
-		<View className="w-full flex-row flex-wrap justify-center gap-3 px-2">
-			{LEARNING_DAYS.map((day) => (
-				<AnimatedStudyDayPill
-					key={day.value}
-					label={day.label}
-					isSelected={selectedDays.has(day.label)}
-					onToggle={() =>
-						setAnswer(
-							"studyDays",
-							toggleOnboardingStudyDay(
-								answers.studyDays,
-								day.label as LearningDayLabel,
-							),
-						)
-					}
-				/>
-			))}
+		<View className="w-full gap-5">
+			<View className="w-full flex-row flex-wrap justify-center gap-3 px-2">
+				{LEARNING_DAYS.map((day) => (
+					<AnimatedStudyDayPill
+						key={day.value}
+						label={day.label}
+						isSelected={selectedDays.has(day.label)}
+						onToggle={() =>
+							setAnswer(
+								"studyDays",
+								toggleOnboardingStudyDay(
+									answers.studyDays,
+									day.label as LearningDayLabel,
+								),
+							)
+						}
+					/>
+				))}
+			</View>
+			<Text className="text-center text-body-4 text-secondary-text">
+				Wenn sich dein Alltag ändert, kannst du die Tage später anpassen.
+			</Text>
 		</View>
 	);
 }
@@ -3216,6 +3163,11 @@ function LearningTimeAnswer({
 }) {
 	const { colors } = useDayovaTheme();
 	const hasLearningTime = Boolean(learningTime);
+	const { answers } = useOnboarding();
+	const timeWindow = getOnboardingLearningTimeWindow({
+		studyTime: answers.studyTime,
+		learningTime,
+	});
 
 	return (
 		<View className="w-full items-center px-6 py-2">
@@ -3240,6 +3192,12 @@ function LearningTimeAnswer({
 				{hasLearningTime ? `${learningTime} Uhr` : "Noch nicht gewählt"}
 			</Text>
 
+			{timeWindow ? (
+				<Text className="mt-3 text-center text-body-4 text-secondary-text">
+					Deine Lernzeit ist von {timeWindow.startTime} bis {timeWindow.endTime}{" "}
+					Uhr.
+				</Text>
+			) : null}
 			{hasLearningTime && showChangeAction ? (
 				<Button
 					accessibilityLabel={`Startzeit ändern, aktuell ${learningTime} Uhr`}
@@ -3260,7 +3218,6 @@ function LearningTimeAnswer({
 function PayoffAnswer() {
 	const { answers } = useOnboarding();
 	const { colors } = useDayovaTheme();
-	const firstName = answers.name.trim().split(/\s+/)[0] || "Du";
 	const schedule = getOnboardingLearningTimeSummary(answers);
 	const summary = [
 		{
@@ -3289,12 +3246,11 @@ function PayoffAnswer() {
 				accessibilityRole="header"
 				className="mt-5 max-w-[350px] text-center font-poppins font-semibold text-heading-1 text-text"
 			>
-				{firstName}, deine Lernzeiten sind vorbereitet.
+				Das sind deine Lernzeiten.
 			</Text>
 			<Text className="mt-3 max-w-[340px] text-center font-poppins text-body-3 text-secondary-text">
-				Dayova speichert diese Zeitfenster nach der Registrierung und nutzt sie
-				für die Planung deiner Lerntermine. In den Einstellungen kannst du sie
-				später einzeln ändern.
+				Diese Zeiten sind die Grundlage für deine Lernplanung. Du kannst sie
+				später in den Einstellungen ändern.
 			</Text>
 
 			<View className="mt-7 w-full gap-3">

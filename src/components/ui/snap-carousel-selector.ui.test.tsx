@@ -99,6 +99,47 @@ describe("SnapCarouselSelector", () => {
 		expect(onSelect).not.toHaveBeenCalled();
 	});
 
+	test("changes the preview unit together with the value before committing", async () => {
+		const onSelect = jest.fn();
+		const screen = await render(
+			<SnapCarouselSelector
+				accessibilityLabel="Tägliche Lernzeit"
+				accessibilityValue="45 Minuten"
+				decrementLabel="Weniger Lernzeit"
+				incrementLabel="Mehr Lernzeit"
+				items={[45, 60, 90]}
+				selectedIndex={0}
+				getItemKey={String}
+				getItemPrimaryLabel={(value) => String(value < 60 ? value : value / 60)}
+				getItemSecondaryLabel={(value) =>
+					value === 60 ? "Stunde" : value > 60 ? "Stunden" : "Minuten"
+				}
+				primaryLabel="45"
+				secondaryLabel="Minuten"
+				progress={1 / 3}
+				onSelect={onSelect}
+			/>,
+		);
+		await act(async () => {
+			mockAnimatedScrollHandler?.({ contentOffset: { x: 68 } });
+		});
+		expect(screen.getByText("1")).toBeOnTheScreen();
+		expect(screen.getByText("Stunde")).toBeOnTheScreen();
+		expect(screen.queryByText("Minuten")).toBeNull();
+		await act(async () => {
+			mockAnimatedScrollHandler?.({
+				contentOffset: {
+					x: screen
+						.getByTestId("snap-carousel-list")
+						.props.getItemLayout(undefined, 2).offset,
+				},
+			});
+		});
+		expect(screen.getByText("1.5")).toBeOnTheScreen();
+		expect(screen.getByText("Stunden")).toBeOnTheScreen();
+		expect(onSelect).not.toHaveBeenCalled();
+	});
+
 	test("synchronizes the preview when selection changes externally", async () => {
 		const props = {
 			accessibilityLabel: "Tägliche Lernzeit",

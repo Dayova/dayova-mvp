@@ -350,7 +350,37 @@ jest.mock("~/components/ui/keyboard-safe-scroll-view", () => {
 });
 
 jest.mock("~/components/ui/select-sheet", () => ({
-	SelectSheet: () => null,
+	SelectSheet: ({
+		visible,
+		options,
+		onSelect,
+		onClose,
+	}: {
+		visible: boolean;
+		options: string[];
+		onSelect: (value: string) => void;
+		onClose: () => void;
+	}) => {
+		const React = jest.requireActual<typeof import("react")>("react");
+		const { Button, View } =
+			jest.requireActual<typeof import("react-native")>("react-native");
+		return visible
+			? React.createElement(
+					View,
+					{},
+					options.map((value) =>
+						React.createElement(Button, {
+							key: value,
+							title: `Auswahl ${value}`,
+							onPress: () => {
+								onSelect(value);
+								onClose();
+							},
+						}),
+					),
+				)
+			: null;
+	},
 }));
 
 jest.mock("~/components/ui/icon", () => {
@@ -1127,7 +1157,7 @@ describe("OnboardingScreen", () => {
 			}),
 		).toBeOnTheScreen();
 		expect(
-			screen.getByText("Danach 11 kurze, bewusste Schritte · etwa 2 Minuten"),
+			screen.getByText("Danach 12 kurze, bewusste Schritte · etwa 2 Minuten"),
 		).toBeOnTheScreen();
 
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
@@ -1181,7 +1211,7 @@ describe("OnboardingScreen", () => {
 		const screen = await render(<OnboardingStepScreen stepId="name" />);
 
 		expect(screen.getByTestId("onboarding-name-input")).toBeOnTheScreen();
-		expect(screen.getByText("1 von 11")).toBeOnTheScreen();
+		expect(screen.getByText("1 von 12")).toBeOnTheScreen();
 		expect(screen.getByRole("progressbar")).toBeOnTheScreen();
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 
@@ -1357,7 +1387,7 @@ describe("OnboardingScreen", () => {
 
 		expect(
 			screen.getByRole("header", {
-				name: "Test, deine Lernzeiten sind vorbereitet.",
+				name: "Das sind deine Lernzeiten.",
 			}),
 		).toBeOnTheScreen();
 		expect(screen.getByText("30 Minuten")).toBeOnTheScreen();
@@ -1375,6 +1405,18 @@ describe("OnboardingScreen", () => {
 		expect(mockSetOnboardingAnswer).toHaveBeenCalledWith("studyTime", "30");
 	});
 
+	test.each([
+		"10",
+		"20",
+	])("does not silently replace a legacy %s-minute selection", async (minutes) => {
+		mockOnboarding.answers.studyTime = minutes;
+		const screen = await render(<OnboardingStepScreen stepId="studyTime" />);
+		expect(
+			screen.getByRole("adjustable", { name: "Tägliche Lernzeit" }),
+		).toHaveAccessibilityValue({ text: `${minutes} Minuten` });
+		expect(mockSetOnboardingAnswer).not.toHaveBeenCalled();
+	});
+
 	test("requires an explicit duration confirmation before continuing", async () => {
 		mockOnboarding.answers.studyTime = "";
 		const screen = await render(<OnboardingStepScreen stepId="studyTime" />);
@@ -1389,6 +1431,51 @@ describe("OnboardingScreen", () => {
 			screen.getByRole("button", { name: "30 Minuten auswählen" }),
 		);
 		expect(mockSetOnboardingAnswer).toHaveBeenCalledWith("studyTime", "30");
+	});
+
+	test("offers an exact custom duration above four hours and restores it on return", async () => {
+		mockOnboarding.answers.studyTime = "240";
+		const screen = await render(<OnboardingStepScreen stepId="studyTime" />);
+		await fireEvent(
+			screen.getByRole("adjustable", { name: "Tägliche Lernzeit" }),
+			"accessibilityAction",
+			{ nativeEvent: { actionName: "increment" } },
+		);
+		expect(mockSetOnboardingAnswer).toHaveBeenLastCalledWith(
+			"studyTime",
+			"255",
+		);
+		await fireEvent.press(screen.getByTestId("study-duration-minutes"));
+		await fireEvent.press(screen.getByRole("button", { name: "Auswahl 30" }));
+		expect(mockSetOnboardingAnswer).toHaveBeenLastCalledWith(
+			"studyTime",
+			"270",
+		);
+		await screen.unmount();
+		mockOnboarding.answers.studyTime = "270";
+		const restored = await render(<OnboardingStepScreen stepId="studyTime" />);
+		expect(
+			restored.getByTestId("study-duration-hours"),
+		).toHaveAccessibilityValue({ text: "4 Stunden" });
+		expect(
+			restored.getByTestId("study-duration-minutes"),
+		).toHaveAccessibilityValue({ text: "30 Minuten" });
+		expect(restored.getByRole("button", { name: "Weiter" })).toBeEnabled();
+	});
+
+	test("explains the selected days before continuing to the time choice", async () => {
+		const screen = await render(
+			<OnboardingStepScreen stepId="learning-days-explanation" />,
+		);
+		expect(
+			screen.getByRole("header", {
+				name: "Damit Lernen in deinen Alltag passt.",
+			}),
+		).toBeOnTheScreen();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Uhrzeit wählen" }),
+		);
+		expect(mockRouter.push).toHaveBeenCalledWith("/onboarding/learningTime");
 	});
 
 	test("collects real recurring weekdays with multi-select semantics", async () => {
@@ -1493,13 +1580,13 @@ describe("OnboardingScreen", () => {
 
 			expect(
 				screen.getByRole("header", {
-					name: "Dein Lernplan braucht echte Zeitfenster.",
+					name: "Deine Lernzeit. Dein Anfang.",
 				}),
 			).toBeOnTheScreen();
 			await act(async () => jest.advanceTimersByTime(10_000));
 			expect(
 				screen.getByRole("header", {
-					name: "Dein Lernplan braucht echte Zeitfenster.",
+					name: "Deine Lernzeit. Dein Anfang.",
 				}),
 			).toBeOnTheScreen();
 		} finally {

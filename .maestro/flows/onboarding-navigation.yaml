@@ -34,7 +34,7 @@ tags:
     text: Weiter
     enabled: true
 - tapOn: Weiter
-- assertVisible: 'Wie lange möchtest du pro Lerntag einplanen\?'
+- assertVisible: 'Wie lange möchtest du pro Tag lernen\?'
 # A preview duration is not a selection; the learner must choose explicitly.
 - assertVisible:
     text: Weiter
@@ -47,15 +47,15 @@ tags:
 - assertVisible: 'Wie dürfen wir dich nennen\?'
 - assertVisible: Maestro
 - tapOn: Weiter
-- assertVisible: 'Wie lange möchtest du pro Lerntag einplanen\?'
+- assertVisible: 'Wie lange möchtest du pro Tag lernen\?'
 - assertNotVisible: 30 Minuten auswählen
 - assertVisible:
     text: Weiter
     enabled: true
 - tapOn: Weiter
-- assertVisible: 'Dein Lernplan braucht echte Zeitfenster\.'
-- tapOn: Weiter
-- assertVisible: 'An welchen Tagen kannst du lernen\?'
+- assertVisible: 'Deine Lernzeit. Dein Anfang\.'
+- tapOn: Meine Lerntage wählen
+- assertVisible: 'An welchen Tagen kannst du regelmäßig lernen\?'
 - assertVisible:
     text: Weiter
     enabled: false
@@ -69,10 +69,14 @@ tags:
     enabled: false
 - tapOn: Montag
 - tapOn: Weiter
-- assertVisible: 'Um wie viel Uhr möchtest du starten\?'
+- assertVisible: 'Damit Lernen in deinen Alltag passt\.'
+- tapOn: Uhrzeit wählen
+- assertVisible: 'Zu welcher Uhrzeit lernst du am besten\?'
 - assertVisible: Startzeit auswählen
 - tapOn: Zurück
-- assertVisible: 'An welchen Tagen kannst du lernen\?'
+- assertVisible: 'Damit Lernen in deinen Alltag passt\.'
+- tapOn: Zurück
+- assertVisible: 'An welchen Tagen kannst du regelmäßig lernen\?'
 - assertVisible:
     text: Weiter
     enabled: true
