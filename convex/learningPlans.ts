@@ -34,6 +34,7 @@ import {
 import { isLearningSessionCompositionEligible } from "./learningSessionComposition";
 import { deleteSessionLearningDataForSession } from "./learningSessionContent";
 import { alignSessionDurationReferences } from "./learningSessionDurationText";
+import { getPlanningLearningTimes } from "./learningTimePlanning";
 import {
 	learningEvidenceDimensionValidator,
 	learningTopicValidator,
@@ -47,7 +48,6 @@ import {
 } from "./timetableOccurrences";
 import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
 
-const MAX_LEARNING_TIMES = 50;
 const MAX_SCHEDULING_DAY_ENTRIES = 500;
 const MAX_SCHEDULING_LOOKAHEAD_DAYS = 366;
 const MIN_ROLLING_HORIZON_MINUTES = 20;
@@ -1080,17 +1080,10 @@ export const getSchedulingAvailability = query({
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
 		const dayKeys = getAvailabilityDayKeys(args.fromDateKey, args.examDateKey);
-		const learningTimes = await ctx.db
-			.query("userLearningTimes")
-			.withIndex("by_ownerTokenIdentifier", (q) =>
-				q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
-			)
-			.take(MAX_LEARNING_TIMES);
-		const publicLearningTimes = learningTimes.map((learningTime) => ({
-			dayOfWeek: learningTime.dayOfWeek,
-			startTime: learningTime.startTime,
-			endTime: learningTime.endTime,
-		}));
+		const publicLearningTimes = await getPlanningLearningTimes(
+			ctx,
+			ownerTokenIdentifier,
+		);
 		const nominalStudyMinutes = calculateAvailableStudyMinutes({
 			fromDateKey: args.fromDateKey,
 			fromTimeMinutes: args.fromTimeMinutes,
@@ -1762,12 +1755,6 @@ export const getAiContext = internalQuery({
 				q.eq("learningPlanId", args.learningPlanId),
 			)
 			.take(20);
-		const learningTimes = await ctx.db
-			.query("userLearningTimes")
-			.withIndex("by_ownerTokenIdentifier", (q) =>
-				q.eq("ownerTokenIdentifier", identity.tokenIdentifier),
-			)
-			.take(MAX_LEARNING_TIMES);
 		const occupied = await getSchedulingOccupiedEntries(ctx, {
 			ownerTokenIdentifier: identity.tokenIdentifier,
 			dayKeys: getLearningPlanCalendarDayKeys(plan.examDateKey),
@@ -1776,7 +1763,10 @@ export const getAiContext = internalQuery({
 		return {
 			plan,
 			documents,
-			learningTimes,
+			learningTimes: await getPlanningLearningTimes(
+				ctx,
+				identity.tokenIdentifier,
+			),
 			occupiedEntries: occupied.entries,
 			accessKey: buildPlanAccessKey(args.learningPlanId),
 		};

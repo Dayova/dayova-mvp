@@ -5,6 +5,7 @@ import { BookOpen, Check, ClipboardEdit, Pencil } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { PracticeCompletionCard } from "~/features/learning-plans/practice-completion-card";
 import type { LearningSessionContentSnapshot } from "~/features/learning-plans/types";
+import { LearningTimeReminder } from "~/features/learning-times/learning-time-reminder";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { cn } from "~/lib/utils";
 
@@ -16,6 +17,7 @@ export function LearningSessionCompletion({
 	attemptCount,
 	onContinueLearning,
 	onPrimary,
+	onOpenLearningTimes,
 	isBusy,
 }: {
 	phase: LearningSessionContentSnapshot["session"]["phase"];
@@ -25,6 +27,7 @@ export function LearningSessionCompletion({
 	attemptCount: number;
 	onContinueLearning: () => void;
 	onPrimary: () => void;
+	onOpenLearningTimes?: () => void;
 	isBusy: boolean;
 }) {
 	const isTheory = phase === "theory";
@@ -110,6 +113,12 @@ export function LearningSessionCompletion({
 				<Text className="mt-3 max-w-[320px] text-center font-poppins text-body-3 text-secondary-text">
 					{description}
 				</Text>
+				{isDiagnostic && onOpenLearningTimes ? (
+					<LearningTimeReminder
+						onOpen={onOpenLearningTimes}
+						disabled={isBusy}
+					/>
+				) : null}
 			</View>
 
 			<View>

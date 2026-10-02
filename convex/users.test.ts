@@ -23,7 +23,7 @@ const otherIdentity = {
 };
 
 test.each([
-	15, 210, 240, 270, 1000,
+	15, 210, 240,
 ])("persists %i-minute onboarding windows without truncation", async (minutes) => {
 	const t = convexTest(schema, modules).withIdentity(userIdentity);
 	await t.mutation(api.users.syncCurrentUser, { name: "User" });
@@ -719,7 +719,7 @@ test("profile and onboarding writes reject grades outside the product vocabulary
 
 	await t.mutation(api.users.syncCurrentUser, { grade: "9" });
 	await expect(
-		t.mutation(api.users.updateProfile, { grade: "5" }),
+		t.mutation(api.users.updateProfile, { grade: "4" }),
 	).rejects.toThrow("Klassenstufe");
 	await expect(
 		t.mutation(api.users.saveOnboardingAnswers, {

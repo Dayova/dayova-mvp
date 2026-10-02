@@ -18,7 +18,7 @@ export type OnboardingDecisionStep =
 			values: readonly number[];
 	  }
 	| { kind: AnswerStepKind; field: keyof OnboardingAnswers }
-	| { kind: "fact" | "intro" | "payoff" | "schedule-explanation" };
+	| { kind: "fact" | "intro" | "payoff" };
 
 export type OnboardingStepDecision = {
 	action: "advance" | "register";
@@ -76,9 +76,7 @@ export function getOnboardingStepDecision(
 	}
 	if (
 		step.kind === "range" &&
-		(step.field === "studyTime"
-			? parseOnboardingDurationMinutes(answers.studyTime) === null
-			: !step.values.includes(Number(answers[step.field])))
+		!step.values.includes(Number(answers[step.field]))
 	) {
 		return { action: "advance", error: "Bitte wähle eine Antwort aus." };
 	}

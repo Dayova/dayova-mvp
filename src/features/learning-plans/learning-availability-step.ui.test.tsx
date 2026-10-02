@@ -35,7 +35,9 @@ describe("LearningAvailabilityStep", () => {
 			screen.getByText("Lernzeit für deinen Lernweg gefunden"),
 		).toBeOnTheScreen();
 		expect(
-			screen.getByText(/nächsten Lernschritte.*freie gespeicherte Zeiten/),
+			screen.getByText(
+				/Ohne eigene Lernzeiten.*Vorschläge passend zu deiner Klassenstufe/,
+			),
 		).toBeOnTheScreen();
 		expect(screen.queryByText(/noch nicht, wie viel/)).not.toBeOnTheScreen();
 	});

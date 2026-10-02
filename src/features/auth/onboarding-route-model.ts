@@ -26,13 +26,6 @@ type DaysStep = {
 	field: "studyDays";
 };
 
-type ScheduleExplanationStep = {
-	kind: "schedule-explanation";
-	id: "learning-days-explanation";
-	title: string;
-	description: string;
-};
-
 type TimeStep = {
 	kind: "time";
 	id: "learningTime";
@@ -73,7 +66,6 @@ export type OnboardingProfileStep =
 	| RangeStep
 	| FactStep
 	| DaysStep
-	| ScheduleExplanationStep
 	| TimeStep
 	| PayoffStep
 	| TextStep
@@ -95,47 +87,38 @@ export const ONBOARDING_PROFILE_STEPS = [
 	{
 		kind: "range",
 		id: "studyTime",
-		title: "Wie lange möchtest du pro Tag lernen?",
+		title: "Wie lange möchtest du pro Lerntag einplanen?",
 		description:
-			"Wähle die Zeit, die du dir an deinen Lerntagen nehmen möchtest. Damit legt Dayova die Dauer deiner Lernzeiten fest.",
+			"Damit legst du die Dauer deiner ersten Lernzeiten fest. Du kannst sie später ändern.",
 		field: "studyTime",
 		values: ONBOARDING_DURATION_OPTIONS,
 	},
 	{
 		kind: "fact",
 		id: "study-time-fact",
-		title: "Deine Lernzeit. Dein Anfang.",
-		description: "Du gibst dem Lernen einen festen Platz in deinem Alltag.",
+		title: "Dein Lernplan braucht echte Zeitfenster.",
+		description: "Dauer, Tage und Uhrzeit werden im Lernplan gespeichert.",
 	},
 	{
 		kind: "days",
 		id: "studyDays",
-		title: "An welchen Tagen kannst du regelmäßig lernen?",
+		title: "An welchen Tagen kannst du lernen?",
 		description:
-			"Wähle die Wochentage, an denen du dir regelmäßig Zeit nehmen kannst. Dayova legt dort deine wöchentlichen Lernzeiten an.",
+			"Wähle alle passenden Tage. Für jeden entsteht dieselbe erste Lernzeit.",
 		field: "studyDays",
-	},
-	{
-		kind: "schedule-explanation",
-		id: "learning-days-explanation",
-		title: "Damit Lernen in deinen Alltag passt.",
-		description:
-			"Deine Lerntage zeigen Dayova, wann du Zeit hast. Zusammen mit deiner gewählten Dauer bilden sie die Grundlage für deine Lernplanung.",
 	},
 	{
 		kind: "time",
 		id: "learningTime",
-		title: "Zu welcher Uhrzeit lernst du am besten?",
-		description:
-			"Wähle die Uhrzeit, zu der du an deinen Lerntagen starten möchtest.",
+		title: "Um wie viel Uhr möchtest du starten?",
+		description: "Diese Startzeit gilt für alle ausgewählten Lerntage.",
 		field: "learningTime",
 	},
 	{
 		kind: "payoff",
 		id: "learning-time-payoff",
-		title: "Das sind deine Lernzeiten.",
-		description:
-			"Diese Zeiten sind die Grundlage für deine Lernplanung. Du kannst sie später in den Einstellungen ändern.",
+		title: "Deine Lernzeiten",
+		description: "Prüfe dein wiederkehrendes Zeitfenster.",
 	},
 	{
 		kind: "wheel",

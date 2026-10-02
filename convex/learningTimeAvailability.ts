@@ -49,8 +49,7 @@ const parseDurationMinutes = (value: string) => {
 	const match = durationPattern.exec(value.trim());
 	if (!match) return null;
 	const minutes = Number(match[1]);
-	return ONBOARDING_DURATION_MINUTES.some((option) => option === minutes) ||
-		(minutes > 240 && minutes < MINUTES_PER_DAY)
+	return ONBOARDING_DURATION_MINUTES.some((option) => option === minutes)
 		? minutes
 		: null;
 };

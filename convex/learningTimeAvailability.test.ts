@@ -7,6 +7,8 @@ import {
 describe("deriveOnboardingLearningTimes", () => {
 	test.each([
 		"custom",
+		"241 min",
+		"270 min",
 		"1440 min",
 		"270.5 min",
 		"37 min",
@@ -19,12 +21,12 @@ describe("deriveOnboardingLearningTimes", () => {
 			}),
 		).toEqual({ ok: false, reason: "invalidDuration" });
 	});
-	test("does not silently shorten a custom duration that crosses midnight", () => {
+	test("does not silently shorten four hours that reach midnight", () => {
 		expect(
 			deriveOnboardingLearningTimes({
 				studyDays: "Montag",
 				learningTime: "20:00",
-				dailySchoolTime: "270 min",
+				dailySchoolTime: "240 min",
 			}),
 		).toEqual({ ok: false, reason: "crossesMidnight" });
 	});

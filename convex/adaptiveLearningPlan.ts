@@ -9,10 +9,10 @@ import {
 	selectNextAdaptiveLearningTarget,
 } from "./adaptiveLearningPlanPolicy";
 import { deleteSessionLearningDataForSession } from "./learningSessionContent";
+import { getPlanningLearningTimes } from "./learningTimePlanning";
 import { normalizeLearningTopics } from "./learningTopicMap";
 import { getScheduleConflictMessage } from "./scheduleConflicts";
 
-const MAX_LEARNING_TIMES = 50;
 const PAIRED_THEORY_QUESTION_SUFFIX = ":paired-practice";
 
 const isPairedTheoryQuestionItem = (item: Doc<"learningSessionContentItems">) =>
@@ -148,6 +148,7 @@ const loadAdaptiveEvidence = async (
 };
 
 const parseTimeMinutes = (value: string) => {
+	if (value === "24:00") return 24 * 60;
 	const match = /^(\d{2}):(\d{2})$/.exec(value);
 	if (!match) return null;
 	const hours = Number(match[1]);
@@ -216,12 +217,10 @@ const getRollingSessionSchedule = async (
 		excludeSession?: Doc<"learningPlanSessions">;
 	},
 ) => {
-	const learningTimes = await ctx.db
-		.query("userLearningTimes")
-		.withIndex("by_ownerTokenIdentifier", (q) =>
-			q.eq("ownerTokenIdentifier", args.ownerTokenIdentifier),
-		)
-		.take(MAX_LEARNING_TIMES);
+	const learningTimes = await getPlanningLearningTimes(
+		ctx,
+		args.ownerTokenIdentifier,
+	);
 	const afterDate = new Date(
 		`${args.afterSession.dateKey.slice(0, 10)}T12:00:00Z`,
 	);

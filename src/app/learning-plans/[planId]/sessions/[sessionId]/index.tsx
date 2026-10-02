@@ -573,7 +573,7 @@ export default function LearningSessionContentScreen() {
 		}
 	};
 
-	const completeAndOpenLearningPlan = async () => {
+	const completeAndOpenLearningPlan = async (openLearningTimes = false) => {
 		if (!sessionId || isBusy) return;
 
 		setIsBusy(true);
@@ -595,7 +595,17 @@ export default function LearningSessionContentScreen() {
 					},
 				);
 			}
-			router.dismissTo(getLearningSessionCompletionDestination(planId));
+			const destination = getLearningSessionCompletionDestination(planId);
+			if (openLearningTimes) {
+				const returnTo = planId
+					? `/learning-plans/${planId}`
+					: "/learning-plans";
+				router.replace(
+					`/learning-times?returnTo=${encodeURIComponent(returnTo)}`,
+				);
+			} else {
+				router.dismissTo(destination);
+			}
 		} catch (error) {
 			setErrorMessage(
 				getErrorMessage(error, "Der Lernplan konnte nicht geöffnet werden."),
@@ -973,8 +983,9 @@ export default function LearningSessionContentScreen() {
 						onPrimary={
 							completionPhase === "theory"
 								? completeAndLeave
-								: completeAndOpenLearningPlan
+								: () => void completeAndOpenLearningPlan()
 						}
+						onOpenLearningTimes={() => void completeAndOpenLearningPlan(true)}
 						isBusy={isBusy}
 					/>
 				) : visibleAttempt ? (

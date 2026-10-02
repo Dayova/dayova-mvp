@@ -1216,7 +1216,9 @@ const buildLearningSlots = (
 			}
 
 			for (const interval of subtractOccupiedIntervals(
-				startMinutes,
+				dateKey === nowBerlin.dateKey
+					? Math.max(startMinutes, nowBerlin.minutes + 1)
+					: startMinutes,
 				endMinutes,
 				occupiedIntervalsByDay.get(dateKey) ?? [],
 			)) {

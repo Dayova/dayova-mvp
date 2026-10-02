@@ -11,13 +11,14 @@ import {
 } from "./onboarding-learning-times";
 
 describe("onboarding learning times", () => {
-	test.each([
-		15, 30, 60, 210, 240, 270, 1000, 1439,
-	])("retains exact duration %i", (minutes) => {
+	test.each([15, 30, 60, 210, 240])("retains exact duration %i", (minutes) => {
 		expect(parseOnboardingDurationMinutes(String(minutes))).toBe(minutes);
 	});
 	test.each([
 		"custom",
+		"241",
+		"270",
+		"1000",
 		"37",
 		"270.5",
 		"1440",
@@ -26,17 +27,17 @@ describe("onboarding learning times", () => {
 	])("rejects invalid duration %s", (value) => {
 		expect(parseOnboardingDurationMinutes(value)).toBeNull();
 	});
-	test("summarizes more than four hours with its exact end time", () => {
+	test("summarizes four hours with its exact end time", () => {
 		expect(
 			getOnboardingLearningTimeSummary({
-				studyTime: "270",
+				studyTime: "240",
 				studyDays: "Montag",
 				learningTime: "16:00",
 			}),
 		).toEqual({
 			daysLabel: "Montag",
-			durationLabel: "4 Stunden 30 Minuten",
-			windowLabel: "16:00–20:30 Uhr",
+			durationLabel: "4 Stunden",
+			windowLabel: "16:00–20:00 Uhr",
 		});
 	});
 	test("keeps multi-day choices ordered and toggles them without duplicates", () => {

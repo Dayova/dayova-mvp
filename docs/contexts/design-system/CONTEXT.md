@@ -30,12 +30,6 @@ unless the team explicitly supersedes this temporary model.
 
 ## Native controls
 
-`SnapCarouselSelector` previews a centered value before a drag commits. For
-mixed-unit choices (for example minutes and hours), supply both
-`getItemPrimaryLabel` and `getItemSecondaryLabel` so the preview's number and
-unit stay synchronized. The fixed `secondaryLabel` remains the fallback for
-single-unit selectors.
-
 All app switches must use `Switch` from `src/components/ui/switch`. Do not
 import or use `Switch` from `react-native`, and do not render Expo UI switches
 directly from app screens.

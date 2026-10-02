@@ -34,20 +34,20 @@ describe("StudyTimeFactContent", () => {
 	test("renders the selected study-time fact with a screen-reader heading", async () => {
 		const screen = await render(
 			<StudyTimeFactContent
-				title="Deine Lernzeit. Dein Anfang"
-				studyTime="45"
+				title="Dein Lernplan braucht echte Zeitfenster"
+				studyTime="45 min"
 			/>,
 		);
 
 		expect(
 			screen.getByRole("header", {
-				name: "Deine Lernzeit. Dein Anfang",
+				name: "Dein Lernplan braucht echte Zeitfenster",
 			}),
 		).toBeOnTheScreen();
-		expect(screen.getByText("Deine Auswahl")).toBeOnTheScreen();
+		expect(screen.getByText("Schon gewusst?")).toBeOnTheScreen();
 		expect(
 			screen.getByText(
-				"45 Minuten an deinen Lerntagen sind ein guter Anfang. Du musst nicht alles auf einmal schaffen – du gibst dem Lernen einen festen Platz in deinem Alltag.",
+				"Wir verwenden 45 Minuten als Dauer deiner ersten Lernzeiten. Als Nächstes wählst du die passenden Tage und deine Startzeit.",
 			),
 		).toBeOnTheScreen();
 	});

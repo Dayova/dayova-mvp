@@ -36,8 +36,7 @@ export const parseOnboardingDurationMinutes = (value: string) => {
 	// Preserve already saved onboarding answers from earlier app versions.
 	return ONBOARDING_DURATION_OPTIONS.some((option) => option === minutes) ||
 		minutes === 10 ||
-		minutes === 20 ||
-		(minutes > 240 && minutes < MINUTES_PER_DAY)
+		minutes === 20
 		? minutes
 		: null;
 };

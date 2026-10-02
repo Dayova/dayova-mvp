@@ -64,7 +64,7 @@ export default function LearningPlanGeneratingScreen() {
 		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
 	) ?? null) as LearningPlanSnapshot | null;
 	const learningTimes = useQuery(
-		api.learningTimes.listMine,
+		api.learningTimes.listForPlanning,
 		user && isConvexAuthenticated ? {} : "skip",
 	);
 

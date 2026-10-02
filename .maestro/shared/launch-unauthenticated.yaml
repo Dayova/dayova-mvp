@@ -28,11 +28,6 @@ appId: ${APP_ID}
             visible: 'Open in .Dayova.\?'
           commands:
             - tapOn: Open
-      - runFlow:
-          when:
-            visible: 'In .Dayova. öffnen\?'
-          commands:
-            - tapOn: Öffnen
       - extendedWaitUntil:
           visible: 'Login|Reload'
           timeout: 60000

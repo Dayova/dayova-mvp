@@ -205,7 +205,7 @@ describe("pending onboarding sync outbox", () => {
 	});
 
 	it.each([
-		15, 75, 210, 240, 270, 420,
+		15, 75, 210, 240,
 	])("restores schema-v1 duration %i without dropping the pending schedule", async (minutes) => {
 		const { storage, values } = createMemoryStorage();
 		const historicalAnswers = { ...ANSWERS, dailySchoolTime: `${minutes} min` };
