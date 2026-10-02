@@ -301,7 +301,6 @@ export default function PersonalSubjectsScreen() {
 						className={cn("gap-3", !shouldStackInlineContent && "flex-row")}
 					>
 						<Button
-							size="sm"
 							className={cn(!shouldStackInlineContent && "flex-1")}
 							variant="destructive-outline"
 							disabled={isBusy}
@@ -315,7 +314,6 @@ export default function PersonalSubjectsScreen() {
 							<Text>Löschen</Text>
 						</Button>
 						<Button
-							size="sm"
 							className={cn(!shouldStackInlineContent && "flex-1")}
 							accessibilityState={{ busy: isBusy }}
 							disabled={!cleanSubjectName(renamedValue) || isBusy}

@@ -4,7 +4,8 @@
 
 Philipp requested a single compact action row in the subject editor:
 "Löschen" left, "Speichern" right, equal widths with 12px spacing and the
-existing shared small Button size (minimum 48px touch height). Saving remains
+existing shared default Button size (minimum 56px height). The initially tried
+48px size was explicitly rejected in favor of standard height. Saving remains
 the primary action; deletion retains its outlined danger appearance and
 confirmation. Large content sizes use the existing vertical-reflow rule.
 Only layout and labels change; persistence and confirmation behavior stay intact.
