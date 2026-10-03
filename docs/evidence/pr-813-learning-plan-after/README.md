@@ -1,3 +1,9 @@
+## Gekürzte Auswertung
+
+<img src="result-clean-copy.png" width="320" alt="Auswertung mit Ergebnis und Vorbereitungszeit direkt über den Lerntagen" />
+
+Lokale Simulatorvorschau ohne Backend-Speicherung. Die markierten Zusatztexte sind entfernt; Anrechnung und Planung bleiben unverändert. Native Sichtbarkeitsprüfung bestanden.
+
 ## Aktueller Editor: direkt wechselnde Auswahl
 
 <img src="editor-streamlined.png" width="320" alt="Lernzeit bearbeiten mit Entfernen links und Speichern rechts" />

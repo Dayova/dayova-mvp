@@ -165,49 +165,12 @@ export default function PreparationScreen() {
 							? `Du hast ${schedule.correctCount} von ${schedule.questionCount} Fragen richtig beantwortet. Für deine Vorbereitung empfehlen wir insgesamt etwa ${durationLabel(schedule.totalMinutes)}.`
 							: "Deine Termine werden vorbereitet …"}
 					</Text>
-					{schedule ? (
-						<Text className="mt-3 text-center text-body-3 text-secondary-text">
-							{durationLabel(schedule.diagnosticMinutes)} Wissenscheck
-							angerechnet · noch {durationLabel(budget)} Lernen.
-						</Text>
-					) : null}
 				</View>
 
-				{snapshot?.plan.topicReadiness?.length ? (
-					<View className="mb-5 gap-2">
-						{(["secure", "developing"] as const).map((status) => {
-							const titles = snapshot.plan.topicReadiness
-								?.filter((item) => item.status === status)
-								.map(
-									(item) =>
-										snapshot.plan.topicMap.find(
-											(topic) => topic.id === item.topicId,
-										)?.title,
-								)
-								.filter(Boolean)
-								.slice(0, 3);
-							return titles?.length ? (
-								<Text
-									key={status}
-									className="font-poppins text-body-4 text-secondary-text"
-								>
-									{status === "secure"
-										? "Das sitzt schon: "
-										: "Hier üben wir weiter: "}
-									{titles.join(", ")}
-								</Text>
-							) : null;
-						})}
-					</View>
-				) : null}
 				{!schedule ? (
 					<ActivityIndicator color="#00A0E6" />
 				) : (
 					<>
-						<Text className="mb-4 font-poppins text-body-4 text-secondary-text">
-							Deine Lerntermine – jederzeit anpassbar. Du kannst auch früher
-							starten.
-						</Text>
 						{Array.from(groups, ([week, days]) => (
 							<View key={week} className="mb-5 gap-3">
 								{groups.size > 1 ? (

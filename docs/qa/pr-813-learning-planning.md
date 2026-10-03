@@ -107,3 +107,9 @@ Native Ansicht: separater Simulator B240CC0C-9883-4E16-86C5-1FD0607A1080, Metro 
 Die Summenzeile „… eingeplant“ entfällt; ein echtes Defizit bleibt erklärt. Entfernen ersetzt beim Bearbeiten links Abbrechen, Speichern bleibt rechts. X verwirft den Editorentwurf. Zeit- und Dauerwähler nutzen auf iOS dieselbe offene Sheet-Instanz statt erst zu schließen und danach ein neues Popup zu öffnen. Android behält seine nativen Datum-/Uhrzeitdialoge.
 
 [Timestamp-basierte Videoauswertung und Validierung](../evidence/pr-813-learning-plan-after/popup-correction.md). Aktuelle lokale Simulatorvorschau weiterhin ohne Backend-Speicherung.
+
+## Weitere Textkürzung nach markiertem Screenshot
+
+Aus der Übersicht entfernt: separate Check-Zeit-Anrechnung, Stärken-/Schwächenliste und Hinweis „Deine Lerntermine …“. Ergebnis, Gesamtzeit und Terminliste bleiben. Die Berechnung und Anrechnung der Wissenscheck-Zeit bleiben unverändert. Der nur lokale Vorschauhinweis wird auf Nutzerwunsch auch in der nicht ausgelieferten Simulatorroute entfernt; die Vorschau speichert weiterhin nicht im Backend.
+
+Validierung: TypeScript, Biome und ESLint für den Screen bestanden; Diff als reine Anzeigeänderung geprüft.
