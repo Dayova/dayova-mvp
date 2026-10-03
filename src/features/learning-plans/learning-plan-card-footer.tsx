@@ -6,8 +6,9 @@ import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
 
 // The card content ends 24 points from the edge. This keeps the footer another
-// 32 points inward so it clears the 48-point action and its notched border.
-const FOOTER_ACTION_INSET = 32;
+// 44 points inward, leaving 20 points before the 48-point action and
+// comfortable breathing room beside its notched border.
+const FOOTER_ACTION_INSET = 44;
 
 export function LearningPlanCardFooter({
 	fixedTextScale = false,

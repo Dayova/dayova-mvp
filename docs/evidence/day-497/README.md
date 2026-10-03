@@ -28,3 +28,7 @@ temporarily replace the root index.ts import with `./src/design-preview`, and
 start the development client using a localhost Metro server. Restore index.ts
 and remove the temporary fixture afterward. The fixture was not shipped in the
 application. Its "Weiter" button cycles through six views.
+
+Follow-up: the plan footer inset is 44 points (12 more than the first preview),
+leaving 20 points before the action circle. `03-plan.png` and the overview
+were refreshed after native inspection of the user-marked spacing.
