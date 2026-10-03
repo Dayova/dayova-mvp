@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import type { PreparationSlot } from "#convex/preparationSchedule";
 import {
 	slotDateLabel,
@@ -10,6 +10,8 @@ import { Button } from "~/components/ui/button";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
 import { Text } from "~/components/ui/text";
+import { LEARNING_DAYS } from "~/features/learning-times/learning-time-days";
+import { LearningTimeEditorFields } from "~/features/learning-times/learning-time-editor-fields";
 export function PreparationSlotEditor({
 	slot,
 	examDateKey,
@@ -50,11 +52,17 @@ export function PreparationSlotEditor({
 		<>
 			<DayovaSheetFrame
 				visible={visible}
-				title={diagnostic ? "Wissenscheck planen" : "Lerntermin bearbeiten"}
+				title={
+					diagnostic
+						? "Wissenscheck planen"
+						: onRemove
+							? "Lernzeit bearbeiten"
+							: "Lernzeit hinzufügen"
+				}
 				description={
 					diagnostic
 						? "Wähle einen Termin. Dayova erinnert dich daran."
-						: "Passe diesen Termin für deinen Lernplan an."
+						: "Wähle den Wochentag und das Zeitfenster für diesen Lerntermin."
 				}
 				onClose={close}
 				onDismiss={() => {
@@ -77,7 +85,13 @@ export function PreparationSlotEditor({
 									close();
 								}}
 							>
-								<Text>{diagnostic ? "Einplanen" : "Speichern"}</Text>
+								<Text>
+									{diagnostic
+										? "Einplanen"
+										: onRemove
+											? "Speichern"
+											: "Hinzufügen"}
+								</Text>
 							</Button>
 						</View>
 						{onRemove ? (
@@ -95,34 +109,56 @@ export function PreparationSlotEditor({
 				}
 			>
 				<View className="gap-5">
-					<View className="gap-2">
-						<Text className="text-secondary-text">Tag</Text>
-						<Button variant="cancel" onPress={() => open("date")}>
-							<Text>{slotDateLabel(draft.dateKey)}</Text>
-						</Button>
-					</View>
-					<View className="gap-2">
-						<Text className="text-secondary-text">Beginn</Text>
-						<Button variant="cancel" onPress={() => open("time")}>
-							<Text>{draft.startTime} Uhr</Text>
-						</Button>
-					</View>
-					{!diagnostic ? (
-						<View className="gap-2">
-							<Text className="text-secondary-text">Ende</Text>
-							<Button variant="cancel" onPress={() => open("end")}>
-								<Text>
-									{timeLabel(
-										(timeMinutes(draft.startTime) ?? 0) + draft.durationMinutes,
-									)}{" "}
-									Uhr
-								</Text>
+					{diagnostic ? (
+						<>
+							<Button variant="cancel" onPress={() => open("date")}>
+								<Text>{slotDateLabel(draft.dateKey)}</Text>
 							</Button>
-							<Text className="text-secondary-text">
-								{draft.durationMinutes} Minuten · in Schritten von 5 Minuten
-							</Text>
-						</View>
-					) : null}
+							<Button variant="cancel" onPress={() => open("time")}>
+								<Text>{draft.startTime} Uhr</Text>
+							</Button>
+						</>
+					) : (
+						<>
+							<Pressable
+								accessibilityRole="button"
+								accessibilityLabel={`Datum ändern: ${slotDateLabel(draft.dateKey)}`}
+								onPress={() => open("date")}
+								className="min-h-11 justify-center"
+								hitSlop={8}
+							>
+								<Text className="font-poppins text-body-4 text-primary">
+									{slotDateLabel(draft.dateKey)} · Datum ändern
+								</Text>
+							</Pressable>
+							<LearningTimeEditorFields
+								outlinedDays
+								selectedDay={
+									LEARNING_DAYS[
+										(new Date(`${draft.dateKey}T12:00:00Z`).getUTCDay() + 6) % 7
+									].label
+								}
+								startTime={draft.startTime}
+								endTime={timeLabel(
+									(timeMinutes(draft.startTime) ?? 0) + draft.durationMinutes,
+								)}
+								onDayChange={(day) => {
+									const date = new Date(`${draft.dateKey}T12:00:00Z`);
+									const selected =
+										LEARNING_DAYS.find((d) => d.label === day)?.value ?? 1;
+									date.setUTCDate(
+										date.getUTCDate() + selected - (date.getUTCDay() || 7),
+									);
+									setDraft({
+										...draft,
+										dateKey: date.toISOString().slice(0, 10),
+									});
+								}}
+								onStartTimePress={() => open("time")}
+								onEndTimePress={() => open("end")}
+							/>
+						</>
+					)}
 
 					{!valid ? (
 						<Text accessibilityRole="alert" className="text-destructive">

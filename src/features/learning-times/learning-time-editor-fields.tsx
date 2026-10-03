@@ -1,4 +1,5 @@
-import { Pressable, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Pressable, StyleSheet, View } from "react-native";
 import { Field, FieldLabel } from "~/components/ui/field";
 import { Timer } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
@@ -6,6 +7,7 @@ import {
 	LEARNING_DAYS,
 	type LearningDayLabel,
 } from "~/features/learning-times/learning-time-days";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
 
 type TimeControlProps = {
@@ -44,6 +46,7 @@ function TimeControl({ label, value, onPress }: TimeControlProps) {
 
 type LearningTimeEditorFieldsProps = {
 	selectedDay: LearningDayLabel;
+	outlinedDays?: boolean;
 	startTime: string;
 	endTime: string;
 	onDayChange: (day: LearningDayLabel) => void;
@@ -53,6 +56,7 @@ type LearningTimeEditorFieldsProps = {
 
 function LearningTimeEditorFields({
 	selectedDay,
+	outlinedDays = false,
 	startTime,
 	endTime,
 	onDayChange,
@@ -85,17 +89,30 @@ function LearningTimeEditorFields({
 								accessibilityLabel={day.label}
 								accessibilityRole="radio"
 								accessibilityState={{ checked: isSelected }}
-								className="aspect-square max-w-12 flex-1 items-center justify-center rounded-full active:opacity-80"
+								className="aspect-square max-w-12 flex-1 items-center justify-center overflow-hidden rounded-full active:opacity-80"
 								onPress={() => onDayChange(day.label)}
 								style={{
 									backgroundColor: isSelected ? colors.primary : colors.surface,
 									borderCurve: "continuous",
+									borderWidth: outlinedDays && !isSelected ? 1 : 0,
+									borderColor: colors.border,
 								}}
 							>
+								{outlinedDays && isSelected ? (
+									<LinearGradient
+										pointerEvents="none"
+										{...DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive}
+										style={StyleSheet.absoluteFill}
+									/>
+								) : null}
 								<Text
 									className="font-poppins font-semibold text-body-4"
 									style={{
-										color: isSelected ? colors.onPrimary : colors.text,
+										color: isSelected
+											? outlinedDays
+												? "#FFFFFF"
+												: colors.onPrimary
+											: colors.text,
 									}}
 								>
 									{day.abbreviation}
@@ -118,5 +135,5 @@ function LearningTimeEditorFields({
 	);
 }
 
-export { LearningTimeEditorFields };
 export type { LearningTimeEditorFieldsProps };
+export { LearningTimeEditorFields };
