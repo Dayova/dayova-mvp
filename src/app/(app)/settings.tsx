@@ -91,6 +91,39 @@ export default function SettingsScreen() {
 							/>
 						</SettingsCard>
 
+						<View className="gap-3" testID="settings-subscription">
+							<SettingsCard>
+								{access?.state === "trial" ? (
+									<SettingsRow
+										icon={CreditCard}
+										label="Dayova abonnieren"
+										onPress={() => router.push("/subscription")}
+									/>
+								) : (
+									<SettingsRow
+										icon={CreditCard}
+										label="Dayova"
+										accessibilityLabel={`Dayova, ${nativeManagementUrl ? "Abo im Store verwalten" : "Hilfe zum Abo"}`}
+										description={
+											nativeManagementUrl
+												? "Abo im Store verwalten"
+												: "Hilfe zum Abo"
+										}
+										onPress={() =>
+											openLink(
+												"subscription",
+												nativeManagementUrl ?? env.EXPO_PUBLIC_SUPPORT_URL,
+											)
+										}
+										disabled={!isStoreSubscriber}
+									/>
+								)}
+							</SettingsCard>
+							{linkErrors.subscription ? (
+								<ErrorMessage>{linkErrors.subscription}</ErrorMessage>
+							) : null}
+						</View>
+
 						<View testID="settings-support">
 							<SettingsCard>
 								<SupportContact context="Einstellungen">
@@ -146,39 +179,6 @@ export default function SettingsScreen() {
 								}
 							/>
 						</SettingsSection>
-
-						<View className="gap-3" testID="settings-subscription">
-							<SettingsCard>
-								{access?.state === "trial" ? (
-									<SettingsRow
-										icon={CreditCard}
-										label="Dayova abonnieren"
-										onPress={() => router.push("/subscription")}
-									/>
-								) : (
-									<SettingsRow
-										icon={CreditCard}
-										label="Dayova"
-										accessibilityLabel={`Dayova, ${nativeManagementUrl ? "Abo im Store verwalten" : "Hilfe zum Abo"}`}
-										description={
-											nativeManagementUrl
-												? "Abo im Store verwalten"
-												: "Hilfe zum Abo"
-										}
-										onPress={() =>
-											openLink(
-												"subscription",
-												nativeManagementUrl ?? env.EXPO_PUBLIC_SUPPORT_URL,
-											)
-										}
-										disabled={!isStoreSubscriber}
-									/>
-								)}
-							</SettingsCard>
-							{linkErrors.subscription ? (
-								<ErrorMessage>{linkErrors.subscription}</ErrorMessage>
-							) : null}
-						</View>
 
 						<View className="gap-3" testID="settings-legal">
 							<SettingsSection title="Datenschutz & Rechtliches">
