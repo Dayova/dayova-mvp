@@ -1,34 +1,20 @@
-# DAY-497: native component previews
+# DAY-497: component inspection evidence
 
-Captured on 3 October 2026 on a dedicated iPhone 17 Pro simulator, iOS 26.4,
-1206×2622, default light theme and text size. Original report images are in
-[GitHub #826](https://github.com/Dayova/dayova-mvp/issues/826), synced with
-[DAY-497](https://linear.app/dayova/issue/DAY-497).
+The remaining PNGs are historical native component captures from an isolated
+iPhone 17 Pro / iOS 26.4 fixture, not screenshots of the complete application.
+The fixture, its invented combined exam/subject screen, and the overview were
+removed at the user's request. The normal application entry remains Expo Router.
+Exam type and subject selection remain separate existing production steps.
 
-![Overview of the six changed surfaces](overview.jpg)
+The captures document component styling only: material borders, the plan footer,
+answer selection, feedback borders, and the padded/focused answer field.
+The Tools gear is development-client chrome. Headings, fixed data and the
+Continue button came from the removed fixture and are not production changes.
+Full authenticated workflows, production keyboard avoidance, Android, dark mode
+and enlarged text were not visually verified by these captures.
 
-The PNGs are unedited native captures. The overview only scales and arranges
-those captures with labels. The gear marked Tools is Expo development chrome,
-not a Dayova UI change. Every depicted card, selection row, feedback view and
-answer field imports the actual implementation. Preview headings, navigation,
-fixed data and the Continue button are fixture scaffolding. The selection page
-shows examples from separate exam/subject groups together, not a multiselect.
+Original report images remain in [GitHub #826](https://github.com/Dayova/dayova-mvp/issues/826),
+synced with [DAY-497](https://linear.app/dayova/issue/DAY-497).
 
-The answer field was revised after visual inspection to put its padding on the
-surrounding View, keeping text inset consistently on iOS. `06-input.png` and
-`07-input-keyboard.png` show this final real TextAnswer component. Typed text and
-focus state were exercised in the simulator. The fixture does not reproduce
-the production screen's keyboard avoidance, routing, auth or backend submission.
-Those flows, Android, dark mode, and enlarged system text were not visually
-verified here. White glyphs on the existing bright gradient remain a known
-contrast limitation accepted by the requested visual direction.
-
-For reproduction, copy `preview-fixture.tsx.txt` to `src/design-preview.tsx`,
-temporarily replace the root index.ts import with `./src/design-preview`, and
-start the development client using a localhost Metro server. Restore index.ts
-and remove the temporary fixture afterward. The fixture was not shipped in the
-application. Its "Weiter" button cycles through six views.
-
-Follow-up: the plan footer inset is 44 points (12 more than the first preview),
-leaving 20 points before the action circle. `03-plan.png` and the overview
-were refreshed after native inspection of the user-marked spacing.
+The final plan footer inset is 44 points, leaving 20 points before the action
+circle; 03-plan.png includes that follow-up spacing correction.
