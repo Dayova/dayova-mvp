@@ -26,7 +26,7 @@ Onboarding product previews use the same presentation modules as the current
 product surfaces:
 
 - the calendar intro renders `CalendarWeekdays`, `WeekCalendar`, and two
-  `DashboardAgendaEntryCard` presentations from the live dashboard;
+  `AgendaRow` presentations (artwork mode) from `compact-day-agenda.tsx`;
 - the material preview renders `MaterialUploadStepLead` and
   `MaterialUploadActionCard` from `learning-plan-setup-steps.tsx`;
 - the final intro preview and the real plan-detail screen both render
