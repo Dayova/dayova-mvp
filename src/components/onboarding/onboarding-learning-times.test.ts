@@ -1,15 +1,64 @@
 import { describe, expect, test } from "vitest";
 import {
+	ONBOARDING_DURATION_OPTIONS,
 	dateForOnboardingTime,
 	formatOnboardingTime,
 	getOnboardingLearningTimeSummary,
 	getOnboardingLearningTimeValidationError,
 	getOnboardingLearningTimeWindow,
+	parseOnboardingDurationMinutes,
 	parseOnboardingStudyDays,
 	toggleOnboardingStudyDay,
 } from "./onboarding-learning-times";
 
 describe("onboarding learning times", () => {
+	test("offers the agreed daily durations from 15 minutes through four hours", () => {
+		expect(ONBOARDING_DURATION_OPTIONS).toEqual([
+			15, 30, 45, 60, 90, 120, 150, 180, 210, 240,
+		]);
+	});
+	test("keeps a personally chosen late start instead of shifting it to a default", () => {
+		expect(
+			getOnboardingLearningTimeSummary({
+				studyTime: "60",
+				studyDays: "Montag, Mittwoch",
+				learningTime: "20:00",
+			}),
+		).toEqual({
+			daysLabel: "Montag und Mittwoch",
+			durationLabel: "1 Stunde",
+			windowLabel: "20:00–21:00 Uhr",
+		});
+	});
+	test.each([15, 30, 60, 210, 240])("retains exact duration %i", (minutes) => {
+		expect(parseOnboardingDurationMinutes(String(minutes))).toBe(minutes);
+	});
+	test.each([
+		"custom",
+		"241",
+		"270",
+		"1000",
+		"37",
+		"270.5",
+		"1440",
+		"-15",
+		"15 min",
+	])("rejects invalid duration %s", (value) => {
+		expect(parseOnboardingDurationMinutes(value)).toBeNull();
+	});
+	test("summarizes four hours with its exact end time", () => {
+		expect(
+			getOnboardingLearningTimeSummary({
+				studyTime: "240",
+				studyDays: "Montag",
+				learningTime: "16:00",
+			}),
+		).toEqual({
+			daysLabel: "Montag",
+			durationLabel: "4 Stunden",
+			windowLabel: "16:00–20:00 Uhr",
+		});
+	});
 	test("keeps multi-day choices ordered and toggles them without duplicates", () => {
 		expect(toggleOnboardingStudyDay("Donnerstag", "Montag")).toBe(
 			"Montag, Donnerstag",

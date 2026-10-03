@@ -25,6 +25,7 @@ export const formatLearningTimeFromMinutes = (minutes: number) => {
 };
 
 export const parseLearningTimeToMinutes = (time: string) => {
+	if (time === "24:00") return 24 * 60;
 	const [hours, minutes] = time.split(":").map(Number);
 	if (
 		!Number.isInteger(hours) ||

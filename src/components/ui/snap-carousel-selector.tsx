@@ -12,8 +12,8 @@ import Animated, {
 	useAnimatedStyle,
 	useSharedValue,
 } from "react-native-reanimated";
-import { scheduleOnRN } from "react-native-worklets";
 import Svg, { Circle } from "react-native-svg";
+import { scheduleOnRN } from "react-native-worklets";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 import {
@@ -61,6 +61,7 @@ type SnapCarouselSelectorBaseProps<Item> = {
 
 type SnapCarouselValueBubbleProps<Item> = {
 	getItemPrimaryLabel?: (item: Item, index: number) => string;
+	getItemSecondaryLabel?: (item: Item, index: number) => string;
 	getItemProgress?: (item: Item, index: number) => number;
 	primaryLabel: string;
 	progress: number;
@@ -98,6 +99,7 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 					progress: props.progress,
 					secondaryLabel: props.secondaryLabel,
 					getItemPrimaryLabel: props.getItemPrimaryLabel,
+					getItemSecondaryLabel: props.getItemSecondaryLabel,
 					getItemProgress: props.getItemProgress,
 				};
 	const renderItemLabel =
@@ -149,6 +151,10 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 		valueBubbleConfig.getItemPrimaryLabel
 			? valueBubbleConfig.getItemPrimaryLabel(previewItem, safePreviewIndex)
 			: valueBubbleConfig?.primaryLabel;
+	const previewSecondaryLabel =
+		previewItem !== undefined && valueBubbleConfig?.getItemSecondaryLabel
+			? valueBubbleConfig.getItemSecondaryLabel(previewItem, safePreviewIndex)
+			: valueBubbleConfig?.secondaryLabel;
 	const previewProgress =
 		valueBubbleConfig !== null &&
 		previewItem !== undefined &&
@@ -301,7 +307,7 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 							// Runtime font metrics keep the unit optically aligned with the value.
 							style={{ marginTop: valueContentLayout.unitMarginTop }}
 						>
-							{valueBubbleConfig.secondaryLabel}
+							{previewSecondaryLabel}
 						</Text>
 					</View>
 				</View>

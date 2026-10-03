@@ -509,7 +509,7 @@ test("completing one answered diagnostic twice advances only once", async () => 
 	);
 });
 
-test("does not invent a rolling slot when no learning time is saved", async () => {
+test("continues rolling planning with proposals when no personal time is saved", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);
 	await storeDiagnostic(t, learningPlanId);
@@ -543,13 +543,19 @@ test("does not invent a rolling slot when no learning time is saved", async () =
 	const openSessions = advanced?.sessions.filter(
 		(session) => session.executionStatus === "notStarted",
 	);
-	expect(openSessions).toHaveLength(1);
+	expect(openSessions).toHaveLength(2);
 	expect(openSessions?.[0]?.planningStatus).toBe("committed");
 	expect(
 		advanced?.sessions.some(
 			(session) => session.planningStatus === "provisional",
 		),
-	).toBe(false);
+	).toBe(true);
+	expect(await t.query(api.learningTimes.listMine, {})).toEqual([]);
+	expect(
+		openSessions?.every(
+			(session) => session.startTime >= "16:00" && session.startTime < "20:00",
+		),
+	).toBe(true);
 });
 
 test("requires every diagnostic answer before the rolling plan can advance", async () => {

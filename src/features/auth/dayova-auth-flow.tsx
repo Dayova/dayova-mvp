@@ -54,8 +54,10 @@ import {
 } from "~/components/onboarding/onboarding-flow";
 import {
 	dateForOnboardingTime,
+	formatOnboardingDuration,
 	formatOnboardingTime,
 	getDefaultOnboardingLearningStartTime,
+	getOnboardingDurationDisplay,
 	getOnboardingLearningTimeSummary,
 	getOnboardingLearningTimeValidationError,
 	ONBOARDING_DURATION_OPTIONS,
@@ -2522,7 +2524,7 @@ export function OnboardingRecoveryScreen({
 										selected ? "text-on-primary" : "text-text",
 									)}
 								>
-									{duration} Minuten
+									{formatOnboardingDuration(duration)}
 								</Text>
 							</Pressable>
 						);
@@ -3041,18 +3043,23 @@ function RangeAnswer({
 				accessibilityLabel="Tägliche Lernzeit"
 				accessibilityValue={
 					hasExplicitSelection
-						? `${displayedStudyTime} Minuten`
-						: `${displayedStudyTime} Minuten Vorschau, noch nicht ausgewählt`
+						? formatOnboardingDuration(displayedStudyTime)
+						: `${formatOnboardingDuration(displayedStudyTime)} Vorschau, noch nicht ausgewählt`
 				}
 				decrementLabel="Weniger Lernzeit"
 				incrementLabel="Mehr Lernzeit"
 				items={step.values}
 				selectedIndex={selectedIndex}
 				getItemKey={(value) => String(value)}
-				getItemPrimaryLabel={(value) => String(value)}
+				getItemPrimaryLabel={(value) =>
+					getOnboardingDurationDisplay(value).value
+				}
+				getItemSecondaryLabel={(value) =>
+					getOnboardingDurationDisplay(value).unit
+				}
 				getItemProgress={(_, index) => (index + 1) / step.values.length}
-				primaryLabel={String(displayedStudyTime)}
-				secondaryLabel="Minuten"
+				primaryLabel={getOnboardingDurationDisplay(displayedStudyTime).value}
+				secondaryLabel={getOnboardingDurationDisplay(displayedStudyTime).unit}
 				progress={
 					selectedValue === undefined
 						? 0
@@ -3063,11 +3070,11 @@ function RangeAnswer({
 			{hasExplicitSelection ? null : (
 				<Button
 					size="sm"
-					accessibilityLabel={`${displayedStudyTime} Minuten auswählen`}
+					accessibilityLabel={`${formatOnboardingDuration(displayedStudyTime)} auswählen`}
 					className="mt-4 self-center"
 					onPress={() => setAnswer("studyTime", String(displayedStudyTime))}
 				>
-					<Text>{displayedStudyTime} Minuten auswählen</Text>
+					<Text>{formatOnboardingDuration(displayedStudyTime)} auswählen</Text>
 				</Button>
 			)}
 		</View>

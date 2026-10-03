@@ -96,7 +96,8 @@ export default function LearningTimesOverviewScreen() {
 					selectable
 					className="font-poppins text-body-3 text-secondary-text"
 				>
-					Dayova plant deine Lerneinheiten in diesen Zeiten.
+					Diese Zeiten sind deine bevorzugten Lernzeiten. Für einzelne Prüfungen
+					kannst du weitere Termine einplanen.
 				</Text>
 
 				<View className="mt-7">

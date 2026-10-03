@@ -73,6 +73,20 @@ decision owner, rationale, trade-off, and reversal condition.
 
 ## Decision
 
+### 2026-10-02 functional amendment (#813)
+
+Philipp approved narrowing #813 to functional scheduling, retaining the existing
+onboarding layout and sequence. The selector now exposes 15, 30, 45, 60, 90,
+120, 150, 180, 210 and 240 minutes; no custom or above-four-hour entry. Historic
+supported answers remain readable. The three inputs still create explicit
+recurring windows; the separate missing-times fallback uses class-aware planning
+proposals without storing them as personal availability. Plan creation must not
+require manual learning-time entry. A voluntary benefit explanation after the
+Wissenscheck replaces proposed intelligent routine/check-in workflows for this
+scope. This overrides the older bounded-duration statement below. See the
+[functional contract and acceptance sheet](../../../qa/pr-813-learning-times-functional.md)
+for precedence, fallback limits, sources and verification.
+
 The launch flow is ordered as follows:
 
 1. three fixed educational intro pages;
