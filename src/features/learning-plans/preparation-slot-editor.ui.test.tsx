@@ -2,6 +2,8 @@ import { beforeEach, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render } from "@testing-library/react-native";
 import { PreparationSlotEditor } from "./preparation-slot-editor";
 
+let mockDismissAutomatically = true;
+let mockSheetVisibility: boolean[] = [];
 let mockDuration: {
 	value: number;
 	onConfirm: (minutes: number) => void;
@@ -50,11 +52,12 @@ jest.mock("~/components/ui/dayova-sheet-frame", () => ({
 		onClose: () => void;
 		onDismiss: () => void;
 	}) => {
+		mockSheetVisibility.push(visible);
 		const React = jest.requireActual<typeof import("react")>("react");
 		const { View, Pressable, Text } =
 			jest.requireActual<typeof import("react-native")>("react-native");
 		React.useEffect(() => {
-			if (!visible) onDismiss();
+			if (!visible && mockDismissAutomatically) onDismiss();
 		}, [visible, onDismiss]);
 		return visible ? (
 			<View>
@@ -80,6 +83,8 @@ jest.mock("~/components/ui/date-time-picker-sheet", () => ({
 
 beforeEach(() => {
 	mockSave.mockReset();
+	mockDismissAutomatically = true;
+	mockSheetVisibility = [];
 });
 test("uses weekday circles and begin/end fields with a duration wheel instead of an end-time picker", async () => {
 	const save = jest.fn();
@@ -144,4 +149,75 @@ test("duration confirmation updates the end while keeping the start", async () =
 		screen.getByRole("button", { name: "Beginn: 17:00" }),
 	).toBeOnTheScreen();
 	expect(screen.getByText("Ende 18:30 Uhr")).toBeOnTheScreen();
+});
+
+test("opening duration keeps the editor surface mounted without waiting for a dismissal animation", async () => {
+	mockDismissAutomatically = false;
+	const screen = await render(
+		<PreparationSlotEditor
+			slot={{
+				id: "slot",
+				dateKey: "2026-11-08",
+				startTime: "17:00",
+				durationMinutes: 30,
+			}}
+			examDateKey="2026-12-31"
+			onSave={jest.fn()}
+			onClose={jest.fn()}
+		/>,
+	);
+	mockSheetVisibility = [];
+	await fireEvent.press(
+		screen.getByRole("button", { name: "Lerndauer: 30 Min." }),
+	);
+	expect(mockSheetVisibility).not.toContain(false);
+});
+
+test("time selection stays in the open surface and returns its chosen value", async () => {
+	const screen = await render(
+		<PreparationSlotEditor
+			slot={{
+				id: "slot",
+				dateKey: "2026-11-08",
+				startTime: "17:00",
+				durationMinutes: 30,
+			}}
+			examDateKey="2026-12-31"
+			onSave={jest.fn()}
+			onClose={jest.fn()}
+		/>,
+	);
+	mockDismissAutomatically = false;
+	mockSheetVisibility = [];
+	await fireEvent.press(screen.getByRole("button", { name: "Beginn: 17:00" }));
+	await act(async () =>
+		mockPicker.onChange({ type: "set" }, new Date("2026-11-08T18:15:00")),
+	);
+	await act(async () => mockPicker.onClose());
+	expect(mockSheetVisibility).not.toContain(false);
+	expect(
+		screen.getByRole("button", { name: "Beginn: 18:15" }),
+	).toBeOnTheScreen();
+});
+test("editing offers remove beside save, without a duplicate cancel action", async () => {
+	const remove = jest.fn();
+	const save = jest.fn();
+	const screen = await render(
+		<PreparationSlotEditor
+			slot={{
+				id: "slot",
+				dateKey: "2026-11-08",
+				startTime: "17:00",
+				durationMinutes: 30,
+			}}
+			examDateKey="2026-12-31"
+			onSave={save}
+			onClose={jest.fn()}
+			onRemove={remove}
+		/>,
+	);
+	expect(screen.queryByRole("button", { name: "Abbrechen" })).toBeNull();
+	await fireEvent.press(screen.getByRole("button", { name: "Entfernen" }));
+	expect(remove).toHaveBeenCalledTimes(1);
+	expect(save).not.toHaveBeenCalled();
 });

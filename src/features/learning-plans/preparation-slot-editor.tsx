@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { Pressable, View } from "react-native";
+import { useState } from "react";
+import { Platform, Pressable, View } from "react-native";
 import type { PreparationSlot } from "#convex/preparationSchedule";
 import {
 	slotDateLabel,
@@ -33,16 +33,14 @@ export function PreparationSlotEditor({
 	const [picker, setPicker] = useState<"date" | "time" | "duration" | null>(
 		null,
 	);
-	const pending = useRef<"date" | "time" | "duration" | null>(null);
-	const closing = useRef(false);
 	const close = () => {
-		closing.current = true;
 		setVisible(false);
 	};
 	const open = (target: "date" | "time" | "duration") => {
-		pending.current = target;
-		setVisible(false);
+		setPicker(target);
 	};
+	const inlinePicker =
+		picker === "duration" || (picker !== null && Platform.OS !== "android");
 	const valid =
 		(timeMinutes(draft.startTime) ?? 1440) + draft.durationMinutes <= 1440 &&
 		draft.durationMinutes >= 5 &&
@@ -50,33 +48,46 @@ export function PreparationSlotEditor({
 		draft.durationMinutes % 5 === 0;
 	const pickerDate = new Date(`${draft.dateKey}T${draft.startTime}:00`);
 	return (
-		<>
-			<DayovaSheetFrame
-				visible={visible}
-				title={
-					diagnostic
+		<DayovaSheetFrame
+			visible={visible}
+			title={
+				inlinePicker
+					? picker === "duration"
+						? "Lerndauer"
+						: picker === "date"
+							? "Datum"
+							: "Beginn"
+					: diagnostic
 						? "Wissenscheck planen"
 						: onRemove
 							? "Lernzeit bearbeiten"
 							: "Lernzeit hinzufügen"
-				}
-				description={
-					diagnostic
+			}
+			scrollable={!inlinePicker}
+			description={
+				inlinePicker
+					? undefined
+					: diagnostic
 						? "Wähle einen Termin. Dayova erinnert dich daran."
 						: "Wähle den Wochentag und das Zeitfenster für diesen Lerntermin."
-				}
-				onClose={close}
-				onDismiss={() => {
-					if (pending.current) {
-						setPicker(pending.current);
-						pending.current = null;
-					} else if (closing.current) onClose();
-				}}
-				footer={
+			}
+			onClose={close}
+			onDismiss={onClose}
+			footer={
+				inlinePicker ? undefined : (
 					<View className="gap-3">
 						<View className="flex-row gap-3">
-							<Button variant="cancel" className="flex-1" onPress={close}>
-								<Text>Abbrechen</Text>
+							<Button
+								variant="cancel"
+								className="flex-1"
+								onPress={() => {
+									onRemove?.();
+									close();
+								}}
+							>
+								<Text className={onRemove ? "text-destructive" : undefined}>
+									{onRemove ? "Entfernen" : "Abbrechen"}
+								</Text>
 							</Button>
 							<Button
 								className="flex-1"
@@ -95,20 +106,11 @@ export function PreparationSlotEditor({
 								</Text>
 							</Button>
 						</View>
-						{onRemove ? (
-							<Button
-								variant="ghost"
-								onPress={() => {
-									onRemove();
-									close();
-								}}
-							>
-								<Text className="text-destructive">Entfernen</Text>
-							</Button>
-						) : null}
 					</View>
-				}
-			>
+				)
+			}
+		>
+			{!inlinePicker ? (
 				<View className="gap-5">
 					{diagnostic ? (
 						<>
@@ -174,8 +176,9 @@ export function PreparationSlotEditor({
 						</Text>
 					) : null}
 				</View>
-			</DayovaSheetFrame>
+			) : null}
 			<DateTimePickerSheet
+				embedded
 				visible={picker === "date" || picker === "time"}
 				mode={picker === "date" ? "date" : "time"}
 				display="spinner"
@@ -204,21 +207,20 @@ export function PreparationSlotEditor({
 				}}
 				onClose={() => {
 					setPicker(null);
-					setVisible(true);
 				}}
 			/>
 			{picker === "duration" ? (
 				<DurationPickerSheet
+					embedded
 					value={draft.durationMinutes}
 					onConfirm={(durationMinutes) =>
 						setDraft({ ...draft, durationMinutes })
 					}
 					onDismiss={() => {
 						setPicker(null);
-						setVisible(true);
 					}}
 				/>
 			) : null}
-		</>
+		</DayovaSheetFrame>
 	);
 }

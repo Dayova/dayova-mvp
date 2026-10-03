@@ -1,3 +1,11 @@
+## Aktueller Editor: direkt wechselnde Auswahl
+
+<img src="editor-streamlined.png" width="320" alt="Lernzeit bearbeiten mit Entfernen links und Speichern rechts" />
+
+<img src="overview-streamlined.png" width="320" alt="Übersicht ohne redundante eingeplante Summenzeile" />
+
+Datum, Beginn und Dauer wechseln innerhalb desselben Popups. [Videoauswertung und Prüfungen](popup-correction.md). Die folgenden Bilder dokumentieren frühere Zwischenstände.
+
 # Native UI-Belege, 03.10.2026
 
 Der aktuelle Editor verwendet Beginn und Lerndauer; Ende wird automatisch berechnet. Die Lerndauer öffnet native Stunden-/Minutenräder auf iOS. Unveränderte Aufnahmen der echten Komponenten mit festen lokalen Beispieldaten. Vorschau-Route danach entfernt; keine vollständige authentifizierte Ende-zu-Ende-Abnahme.

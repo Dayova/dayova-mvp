@@ -101,3 +101,9 @@ Validierung: vollständiger Vitest-Lauf 1.039/1.039, Jest 415/415. Anschließend
 Lokaler Testplan für Philipp: `kh7bfb5hj74w6fsa9s9dfc36qh8fj5qz`, Route `/learning-plans/kh7bfb5hj74w6fsa9s9dfc36qh8fj5qz/preparation`, bestehendes lokales Testkonto. Die zehn Beispielantworten und 15 Minuten aktive Zeit wurden als Testdaten gesetzt, nicht real 15 Minuten im Simulator absolviert.
 
 Native Ansicht: separater Simulator B240CC0C-9883-4E16-86C5-1FD0607A1080, Metro 8083. Keine Anmeldung; deshalb gekennzeichnete lokale Vorschau mit dem tatsächlichen Backend-Ergebnis. Vorschau lässt UI-Termine bearbeiten, speichert keine Backend-Änderungen; sie ist nicht Bestandteil des PR. `Simulator.app` fehlt in dieser Installation, CoreSimulator läuft dennoch. Keine vollständige manuelle Live-Abnahme behauptet. Aufnahme `adaptive-result-preview.png` zeigt diesen begrenzten Teststand.
+
+## Popup-Nachbesserung nach Video-Feedback
+
+Die Summenzeile „… eingeplant“ entfällt; ein echtes Defizit bleibt erklärt. Entfernen ersetzt beim Bearbeiten links Abbrechen, Speichern bleibt rechts. X verwirft den Editorentwurf. Zeit- und Dauerwähler nutzen auf iOS dieselbe offene Sheet-Instanz statt erst zu schließen und danach ein neues Popup zu öffnen. Android behält seine nativen Datum-/Uhrzeitdialoge.
+
+[Timestamp-basierte Videoauswertung und Validierung](../evidence/pr-813-learning-plan-after/popup-correction.md). Aktuelle lokale Simulatorvorschau weiterhin ohne Backend-Speicherung.

@@ -262,12 +262,9 @@ export default function PreparationScreen() {
 							<Plus size={18} color="#00A0E6" />
 							<Text className="text-primary">Hinzufügen</Text>
 						</Button>
-						<Text className="mb-3 text-center font-poppins text-body-4 text-secondary-text">
-							{durationLabel(total)} eingeplant
-							{total < budget
-								? ` · ${durationLabel(budget - total)} weniger als empfohlen. Wir konzentrieren uns auf die wichtigsten Übungsschwerpunkte.`
-								: ""}
-						</Text>
+						{total < budget ? (
+							<Text className="mb-3 text-center font-poppins text-body-4 text-secondary-text">{`${durationLabel(budget - total)} weniger als empfohlen. Wir konzentrieren uns auf die wichtigsten Übungsschwerpunkte.`}</Text>
+						) : null}
 						{error ? (
 							<Text accessibilityRole="alert" className="mb-4 text-destructive">
 								{error}

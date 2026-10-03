@@ -11,10 +11,12 @@ export function DurationPickerSheet({
 	value,
 	onConfirm,
 	onDismiss,
+	embedded = false,
 }: {
 	value: number;
 	onConfirm: (minutes: number) => void;
 	onDismiss: () => void;
+	embedded?: boolean;
 }) {
 	const { resolvedTheme, colors } = useDayovaTheme();
 	const [minutes, setMinutes] = useState(value);
@@ -22,26 +24,8 @@ export function DurationPickerSheet({
 	const hours = Math.floor(minutes / 60);
 	const remainder = minutes % 60;
 	const valid = minutes >= 5 && minutes <= 240 && minutes % 5 === 0;
-	return (
-		<DayovaSheetFrame
-			visible={visible}
-			title="Lerndauer"
-			description="Wie lange möchtest du lernen?"
-			scrollable={false}
-			onClose={() => setVisible(false)}
-			onDismiss={onDismiss}
-			footer={
-				<Button
-					disabled={!valid}
-					onPress={() => {
-						onConfirm(minutes);
-						setVisible(false);
-					}}
-				>
-					<Text>Übernehmen</Text>
-				</Button>
-			}
-		>
+	const content = (
+		<>
 			<View className="flex-row">
 				<View className="flex-1">
 					<Text className="text-center text-body-3 text-secondary-text">
@@ -108,6 +92,38 @@ export function DurationPickerSheet({
 					? `${minutes} Minuten Lernzeit`
 					: "Wähle 5 Minuten bis 4 Stunden."}
 			</Text>
+		</>
+	);
+	const footer = (
+		<Button
+			disabled={!valid}
+			onPress={() => {
+				onConfirm(minutes);
+				if (embedded) onDismiss();
+				else setVisible(false);
+			}}
+		>
+			<Text>Übernehmen</Text>
+		</Button>
+	);
+	if (embedded)
+		return (
+			<>
+				{content}
+				{footer}
+			</>
+		);
+	return (
+		<DayovaSheetFrame
+			visible={visible}
+			title="Lerndauer"
+			description="Wie lange möchtest du lernen?"
+			scrollable={false}
+			onClose={() => setVisible(false)}
+			onDismiss={onDismiss}
+			footer={footer}
+		>
+			{content}
 		</DayovaSheetFrame>
 	);
 }
