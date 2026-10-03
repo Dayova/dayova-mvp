@@ -1,3 +1,10 @@
+## Bestätigung bei mehr oder weniger Lernzeit
+
+<img src="confirm-more-time.png" width="320" alt="Rückfrage bei mehr eingeplanter Lernzeit" />
+<img src="confirm-less-time.png" width="320" alt="Rückfrage bei weniger eingeplanter Lernzeit" />
+
+Beide Zustände im iOS-Simulator über Hinzufügen bzw. Entfernen eines Termins und anschließendes Übernehmen erreicht. Lokale Beispieldaten ohne Backend-Speicherung. Anpassen führt zurück; Übernehmen bestätigt die Abweichung. Bei passender Zeit entfällt die Rückfrage.
+
 ## Gekürzte Auswertung
 
 <img src="result-clean-copy.png" width="320" alt="Auswertung mit Ergebnis und Vorbereitungszeit direkt über den Lerntagen" />

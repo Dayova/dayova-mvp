@@ -16,6 +16,7 @@ import { Button } from "~/components/ui/button";
 import { Pencil, Plus, Time04 } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
+import { PreparationAcceptAction } from "~/features/learning-plans/preparation-accept-action";
 import { PreparationSlotEditor } from "~/features/learning-plans/preparation-slot-editor";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 
@@ -245,16 +246,13 @@ export default function PreparationScreen() {
 								</Button>
 							</View>
 						) : null}
-						<Button
-							disabled={busy || !slots.length}
-							onPress={() => void accept()}
-						>
-							{busy ? (
-								<ActivityIndicator color="white" />
-							) : (
-								<Text>Übernehmen</Text>
-							)}
-						</Button>
+						<PreparationAcceptAction
+							plannedMinutes={total}
+							recommendedMinutes={budget}
+							busy={busy}
+							disabled={!slots.length}
+							onAccept={accept}
+						/>
 					</>
 				)}
 			</ScreenScroll>

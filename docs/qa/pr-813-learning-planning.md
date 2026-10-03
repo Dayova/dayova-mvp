@@ -113,3 +113,11 @@ Die Summenzeile „… eingeplant“ entfällt; ein echtes Defizit bleibt erklä
 Aus der Übersicht entfernt: separate Check-Zeit-Anrechnung, Stärken-/Schwächenliste und Hinweis „Deine Lerntermine …“. Ergebnis, Gesamtzeit und Terminliste bleiben. Die Berechnung und Anrechnung der Wissenscheck-Zeit bleiben unverändert. Der nur lokale Vorschauhinweis wird auf Nutzerwunsch auch in der nicht ausgelieferten Simulatorroute entfernt; die Vorschau speichert weiterhin nicht im Backend.
 
 Validierung: TypeScript, Biome und ESLint für den Screen bestanden; Diff als reine Anzeigeänderung geprüft.
+
+## Rückfrage bei abweichender Lernzeit
+
+Designentscheidung: Job ist die bewusste Übernahme einer abweichenden Zeitplanung. Hierarchie: mehr/weniger Zeit, geplanter Umfang gegenüber Empfehlung, Entscheidung. Primäraktion „Übernehmen“, sekundär „Anpassen“. Friktion: keine zusätzliche Frage bei passender Zeit und keine Fragen während einzelner Bearbeitungen. Gewählt ist der bestehende ConfirmationSheet mit primärem Bestätigungsbutton und umrandetem Anpassen-Button; dessen Textskalierung und responsive Aktionsanordnung werden übernommen.
+
+Beim Tippen auf Übernehmen wird die Summe der Planzeiten mit dem Budget nach Anrechnung des Wissenschecks verglichen. Gleiche Zeit speichert direkt; mehr oder weniger Zeit öffnet die passende Rückfrage. Anpassen oder X kehrt ohne Speichern zur Übersicht zurück. Erst die Bestätigung löst das bisherige Speichern aus. Die individuelle Empfehlung ist kein Versprechen eines exakten Lernbedarfs. Leere Pläne und laufendes Speichern bleiben gesperrt; der separate Sofortstart bleibt bestehen.
+
+Validierung: vier gezielte UI-Tests für passend, mehr, weniger und gesperrte Aktionen; TypeScript, Biome und ESLint bestanden. Native iOS-Simulatorprüfung mit lokalen Beispieldaten; keine Backend-Speicherung in dieser Vorschau. Android, VoiceOver und große Schrift nicht separat manuell geprüft.
