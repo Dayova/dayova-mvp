@@ -14,3 +14,7 @@ Coverage: 27.01-second video; 54 full-timeline frames sampled at 2 fps (0.5-seco
 Alle vier Kontaktbögen vollständig geprüft. 00:00–00:05: Übersicht, Editor und Änderung des Wochentags. 00:06–00:12: Lerndauerwahl, anschließend 55 Minuten im Editor und der Liste. 00:13–00:18: Uhrzeitwahl, anschließend Beginn 20:30 und Ende 21:00. 00:19–00:24: Scrollen, Hinzufügen und erneute Liste. 00:25–00:27: Rückkehr nach oben.
 
 Kein Audiostream, keine Transkription. Abtastung alle 0,5 Sekunden, ohne Tap-Indikatoren: keine Aussage über genaue Eingabe-Latenz. Sichtbar sind lokale Terminänderungen, kein authentifiziertes Backend-Speichern oder vollständig absolvierter Wissenscheck. Im Video werden per Wochentagsauswahl auch vergangene Daten im lokalen Entwurf angezeigt; das ist kein Nachweis serverseitig akzeptierter Termine. Diese Medien reichen für die visuelle Dokumentation der gezeigten Oberflächen, nicht für eine vollständige Ende-zu-Ende-Abnahme.
+
+## Originalvideos
+
+`learning-times-demo.mp4` ist die unveränderte vollständige 27,01-Sekunden-Aufnahme, nun zusätzlich als echter Videoplayer im PR eingebettet. `jakob-review-single-frame.mp4` ist die zusätzlich bereitgestellte unveränderte Datei von 20:57:14: laut ffprobe ein H.264-Videoframe, Dauer 0,066667 Sekunden, kein Audiostream. Die automatische Kontaktbogen-Erzeugung liefert für diesen sehr kurzen Clip keine Frames; der einzige Frame wurde direkt mit ffmpeg extrahiert. Kein Ablaufnachweis aus dieser Datei.
