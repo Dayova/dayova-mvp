@@ -2,7 +2,7 @@ export const DAYOVA_DESIGN_SYSTEM = {
 	brand: {
 		attributes: ["structured", "clear", "trustworthy", "supportive", "calm"],
 		direction:
-			"Modern EdTech look with solid colors, bold systems, quiet hierarchy, and at most one gradient per view.",
+			"Modern EdTech look with solid colors, bold systems, quiet hierarchy, and a shared primary gradient for actions and selected indicators.",
 	},
 	colors: {
 		primary: "#00BAFF",

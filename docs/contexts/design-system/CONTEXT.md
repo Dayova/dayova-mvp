@@ -104,8 +104,9 @@ Use `onPrimary` for solid selected pills, tabs, their checkmarks, and equivalent
 compact controls. Do not reuse `surface` or theme-dependent primary text as an
 implicit foreground token.
 
-Answer selection follows this same pairing and retains normal theme text for
-the answer content. See the [code-facing decision](adr/answer-selection-colors.md)
+Exam/subject and learning-session answer selection instead use the shared
+primary-interactive gradient with white indicators; answer rows match the
+exam/subject accent fill, primary selected label, border, and shadow-free treatment. See the [code-facing decision](adr/answer-selection-colors.md)
 and its linked native comparison and canonical Notion rationale.
 
 Typography uses Poppins only. Body text is Regular; headings, buttons, selected

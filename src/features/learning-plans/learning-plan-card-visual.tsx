@@ -68,6 +68,7 @@ export function LearningPlanCardVisual(props: LearningPlanCardVisualProps) {
 	const shouldReflowCard = !fixedTextScale && shouldStackInlineContent;
 	const card = (
 		<NotchedActionCard
+			cardContentClassName="justify-between"
 			actionIcon={
 				<ArrowUpRight
 					size={24}
