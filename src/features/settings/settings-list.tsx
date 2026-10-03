@@ -1,13 +1,10 @@
-import { LinearGradient } from "expo-linear-gradient";
 import type { ReactNode } from "react";
-import { StyleSheet, View } from "react-native";
+import { View } from "react-native";
 import { ArrowRight } from "~/components/ui/icon";
 import { ListRow } from "~/components/ui/list-row";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
-import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
-import { cn } from "~/lib/utils";
 
 function SettingsRow({
 	icon,
@@ -19,8 +16,6 @@ function SettingsRow({
 	busy = false,
 	showDisclosure = true,
 	destructive = false,
-	inverse = false,
-	multiline = false,
 	accessibilityLabel,
 	buttonRef,
 }: {
@@ -37,8 +32,6 @@ function SettingsRow({
 	busy?: boolean;
 	showDisclosure?: boolean;
 	destructive?: boolean;
-	inverse?: boolean;
-	multiline?: boolean;
 	accessibilityLabel?: string;
 	buttonRef?: React.ComponentProps<typeof ListRow>["ref"];
 }) {
@@ -51,16 +44,13 @@ function SettingsRow({
 			icon={
 				<Icon
 					size={22}
-					color={
-						inverse ? "#FFFFFF" : destructive ? colors.destructive : colors.text
-					}
+					color={destructive ? colors.destructive : colors.text}
 					strokeWidth={2}
 				/>
 			}
 			label={label}
 			description={description}
-			tone={inverse ? "inverse" : destructive ? "destructive" : "default"}
-			multiline={multiline}
+			tone={destructive ? "destructive" : "default"}
 			onPress={onPress}
 			disabled={disabled}
 			accessibilityState={{
@@ -71,11 +61,7 @@ function SettingsRow({
 			trailing={
 				trailing ??
 				(onPress && showDisclosure ? (
-					<ArrowRight
-						size={18}
-						color={inverse ? "#FFFFFF" : colors.secondaryText}
-						strokeWidth={2}
-					/>
+					<ArrowRight size={18} color={colors.secondaryText} strokeWidth={2} />
 				) : undefined)
 			}
 			variant="flat"
@@ -87,28 +73,9 @@ function SettingsDivider() {
 	return <View className="mx-4 h-px bg-border" />;
 }
 
-function SettingsCard({
-	children,
-	subscriber = false,
-}: {
-	children: ReactNode;
-	subscriber?: boolean;
-}) {
+function SettingsCard({ children }: { children: ReactNode }) {
 	return (
-		<Surface
-			className={cn(
-				"overflow-hidden border p-2",
-				subscriber ? "border-transparent" : "border-border",
-			)}
-		>
-			{subscriber ? (
-				<LinearGradient
-					{...DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive}
-					pointerEvents="none"
-					// The native gradient needs concrete bounds rather than NativeWind classes.
-					style={StyleSheet.absoluteFill}
-				/>
-			) : null}
+		<Surface className="overflow-hidden border border-border p-2">
 			{children}
 		</Surface>
 	);

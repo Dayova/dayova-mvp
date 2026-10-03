@@ -173,7 +173,7 @@ describe("SettingsScreen", () => {
 		expect(screen.getByText("Profil & Konto")).toBeOnTheScreen();
 		expect(screen.getAllByRole("button").slice(0, 3)).toEqual([
 			screen.getByRole("button", { name: "Test Person, Profil & Konto" }),
-			screen.getByRole("button", { name: "Dayova jetzt abonnieren" }),
+			screen.getByRole("button", { name: "Dayova abonnieren" }),
 			screen.getByRole("button", { name: "Support kontaktieren" }),
 		]);
 		expect(
@@ -227,7 +227,7 @@ describe("SettingsScreen", () => {
 	test("lets trial users subscribe and keeps privacy available in settings", async () => {
 		const screen = await render(<SettingsScreen />);
 		await fireEvent.press(
-			screen.getByRole("button", { name: "Dayova jetzt abonnieren" }),
+			screen.getByRole("button", { name: "Dayova abonnieren" }),
 		);
 		expect(mockPush).toHaveBeenCalledWith("/subscription");
 		await fireEvent.press(screen.getByRole("button", { name: "Datenschutz" }));

@@ -92,19 +92,17 @@ export default function SettingsScreen() {
 						</SettingsCard>
 
 						<View className="gap-3" testID="settings-subscription">
-							<SettingsCard subscriber={isStoreSubscriber}>
+							<SettingsCard>
 								{access?.state === "trial" ? (
 									<SettingsRow
 										icon={CreditCard}
-										label="Dayova jetzt abonnieren"
-										multiline
+										label="Dayova abonnieren"
 										onPress={() => router.push("/subscription")}
 									/>
 								) : (
 									<SettingsRow
 										icon={CreditCard}
 										label="Dayova"
-										inverse={isStoreSubscriber}
 										accessibilityLabel={`Dayova, ${nativeManagementUrl ? "Abo im Store verwalten" : "Hilfe zum Abo"}`}
 										description={
 											nativeManagementUrl
