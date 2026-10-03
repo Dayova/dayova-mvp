@@ -244,8 +244,9 @@ component: path 2 background (`#D7DCE3`) with path 3 icon (`#8A8D92`).
   and native artwork modules.
 
 The Settings subscription card sits directly below the profile and above support.
-Paid and billing-grace access use the `subscription` gradient (`#0069B8` to
-`#004A91`) with white text and icons in both themes. These darker blues retain
-at least 5.6:1 contrast for white copy. This is a subscription-status card, not
-a new button appearance. Trial access keeps a neutral card labeled
+Paid and billing-grace access use the existing vertical `primaryInteractive`
+Dayova gradient (`#00A0E6` to `#4FD8FF`) with white text and icons in both themes,
+matching the requested brand treatment. White supporting copy on this bright
+gradient does not meet normal-text WCAG AA contrast. This is a subscription-status
+card, not a new button appearance. Trial access keeps a neutral card labeled
 “Dayova jetzt abonnieren”; its label wraps rather than truncating.

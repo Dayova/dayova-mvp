@@ -103,7 +103,7 @@ function SettingsCard({
 		>
 			{subscriber ? (
 				<LinearGradient
-					{...DAYOVA_DESIGN_SYSTEM.gradients.subscription}
+					{...DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive}
 					pointerEvents="none"
 					// The native gradient needs concrete bounds rather than NativeWind classes.
 					style={StyleSheet.absoluteFill}
