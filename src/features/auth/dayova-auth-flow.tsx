@@ -1164,7 +1164,7 @@ function IntroPageContent({
 		requestedHorizontalPadding: 24,
 	});
 	const artworkWidth = Math.min(usableWidth, 380);
-	const artworkHeight = accessibleLayout ? 240 : compactHeight ? 280 : 340;
+	const artworkHeight = accessibleLayout ? 360 : compactHeight ? 340 : 400;
 	return (
 		<View className="mx-auto w-full max-w-[480px] flex-1">
 			<Text className="mb-4 font-poppins font-semibold text-body-4 text-primary-strong">
@@ -1176,11 +1176,11 @@ function IntroPageContent({
 			>
 				{item.title}
 			</Text>
-			<Text className="mt-3 font-poppins text-body-2 text-secondary-text">
+			<Text className="mt-3 font-poppins text-body-3 text-secondary-text">
 				{item.description}
 			</Text>
-			<View className="mt-8 flex-1 items-center justify-center">
-				<View className="w-full items-center justify-center rounded-card bg-system-subtle py-5">
+			<View className="mt-5 flex-1 items-center justify-center">
+				<View className="w-full items-center justify-center">
 					{item.illustration === "tasks" ? (
 						<IntroTasksArtwork
 							width={artworkWidth - 16}

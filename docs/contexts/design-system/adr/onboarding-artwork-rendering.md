@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-14
-- Amended: 2026-10-03 (four headline-first pages; recurring learning-time preview)
+- Amended: 2026-10-03 (four intro pages with editorial start graphic and native phone previews)
 - Supersedes: the 2026-07-13 decision to maintain three onboarding-only
   illustration implementations
 
@@ -25,11 +25,8 @@ would not prevent the next drift.
 Onboarding product previews use the same presentation modules as the current
 product surfaces:
 
-- the first intro and the live dashboard both render the
-  weekly-progress and next-learning-step presentations from
-  `dashboard-product-cards.tsx`;
-- the learning-times preview renders a two-day excerpt of `WeeklyLearningTimes`,
-  using the same weekday cards and time ranges as the editable settings screen;
+- the calendar intro renders `CalendarWeekdays`, `WeekCalendar`, and two
+  `DashboardAgendaEntryCard` presentations from the live dashboard;
 - the material preview renders `MaterialUploadStepLead` and
   `MaterialUploadActionCard` from `learning-plan-setup-steps.tsx`;
 - the final intro preview and the real plan-detail screen both render
@@ -52,22 +49,29 @@ typography, semantic colors, upload copy, learning-path geometry, node icons,
 or state rules. The superseded static `intro-path.svg` and copied product-card
 implementations remain removed.
 
-The first intro's learner job is to make starting feel manageable. The four
-pages now put a short, left-aligned headline and explanation before a large
-product excerpt: start, choose recurring learning times, upload material, then
-follow the scheduled learning path. The first page arranges the next-step and
-weekly-progress cards vertically, without the former rotated agenda layer.
-This reduces competing messages and makes the next action easier to read.
-The three-card overlap was considered but retained the density the user asked
-to remove. The trade-off is less dashboard breadth in exchange for a clearer
-single promise. Reconsider this arrangement if learners cannot connect the
-next action to their progress. Native captures are in
-`docs/evidence/onboarding-intro/`; the evidence README records the preview scope.
+The first intro's learner job is to make starting feel manageable. It uses
+three large editorial pills: starting today, making 30 minutes for one's goal,
+and progressing step by step. These describe the promise; they are not a fake
+streak, metric, or dashboard interface. The user rejected the dashboard-card
+composition as the opening graphic and explicitly requested this direction.
+
+The three feature explanations use a shared decorative `IntroPhoneFrame`
+inspired by the provided light/dark device reference. The frame owns device
+chrome and uniform scaling, while the screen content uses real presentation
+modules. The calendar shows a real week with two example events. The upload
+preview shows the actual upload lead and card without the former extra panel.
+The learning path includes the shared adaptive continuation and exam card.
+
+This trades some embedded text size for recognizable product context. Short
+accessible copy outside the device explains each page. Reconsider the frame
+if its scaling prevents recognition of the relevant feature; do not replace
+shared product modules with copied screenshot UIs. Native evidence is in
+`docs/evidence/onboarding-intro/`; the README records the preview scope.
 
 The final intro's learner job is to understand that Dayova turns material into
 an ordered route, not to inspect the metadata of a single plan. Its artwork mode
 therefore composes a bounded excerpt of the real path: one completed node, the
-current selected node, and one adaptive locked node. This uses the same
+current selected node, and one adaptive locked node, the dashed continuation, and the blue exam card. This uses the same
 connector geometry, pucks, icons, colors, and completed/current/locked rules as
 the live screen. Artwork mode is deliberately motion-free and renders Views,
 not dead Pressables; screen mode retains reduced-motion-aware breathing,
@@ -112,7 +116,7 @@ is not a second reading path.
 ## Reversal condition
 
 Reconsider the first intro composition if the dashboard no longer expresses
-agenda, weekly progress, and next action as the core daily-guidance model.
+the start promise represented by the editorial pills.
 Reconsider the final intro if the live product no longer uses an ordered
 Learning Path, or if its learner job changes from explaining sequence and
 adaptation. A future replacement must still share its product presentation
