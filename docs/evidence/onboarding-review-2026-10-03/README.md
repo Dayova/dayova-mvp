@@ -2,7 +2,7 @@
 
 Acht unveränderte Screenshots und die Originalaufnahme, vom Nutzer als PR-Belege bereitgestellt. Die GIF-Vorschau zeigt die gesamte Aufnahme in Originalgeschwindigkeit, auf 480 Pixel Breite und 8 fps reduziert. Original: 1206 × 2622, 43,90 Sekunden, ohne Audiospur.
 
-Die Aufnahmen dokumentieren den lokalen Review-Stand. Die Änderungen an Lernzeiten und Folge-Schritten sind noch nicht im veröffentlichten Implementierungsstand enthalten; dieser Commit ergänzt ausschließlich Belege.
+Die Aufnahmen dokumentieren den Review-Stand vom 3. Oktober 2026. Die zugehörigen Änderungen an Lernzeiten und Folge-Schritten sind Teil von PR #825; die Validierung ist unter `../onboarding-learning-times/README.md` beschrieben.
 
 ## Beobachtungen
 

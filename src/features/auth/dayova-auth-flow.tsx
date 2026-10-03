@@ -57,6 +57,7 @@ import {
 	dateForOnboardingTime,
 	formatOnboardingTime,
 	getDefaultOnboardingLearningStartTime,
+	getOnboardingDurationDisplay,
 	getOnboardingLearningTimeSummary,
 	getOnboardingLearningTimeValidationError,
 	ONBOARDING_DURATION_OPTIONS,
@@ -610,6 +611,7 @@ export function OnboardingStepScreen({ stepId }: { stepId: OnboardingStepId }) {
 	} = useAuthFlow();
 	const {
 		answers,
+		setAnswer,
 		progressOrigin,
 		setRegistrationStage,
 		setProgressOrigin,
@@ -691,12 +693,17 @@ export function OnboardingStepScreen({ stepId }: { stepId: OnboardingStepId }) {
 			return;
 		}
 		updateError(null);
-		const decision = getOnboardingStepDecision(step, answers);
+		const confirmedAnswers =
+			step.kind === "range" && !answers.studyTime.trim()
+				? { ...answers, studyTime: "30" }
+				: answers;
+		const decision = getOnboardingStepDecision(step, confirmedAnswers);
 		if (step.kind === "text") Keyboard.dismiss();
 		if (decision.error) {
 			updateError(decision.error);
 			return;
 		}
+		if (confirmedAnswers !== answers) setAnswer("studyTime", "30");
 		if (step.kind === "text" && step.field === "email") {
 			await registrationActionGateRef.current.run(async () => {
 				try {
@@ -1332,7 +1339,12 @@ function QuestionStepView({
 	const reducedMotion = useReducedMotion();
 	const isWheelStep = step.kind === "wheel";
 	const stepDecision = getOnboardingStepDecision(step, answers);
-	const canContinue = isOnboardingStepReady(step, answers);
+	const canContinue = isOnboardingStepReady(
+		step,
+		step.kind === "range" && !answers.studyTime.trim()
+			? { ...answers, studyTime: "30" }
+			: answers,
+	);
 	const currentAnswer = "field" in step ? answers[step.field] : "";
 	const localValidationError =
 		step.kind === "text" && currentAnswer.trim() && step.field !== "password"
@@ -1499,6 +1511,16 @@ function QuestionStepView({
 							<StudyTimeFactContent
 								title={step.title}
 								studyTime={answers.studyTime}
+								source={
+									step.id === "learning-routine-fact"
+										? "Quelle: Cepeda et al. (2006) · verteiltes Lernen"
+										: undefined
+								}
+								body={
+									step.id === "learning-routine-fact"
+										? step.description
+										: undefined
+								}
 							/>
 						) : null}
 						{step.kind === "payoff" ? <PayoffAnswer /> : null}
@@ -3031,6 +3053,7 @@ function RangeAnswer({
 	return (
 		<View className="w-full items-center">
 			<SnapCarouselSelector
+				appearance="onboarding"
 				accessibilityLabel="Tägliche Lernzeit"
 				accessibilityValue={
 					hasExplicitSelection
@@ -3042,10 +3065,15 @@ function RangeAnswer({
 				items={step.values}
 				selectedIndex={selectedIndex}
 				getItemKey={(value) => String(value)}
-				getItemPrimaryLabel={(value) => String(value)}
+				getItemPrimaryLabel={(value) =>
+					getOnboardingDurationDisplay(value).value
+				}
+				getItemSecondaryLabel={(value) =>
+					getOnboardingDurationDisplay(value).unit
+				}
 				getItemProgress={(_, index) => (index + 1) / step.values.length}
-				primaryLabel={String(displayedStudyTime)}
-				secondaryLabel="Minuten"
+				primaryLabel={getOnboardingDurationDisplay(displayedStudyTime).value}
+				secondaryLabel={getOnboardingDurationDisplay(displayedStudyTime).unit}
 				progress={
 					selectedValue === undefined
 						? 0
@@ -3053,16 +3081,6 @@ function RangeAnswer({
 				}
 				onSelect={(value) => setAnswer("studyTime", String(value))}
 			/>
-			{hasExplicitSelection ? null : (
-				<Button
-					size="sm"
-					accessibilityLabel={`${displayedStudyTime} Minuten auswählen`}
-					className="mt-4 self-center"
-					onPress={() => setAnswer("studyTime", String(displayedStudyTime))}
-				>
-					<Text>{displayedStudyTime} Minuten auswählen</Text>
-				</Button>
-			)}
 		</View>
 	);
 }
@@ -3097,27 +3115,23 @@ function AnimatedStudyDayPill({
 		backgroundColor: interpolateColor(
 			selectionProgress.get(),
 			[0, 1],
-			[colors.systemSubtle, colors.primary],
+			[colors.surface, colors.primary],
 		),
 		borderColor: interpolateColor(
 			selectionProgress.get(),
 			[0, 1],
-			[colors.path1, colors.primary],
+			[colors.border, colors.primary],
 		),
 		transform: [{ scale: pressedScale.get() }],
 	}));
-	const checkStyle = useAnimatedStyle(() => {
-		const progress = selectionProgress.get();
-		return {
-			opacity: progress,
-			transform: [{ scale: 0.72 + progress * 0.28 }],
-		};
-	});
+	const gradientStyle = useAnimatedStyle(() => ({
+		opacity: selectionProgress.get(),
+	}));
 	const labelStyle = useAnimatedStyle(() => ({
 		color: interpolateColor(
 			selectionProgress.get(),
 			[0, 1],
-			[colors.text, colors.onPrimary],
+			[colors.text, "#FFFFFF"],
 		),
 	}));
 
@@ -3139,23 +3153,22 @@ function AnimatedStudyDayPill({
 			onPress={onToggle}
 			onPressIn={() => setPressedScale(0.97, STUDY_DAY_PRESS_IN_DURATION_MS)}
 			onPressOut={() => setPressedScale(1, STUDY_DAY_PRESS_OUT_DURATION_MS)}
-			className="min-h-12 min-w-[100px] flex-row items-center justify-center rounded-full border px-3 py-3"
+			className="min-h-12 min-w-[100px] flex-row items-center justify-center overflow-hidden rounded-full border px-6 py-3"
 			// Runtime state and press feedback intentionally animate outside NativeWind.
 			style={pillStyle}
 		>
-			<View
-				testID={`study-day-pill-check-slot-${label}`}
-				className="h-4 w-4 items-center justify-center"
+			<Animated.View
+				pointerEvents="none"
+				className="absolute inset-0"
+				style={gradientStyle}
 			>
-				<Animated.View
-					// Selection animates the checkmark on the UI thread.
-					style={checkStyle}
-				>
-					<Check size={16} color={colors.onPrimary} strokeWidth={2.4} />
-				</Animated.View>
-			</View>
+				<LinearGradient
+					{...DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive}
+					style={{ width: "100%", height: "100%" }}
+				/>
+			</Animated.View>
 			<Animated.Text
-				className="ml-2 font-poppins font-semibold text-body-3"
+				className="font-poppins font-semibold text-body-3"
 				// Selection animation and Android font metrics require native styles.
 				style={[
 					Platform.select({ android: { includeFontPadding: false } }),
@@ -3164,10 +3177,6 @@ function AnimatedStudyDayPill({
 			>
 				{label}
 			</Animated.Text>
-			<View
-				testID={`study-day-pill-balance-slot-${label}`}
-				className="ml-2 h-4 w-4"
-			/>
 		</AnimatedPressable>
 	);
 }
@@ -3177,22 +3186,34 @@ function StudyDaysAnswer() {
 	const selectedDays = new Set(parseOnboardingStudyDays(answers.studyDays));
 
 	return (
-		<View className="w-full flex-row flex-wrap justify-center gap-3 px-2">
-			{LEARNING_DAYS.map((day) => (
-				<AnimatedStudyDayPill
-					key={day.value}
-					label={day.label}
-					isSelected={selectedDays.has(day.label)}
-					onToggle={() =>
-						setAnswer(
-							"studyDays",
-							toggleOnboardingStudyDay(
-								answers.studyDays,
-								day.label as LearningDayLabel,
-							),
-						)
-					}
-				/>
+		<View className="w-full gap-3">
+			{[
+				LEARNING_DAYS.slice(0, 2),
+				LEARNING_DAYS.slice(2, 4),
+				LEARNING_DAYS.slice(4, 6),
+				LEARNING_DAYS.slice(6),
+			].map((days) => (
+				<View
+					key={days[0].value}
+					className="flex-row flex-wrap justify-center gap-3"
+				>
+					{days.map((day) => (
+						<AnimatedStudyDayPill
+							key={day.value}
+							label={day.label}
+							isSelected={selectedDays.has(day.label)}
+							onToggle={() =>
+								setAnswer(
+									"studyDays",
+									toggleOnboardingStudyDay(
+										answers.studyDays,
+										day.label as LearningDayLabel,
+									),
+								)
+							}
+						/>
+					))}
+				</View>
 			))}
 		</View>
 	);

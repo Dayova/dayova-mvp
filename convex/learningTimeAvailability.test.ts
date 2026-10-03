@@ -21,6 +21,31 @@ describe("deriveOnboardingLearningTimes", () => {
 		});
 	});
 
+	test.each([
+		[15, "16:15"],
+		[240, "20:00"],
+	])("accepts the %i-minute boundary", (minutes, endTime) => {
+		expect(
+			deriveOnboardingLearningTimes({
+				studyDays: "Montag",
+				learningTime: "16:00",
+				dailySchoolTime: `${minutes} min`,
+			}),
+		).toEqual({
+			ok: true,
+			windows: [{ dayOfWeek: 1, startTime: "16:00", endTime }],
+		});
+	});
+	test("rejects a four-hour window ending after midnight", () => {
+		expect(
+			deriveOnboardingLearningTimes({
+				studyDays: "Montag",
+				learningTime: "21:00",
+				dailySchoolTime: "240 min",
+			}),
+		).toEqual({ ok: false, reason: "crossesMidnight" });
+	});
+
 	test("rejects ranges that would cross midnight", () => {
 		const result = deriveOnboardingLearningTimes({
 			studyDays: "Freitag",

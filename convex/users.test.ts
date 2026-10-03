@@ -819,3 +819,18 @@ test("profile email follows Clerk's verified primary address", async () => {
 		email: "new@example.com",
 	});
 });
+
+test.each([
+	[15, "16:45"],
+	[240, "20:30"],
+])("persists %i-minute onboarding windows through the public mutation", async (minutes, endTime) => {
+	const t = convexTest(schema, modules).withIdentity(userIdentity);
+	await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	await t.mutation(api.users.saveOnboardingAnswers, {
+		answers: onboardingAnswers({ dailySchoolTime: `${minutes} min` }),
+	});
+	expect(await t.query(api.learningTimes.listMine, {})).toMatchObject([
+		{ dayOfWeek: 1, startTime: "16:30", endTime },
+		{ dayOfWeek: 3, startTime: "16:30", endTime },
+	]);
+});

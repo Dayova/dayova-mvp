@@ -242,3 +242,23 @@ component: path 2 background (`#D7DCE3`) with path 3 icon (`#8A8D92`).
 - Use NativeWind for static app UI. Follow the rendering-choice matrix in
   `docs/styling.md` when deciding between NativeWind, RN geometry styles, SVGs,
   and native artwork modules.
+
+## Onboarding learning-time controls
+
+The duration selector uses the onboarding appearance of `SnapCarouselSelector`:
+a 128-point thin progress ring and a 96-point selected gradient tick, based on
+the supplied MVP Login 5 reference. It offers 15, 30, 45, 60, 90, 120, 180,
+and 240 minutes. From 60 minutes the ring shows hours (1 h, 1,5 h, 2 h,
+3 h, 4 h), while persistence continues to use minutes. Continue explicitly confirms the initial 30-minute value;
+merely opening the page does not save it. Persisted duration compatibility
+remains append-only, including legacy values absent from the current selector.
+
+Per the 3 October 2026 user direction and MVP Login 18 reference, selected
+weekday pills use the primary interactive gradient with white text. This is a
+scoped exception to the solid-cyan selection treatment. Their accessible
+checkbox state is retained; the visual checkmark is omitted. Weekday pills retain the original 48-point minimum height and semibold body-3
+type, arranged 2/2/2/1 with wrapping for larger content sizes. Initial answers
+are empty; example selections belong only in historical screenshot evidence.
+
+The duration explanation adapts to the chosen value; an additional explanation
+between weekdays and start time brings the profile flow to twelve steps.

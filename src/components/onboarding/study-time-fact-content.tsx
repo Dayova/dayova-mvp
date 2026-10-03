@@ -6,7 +6,13 @@ import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { getStudyTimeFactBody } from "./study-time-fact";
 
 const COLORS = DAYOVA_DESIGN_SYSTEM.colors;
-function StudyTimeFactPanel({ body }: { body: string }) {
+function StudyTimeFactPanel({
+	body,
+	source,
+}: {
+	body: string;
+	source?: string;
+}) {
 	const reducedMotion = useReducedMotion();
 	return (
 		<Animated.View
@@ -23,6 +29,11 @@ function StudyTimeFactPanel({ body }: { body: string }) {
 			<Text className="mt-5 font-poppins text-body-3 text-secondary-text">
 				{body}
 			</Text>
+			{source ? (
+				<Text className="mt-4 font-poppins text-body-5 text-secondary-text">
+					{source}
+				</Text>
+			) : null}
 		</Animated.View>
 	);
 }
@@ -30,9 +41,13 @@ function StudyTimeFactPanel({ body }: { body: string }) {
 export function StudyTimeFactContent({
 	title,
 	studyTime,
+	body,
+	source,
 }: {
 	title: string;
 	studyTime: string;
+	body?: string;
+	source?: string;
 }) {
 	return (
 		<>
@@ -52,7 +67,10 @@ export function StudyTimeFactContent({
 				{title}
 			</Text>
 
-			<StudyTimeFactPanel body={getStudyTimeFactBody(studyTime)} />
+			<StudyTimeFactPanel
+				body={body ?? getStudyTimeFactBody(studyTime)}
+				source={source}
+			/>
 		</>
 	);
 }

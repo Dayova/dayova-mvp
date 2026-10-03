@@ -3,8 +3,8 @@ import {
 	createPendingOnboardingSyncOutbox,
 	finalizePendingOnboardingCompletion,
 	getPendingOnboardingSyncTransition,
-	syncPendingOnboardingAnswers,
 	type PendingOnboardingSyncStorage,
+	syncPendingOnboardingAnswers,
 } from "./pending-onboarding-sync";
 
 describe("getPendingOnboardingSyncTransition", () => {
@@ -204,9 +204,11 @@ describe("pending onboarding sync outbox", () => {
 		).resolves.toEqual({ status: "none" });
 	});
 
-	it("keeps schema-v1 durations readable when the current selector is narrower", async () => {
+	it.each([
+		15, 75, 240,
+	])("resumes new and historical %i-minute durations from schema-v1 storage", async (minutes) => {
 		const { storage, values } = createMemoryStorage();
-		const historicalAnswers = { ...ANSWERS, dailySchoolTime: "75 min" };
+		const historicalAnswers = { ...ANSWERS, dailySchoolTime: `${minutes} min` };
 		values.set(
 			`dayova.pending-onboarding-sync.${ACCOUNT_FINGERPRINT}`,
 			JSON.stringify({

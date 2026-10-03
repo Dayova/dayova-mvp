@@ -6,7 +6,9 @@ import {
 const MINUTES_PER_DAY = 24 * 60;
 const DEFAULT_LEARNING_START_TIME = "16:00";
 
-export const ONBOARDING_DURATION_OPTIONS = [10, 20, 30, 45, 60, 90] as const;
+export const ONBOARDING_DURATION_OPTIONS = [
+	15, 30, 45, 60, 90, 120, 180, 240,
+] as const;
 
 const parseTimeToMinutes = (value: string) => {
 	const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value.trim());
@@ -132,3 +134,8 @@ export const getOnboardingLearningTimeSummary = (input: {
 
 export const getDefaultOnboardingLearningStartTime = () =>
 	DEFAULT_LEARNING_START_TIME;
+
+export const getOnboardingDurationDisplay = (minutes: number) => ({
+	value: String(minutes >= 60 ? minutes / 60 : minutes).replace(".", ","),
+	unit: minutes >= 60 ? "h" : "min",
+});
