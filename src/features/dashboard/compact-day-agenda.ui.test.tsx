@@ -1,7 +1,7 @@
 import { describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render } from "@testing-library/react-native";
 import type { Id } from "#convex/_generated/dataModel";
-import { CompactDayAgenda } from "./compact-day-agenda";
+import { AgendaRow, CompactDayAgenda } from "./compact-day-agenda";
 import { toDashboardAgendaItem } from "./dashboard-agenda";
 
 jest.mock("~/components/ui/icon", () => ({
@@ -28,6 +28,20 @@ const item = toDashboardAgendaItem("2026-09-01", {
 });
 
 describe("CompactDayAgenda", () => {
+	test("renders the same entry as decorative artwork without an action", async () => {
+		const screen = await render(<AgendaRow mode="artwork" item={item} />);
+		expect(
+			screen.queryByRole("button", { includeHiddenElements: true }),
+		).toBeNull();
+		expect(
+			screen.getByText("Mathematik · Gleichungen lösen", {
+				includeHiddenElements: true,
+			}).props.allowFontScaling,
+		).toBe(false);
+		expect(
+			screen.getByText("17:00 · 17 min", { includeHiddenElements: true }),
+		).toBeTruthy();
+	});
 	test("shows subject, topic and metadata and opens the entry", async () => {
 		const open = jest.fn();
 		const screen = await render(

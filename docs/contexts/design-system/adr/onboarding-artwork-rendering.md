@@ -126,5 +126,9 @@ module and must include fresh native evidence; a copied card, Figma export, or
 onboarding-only SVG is not a valid reversal.
 
 The intro device retains the reference's slim 365 × 550 artboard. Its product
-content keeps its original layout width and is uniformly inset to leave 24px
+content keeps its original layout width and is uniformly inset to leave 40px
 between the content and the inner screen edge, rather than widening the phone.
+
+The calendar intro uses the current compact AgendaRow in decorative mode, sharing
+subject icons, title, time metadata, and status affordances with the Today page.
+An 80px top inset separates preview content from the camera island.

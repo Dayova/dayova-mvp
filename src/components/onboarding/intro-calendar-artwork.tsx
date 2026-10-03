@@ -2,8 +2,8 @@ import { View } from "react-native";
 import type { Id } from "#convex/_generated/dataModel";
 import { Plus } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
+import { AgendaRow } from "~/features/dashboard/compact-day-agenda";
 import { toDashboardAgendaItem } from "~/features/dashboard/dashboard-agenda";
-import { DashboardAgendaEntryCard } from "~/features/dashboard/dashboard-product-cards";
 import {
 	CalendarWeekdays,
 	WeekCalendar,
@@ -15,7 +15,8 @@ const day = "2026-10-05";
 const entries = [
 	{
 		id: "intro-math" as Id<"dayEntries">,
-		title: "Mathe lernen",
+		title: "Mathematik üben",
+		subject: "Mathematik",
 		kind: "Aufgabe",
 		time: "16:00",
 		durationMinutes: 30,
@@ -24,6 +25,7 @@ const entries = [
 	{
 		id: "intro-english" as Id<"dayEntries">,
 		title: "Englisch wiederholen",
+		subject: "Englisch",
 		kind: "Aufgabe",
 		time: "17:00",
 		durationMinutes: 20,
@@ -75,12 +77,11 @@ export function IntroCalendarArtwork({
 			</Text>
 			<View className="gap-3">
 				{entries.map((entry) => (
-					<View key={entry.id} className="h-[100px]">
-						<DashboardAgendaEntryCard
-							mode="artwork"
-							item={toDashboardAgendaItem(day, entry)}
-						/>
-					</View>
+					<AgendaRow
+						key={entry.id}
+						mode="artwork"
+						item={toDashboardAgendaItem(day, entry)}
+					/>
 				))}
 			</View>
 		</IntroPhoneFrame>

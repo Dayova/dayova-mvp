@@ -54,12 +54,12 @@ export function IntroPhoneFrame({
 				>
 					<View className="h-2 w-2 rounded-full bg-border" />
 				</View>
-				<View className="flex-1 items-center overflow-hidden px-10 pt-16 pb-6">
+				<View className="flex-1 items-center overflow-hidden px-14 pt-20 pb-6">
 					<View
 						className="w-[301px]"
 						// Preserve the product layout while adding breathing room inside the device.
 						style={{
-							transform: [{ scale: 285 / 301 }],
+							transform: [{ scale: 253 / 301 }],
 							transformOrigin: "top center",
 						}}
 					>
