@@ -81,7 +81,7 @@ export default function LearningPlanReviewScreen() {
 						Was kannst du schon?
 					</Text>
 					<Text className="max-w-[340px] text-center font-poppins text-body-3 text-secondary-text">
-						Fünf kurze Fragen zeigen deine Stärken und Übungsschwerpunkte.
+						Zehn kurze Fragen zeigen deine Stärken und Übungsschwerpunkte.
 						Danach stehen deine Lerntermine bereit.
 					</Text>
 				</View>

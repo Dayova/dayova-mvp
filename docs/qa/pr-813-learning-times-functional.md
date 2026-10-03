@@ -127,13 +127,13 @@ Automated results and actual native evidence are reported separately below.
 | Time picker | Editor dismisses before the wheel opens; closing the wheel restores the draft |
 | Reminder loading/query error | Completion screen remains usable |
 | Times already saved | No reminder |
+| Routine | No daily check-in or behavior-derived schedule popup |
 
 Follow-up validation (removal of availability screen and inline reminder):
 369 Jest UI tests, 963 Vitest tests, TypeScript and scoped ESLint passed.
 Native end-to-end Wissenscheck acceptance remains open: the earlier simulator run
 stopped at school-material upload, before the completion screen. These automated
 results do not certify the new native sheet/clock interaction.
-| Routine | No daily check-in or behavior-derived schedule popup |
 
 ## Verification
 

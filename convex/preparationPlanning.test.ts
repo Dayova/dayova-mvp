@@ -563,3 +563,74 @@ test("ten-question diagnostic credits active time once and adjusts the remaining
 		}),
 	).rejects.toThrow();
 });
+
+test("preparation proposals use grade defaults without saving personal times", async () => {
+	const { t, id } = await setup();
+	await t.run((ctx) =>
+		ctx.db.insert("users", {
+			tokenIdentifier: identity.tokenIdentifier,
+			clerkId: "preparation",
+			email: "test@example.com",
+			grade: "8",
+		}),
+	);
+	const schedule = await t.query(api.learningPlans.getPreparationSchedule, {
+		learningPlanId: id,
+		now: { dateKey: "2026-10-05", minutes: 840 },
+	});
+	expect(schedule.slots.length).toBeGreaterThan(0);
+	expect(schedule.slots[0].startTime).toBe("16:00");
+	expect(await t.query(api.learningTimes.listMine, {})).toEqual([]);
+});
+
+test.each([
+	"untouched",
+	"started",
+	"interrupted",
+])("adding appointments preserves %s flexible steps", async (state) => {
+	const { t, id } = await setup();
+	const first = await t.mutation(api.learningPlans.startFlexiblePreparation, {
+		learningPlanId: id,
+	});
+	if (state !== "untouched")
+		await t.mutation(api.learningPlans.startSession, { sessionId: first });
+	if (state === "interrupted")
+		await t.mutation(api.learningPlans.recordSessionOutcome, {
+			sessionId: first,
+			outcome: "partiallyCompleted",
+			activeStudySeconds: 120,
+		});
+	const before = await t.run((ctx) =>
+		ctx.db
+			.query("learningPlanSessions")
+			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+				q.eq("learningPlanId", id),
+			)
+			.take(500),
+	);
+	const schedule = await t.query(api.learningPlans.getPreparationSchedule, {
+		learningPlanId: id,
+		now: { dateKey: "2026-10-05", minutes: 840 },
+	});
+	expect(schedule.slots).toEqual([]);
+	await t.mutation(api.learningPlans.savePreparationSchedule, {
+		learningPlanId: id,
+		revision: schedule.revision,
+		slots: [slot],
+	});
+	for (const original of before) {
+		const after = await t.run((ctx) =>
+			ctx.db.get("learningPlanSessions", original._id),
+		);
+		expect(after).toMatchObject({
+			unscheduled: true,
+			preparationSlotId: "flexible",
+			durationMinutes: original.durationMinutes,
+		});
+	}
+	const afterSchedule = await t.query(
+		api.learningPlans.getPreparationSchedule,
+		{ learningPlanId: id, now: { dateKey: "2026-10-05", minutes: 840 } },
+	);
+	expect(afterSchedule.slots).toHaveLength(1);
+});

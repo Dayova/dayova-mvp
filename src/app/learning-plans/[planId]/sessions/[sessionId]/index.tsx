@@ -49,7 +49,6 @@ import type {
 } from "~/features/learning-plans/types";
 import { usePrepareSessionContent } from "~/features/learning-plans/use-prepare-session-content";
 import { getErrorMessage } from "~/features/learning-plans/utils";
-import { LearningTimeQuickAddSheet } from "~/features/learning-times/learning-time-quick-add-sheet";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import { dismissToOrReplace, useBackIntent } from "~/lib/navigation";
@@ -622,10 +621,7 @@ export default function LearningSessionContentScreen() {
 		}
 	};
 
-	const [isLearningTimeEditorOpen, setIsLearningTimeEditorOpen] =
-		useState(false);
-
-	const completeAndOpenLearningPlan = async (openLearningTimes = false) => {
+	const completeAndOpenLearningPlan = async () => {
 		if (!sessionId || isBusy) return;
 
 		setIsBusy(true);
@@ -656,11 +652,7 @@ export default function LearningSessionContentScreen() {
 							params: { planId },
 						}
 					: getLearningSessionCompletionDestination(planId);
-			if (openLearningTimes) {
-				setIsLearningTimeEditorOpen(true);
-			} else {
-				router.dismissTo(destination);
-			}
+			router.dismissTo(destination);
 		} catch (error) {
 			setErrorMessage(
 				getErrorMessage(error, "Der Lernplan konnte nicht geöffnet werden."),
@@ -1040,7 +1032,6 @@ export default function LearningSessionContentScreen() {
 								? completeAndLeave
 								: () => void completeAndOpenLearningPlan()
 						}
-						onOpenLearningTimes={() => void completeAndOpenLearningPlan(true)}
 						isBusy={isBusy}
 					/>
 				) : visibleAttempt ? (
@@ -1083,11 +1074,6 @@ export default function LearningSessionContentScreen() {
 					</Text>
 				) : null}
 			</ScrollView>
-			{isLearningTimeEditorOpen ? (
-				<LearningTimeQuickAddSheet
-					onClose={() => setIsLearningTimeEditorOpen(false)}
-				/>
-			) : null}
 			{showQuestionActions && content ? (
 				<KeyboardAvoidingView
 					behavior={Platform.OS === "ios" ? "padding" : undefined}

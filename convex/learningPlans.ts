@@ -3463,12 +3463,10 @@ export const getPreparationSchedule = query({
 			throwUserFacingError(
 				"Es sind zu viele Kalendereinträge für einen sicheren Vorschlag vorhanden. Bitte füge deine Termine einzeln hinzu.",
 			);
-		const saved = await ctx.db
-			.query("userLearningTimes")
-			.withIndex("by_ownerTokenIdentifier", (q) =>
-				q.eq("ownerTokenIdentifier", plan.ownerTokenIdentifier),
-			)
-			.take(50);
+		const saved = await getPlanningLearningTimes(
+			ctx,
+			plan.ownerTokenIdentifier,
+		);
 		return {
 			slots: proposePreparationSchedule({
 				budgetMinutes: remainingMinutes,
@@ -3513,7 +3511,7 @@ export const savePreparationSchedule = mutation({
 
 		const groups = new Map<string, Doc<"learningPlanSessions">[]>();
 		for (const session of sessions) {
-			if (!session.preparationSlotId) continue;
+			if (!session.preparationSlotId || session.unscheduled) continue;
 			const group = groups.get(session.preparationSlotId) ?? [];
 			group.push(session);
 			groups.set(session.preparationSlotId, group);
@@ -3538,11 +3536,7 @@ export const savePreparationSchedule = mutation({
 				proposed.dateKey === current.dateKey &&
 				proposed.startTime === current.startTime &&
 				proposed.durationMinutes === current.durationMinutes;
-			if (
-				current.locked &&
-				!unchanged &&
-				!group.every((s) => s.unscheduled && s.completed)
-			)
+			if (current.locked && !unchanged)
 				throwUserFacingError(
 					"Abgeschlossene und gerade laufende Schritte bleiben erhalten. Ändere die übrigen Termine.",
 				);
@@ -3598,6 +3592,7 @@ export const savePreparationSchedule = mutation({
 		const retainedCount = sessions.filter(
 			(session) =>
 				session.completed ||
+				session.unscheduled ||
 				!session.preparationSlotId ||
 				lockedIds.has(session.preparationSlotId),
 		).length;
@@ -3638,7 +3633,10 @@ export const savePreparationSchedule = mutation({
 				0,
 				...sessions
 					.filter(
-						(s) => !s.preparationSlotId || lockedIds.has(s.preparationSlotId),
+						(s) =>
+							s.unscheduled ||
+							!s.preparationSlotId ||
+							lockedIds.has(s.preparationSlotId),
 					)
 					.map((s) => s.sortOrder),
 			) + 1;

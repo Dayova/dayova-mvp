@@ -745,39 +745,41 @@ const withGeneratedTextRetry = async <TResult>(
 	task: (attempt: number) => Promise<TResult>,
 	fallbackMessage: string,
 ) => {
-	for (let attempt = 0; attempt < MAX_GENERATED_TEXT_ATTEMPTS; attempt += 1) {
-		try {
-			return await withStructuredOutputErrorHandling(
-				() => task(attempt),
-				fallbackMessage,
-			);
-		} catch (error) {
-			const isDuplicatePrompt = error instanceof DuplicateGeneratedPromptError;
-			if (
-				(isInvalidGeneratedGermanTextError(error) || isDuplicatePrompt) &&
-				attempt < MAX_GENERATED_TEXT_ATTEMPTS - 1
-			) {
-				continue;
-			}
+	return await withStructuredOutputErrorHandling(async () => {
+		for (let attempt = 0; attempt < MAX_GENERATED_TEXT_ATTEMPTS; attempt += 1) {
+			try {
+				return await task(attempt);
+			} catch (error) {
+				const isDuplicatePrompt =
+					error instanceof DuplicateGeneratedPromptError;
+				if (
+					(isInvalidGeneratedGermanTextError(error) ||
+						isDuplicatePrompt ||
+						NoObjectGeneratedError.isInstance(error)) &&
+					attempt < MAX_GENERATED_TEXT_ATTEMPTS - 1
+				) {
+					continue;
+				}
 
-			if (isInvalidGeneratedGermanTextError(error)) {
-				logDiagnosticError("learningPlanAi.generatedGermanText", error, {
-					attempts: MAX_GENERATED_TEXT_ATTEMPTS,
-				});
-				throwUserFacingError(fallbackMessage);
-			}
-			if (isDuplicatePrompt) {
-				logDiagnosticError("learningPlanAi.duplicateGeneratedPrompt", error, {
-					attempts: MAX_GENERATED_TEXT_ATTEMPTS,
-				});
-				throwUserFacingError(fallbackMessage);
-			}
+				if (isInvalidGeneratedGermanTextError(error)) {
+					logDiagnosticError("learningPlanAi.generatedGermanText", error, {
+						attempts: MAX_GENERATED_TEXT_ATTEMPTS,
+					});
+					throwUserFacingError(fallbackMessage);
+				}
+				if (isDuplicatePrompt) {
+					logDiagnosticError("learningPlanAi.duplicateGeneratedPrompt", error, {
+						attempts: MAX_GENERATED_TEXT_ATTEMPTS,
+					});
+					throwUserFacingError(fallbackMessage);
+				}
 
-			throw error;
+				throw error;
+			}
 		}
-	}
 
-	throwUserFacingError(fallbackMessage);
+		throwUserFacingError(fallbackMessage);
+	}, fallbackMessage);
 };
 
 const runLlmGeneration = async <TResult>(
@@ -1694,6 +1696,8 @@ const normalizeSessions = (
 };
 
 export const __testOnlyLearningPlanAi = {
+	withGeneratedTextRetry,
+	DuplicateGeneratedPromptError,
 	normalizeSessions,
 	getEmptyScheduleErrorMessage,
 	generatedTaskChoiceSchema,

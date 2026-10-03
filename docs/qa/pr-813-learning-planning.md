@@ -121,3 +121,13 @@ Designentscheidung: Job ist die bewusste Übernahme einer abweichenden Zeitplanu
 Beim Tippen auf Übernehmen wird die Summe der Planzeiten mit dem Budget nach Anrechnung des Wissenschecks verglichen. Gleiche Zeit speichert direkt; mehr oder weniger Zeit öffnet die passende Rückfrage. Anpassen oder X kehrt ohne Speichern zur Übersicht zurück. Erst die Bestätigung löst das bisherige Speichern aus. Die individuelle Empfehlung ist kein Versprechen eines exakten Lernbedarfs. Leere Pläne und laufendes Speichern bleiben gesperrt; der separate Sofortstart bleibt bestehen.
 
 Validierung: vier gezielte UI-Tests für passend, mehr, weniger und gesperrte Aktionen; TypeScript, Biome und ESLint bestanden. Native iOS-Simulatorprüfung mit lokalen Beispieldaten; keine Backend-Speicherung in dieser Vorschau. Android, VoiceOver und große Schrift nicht separat manuell geprüft.
+
+## CodeRabbit follow-up · 3 October 2026
+
+- Structured-output/schema failures now participate in the bounded three-attempt generation retry before conversion to a safe user-facing error. German-text and duplicate-prompt retries remain; unrelated errors propagate immediately.
+- Preparation proposals use `getPlanningLearningTimes`, including grade defaults when no personal windows exist; proposals do not persist personal availability.
+- Appointment reconciliation excludes unscheduled steps and counts them toward the 500-step limit. Adding appointments retains untouched, running and interrupted flexible work.
+- The diagnostic introduction says ten questions. The obsolete completion callback and quick-add-sheet wiring are removed: the agreed preparation overview replaces that historical prompt.
+- The older QA table formatting finding is also corrected.
+
+Validation: 52 targeted Vitest tests, 6 Jest UI tests, TypeScript, scoped ESLint, Biome and diff checks passed. Local Convex deployment to `anonymous-agent` at `127.0.0.1:3230` succeeded. No production deployment. Retry tests use synthetic SDK errors; live model generation remains outside this verification.

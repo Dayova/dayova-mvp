@@ -16,7 +16,6 @@ export function LearningSessionCompletion({
 	attemptCount,
 	onContinueLearning,
 	onPrimary,
-	onOpenLearningTimes: _onOpenLearningTimes,
 	isBusy,
 }: {
 	phase: LearningSessionContentSnapshot["session"]["phase"];
@@ -26,7 +25,6 @@ export function LearningSessionCompletion({
 	attemptCount: number;
 	onContinueLearning: () => void;
 	onPrimary: () => void;
-	onOpenLearningTimes?: () => void;
 	isBusy: boolean;
 }) {
 	const isTheory = phase === "theory";
