@@ -21,12 +21,60 @@ Prüfung: Der Kartentest schlug mit vorhandener Buttonzeile wie erwartet fehl.
 Nach der Korrektur bestehen Karten-, Swipe-Hook- und Creation-Flow-Tests
 (3 Suites / 11 Tests). Hook-Tests führen die registrierten Gesten-Callbacks
 aus und prüfen den nachfolgenden tatsächlichen Öffnungs-Callback. Sie simulieren
-Animationen; eine neue native iOS-/Android-Wischabnahme ist noch offen.
-Die nachstehende native Abnahme beschreibt ausdrücklich den früheren,
-inzwischen verworfenen Kartenstand und gilt nicht als Abnahme dieser Korrektur.
+Animationen und ersetzen keinen nativen Gestentest. Die native iOS-Abnahme
+der wiederhergestellten Karte auf `8c7ed5b3` ist bestanden und unten dokumentiert;
+die Android-Abnahme bleibt offen. Die separat als historisch gekennzeichnete
+Prüfung des verworfenen Kartenstands gilt nicht als Abnahme dieser Korrektur.
 
 Abschlussprüfung der Korrektur: alle 80 Jest-Suites / 355 Tests grün,
 TypeScript, gezieltes ESLint und Diff-Check grün. Kein Backend-Deployment.
+
+## Native iOS-Abnahme – wiederhergestellte Karte (`8c7ed5b3`)
+
+Am 03.10.2026 ab 03:26 Uhr auf der isolierten Simulator-Gerätekopie
+„Dayova PR819 Dialogtest“, iOS 26.4: zusammenhängender Maestro-Flow erfolgreich
+(Exit 0; alle 54 protokollierten Befehle `COMPLETED`). Getestet wurde der
+vorhandene Mathematik-Entwurf auf Commit
+`8c7ed5b3b2e9c5f7172ee9d2f938cda1b7cbc119`, nicht das verworfene Kartenredesign.
+
+[Vollständige Nachher-Aufnahme](https://github.com/user-attachments/assets/6f32dea0-258e-4d49-a7f0-a3bab5e81a0c)
+und eingebettete Screenshots stehen in [PR #819](https://github.com/Dayova/dayova-mvp/pull/819).
+Die Aufnahme ist ungeschnitten; die ersten etwa 16 Sekunden zeigen die
+Übersicht während des Teststarts. Prüfablauf und sichtbare Ergebnisse:
+
+- 00:18–00:25: Lange Links-/Rechtswischgesten öffnen und schließen die dunkle
+  Aktionsleiste. Auch der kurze Swipe bleibt in der Übersicht; kein
+  unbeabsichtigtes Öffnen. Der protokollierte Tap auf den Kartentext bleibt
+  ebenfalls in der Übersicht.
+- 00:27–00:29: Löschen öffnet die Bestätigung; Abbrechen kehrt zur Übersicht
+  zurück. Es wurde kein Lernplan gelöscht.
+- 00:33–00:42: Bearbeiten öffnet den gespeicherten Material-Schritt.
+  Randwischen verlässt weder Material noch Themen und öffnet keinen
+  Pausendialog. Der obere Zurück-Button führt zum Themen-Schritt.
+- 00:43–00:50: Der Zurück-Button öffnet den Pausendialog. „Fortsetzen“ schließt
+  nur den Dialog; „Später“ schließt anschließend Dialog und Bearbeitung und
+  führt zur Übersicht.
+- 00:52–00:57: Der erste Pfeil-Tap bei offener Aktionsleiste schließt diese,
+  ohne zu navigieren. Der nächste Pfeil-Tap öffnet beim Entwurf ohne Unterlagen
+  den erwarteten Hinweis „Schulmaterial fehlt“.
+
+Videoprüfung: Alle vier Kontaktbögen über die gesamte Laufzeit sowie die
+Einzelbilder bei 00:53, 00:54 und 00:57 wurden angesehen und mit dem
+Maestro-Protokoll abgeglichen. Das lokale Original
+`pr819-kompletter-test.mp4` hat SHA-256
+`6eb31fbf3b04622a820c3430f579d19e57e567f49870919260833b9040e5374e`.
+
+Coverage: 63.88-second video; 64 full-timeline frames sampled at 1 fps (1-second interval); 4 contact sheet(s); no audio stream.
+
+Prüfgrenzen: Das Video hat keine Touch-Marker; die ausgeführten Gesten und
+Assertions ergeben sich aus dem Maestro-Protokoll. Die Stichproben erfassen
+nicht jedes Animationsbild. Keine Android-, Hardware-iPhone-, VoiceOver- oder
+native Dark-/Großschrift-Abnahme. Drei vollständig generierte Test-Lernpläne
+konnten wegen der fehlenden lokalen R2-Upload-Konfiguration nicht erstellt
+werden; deren Erstellung und Navigation sind damit nicht abgenommen. Der
+vorhandene Notification-Entwicklerfehler ist nicht als behoben nachgewiesen.
+Diese Dokumentationskorrektur übernimmt den aufgezeichneten Test; sie ist
+kein neuer Simulatorlauf und keine Aussage über generelle Fehlerfreiheit.
 
 ## Video-Befund (Philipp, 3. Oktober 2026)
 
@@ -71,7 +119,11 @@ Einzelbilder und die exakte Fingergeste sind damit nicht vollständig erfasst.
 Keine Änderung an Auth-Onboarding, Kalendergesten, Hausaufgabenkarten,
 Lernzeiten, Backend oder Lernplan-Daten.
 
-## Prüfung
+## Historische Prüfung – verworfener Kartenstand
+
+Die folgenden Ergebnisse beziehen sich auf das inzwischen zurückgenommene
+Kartenredesign mit sichtbarer Bearbeiten-/Löschen-Zeile. Sie dokumentieren den
+damaligen Stand und ersetzen nicht die obige Abnahme von `8c7ed5b3`.
 
 Regressionstests wurden vor der Änderung rot ausgeführt: Creation-Screen
 meldete `gestureEnabled: true`; die Lernplankarte hatte keine getrennten
