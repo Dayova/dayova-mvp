@@ -1,4 +1,32 @@
-# Lernpläne: eindeutige Aktionen statt konkurrierender Wischgesten
+# Lernpläne: Wischfehler beheben, ursprüngliches Kartendesign erhalten
+
+## Korrektur nach Philipps Rückmeldung
+
+Die ursprünglich eingeführte sichtbare Bearbeiten-/Löschen-Zeile war nicht
+freigegeben und wurde wieder entfernt. Die ursprüngliche dunkle Aktionsleiste
+hinter der seitlich verschiebbaren Karte ist wiederhergestellt. Karteninhalt,
+Typografie und Geometrie sind unverändert; die Kopfzeile bleibt Sache von #820.
+
+Der vorhandene blaue Pfeil bleibt das Öffnungsziel. Eine aktivierte Wischgeste
+setzt eine Sperre, die über das Loslassen hinaus bestehen bleibt und erst mit
+der nächsten Berührung zurückgesetzt wird. Damit kann ein nachgeliefertes
+Press-Ereignis nicht versehentlich navigieren – auch nicht, wenn ein kurzer
+Swipe schon wieder bei Offset 0 angekommen ist. Tippen auf den Pfeil bei
+offener Aktionsleiste schließt zunächst diese. Bearbeiten/Löschen schließen
+die Leiste und führen die bestehende Aktion aus; Löschen bleibt bestätigt.
+
+Die separaten Stack-/Zurück-/Fortsetzen-/Später-Korrekturen bleiben erhalten.
+
+Prüfung: Der Kartentest schlug mit vorhandener Buttonzeile wie erwartet fehl.
+Nach der Korrektur bestehen Karten-, Swipe-Hook- und Creation-Flow-Tests
+(3 Suites / 11 Tests). Hook-Tests führen die registrierten Gesten-Callbacks
+aus und prüfen den nachfolgenden tatsächlichen Öffnungs-Callback. Sie simulieren
+Animationen; eine neue native iOS-/Android-Wischabnahme ist noch offen.
+Die nachstehende native Abnahme beschreibt ausdrücklich den früheren,
+inzwischen verworfenen Kartenstand und gilt nicht als Abnahme dieser Korrektur.
+
+Abschlussprüfung der Korrektur: alle 80 Jest-Suites / 355 Tests grün,
+TypeScript, gezieltes ESLint und Diff-Check grün. Kein Backend-Deployment.
 
 ## Video-Befund (Philipp, 3. Oktober 2026)
 
@@ -26,7 +54,7 @@ Coverage: 47.01-second video; 47 full-timeline frames sampled at 1 fps (1-second
 Alle acht Kontaktbögen wurden angesehen. Zwischen den Stichproben liegende
 Einzelbilder und die exakte Fingergeste sind damit nicht vollständig erfasst.
 
-## Entscheidung
+## Historische Entscheidung – Kartenredesign zurückgenommen
 
 - Aufgabe: Den richtigen Lernplan gezielt öffnen oder bearbeiten.
 - Hierarchie: Fach/Status, nächster Lernschritt, klar getrennte Aktionen.

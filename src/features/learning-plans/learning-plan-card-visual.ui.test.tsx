@@ -21,10 +21,8 @@ jest.mock("~/lib/theme", () => ({
 }));
 
 describe("LearningPlanCardVisual", () => {
-	test("keeps edit, delete and opening as separate explicit actions", async () => {
+	test("keeps the original card content without an added action toolbar", async () => {
 		const onPress = jest.fn();
-		const onEdit = jest.fn();
-		const onDelete = jest.fn();
 		const screen = await render(
 			<LearningPlanCardVisual
 				accessibilityLabel="Mathematik öffnen"
@@ -41,20 +39,14 @@ describe("LearningPlanCardVisual", () => {
 					state: { kind: "creation", progressLabel: "In Erstellung" },
 				}}
 				onPress={onPress}
-				onEdit={onEdit}
-				onDelete={onDelete}
 			/>,
 		);
-		await fireEvent.press(
-			screen.getByRole("button", { name: "Mathematik: Lernplan bearbeiten" }),
-		);
-		expect(onEdit).toHaveBeenCalledTimes(1);
-		expect(onPress).not.toHaveBeenCalled();
-		await fireEvent.press(
-			screen.getByRole("button", { name: "Mathematik: Lernplan löschen" }),
-		);
-		expect(onDelete).toHaveBeenCalledTimes(1);
-		expect(onPress).not.toHaveBeenCalled();
+		expect(
+			screen.queryByRole("button", { name: "Mathematik: Lernplan bearbeiten" }),
+		).toBeNull();
+		expect(
+			screen.queryByRole("button", { name: "Mathematik: Lernplan löschen" }),
+		).toBeNull();
 		// fireEvent on plain text climbs composite props, unlike native hit testing.
 		// The shared card owns the verified action-only native hit target.
 		expect(

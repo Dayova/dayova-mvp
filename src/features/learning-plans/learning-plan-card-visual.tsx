@@ -1,10 +1,8 @@
-import { TouchableOpacity, View } from "react-native";
+import { View } from "react-native";
 import {
 	ArrowUpRight,
 	ClipboardEdit,
 	GraduationCap,
-	PropertyEdit,
-	Trash2,
 } from "~/components/ui/icon";
 import { NotchedActionCard } from "~/components/ui/notched-action-card";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
@@ -49,8 +47,6 @@ type ScreenLearningPlanCardVisualProps = {
 	mode?: "screen";
 	model: LearningPlanCardVisualModel;
 	onPress: () => void;
-	onEdit?: () => void;
-	onDelete?: () => void;
 	accessibilityLabel: string;
 	accessibilityHint: string;
 };
@@ -89,30 +85,6 @@ export function LearningPlanCardVisual(props: LearningPlanCardVisualProps) {
 					})}
 		>
 			<View className="gap-2">
-				{props.mode !== "artwork" && (props.onEdit || props.onDelete) ? (
-					<View className="flex-row justify-end gap-2">
-						{props.onEdit ? (
-							<TouchableOpacity
-								accessibilityRole="button"
-								accessibilityLabel={`${model.subject}: Lernplan bearbeiten`}
-								onPress={props.onEdit}
-								className="h-11 w-11 items-center justify-center rounded-full border border-border bg-surface"
-							>
-								<PropertyEdit size={22} color={colors.secondaryText} />
-							</TouchableOpacity>
-						) : null}
-						{props.onDelete ? (
-							<TouchableOpacity
-								accessibilityRole="button"
-								accessibilityLabel={`${model.subject}: Lernplan löschen`}
-								onPress={props.onDelete}
-								className="h-11 w-11 items-center justify-center rounded-full border border-border bg-surface"
-							>
-								<Trash2 size={22} color={colors.secondaryText} />
-							</TouchableOpacity>
-						) : null}
-					</View>
-				) : null}
 				<View
 					className={cn(
 						"items-start justify-between gap-3",
