@@ -333,7 +333,7 @@ const questionsSchema = z
 				),
 			}),
 			5,
-			10,
+			5,
 		),
 	})
 	.describe(KNOWLEDGE_QUESTIONS_OUTPUT_DESCRIPTION);
@@ -3061,7 +3061,7 @@ export const generateKnowledgeQuestions = action({
 				text: `${buildBaseContext(context)}
 
 ${TOPIC_MAP_GENERATION_INSTRUCTION}
-Erstelle danach 5 bis 10 kurze, objektiv bewertbare Fragen für den Wissenscheck in der ersten Lernsession. Jede Frage muss als kind "performance" tatsächliches Wissen durch kurzes Lösen, Erklären oder Anwenden prüfen. Verwende keine Selbsteinschätzungs- oder Sicherheitsfragen. Ordne jede Frage über topicId exakt einer zuvor erzeugten Themen-ID und über evidenceDimension genau einer Evidenzdimension zu. Liefere außerdem eine fachlich richtige idealAnswer, eine kurze explanation und 1 bis 5 evaluationKeywords. Ziel ist nicht Notengebung, sondern belastbare Evidenz für den jeweils nächsten Lernschritt.
+Erstelle danach genau 5 kurze, objektiv bewertbare Fragen für den Wissenscheck in der ersten Lernsession. Jede Frage muss als kind "performance" tatsächliches Wissen durch kurzes Lösen, Erklären oder Anwenden prüfen. Verwende keine Selbsteinschätzungs- oder Sicherheitsfragen. Ordne jede Frage über topicId exakt einer zuvor erzeugten Themen-ID und über evidenceDimension genau einer Evidenzdimension zu. Liefere außerdem eine fachlich richtige idealAnswer, eine kurze explanation und 1 bis 5 evaluationKeywords. Ziel ist nicht Notengebung, sondern belastbare Evidenz für den jeweils nächsten Lernschritt.
 Die Fragen müssen sich konkret auf Prüfungsthema und Inhalte aus dem Material beziehen, aber wie normale Prüfungs- oder Verständnisfragen formuliert sein.
 Jede Frage fragt genau eine Sache ab, ist ohne verschachtelte Arbeitsanweisung direkt verständlich und lässt sich in wenigen Sätzen beantworten.
 Keine Frage darf eine andere Aufgabenformulierung zitieren oder Formulierungen wie „Erkläre deinen Lösungsweg zu …“ enthalten.

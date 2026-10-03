@@ -453,6 +453,15 @@ export default defineSchema({
 		examTime: v.optional(v.string()),
 		durationMinutes: v.number(),
 		targetStudyMinutes: v.optional(v.number()),
+		preparationState: v.optional(
+			v.union(
+				v.literal("diagnostic"),
+				v.literal("review"),
+				v.literal("ready"),
+				v.literal("completed"),
+			),
+		),
+		preparationRevision: v.optional(v.number()),
 		preparationDepth: v.optional(
 			v.union(
 				v.literal("compact"),
@@ -623,6 +632,9 @@ export default defineSchema({
 		])
 		.index("by_learningPlanId_and_createdAt", ["learningPlanId", "createdAt"]),
 	learningPlanSessions: defineTable({
+		preparationSlotId: v.optional(v.string()),
+		additionalPractice: v.optional(v.boolean()),
+		unscheduled: v.optional(v.boolean()),
 		ownerTokenIdentifier: v.string(),
 		learningPlanId: v.id("learningPlans"),
 		phase: sessionPhaseValidator,
@@ -667,6 +679,10 @@ export default defineSchema({
 		updatedAt: v.number(),
 	})
 		.index("by_learningPlanId_and_sortOrder", ["learningPlanId", "sortOrder"])
+		.index("by_learningPlanId_and_preparationSlotId", [
+			"learningPlanId",
+			"preparationSlotId",
+		])
 		.index("by_ownerTokenIdentifier_and_berlinDayKey", [
 			"ownerTokenIdentifier",
 			"berlinDayKey",

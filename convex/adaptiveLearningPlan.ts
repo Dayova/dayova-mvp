@@ -71,6 +71,8 @@ const loadAdaptiveEvidence = async (
 		Array<AdaptiveTopicEvidence["rating"]>
 	>();
 	for (const session of sessions) {
+		if (session.preparationSlotId && !session.startedAt && !session.completed)
+			continue;
 		const items = await ctx.db
 			.query("learningSessionContentItems")
 			.withIndex("by_sessionId_and_sortOrder", (q) =>
@@ -333,6 +335,26 @@ const patchRollingSessionTarget = async (
 		calendar: RollingPlanCalendar;
 	},
 ) => {
+	if (args.plan.preparationState && !args.session.completed) {
+		const attempt = await ctx.db
+			.query("learningSessionAnswerAttempts")
+			.withIndex("by_sessionId_and_createdAt", (q) =>
+				q.eq("sessionId", args.session._id),
+			)
+			.first();
+		if (attempt || (args.session.activeStudySeconds ?? 0) > 0) {
+			await ctx.db.patch("learningPlanSessions", args.session._id, {
+				planningStatus: args.planningStatus,
+				updatedAt: Date.now(),
+			});
+			const preserved = await ctx.db.get(
+				"learningPlanSessions",
+				args.session._id,
+			);
+			if (preserved) await args.calendar.syncSession(ctx, args.plan, preserved);
+			return preserved;
+		}
+	}
 	const targetMatches =
 		args.session.targetTopicIds?.[0] === args.target.topicId &&
 		args.session.targetEvidenceDimension === args.target.dimension;
@@ -396,7 +418,7 @@ export const advanceRollingLearningPlan = async (
 			q.eq("learningPlanId", plan._id),
 		)
 		.order("asc")
-		.take(50);
+		.take(500);
 	const { evidence, history, diagnosticReadiness } = await loadAdaptiveEvidence(
 		ctx,
 		sessions,
@@ -429,6 +451,70 @@ export const advanceRollingLearningPlan = async (
 			evidence,
 			history,
 		}) ?? selectAdaptiveMaintenanceTarget({ topics, history });
+
+	if (plan.preparationState) {
+		const diagnostic = sessions.find(
+			(s) => s.sessionPurpose === "diagnostic" && s.completed,
+		);
+		if (
+			plan.preparationState === "diagnostic" ||
+			plan.preparationState === "review"
+		) {
+			if (diagnostic?.completed)
+				await ctx.db.patch("learningPlans", plan._id, {
+					preparationState: "review",
+					topicReadiness: effectiveTopicReadiness,
+					updatedAt: Date.now(),
+				});
+			return { committedSessionId: null, provisionalSessionId: null };
+		}
+		if (plan.preparationState === "completed")
+			return { committedSessionId: null, provisionalSessionId: null };
+		const remaining = sessions
+			.filter((s) => s.preparationSlotId && !s.completed)
+			.sort(
+				(a, b) =>
+					a.dateKey.localeCompare(b.dateKey) ||
+					a.startTime.localeCompare(b.startTime),
+			);
+		if (!remaining.length) {
+			await ctx.db.patch("learningPlans", plan._id, {
+				preparationState: "completed",
+				updatedAt: Date.now(),
+			});
+			return { committedSessionId: null, provisionalSessionId: null };
+		}
+		const next =
+			remaining.find((s) => getSessionExecutionStatus(s) === "started") ??
+			remaining[0];
+		for (const other of remaining) {
+			if (other._id !== next._id && other.planningStatus === "committed") {
+				await ctx.db.patch("learningPlanSessions", other._id, {
+					planningStatus: "provisional",
+					updatedAt: Date.now(),
+				});
+			}
+		}
+		if (committedTarget && getSessionExecutionStatus(next) === "notStarted") {
+			await patchRollingSessionTarget(ctx, {
+				plan,
+				session: next,
+				target: committedTarget,
+				planningStatus: "committed",
+				adaptationRevision: (plan.adaptationRevision ?? 0) + 1,
+				calendar,
+			});
+		}
+		await ctx.db.patch("learningPlans", plan._id, {
+			topicReadiness: effectiveTopicReadiness,
+			adaptationRevision: (plan.adaptationRevision ?? 0) + 1,
+			updatedAt: Date.now(),
+		});
+		return {
+			committedSessionId: next._id,
+			provisionalSessionId: remaining[1]?._id ?? null,
+		};
+	}
 	const provisionalSessions = sessions.filter(
 		(session) =>
 			session.planningStatus === "provisional" &&

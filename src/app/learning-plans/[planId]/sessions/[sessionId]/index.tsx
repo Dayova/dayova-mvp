@@ -599,7 +599,15 @@ export default function LearningSessionContentScreen() {
 					},
 				);
 			}
-			const destination = getLearningSessionCompletionDestination(planId);
+			const destination =
+				content?.session.sessionPurpose === "diagnostic" &&
+				content.plan.preparationState &&
+				planId
+					? {
+							pathname: "/learning-plans/[planId]/preparation" as const,
+							params: { planId },
+						}
+					: getLearningSessionCompletionDestination(planId);
 			if (openLearningTimes) {
 				setIsLearningTimeEditorOpen(true);
 			} else {
