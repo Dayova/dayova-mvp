@@ -107,3 +107,14 @@ describe("IntroLearningPathArtwork", () => {
 		expect(artwork).toHaveStyle({ width: 250, height: 168 });
 	});
 });
+
+jest.mock("~/lib/theme", () => ({
+	useDayovaTheme: () => ({
+		isDark: false,
+		colors: (
+			jest.requireActual(
+				"~/lib/design-system",
+			) as typeof import("~/lib/design-system")
+		).DAYOVA_DESIGN_SYSTEM.colors,
+	}),
+}));

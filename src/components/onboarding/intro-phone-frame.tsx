@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { View } from "react-native";
+import { useDayovaTheme } from "~/lib/theme";
 
-/** Decorative device chrome. Children remain real product presentation modules. */
+/** Decorative hardware, matched to the supplied light/dark device reference. */
 export function IntroPhoneFrame({
 	children,
 	width,
@@ -13,7 +14,11 @@ export function IntroPhoneFrame({
 	height: number;
 	testID: string;
 }) {
-	const scale = Math.min(width / 345, height / 550);
+	const { isDark, colors } = useDayovaTheme();
+	const scale = Math.min(width / 365, height / 550);
+	// Hardware finishes are illustration colors, not new product surface tokens.
+	const shell = isDark ? "#1D1D1F" : "#F2F2F5";
+	const screen = isDark ? "#000000" : "#FFFFFF";
 	return (
 		<View
 			testID={testID}
@@ -22,21 +27,36 @@ export function IntroPhoneFrame({
 			importantForAccessibility="no-hide-descendants"
 			pointerEvents="none"
 			className="items-center justify-center"
-			// Fit one fixed device artboard into the available native page.
+			// The fixed artboard is uniformly fitted to the native page bounds.
 			style={{ width, height }}
 		>
 			<View
-				className="h-[550px] w-[345px] rounded-[52px] border-[10px] border-muted bg-background shadow-black/5 shadow-sm"
-				// Scale the entire device, including its decorative text, uniformly.
-				style={{ transform: [{ scale }] }}
+				className="h-[550px] w-[365px] overflow-hidden rounded-t-[60px]"
+				// Theme-aware hardware fill and responsive artboard scale.
+				style={{
+					backgroundColor: shell,
+					experimental_backgroundImage: `linear-gradient(to bottom, ${shell} 20%, ${colors.background} 100%)`,
+					transform: [{ scale }],
+				}}
 			>
-				<View className="absolute top-3 h-6 w-24 flex-row items-center justify-end self-center rounded-full bg-muted px-2">
+				<View
+					className="absolute inset-x-4 top-4 bottom-0 rounded-t-[44px]"
+					// The reference uses a white/black device screen in each theme.
+					style={{
+						backgroundColor: screen,
+						experimental_backgroundImage: `linear-gradient(155deg, ${screen} 20%, ${colors.background} 100%)`,
+					}}
+				/>
+				<View
+					className="absolute top-6 h-7 w-24 flex-row items-center justify-end self-center rounded-full px-2"
+					// The island shares the device finish rather than a product control color.
+					style={{ backgroundColor: shell }}
+				>
 					<View className="h-2 w-2 rounded-full bg-border" />
 				</View>
-				<View className="flex-1 overflow-hidden rounded-[40px] px-4 pt-14 pb-6">
+				<View className="flex-1 overflow-hidden px-8 pt-16 pb-6">
 					{children}
 				</View>
-				<View className="absolute bottom-2 h-1 w-24 self-center rounded-full bg-border" />
 			</View>
 		</View>
 	);

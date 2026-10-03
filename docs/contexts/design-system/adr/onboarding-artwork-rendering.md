@@ -57,7 +57,9 @@ composition as the opening graphic and explicitly requested this direction.
 
 The three feature explanations use a shared decorative `IntroPhoneFrame`
 inspired by the provided light/dark device reference. The frame owns device
-chrome and uniform scaling, while the screen content uses real presentation
+chrome (soft top corners, white/black screen, subtle camera island and a
+diagonal fade into the page, without a bottom bezel) and uniform scaling,
+while the screen content uses real presentation
 modules. The calendar shows a real week with two example events. The upload
 preview shows the actual upload lead and card without the former extra panel.
 The learning path includes the shared adaptive continuation and exam card.
