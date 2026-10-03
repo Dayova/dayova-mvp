@@ -78,16 +78,14 @@ export function PreparationSlotEditor({
 					<View className="gap-3">
 						<View className="flex-row gap-3">
 							<Button
-								variant="cancel"
+								variant={onRemove ? "destructive-outline" : "cancel"}
 								className="flex-1"
 								onPress={() => {
 									onRemove?.();
 									close();
 								}}
 							>
-								<Text className={onRemove ? "text-destructive" : undefined}>
-									{onRemove ? "Entfernen" : "Abbrechen"}
-								</Text>
+								<Text>{onRemove ? "Entfernen" : "Abbrechen"}</Text>
 							</Button>
 							<Button
 								className="flex-1"
