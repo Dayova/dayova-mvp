@@ -1188,14 +1188,20 @@ function IntroPageContent({
 						/>
 					) : null}
 					{item.illustration === "calendar" ? (
-						<IntroCalendarArtwork width={artworkWidth} height={artworkHeight} />
+						<IntroCalendarArtwork
+							width={artworkWidth - 24}
+							height={artworkHeight}
+						/>
 					) : null}
 					{item.illustration === "upload" ? (
-						<IntroUploadArtwork width={artworkWidth} height={artworkHeight} />
+						<IntroUploadArtwork
+							width={artworkWidth - 24}
+							height={artworkHeight}
+						/>
 					) : null}
 					{item.illustration === "path" ? (
 						<IntroLearningPathArtwork
-							width={artworkWidth}
+							width={artworkWidth - 24}
 							height={artworkHeight}
 						/>
 					) : null}

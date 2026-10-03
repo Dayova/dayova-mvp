@@ -125,6 +125,6 @@ adaptation. A future replacement must still share its product presentation
 module and must include fresh native evidence; a copied card, Figma export, or
 onboarding-only SVG is not a valid reversal.
 
-The intro device uses a wider 460 × 550 illustration artboard and the full
-available artwork width. This gives embedded product content more horizontal
-room while preserving uniform scaling, the page copy, and the primary action.
+The intro device retains the reference's slim 365 × 550 artboard. Its product
+content keeps its original layout width and is uniformly inset to leave 24px
+between the content and the inner screen edge, rather than widening the phone.

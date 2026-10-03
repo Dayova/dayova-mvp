@@ -15,7 +15,7 @@ export function IntroPhoneFrame({
 	testID: string;
 }) {
 	const { isDark, colors } = useDayovaTheme();
-	const scale = Math.min(width / 460, height / 550);
+	const scale = Math.min(width / 365, height / 550);
 	// Hardware finishes are illustration colors, not new product surface tokens.
 	const shell = isDark ? "#1D1D1F" : "#F2F2F5";
 	const screen = isDark ? "#000000" : "#FFFFFF";
@@ -31,7 +31,7 @@ export function IntroPhoneFrame({
 			style={{ width, height }}
 		>
 			<View
-				className="h-[550px] w-[460px] overflow-hidden rounded-t-[60px]"
+				className="h-[550px] w-[365px] overflow-hidden rounded-t-[60px]"
 				// Theme-aware hardware fill and responsive artboard scale.
 				style={{
 					backgroundColor: shell,
@@ -54,8 +54,17 @@ export function IntroPhoneFrame({
 				>
 					<View className="h-2 w-2 rounded-full bg-border" />
 				</View>
-				<View className="flex-1 overflow-hidden px-8 pt-16 pb-6">
-					{children}
+				<View className="flex-1 items-center overflow-hidden px-10 pt-16 pb-6">
+					<View
+						className="w-[301px]"
+						// Preserve the product layout while adding breathing room inside the device.
+						style={{
+							transform: [{ scale: 285 / 301 }],
+							transformOrigin: "top center",
+						}}
+					>
+						{children}
+					</View>
 				</View>
 			</View>
 		</View>
