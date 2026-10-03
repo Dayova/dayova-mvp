@@ -242,3 +242,10 @@ component: path 2 background (`#D7DCE3`) with path 3 icon (`#8A8D92`).
 - Use NativeWind for static app UI. Follow the rendering-choice matrix in
   `docs/styling.md` when deciding between NativeWind, RN geometry styles, SVGs,
   and native artwork modules.
+
+The Settings subscription card sits directly below the profile and above support.
+Paid and billing-grace access use the `subscription` gradient (`#0069B8` to
+`#004A91`) with white text and icons in both themes. These darker blues retain
+at least 5.6:1 contrast for white copy. This is a subscription-status card, not
+a new button appearance. Trial access keeps a neutral card labeled
+“Dayova jetzt abonnieren”; its label wraps rather than truncating.

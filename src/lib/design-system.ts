@@ -56,6 +56,11 @@ export const DAYOVA_DESIGN_SYSTEM = {
 		uploadArtworkShadow: "#8896C8",
 	},
 	gradients: {
+		subscription: {
+			colors: ["#0069B8", "#004A91"],
+			start: { x: 0, y: 0 },
+			end: { x: 1, y: 1 },
+		},
 		primaryInteractive: {
 			colors: ["#00A0E6", "#4FD8FF"],
 			start: { x: 0.5, y: 0 },

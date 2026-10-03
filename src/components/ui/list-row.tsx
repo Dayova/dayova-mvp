@@ -10,7 +10,8 @@ type ListRowProps = React.ComponentProps<typeof ActionSurface> & {
 	label: string;
 	description?: string;
 	trailing?: ReactNode;
-	tone?: "default" | "destructive";
+	tone?: "default" | "destructive" | "inverse";
+	multiline?: boolean;
 };
 
 function ListRow({
@@ -20,6 +21,7 @@ function ListRow({
 	label,
 	trailing,
 	tone = "default",
+	multiline = false,
 	...props
 }: ListRowProps) {
 	const isInteractive = typeof props.onPress === "function";
@@ -55,7 +57,8 @@ function ListRow({
 				{icon ? (
 					<View
 						className={cn(
-							"h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted",
+							"h-11 w-11 shrink-0 items-center justify-center rounded-full",
+							tone === "inverse" ? "bg-black/10" : "bg-muted",
 							shouldStackInlineContent ? "mb-3" : "mr-3",
 						)}
 					>
@@ -71,15 +74,24 @@ function ListRow({
 					<Text
 						className={cn(
 							"font-poppins font-semibold text-body-2",
-							tone === "destructive" ? "text-destructive" : "text-text",
+							tone === "inverse"
+								? "text-white"
+								: tone === "destructive"
+									? "text-destructive"
+									: "text-text",
 						)}
-						numberOfLines={shouldStackInlineContent ? undefined : 1}
+						numberOfLines={
+							shouldStackInlineContent || multiline ? undefined : 1
+						}
 					>
 						{label}
 					</Text>
 					{description ? (
 						<Text
-							className="mt-1 font-poppins text-body-4 text-text/50"
+							className={cn(
+								"mt-1 font-poppins text-body-4",
+								tone === "inverse" ? "text-white" : "text-text/50",
+							)}
 							numberOfLines={shouldStackInlineContent ? undefined : 2}
 						>
 							{description}

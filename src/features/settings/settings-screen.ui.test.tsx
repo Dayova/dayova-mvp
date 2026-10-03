@@ -158,7 +158,7 @@ describe("SettingsScreen", () => {
 		mockOpenAiConsentSettings.mockReset();
 	});
 
-	test("prioritizes profile and support and keeps legal destinations last", async () => {
+	test("prioritizes profile, subscription, and support and keeps legal destinations last", async () => {
 		const screen = await render(<SettingsScreen />);
 		expect(screen.getByRole("header", { name: "Lernen" })).toBeOnTheScreen();
 		expect(screen.getByRole("header", { name: "App" })).toBeOnTheScreen();
@@ -171,8 +171,9 @@ describe("SettingsScreen", () => {
 		expect(screen.getByText("Nicht aktiv")).toBeOnTheScreen();
 		expect(screen.getByText("Test Person")).toBeOnTheScreen();
 		expect(screen.getByText("Profil & Konto")).toBeOnTheScreen();
-		expect(screen.getAllByRole("button").slice(0, 2)).toEqual([
+		expect(screen.getAllByRole("button").slice(0, 3)).toEqual([
 			screen.getByRole("button", { name: "Test Person, Profil & Konto" }),
+			screen.getByRole("button", { name: "Dayova jetzt abonnieren" }),
 			screen.getByRole("button", { name: "Support kontaktieren" }),
 		]);
 		expect(
@@ -226,7 +227,7 @@ describe("SettingsScreen", () => {
 	test("lets trial users subscribe and keeps privacy available in settings", async () => {
 		const screen = await render(<SettingsScreen />);
 		await fireEvent.press(
-			screen.getByRole("button", { name: "Dayova abonnieren" }),
+			screen.getByRole("button", { name: "Dayova jetzt abonnieren" }),
 		);
 		expect(mockPush).toHaveBeenCalledWith("/subscription");
 		await fireEvent.press(screen.getByRole("button", { name: "Datenschutz" }));
