@@ -182,8 +182,10 @@ acknowledges a real transition without becoming recurring friction.
 ### Personal-subject action appearance
 
 Exam-type and subject selection share `SelectionOptionRow`: identical card
-geometry, icon treatment, radio checked semantics and cyan check indicator with
-`onPrimary` contrast. The subject catalog is one continuous list, without a
+geometry, icon treatment, radio checked semantics and a primary-gradient check
+indicator with a white check, as specified in the
+[selection color decision](adr/answer-selection-colors.md). The subject catalog
+is one continuous list, without a
 separate personal-subject heading. Adding a subject always saves it for reuse;
 there is no permanent-versus-one-time choice or extra confirmation step.
 Existing built-in/personal matches are reused; timetable-only or legacy one-time
