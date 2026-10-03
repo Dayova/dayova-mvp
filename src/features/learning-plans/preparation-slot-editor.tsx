@@ -9,6 +9,7 @@ import {
 import { Button } from "~/components/ui/button";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
+import { DurationPickerSheet } from "~/components/ui/duration-picker-sheet";
 import { Text } from "~/components/ui/text";
 import { LEARNING_DAYS } from "~/features/learning-times/learning-time-days";
 import { LearningTimeEditorFields } from "~/features/learning-times/learning-time-editor-fields";
@@ -29,14 +30,16 @@ export function PreparationSlotEditor({
 }) {
 	const [draft, setDraft] = useState(slot);
 	const [visible, setVisible] = useState(true);
-	const [picker, setPicker] = useState<"date" | "time" | "end" | null>(null);
-	const pending = useRef<"date" | "time" | "end" | null>(null);
+	const [picker, setPicker] = useState<"date" | "time" | "duration" | null>(
+		null,
+	);
+	const pending = useRef<"date" | "time" | "duration" | null>(null);
 	const closing = useRef(false);
 	const close = () => {
 		closing.current = true;
 		setVisible(false);
 	};
-	const open = (target: "date" | "time" | "end") => {
+	const open = (target: "date" | "time" | "duration") => {
 		pending.current = target;
 		setVisible(false);
 	};
@@ -45,9 +48,7 @@ export function PreparationSlotEditor({
 		draft.durationMinutes >= 5 &&
 		draft.durationMinutes <= 240 &&
 		draft.durationMinutes % 5 === 0;
-	const pickerDate = new Date(
-		`${draft.dateKey}T${picker === "end" ? timeLabel((timeMinutes(draft.startTime) ?? 0) + draft.durationMinutes) : draft.startTime}:00`,
-	);
+	const pickerDate = new Date(`${draft.dateKey}T${draft.startTime}:00`);
 	return (
 		<>
 			<DayovaSheetFrame
@@ -139,9 +140,8 @@ export function PreparationSlotEditor({
 									].label
 								}
 								startTime={draft.startTime}
-								endTime={timeLabel(
-									(timeMinutes(draft.startTime) ?? 0) + draft.durationMinutes,
-								)}
+								endLabel="Lerndauer"
+								endTime={`${draft.durationMinutes} Min.`}
 								onDayChange={(day) => {
 									const date = new Date(`${draft.dateKey}T12:00:00Z`);
 									const selected =
@@ -155,8 +155,15 @@ export function PreparationSlotEditor({
 									});
 								}}
 								onStartTimePress={() => open("time")}
-								onEndTimePress={() => open("end")}
+								onEndTimePress={() => open("duration")}
 							/>
+							<Text className="text-body-4 text-secondary-text">
+								Ende{" "}
+								{timeLabel(
+									(timeMinutes(draft.startTime) ?? 0) + draft.durationMinutes,
+								)}{" "}
+								Uhr
+							</Text>
 						</>
 					)}
 
@@ -169,7 +176,7 @@ export function PreparationSlotEditor({
 				</View>
 			</DayovaSheetFrame>
 			<DateTimePickerSheet
-				visible={picker !== null}
+				visible={picker === "date" || picker === "time"}
 				mode={picker === "date" ? "date" : "time"}
 				display="spinner"
 				value={pickerDate}
@@ -191,16 +198,7 @@ export function PreparationSlotEditor({
 									dateKey: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`,
 								}
 							: {
-									...(picker === "end"
-										? {
-												durationMinutes:
-													date.getHours() * 60 +
-													date.getMinutes() -
-													(timeMinutes(draft.startTime) ?? 0),
-											}
-										: {
-												startTime: `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`,
-											}),
+									startTime: `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`,
 								}),
 					});
 				}}
@@ -209,6 +207,18 @@ export function PreparationSlotEditor({
 					setVisible(true);
 				}}
 			/>
+			{picker === "duration" ? (
+				<DurationPickerSheet
+					value={draft.durationMinutes}
+					onConfirm={(durationMinutes) =>
+						setDraft({ ...draft, durationMinutes })
+					}
+					onDismiss={() => {
+						setPicker(null);
+						setVisible(true);
+					}}
+				/>
+			) : null}
 		</>
 	);
 }

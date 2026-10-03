@@ -242,3 +242,14 @@ component: path 2 background (`#D7DCE3`) with path 3 icon (`#8A8D92`).
 - Use NativeWind for static app UI. Follow the rendering-choice matrix in
   `docs/styling.md` when deciding between NativeWind, RN geometry styles, SVGs,
   and native artwork modules.
+
+### Duration input
+
+`DurationPickerSheet` is the app-owned adapter for elapsed learning time. It uses
+universal Expo UI Picker columns: native hour/minute wheels on iOS, platform
+menus on Android/web. It does not interpret durations as clock times, dates or
+AM/PM. Learning-plan editors use 5-minute increments from 5 to 240 minutes;
+invalid combinations cannot be confirmed. Selection is staged until Übernehmen;
+closing discards it. Present it after the editor dismisses and return only after
+the duration sheet dismisses. Native picker geometry/theme is owned here; app
+screens must not import the platform picker directly.

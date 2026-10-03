@@ -1,7 +1,18 @@
 import { beforeEach, expect, jest, test } from "@jest/globals";
-import { fireEvent, render } from "@testing-library/react-native";
+import { act, fireEvent, render } from "@testing-library/react-native";
 import { PreparationSlotEditor } from "./preparation-slot-editor";
 
+let mockDuration: {
+	value: number;
+	onConfirm: (minutes: number) => void;
+	onDismiss: () => void;
+};
+jest.mock("~/components/ui/duration-picker-sheet", () => ({
+	DurationPickerSheet: (props: typeof mockDuration) => {
+		mockDuration = props;
+		return null;
+	},
+}));
 const mockSave = jest.fn<(...args: unknown[]) => Promise<void>>();
 jest.mock("~/lib/theme", () => ({
 	useDayovaTheme: () => ({
@@ -70,7 +81,7 @@ jest.mock("~/components/ui/date-time-picker-sheet", () => ({
 beforeEach(() => {
 	mockSave.mockReset();
 });
-test("uses weekday circles and begin/end fields without a separate duration selector", async () => {
+test("uses weekday circles and begin/end fields with a duration wheel instead of an end-time picker", async () => {
 	const save = jest.fn();
 	const screen = await render(
 		<PreparationSlotEditor
@@ -90,7 +101,9 @@ test("uses weekday circles and begin/end fields without a separate duration sele
 	expect(
 		screen.getByRole("button", { name: "Beginn: 17:00" }),
 	).toBeOnTheScreen();
-	expect(screen.getByRole("button", { name: "Ende: 17:30" })).toBeOnTheScreen();
+	expect(
+		screen.getByRole("button", { name: "Lerndauer: 30 Min." }),
+	).toBeOnTheScreen();
 	expect(screen.queryByText("Dauer")).toBeNull();
 	expect(screen.queryByText(/Minuten ·/)).toBeNull();
 	await fireEvent.press(screen.getByRole("radio", { name: "Mittwoch" }));
@@ -101,4 +114,34 @@ test("uses weekday circles and begin/end fields without a separate duration sele
 		startTime: "17:00",
 		durationMinutes: 30,
 	});
+});
+
+test("duration confirmation updates the end while keeping the start", async () => {
+	const screen = await render(
+		<PreparationSlotEditor
+			slot={{
+				id: "slot",
+				dateKey: "2026-11-08",
+				startTime: "17:00",
+				durationMinutes: 30,
+			}}
+			examDateKey="2026-12-31"
+			onSave={jest.fn()}
+			onClose={jest.fn()}
+		/>,
+	);
+	await fireEvent.press(
+		screen.getByRole("button", { name: "Lerndauer: 30 Min." }),
+	);
+	await act(async () => {
+		mockDuration.onConfirm(90);
+		mockDuration.onDismiss();
+	});
+	expect(
+		screen.getByRole("button", { name: "Lerndauer: 90 Min." }),
+	).toBeOnTheScreen();
+	expect(
+		screen.getByRole("button", { name: "Beginn: 17:00" }),
+	).toBeOnTheScreen();
+	expect(screen.getByText("Ende 18:30 Uhr")).toBeOnTheScreen();
 });

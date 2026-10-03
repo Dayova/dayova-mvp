@@ -47,6 +47,7 @@ function TimeControl({ label, value, onPress }: TimeControlProps) {
 type LearningTimeEditorFieldsProps = {
 	selectedDay: LearningDayLabel;
 	outlinedDays?: boolean;
+	endLabel?: string;
 	startTime: string;
 	endTime: string;
 	onDayChange: (day: LearningDayLabel) => void;
@@ -57,6 +58,7 @@ type LearningTimeEditorFieldsProps = {
 function LearningTimeEditorFields({
 	selectedDay,
 	outlinedDays = false,
+	endLabel = "Ende",
 	startTime,
 	endTime,
 	onDayChange,
@@ -129,7 +131,11 @@ function LearningTimeEditorFields({
 					value={startTime}
 					onPress={onStartTimePress}
 				/>
-				<TimeControl label="Ende" value={endTime} onPress={onEndTimePress} />
+				<TimeControl
+					label={endLabel}
+					value={endTime}
+					onPress={onEndTimePress}
+				/>
 			</View>
 		</>
 	);
