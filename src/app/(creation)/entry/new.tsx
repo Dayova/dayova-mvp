@@ -24,8 +24,8 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import {
 	ExamDateSelector,
+	ExamSubjectPicker,
 	ExamTypePicker,
-	SingleSelectOption,
 } from "~/components/entry/exam-flow";
 import { BackButton, Button } from "~/components/ui/button";
 import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
@@ -37,37 +37,19 @@ import {
 	FieldLabel,
 	FieldTrigger,
 } from "~/components/ui/field";
-import {
-	BookOpen,
-	Calculator,
-	CalendarDays,
-	Chemistry,
-	ChevronDown,
-	Clock3,
-	Code,
-	Dna,
-	Earth,
-	Football,
-	Language,
-	Maps,
-	Mic,
-	MusicNote,
-	PaintBrush,
-	Pencil,
-	TimeManagement,
-} from "~/components/ui/icon";
+import { CalendarDays, ChevronDown, Clock3 } from "~/components/ui/icon";
 import { shouldUseKeyboardStickyActions } from "~/components/ui/keyboard-safe-scroll";
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
-import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { useAuthSession } from "~/context/AuthContext";
 import { getExamEntryCreationProgress } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { getErrorMessage } from "~/features/learning-plans/utils";
+import { SubjectPickerSheet } from "~/features/subjects/subject-picker";
+import type { SubjectSelection } from "~/features/subjects/use-subject-options";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { getDayKey, parseDayKey, startOfLocalDay } from "~/lib/day-key";
-import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { EXAM_TYPE_OPTIONS } from "~/lib/entry-options";
 import {
 	constrainEndTimeForStart,
@@ -92,44 +74,11 @@ type PickerTarget =
 	| "plannedEndTime";
 type SelectTarget = "subject";
 
-const SUBJECT_OPTIONS = [
-	"Mathematik",
-	"Deutsch",
-	"Englisch",
-	"Biologie",
-	"Chemie",
-	"Physik",
-	"Geschichte",
-	"Erdkunde",
-	"Sozialkunde",
-	"Informatik",
-	"Kunst",
-	"Musik",
-	"Sport",
-];
-
 const KEYBOARD_DISMISS_FALLBACK_MS = 280;
-const SELECTED_OPTION_ICON_COLOR = DAYOVA_DESIGN_SYSTEM.colors.primary;
 const EXAM_DURATION_OPTIONS = {
 	minimumMinutes: MIN_EXAM_DURATION_MINUTES,
 	maximumMinutes: MAX_EXAM_DURATION_MINUTES,
 } as const;
-
-const subjectIconByOption = {
-	Mathematik: Calculator,
-	Deutsch: Pencil,
-	Englisch: Language,
-	Biologie: Dna,
-	Chemie: Chemistry,
-	Physik: Earth,
-	Geschichte: TimeManagement,
-	Erdkunde: Maps,
-	Sozialkunde: Mic,
-	Informatik: Code,
-	Kunst: PaintBrush,
-	Musik: MusicNote,
-	Sport: Football,
-} satisfies Record<(typeof SUBJECT_OPTIONS)[number], typeof BookOpen>;
 
 const parseDateKey = (value?: string) => {
 	return parseDayKey(value) ?? startOfLocalDay(new Date());
@@ -278,6 +227,8 @@ export default function NewEntryScreen() {
 		dayLabel?: string;
 		step?: string;
 		subject?: string;
+		personalSubjectId?: string;
+		subjectIsOneTime?: string;
 		examTypeLabel?: string;
 		examDayEntryId?: string;
 		durationMinutes?: string;
@@ -299,6 +250,12 @@ export default function NewEntryScreen() {
 			: "examType";
 	});
 	const [subject, setSubject] = useState(params.subject ?? "");
+	const [personalSubjectId, setPersonalSubjectId] = useState<
+		Id<"personalSubjects"> | undefined
+	>(() => params.personalSubjectId as Id<"personalSubjects"> | undefined);
+	const [subjectIsOneTime, setSubjectIsOneTime] = useState(
+		params.subjectIsOneTime === "true",
+	);
 	const [examTypeLabel, setExamTypeLabel] = useState(
 		params.examTypeLabel ?? "",
 	);
@@ -341,6 +298,16 @@ export default function NewEntryScreen() {
 	const entryCreationGateRef = useRef(createAsyncActionGate());
 
 	const trimmedSubject = subject.trim();
+	const subjectSelection: SubjectSelection = {
+		name: subject,
+		...(personalSubjectId ? { personalSubjectId } : {}),
+		...(subjectIsOneTime ? { isOneTime: true } : {}),
+	};
+	const selectSubject = (selection: SubjectSelection) => {
+		setSubject(selection.name);
+		setPersonalSubjectId(selection.personalSubjectId);
+		setSubjectIsOneTime(selection.isOneTime === true);
+	};
 	const trimmedExamType = examTypeLabel.trim();
 	const selectedExamType = EXAM_TYPE_OPTIONS.find(
 		(examType) => examType === trimmedExamType,
@@ -495,6 +462,8 @@ export default function NewEntryScreen() {
 				dayKey: nextDayKey,
 				title: entryTitle,
 				subject: trimmedSubject,
+				...(personalSubjectId ? { personalSubjectId } : {}),
+				...(subjectIsOneTime ? { subjectIsOneTime: true } : {}),
 				kind: isHomework ? "Hausaufgabe" : "Leistungskontrolle",
 				...(trimmedNote ? { notes: trimmedNote } : {}),
 				...(isHomework
@@ -514,6 +483,8 @@ export default function NewEntryScreen() {
 					id: savedExamId,
 					dayKey: nextDayKey,
 					subject: trimmedSubject,
+					personalSubjectId: personalSubjectId ?? null,
+					subjectIsOneTime,
 					examTypeLabel: trimmedExamType,
 					plannedDateLabel: formatDate(plannedDate),
 					durationMinutes: resolvedDurationMinutes,
@@ -600,6 +571,10 @@ export default function NewEntryScreen() {
 					["fromExamEntry", "true"],
 					["examDayEntryId", createdExam.createdEntryId],
 					["subject", trimmedSubject],
+					...(personalSubjectId
+						? [["personalSubjectId", personalSubjectId] as const]
+						: []),
+					...(subjectIsOneTime ? [["subjectIsOneTime", "true"] as const] : []),
 					["examTypeLabel", trimmedExamType],
 					["examDateKey", getDayKey(plannedDate)],
 					["examDateLabel", formatDate(plannedDate)],
@@ -654,11 +629,11 @@ export default function NewEntryScreen() {
 		}
 
 		if (step === "examType") {
-			goBackOrReplace(router, "/home");
+			goBackOrReplace(router, ROUTES.home);
 			return true;
 		}
 
-		goBackOrReplace(router, "/home");
+		goBackOrReplace(router, ROUTES.home);
 		return true;
 	}, [goToStep, isHomework, pickerTarget, router, selectTarget, step]);
 
@@ -734,26 +709,11 @@ export default function NewEntryScreen() {
 		if (!selectTarget) return null;
 
 		return (
-			<SelectSheet
+			<SubjectPickerSheet
 				visible
-				title="Schulfach auswählen"
-				options={SUBJECT_OPTIONS}
-				selectedValue={subject}
+				selected={subjectSelection}
 				onClose={closeSelect}
-				onSelect={setSubject}
-				renderOptionIcon={(option, isSelected) => {
-					const SubjectIcon =
-						subjectIconByOption[option as keyof typeof subjectIconByOption] ??
-						BookOpen;
-
-					return (
-						<SubjectIcon
-							size={19}
-							color={isSelected ? SELECTED_OPTION_ICON_COLOR : fieldIconColor}
-							strokeWidth={2}
-						/>
-					);
-				}}
+				onSelect={selectSubject}
 			/>
 		);
 	};
@@ -916,24 +876,10 @@ export default function NewEntryScreen() {
 									onSelect={setExamTypeLabel}
 								/>
 							) : (
-								<View className="gap-3" accessibilityRole="radiogroup">
-									{SUBJECT_OPTIONS.map((option) => {
-										const SubjectIcon =
-											subjectIconByOption[
-												option as keyof typeof subjectIconByOption
-											] ?? BookOpen;
-
-										return (
-											<SingleSelectOption
-												key={option}
-												Icon={SubjectIcon}
-												label={option}
-												selected={subject === option}
-												onPress={() => setSubject(option)}
-											/>
-										);
-									})}
-								</View>
+								<ExamSubjectPicker
+									selectedValue={subjectSelection}
+									onSelect={selectSubject}
+								/>
 							)}
 						</Animated.View>
 					</>

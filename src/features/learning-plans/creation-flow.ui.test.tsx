@@ -23,6 +23,9 @@ let mockSnapshot:
 let mockPauseVisible = false;
 jest.mock("convex/react", () => ({
 	useConvexAuth: () => ({ isAuthenticated: true }),
+	useQueries: () => ({
+		subjects: { personal: [], reusableTimetableSubjects: [] },
+	}),
 	useConvex: () => ({ query: async () => mockAvailability }),
 	useQuery: (_reference: unknown, args: unknown) =>
 		args === "skip"
@@ -109,6 +112,9 @@ jest.mock("~/components/ui/date-time-picker-sheet", () => ({
 	DateTimePickerSheet: () => null,
 }));
 jest.mock("~/components/ui/select-sheet", () => ({ SelectSheet: () => null }));
+jest.mock("~/components/ui/dayova-sheet-frame", () => ({
+	DayovaSheetFrame: () => null,
+}));
 jest.mock("~/components/ui/icon", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
 	const Icon = (props: Record<string, unknown>) =>
@@ -190,6 +196,25 @@ describe("exam creation across the topics boundary", () => {
 		});
 		expect(mockCreateEntry).toHaveBeenCalledTimes(1);
 		expect(mockUpdateEntry).toHaveBeenCalledTimes(1);
+		await screen.unmount();
+	});
+
+	test("preserves a one-time subject across the learning-plan boundary", async () => {
+		mockParams.subject = "Debattieren";
+		mockParams.subjectIsOneTime = "true";
+		let screen = await render(<NewEntryScreen />);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(followReplacement()).toBe("/learning-plans/new");
+		expect(mockParams.subjectIsOneTime).toBe("true");
+		await screen.unmount();
+
+		screen = await render(<NewLearningPlanScreen />);
+		await act(() => mockProgress.onBack());
+		expect(followReplacement()).toBe("/entry/new");
+		expect(mockParams).toMatchObject({
+			subject: "Debattieren",
+			subjectIsOneTime: "true",
+		});
 		await screen.unmount();
 	});
 

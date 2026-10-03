@@ -23,6 +23,9 @@ const buttonVariants = cva(
 	{
 		variants: {
 			variant: {
+				cancel: "border border-border bg-card active:bg-muted",
+				"destructive-outline":
+					"border border-danger-action bg-danger-subtle active:opacity-80",
 				default: cn(
 					"border-hairline border-white bg-primary active:opacity-90",
 					Platform.select({ web: "hover:opacity-90" }),
@@ -82,6 +85,8 @@ const buttonTextVariants = cva(
 	{
 		variants: {
 			variant: {
+				cancel: "text-text",
+				"destructive-outline": "text-danger-action",
 				default: "text-white",
 				neutral: "text-background",
 				destructive: "text-background",

@@ -11,6 +11,7 @@ import {
 import { deleteSessionLearningDataForSession } from "./learningSessionContent";
 import { getPlanningLearningTimes } from "./learningTimePlanning";
 import { normalizeLearningTopics } from "./learningTopicMap";
+import { deleteDayEntryWithPersonalSubjectReference } from "./personalSubjectReferences";
 import { getScheduleConflictMessage } from "./scheduleConflicts";
 
 const PAIRED_THEORY_QUESTION_SUFFIX = ":paired-practice";
@@ -315,7 +316,7 @@ const removeRollingSession = async (
 	if (session.dayEntryId) {
 		const dayEntry = await ctx.db.get("dayEntries", session.dayEntryId);
 		if (dayEntry?.ownerTokenIdentifier === session.ownerTokenIdentifier) {
-			await ctx.db.delete("dayEntries", session.dayEntryId);
+			await deleteDayEntryWithPersonalSubjectReference(ctx, session.dayEntryId);
 		}
 	}
 	await ctx.db.delete("learningPlanSessions", session._id);
