@@ -124,3 +124,7 @@ Learning Path, or if its learner job changes from explaining sequence and
 adaptation. A future replacement must still share its product presentation
 module and must include fresh native evidence; a copied card, Figma export, or
 onboarding-only SVG is not a valid reversal.
+
+The intro device uses a wider 460 × 550 illustration artboard and the full
+available artwork width. This gives embedded product content more horizontal
+room while preserving uniform scaling, the page copy, and the primary action.

@@ -50,7 +50,7 @@ export function IntroLearningPathArtwork({
 			<LearningPathVisual
 				mode="artwork"
 				nodes={learningPathPreview}
-				width={293}
+				width={396}
 				height={430}
 				continuation={{
 					examDateLabel: "Freitag, 30. Oktober",
