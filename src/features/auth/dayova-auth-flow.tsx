@@ -180,7 +180,7 @@ const INTRO_STEPS = [
 		kind: "intro",
 		id: "intro-calendar",
 		eyebrow: "01 · DEINE LERNZEITEN",
-		title: "Deine Zeit.\nDeine Lernroutine.",
+		title: "Lernzeiten festlegen.",
 		description:
 			"Sag Dayova, wann du Zeit hast. Dein Lernplan passt in deinen Alltag – mit festen Lernzeiten, die dir beim Dranbleiben helfen.",
 		illustration: "calendar",
@@ -189,7 +189,7 @@ const INTRO_STEPS = [
 		kind: "intro",
 		id: "intro-upload",
 		eyebrow: "02 · DEIN SCHULMATERIAL",
-		title: "Dein Stoff.\nDeine Grundlage.",
+		title: "Schulmaterial hochladen.",
 		description:
 			"Fotografiere deine Mitschriften oder lade Arbeitsblätter hoch. So lernst du mit dem Stoff, der für deine Prüfung zählt.",
 		illustration: "upload",
@@ -198,7 +198,7 @@ const INTRO_STEPS = [
 		kind: "intro",
 		id: "intro-path",
 		eyebrow: "03 · DEIN LERNPLAN",
-		title: "Dein Lernplan.\nSchon eingeplant.",
+		title: "Lernplan erstellen lassen.",
 		description:
 			"Dayova macht aus deinem Stoff einen Lernplan – passend zu deinen Lernzeiten. Du weißt, was du wann lernst.",
 		illustration: "path",
