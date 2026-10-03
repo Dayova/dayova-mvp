@@ -2,7 +2,7 @@ export const DAYOVA_DESIGN_SYSTEM = {
 	brand: {
 		attributes: ["structured", "clear", "trustworthy", "supportive", "calm"],
 		direction:
-			"Modern EdTech look with solid colors, bold systems, quiet hierarchy, and at most one gradient per view.",
+			"Modern EdTech look with solid colors, bold systems, quiet hierarchy, and primary action gradients and a contrast-safe blue gradient for selected indicators.",
 	},
 	colors: {
 		primary: "#00BAFF",
@@ -56,6 +56,11 @@ export const DAYOVA_DESIGN_SYSTEM = {
 		uploadArtworkShadow: "#8896C8",
 	},
 	gradients: {
+		selection: {
+			colors: ["#006699", "#0077AA"],
+			start: { x: 0.5, y: 0 },
+			end: { x: 0.5, y: 1 },
+		},
 		primaryInteractive: {
 			colors: ["#00A0E6", "#4FD8FF"],
 			start: { x: 0.5, y: 0 },
