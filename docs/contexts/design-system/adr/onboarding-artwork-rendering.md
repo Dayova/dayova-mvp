@@ -2,13 +2,13 @@
 
 - Status: Accepted
 - Date: 2026-08-14
-- Amended: 2026-08-31 (first intro restores the layered daily-guidance composition through shared dashboard cards)
+- Amended: 2026-10-03 (four headline-first pages; recurring learning-time preview)
 - Supersedes: the 2026-07-13 decision to maintain three onboarding-only
   illustration implementations
 
 ## Context
 
-The three onboarding intro pages explain Dayova through previews of learning
+The onboarding intro pages explain Dayova through previews of learning
 steps, material upload, and a generated learning plan. Those previews had become
 independent illustrations: a bespoke task/streak/reminder composition, a custom
 upload SVG, and a static path SVG. The real product screens changed while the
@@ -25,9 +25,11 @@ would not prevent the next drift.
 Onboarding product previews use the same presentation modules as the current
 product surfaces:
 
-- the first intro and the live dashboard both render the agenda-entry,
-  weekly-progress, and next-learning-step presentations from
+- the first intro and the live dashboard both render the
+  weekly-progress and next-learning-step presentations from
   `dashboard-product-cards.tsx`;
+- the learning-times preview renders a two-day excerpt of `WeeklyLearningTimes`,
+  using the same weekday cards and time ranges as the editable settings screen;
 - the material preview renders `MaterialUploadStepLead` and
   `MaterialUploadActionCard` from `learning-plan-setup-steps.tsx`;
 - the final intro preview and the real plan-detail screen both render
@@ -44,20 +46,23 @@ or exposes a dead control.
 mode. It renders the shared card and action affordance without creating a
 `Pressable`. The screen modes remain unchanged and interactive.
 
-The three small onboarding wrappers own only preview data, available artwork
+The small onboarding wrappers own only preview data, available artwork
 dimensions, and arrangement. They do not duplicate card or path structure,
 typography, semantic colors, upload copy, learning-path geometry, node icons,
 or state rules. The superseded static `intro-path.svg` and copied product-card
 implementations remain removed.
 
-The first intro's learner job is to show how Dayova turns scattered daily work
-into one clear next action. It therefore restores the stronger spatial grammar
-from the earlier Figma composition: an agenda item and weekly progress sit
-behind one dominant next-learning-step card. The onboarding wrapper owns only
-their overlap, rotation, scale, and shadow. The three cards themselves keep a
-typed screen/artwork contract in the shared dashboard module, so live mode
-remains interactive and accessibility-responsive while artwork mode is
-motion-free, bounded, and hidden from the accessibility tree.
+The first intro's learner job is to make starting feel manageable. The four
+pages now put a short, left-aligned headline and explanation before a large
+product excerpt: start, choose recurring learning times, upload material, then
+follow the scheduled learning path. The first page arranges the next-step and
+weekly-progress cards vertically, without the former rotated agenda layer.
+This reduces competing messages and makes the next action easier to read.
+The three-card overlap was considered but retained the density the user asked
+to remove. The trade-off is less dashboard breadth in exchange for a clearer
+single promise. Reconsider this arrangement if learners cannot connect the
+next action to their progress. Native captures are in
+`docs/evidence/onboarding-intro/`; the evidence README records the preview scope.
 
 The final intro's learner job is to understand that Dayova turns material into
 an ordered route, not to inspect the metadata of a single plan. Its artwork mode
@@ -67,13 +72,6 @@ connector geometry, pucks, icons, colors, and completed/current/locked rules as
 the live screen. Artwork mode is deliberately motion-free and renders Views,
 not dead Pressables; screen mode retains reduced-motion-aware breathing,
 selection, accessibility labels, and open/select behavior.
-
-For the first intro, we rejected both the three-equal-`SessionCard` stack and a
-literal restoration of the old #458 custom task/streak/reminder cards. The
-equal stack was accurate but repetitive and read as a schedule instead of a
-product promise. The copied Figma cards had the stronger hierarchy but would
-again drift from the dashboard. Sharing the current dashboard presentations
-keeps the hierarchy without restoring a parallel UI implementation.
 
 For the final intro, reusing `LearningPlanCardVisual` prevented code drift but
 communicated plan metadata and a next step instead of order and progression.

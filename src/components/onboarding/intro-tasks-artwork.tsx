@@ -5,28 +5,18 @@ import {
 	toDashboardAgendaItem,
 } from "~/features/dashboard/dashboard-agenda";
 import {
-	DashboardAgendaEntryCard,
 	DashboardNextStepCard,
 	DashboardWeeklyProgressCard,
 } from "~/features/dashboard/dashboard-product-cards";
 
 const ARTWORK_WIDTH = 380;
-const ARTWORK_HEIGHT = 242;
+const ARTWORK_HEIGHT = 320;
 const PREVIEW_DAY_KEY = "2026-08-31";
 
 type IntroTasksArtworkProps = {
 	height?: number;
 	width?: number;
 };
-
-const agendaPreview = toDashboardAgendaItem(PREVIEW_DAY_KEY, {
-	id: "intro-dashboard-task" as Id<"dayEntries">,
-	title: "Mathe lernen",
-	kind: "Hausaufgabe",
-	notes: "Funktionen üben",
-	time: "15:30",
-	durationMinutes: 30,
-});
 
 const nextStepPreview = toDashboardAgendaItem(PREVIEW_DAY_KEY, {
 	id: "intro-dashboard-next-step" as Id<"learningPlanSessions">,
@@ -65,24 +55,13 @@ export function IntroTasksArtwork({
 			testID="intro-tasks-artwork"
 		>
 			<View
-				className="h-[242px] w-[380px]"
+				className="h-[320px] w-[380px]"
 				// The fixed artboard scales to the runtime frame while preserving its geometry.
 				style={{ transform: [{ scale }] }}
 				testID="intro-tasks-product-composition"
 			>
 				<View
-					className="absolute shadow-black/10 shadow-lg"
-					style={artworkGeometry.agenda}
-					testID="intro-tasks-agenda-layer"
-				>
-					<DashboardAgendaEntryCard
-						mode="artwork"
-						item={agendaPreview}
-						testID="intro-task-agenda-card"
-					/>
-				</View>
-				<View
-					className="absolute shadow-black/10 shadow-lg"
+					className="absolute shadow-black/5 shadow-sm"
 					style={artworkGeometry.progress}
 					testID="intro-tasks-progress-layer"
 				>
@@ -93,7 +72,7 @@ export function IntroTasksArtwork({
 					/>
 				</View>
 				<View
-					className="absolute shadow-black/15 shadow-xl"
+					className="absolute shadow-black/5 shadow-sm"
 					style={artworkGeometry.nextStep}
 					testID="intro-tasks-next-step-layer"
 				>
@@ -109,30 +88,20 @@ export function IntroTasksArtwork({
 	);
 }
 
-// The onboarding wrapper owns only the overlap, rotation, scale, and shadow.
+// The onboarding wrapper owns only the arrangement, scale, and shadow.
 // Product structure and tokens stay inside the shared dashboard components.
 const artworkGeometry = StyleSheet.create({
-	agenda: {
-		left: 8,
-		top: 45,
-		width: 220,
-		height: 110,
-		transform: [{ rotate: "-7deg" }],
-		transformOrigin: [0, 0, 0],
-	},
 	progress: {
-		left: 198,
-		top: 10,
-		width: 172,
+		left: 70,
+		top: 155,
+		width: 240,
 		height: 150,
-		transform: [{ rotate: "5deg" }],
-		transformOrigin: [0, 0, 0],
 	},
 	nextStep: {
-		left: 34,
-		top: 121,
+		left: 20,
+		top: 12,
 		zIndex: 2,
-		width: 312,
+		width: 340,
 		height: 110,
 	},
 });

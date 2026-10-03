@@ -23,23 +23,21 @@ jest.mock("~/features/dashboard/dashboard-product-cards", () => {
 });
 
 describe("IntroTasksArtwork", () => {
-	test("restores the layered product composition through shared dashboard modules", async () => {
+	test("uses shared dashboard modules as decorative artwork", async () => {
 		const screen = await render(<IntroTasksArtwork />);
 		const hidden = { includeHiddenElements: true };
 		const artwork = screen.getByTestId("intro-tasks-artwork", hidden);
 
 		expect(artwork.props.accessibilityElementsHidden).toBe(true);
 		expect(artwork.props.importantForAccessibility).toBe("no-hide-descendants");
-		expect(
-			screen.getByTestId("intro-task-agenda-card", hidden),
-		).toBeOnTheScreen();
+
 		expect(
 			screen.getByTestId("intro-task-progress-card", hidden),
 		).toBeOnTheScreen();
 		expect(
 			screen.getByTestId("intro-task-next-step-card", hidden),
 		).toBeOnTheScreen();
-		expect(screen.getByText("Geteilte Agenda", hidden)).toBeOnTheScreen();
+
 		expect(
 			screen.getByText("Geteilter Wochenfortschritt", hidden),
 		).toBeOnTheScreen();
@@ -56,36 +54,5 @@ describe("IntroTasksArtwork", () => {
 		});
 
 		expect(artwork.props.style).toEqual({ width: 294, height: 200 });
-	});
-
-	test("keeps the agenda and progress behind the dominant next-step layer", async () => {
-		const screen = await render(<IntroTasksArtwork />);
-		const hidden = { includeHiddenElements: true };
-
-		expect(screen.getByTestId("intro-tasks-agenda-layer", hidden)).toHaveStyle({
-			left: 8,
-			top: 45,
-			width: 220,
-			height: 110,
-			transform: [{ rotate: "-7deg" }],
-		});
-		expect(
-			screen.getByTestId("intro-tasks-progress-layer", hidden),
-		).toHaveStyle({
-			left: 198,
-			top: 10,
-			width: 172,
-			height: 150,
-			transform: [{ rotate: "5deg" }],
-		});
-		expect(
-			screen.getByTestId("intro-tasks-next-step-layer", hidden),
-		).toHaveStyle({
-			left: 34,
-			top: 121,
-			zIndex: 2,
-			width: 312,
-			height: 110,
-		});
 	});
 });

@@ -14,20 +14,38 @@ type WeeklyLearningTime = {
 
 type WeeklyLearningTimesProps = {
 	entries: readonly WeeklyLearningTime[];
-	onAdd: (dayOfWeek: number) => void;
-	onEdit: (entry: WeeklyLearningTime) => void;
-};
+} & (
+	| {
+			mode?: "screen";
+			onAdd: (dayOfWeek: number) => void;
+			onEdit: (entry: WeeklyLearningTime) => void;
+	  }
+	| { mode: "artwork"; onAdd?: never; onEdit?: never }
+);
 
 function WeeklyLearningTimes({
 	entries,
 	onAdd,
 	onEdit,
+	mode = "screen",
 }: WeeklyLearningTimesProps) {
 	const { colors } = useDayovaTheme();
+	const isArtwork = mode === "artwork";
+	const Control = isArtwork ? View : Pressable;
+	const days = isArtwork
+		? LEARNING_DAYS.filter((day) =>
+				entries.some((entry) => entry.dayOfWeek === day.value),
+			)
+		: LEARNING_DAYS;
 
 	return (
-		<View className="gap-3">
-			{LEARNING_DAYS.map((day) => {
+		<View
+			className="gap-3"
+			accessibilityElementsHidden={isArtwork}
+			importantForAccessibility={isArtwork ? "no-hide-descendants" : "auto"}
+			pointerEvents={isArtwork ? "none" : "auto"}
+		>
+			{days.map((day) => {
 				const dayEntries = entries
 					.filter((entry) => entry.dayOfWeek === day.value)
 					.sort((first, second) =>
@@ -43,31 +61,40 @@ function WeeklyLearningTimes({
 					>
 						<View className="min-h-11 flex-row items-center">
 							<View className="h-10 w-10 items-center justify-center rounded-full bg-muted">
-								<Text className="font-poppins font-semibold text-body-4 text-text">
+								<Text
+									allowFontScaling={!isArtwork}
+									className="font-poppins font-semibold text-body-4 text-text"
+								>
 									{day.abbreviation}
 								</Text>
 							</View>
 
 							<View className="ml-3 flex-1">
-								<Text className="font-poppins font-semibold text-body-2 text-text">
+								<Text
+									allowFontScaling={!isArtwork}
+									className="font-poppins font-semibold text-body-2 text-text"
+								>
 									{day.label}
 								</Text>
 								{isEmpty ? (
-									<Text className="mt-0.5 font-poppins text-body-4 text-secondary-text">
+									<Text
+										allowFontScaling={!isArtwork}
+										className="mt-0.5 font-poppins text-body-4 text-secondary-text"
+									>
 										Noch keine Lernzeit
 									</Text>
 								) : null}
 							</View>
 
-							<Pressable
+							<Control
 								accessibilityLabel={`Weitere Lernzeit für ${day.label} hinzufügen`}
-								accessibilityRole="button"
+								accessibilityRole={isArtwork ? undefined : "button"}
 								hitSlop={6}
 								className="h-11 w-11 items-center justify-center rounded-full bg-primary/10 active:bg-primary/20"
-								onPress={() => onAdd(day.value)}
+								onPress={isArtwork ? undefined : () => onAdd?.(day.value)}
 							>
 								<Plus size={20} color={colors.primary} strokeWidth={2.2} />
-							</Pressable>
+							</Control>
 						</View>
 
 						{isEmpty ? null : (
@@ -76,12 +103,12 @@ function WeeklyLearningTimes({
 									const timeRange = `${entry.startTime}–${entry.endTime}`;
 
 									return (
-										<Pressable
+										<Control
 											key={entry.id}
 											accessibilityLabel={`${day.label}, Lernzeit ${entry.startTime} bis ${entry.endTime} bearbeiten`}
-											accessibilityRole="button"
+											accessibilityRole={isArtwork ? undefined : "button"}
 											className="min-h-12 flex-row items-center rounded-[18px] bg-muted px-4 active:opacity-80"
-											onPress={() => onEdit(entry)}
+											onPress={isArtwork ? undefined : () => onEdit?.(entry)}
 											style={{ borderCurve: "continuous" }}
 										>
 											<Clock3
@@ -90,7 +117,8 @@ function WeeklyLearningTimes({
 												strokeWidth={2}
 											/>
 											<Text
-												selectable
+												allowFontScaling={!isArtwork}
+												selectable={!isArtwork}
 												className="ml-3 flex-1 font-poppins font-semibold text-body-3 text-text"
 												style={{ fontVariant: ["tabular-nums"] }}
 											>
@@ -101,7 +129,7 @@ function WeeklyLearningTimes({
 												color={colors.secondaryText}
 												strokeWidth={2}
 											/>
-										</Pressable>
+										</Control>
 									);
 								})}
 							</View>

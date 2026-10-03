@@ -39,6 +39,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IntroUploadArtwork } from "~/components/intro-upload-artwork";
+import { IntroCalendarArtwork } from "~/components/onboarding/intro-calendar-artwork";
 import { IntroLearningPathArtwork } from "~/components/onboarding/intro-learning-path-artwork";
 import {
 	getIntroDotWidth,
@@ -84,7 +85,6 @@ import {
 	GreekHelmet,
 	Palette,
 	Plant,
-	Route2,
 	SquareRootSquare,
 	Telescope,
 } from "~/components/ui/icon";
@@ -106,7 +106,6 @@ import {
 	getOnboardingStep,
 	getOnboardingStepPath,
 	getOnboardingStepProgress,
-	ONBOARDING_PROFILE_STEPS,
 	type OnboardingProfileStep,
 	type OnboardingStepId,
 } from "~/features/auth/onboarding-route-model";
@@ -160,35 +159,48 @@ type PasswordResetStage =
 
 type IntroStep = {
 	kind: "intro";
-	id: "intro-upload" | "intro-path" | "intro-tasks";
+	id: "intro-upload" | "intro-path" | "intro-tasks" | "intro-calendar";
+	eyebrow: string;
 	title: string;
 	description: string;
-	illustration: "path" | "tasks" | "upload";
+	illustration: "path" | "tasks" | "upload" | "calendar";
 };
 
 const INTRO_STEPS = [
 	{
 		kind: "intro",
 		id: "intro-tasks",
-		title: "Du weißt, was heute wirklich zählt.",
+		eyebrow: "DEIN START MIT DAYOVA",
+		title: "Schluss mit Aufschieben.",
 		description:
-			"Ein machbarer nächster Lernschritt bringt dich jeden Tag näher an deine Prüfung.",
+			"Du musst nicht alles auf einmal schaffen. Dayova zeigt dir, was als Nächstes dran ist – damit du leichter anfängst und dranbleibst.",
 		illustration: "tasks",
 	},
 	{
 		kind: "intro",
-		id: "intro-upload",
-		title: "Deine Prüfung. Alles an einem Ort.",
+		id: "intro-calendar",
+		eyebrow: "01 · DEINE LERNZEITEN",
+		title: "Deine Zeit.\nDeine Lernroutine.",
 		description:
-			"Lade Aufgaben, Mitschriften und Lernmaterial hoch. Dayova verbindet sie mit deinem echten Prüfungsziel.",
+			"Sag Dayova, wann du Zeit hast. Dein Lernplan passt in deinen Alltag – mit festen Lernzeiten, die dir beim Dranbleiben helfen.",
+		illustration: "calendar",
+	},
+	{
+		kind: "intro",
+		id: "intro-upload",
+		eyebrow: "02 · DEIN SCHULMATERIAL",
+		title: "Dein Stoff.\nDeine Grundlage.",
+		description:
+			"Fotografiere deine Mitschriften oder lade Arbeitsblätter hoch. So lernst du mit dem Stoff, der für deine Prüfung zählt.",
 		illustration: "upload",
 	},
 	{
 		kind: "intro",
 		id: "intro-path",
-		title: "Aus Stoff wird ein klarer Weg.",
+		eyebrow: "03 · DEIN LERNPLAN",
+		title: "Dein Lernplan.\nSchon eingeplant.",
 		description:
-			"Dayova erkennt Themen und Lücken und ordnet sie so, dass du nicht mehr raten musst, wo du anfängst.",
+			"Dayova macht aus deinem Stoff einen Lernplan – passend zu deinen Lernzeiten. Du weißt, was du wann lernst.",
 		illustration: "path",
 	},
 ] as const satisfies readonly IntroStep[];
@@ -962,7 +974,7 @@ export function OnboardingCreationScreen() {
 	);
 }
 
-function IntroStepView({
+export function IntroStepView({
 	activeIndex,
 	topInset,
 	bottomInset,
@@ -1042,24 +1054,12 @@ function IntroStepView({
 					showsVerticalScrollIndicator={false}
 					// Runtime safe-area and content-size values define the scrollable frame.
 					contentContainerStyle={{
-						alignItems: "center",
+						alignItems: "stretch",
 						paddingBottom: Math.max(bottomInset + 20, 28),
 						paddingHorizontal: contentSizeLayout.horizontalPadding,
 					}}
 				>
-					<View className="w-full">
-						<IntroArtwork accessibleLayout item={item} />
-					</View>
-
-					<Text
-						accessibilityRole="header"
-						className="mt-6 max-w-[350px] text-center font-poppins font-semibold text-heading-2 text-text"
-					>
-						{item.title}
-					</Text>
-					<Text className="mt-3 max-w-[340px] text-center font-poppins text-body-3 text-secondary-text">
-						{item.description}
-					</Text>
+					<IntroPageContent item={item} accessibleLayout />
 
 					<View className="mt-8 w-full">
 						<IntroDots
@@ -1079,10 +1079,6 @@ function IntroStepView({
 								{isLastIntro ? "Meinen Start personalisieren" : "Weiter"}
 							</Text>
 						</Button>
-						<Text className="mt-3 text-center font-poppins text-body-5 text-secondary-text">
-							Danach {ONBOARDING_PROFILE_STEPS.length} kurze, bewusste Schritte
-							· etwa 2 Minuten
-						</Text>
 					</View>
 				</ScrollView>
 			</View>
@@ -1098,15 +1094,6 @@ function IntroStepView({
 				paddingBottom: Math.max(bottomInset + 20, 28),
 			}}
 		>
-			<View className="items-center px-6">
-				<View className="flex-row items-center gap-2 rounded-full bg-primary/10 px-4 py-2">
-					<Route2 size={16} color={COLORS.primary} strokeWidth={2.2} />
-					<Text className="font-poppins font-semibold text-body-5 text-primary">
-						SO FUNKTIONIERT DAYOVA
-					</Text>
-				</View>
-			</View>
-
 			<Animated.FlatList
 				ref={listRef}
 				testID="intro-pager"
@@ -1129,29 +1116,18 @@ function IntroStepView({
 				onScroll={scrollHandler}
 				onMomentumScrollEnd={handleScrollEnd}
 				onScrollEndDrag={handleScrollEnd}
-				renderItem={({ item }) => {
-					// Pager width and artwork height are measured runtime geometry.
-					return (
-						<View style={{ width }} className="items-center px-6 pt-4">
-							<IntroArtwork compactHeight={isCompactHeight} item={item} />
-
-							<Text
-								accessibilityRole="header"
-								className={cn(
-									"max-w-[350px] text-center font-poppins font-semibold text-text",
-									isCompactHeight
-										? "mt-4 text-heading-2"
-										: "mt-6 text-heading-1",
-								)}
-							>
-								{item.title}
-							</Text>
-							<Text className="mt-3 max-w-[340px] text-center font-poppins text-body-3 text-secondary-text">
-								{item.description}
-							</Text>
+				renderItem={({ item }) => (
+					// Pager pages follow the runtime viewport width; content scrolls on short phones.
+					<ScrollView
+						style={{ width }}
+						contentContainerStyle={{ flexGrow: 1 }}
+						showsVerticalScrollIndicator={false}
+					>
+						<View className="flex-1 px-6 pb-6">
+							<IntroPageContent item={item} compactHeight={isCompactHeight} />
 						</View>
-					);
-				}}
+					</ScrollView>
+				)}
 			/>
 
 			<View className="px-6">
@@ -1170,50 +1146,67 @@ function IntroStepView({
 				>
 					<Text>{isLastIntro ? "Meinen Start personalisieren" : "Weiter"}</Text>
 				</Button>
-				<Text className="mt-3 text-center font-poppins text-body-5 text-secondary-text">
-					Danach {ONBOARDING_PROFILE_STEPS.length} kurze, bewusste Schritte ·
-					etwa 2 Minuten
-				</Text>
 			</View>
 		</View>
 	);
 }
 
-function IntroArtwork({
+function IntroPageContent({
+	item,
 	accessibleLayout = false,
 	compactHeight = false,
-	item,
 }: {
+	item: IntroStep;
 	accessibleLayout?: boolean;
 	compactHeight?: boolean;
-	item: IntroStep;
 }) {
-	const containerHeight = accessibleLayout ? 184 : compactHeight ? 220 : 286;
-
+	const { usableWidth } = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
+	const artworkWidth = Math.min(usableWidth, 380);
+	const artworkHeight = accessibleLayout ? 240 : compactHeight ? 280 : 340;
 	return (
-		<View
-			className="w-full items-center justify-center overflow-hidden rounded-[32px] bg-system-subtle"
-			// Runtime content-size mode chooses the bounded decorative-artwork height.
-			style={{ height: containerHeight }}
-		>
-			{item.illustration === "upload" ? (
-				<IntroUploadArtwork
-					width={accessibleLayout ? 210 : compactHeight ? 246 : 280}
-					height={accessibleLayout ? 190 : compactHeight ? 222 : 254}
-				/>
-			) : null}
-			{item.illustration === "path" ? (
-				<IntroLearningPathArtwork
-					width={accessibleLayout ? 250 : compactHeight ? 284 : 330}
-					height={accessibleLayout ? 168 : compactHeight ? 208 : 254}
-				/>
-			) : null}
-			{item.illustration === "tasks" ? (
-				<IntroTasksArtwork
-					width={accessibleLayout ? 262 : compactHeight ? 294 : 345}
-					height={accessibleLayout ? 178 : compactHeight ? 200 : 236}
-				/>
-			) : null}
+		<View className="mx-auto w-full max-w-[480px] flex-1">
+			<Text className="mb-4 font-poppins font-semibold text-body-4 text-primary-strong">
+				{item.eyebrow}
+			</Text>
+			<Text
+				accessibilityRole="header"
+				className="font-poppins font-semibold text-heading-1 text-text"
+			>
+				{item.title}
+			</Text>
+			<Text className="mt-3 font-poppins text-body-2 text-secondary-text">
+				{item.description}
+			</Text>
+			<View className="mt-8 flex-1 items-center justify-center">
+				<View className="w-full items-center justify-center rounded-card bg-system-subtle py-5">
+					{item.illustration === "tasks" ? (
+						<IntroTasksArtwork
+							width={artworkWidth - 16}
+							height={artworkHeight}
+						/>
+					) : null}
+					{item.illustration === "calendar" ? (
+						<IntroCalendarArtwork
+							width={artworkWidth - 24}
+							height={artworkHeight}
+						/>
+					) : null}
+					{item.illustration === "upload" ? (
+						<IntroUploadArtwork
+							width={artworkWidth - 24}
+							height={artworkHeight}
+						/>
+					) : null}
+					{item.illustration === "path" ? (
+						<IntroLearningPathArtwork
+							width={artworkWidth - 24}
+							height={artworkHeight}
+						/>
+					) : null}
+				</View>
+			</View>
 		</View>
 	);
 }
