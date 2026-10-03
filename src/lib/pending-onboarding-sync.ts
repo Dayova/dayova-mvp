@@ -1,7 +1,7 @@
-import { parseOnboardingStudyDays } from "~/components/onboarding/onboarding-learning-times";
 import { isGermanFederalState } from "~/lib/federal-states";
 import { isSupportedGrade } from "~/lib/grades";
 import { isSupportedSchoolType } from "~/lib/school-types";
+import { parseOnboardingStudyDays } from "~/components/onboarding/onboarding-learning-times";
 
 const STORAGE_KEY_PREFIX = "dayova.pending-onboarding-sync";
 const SCHEMA_VERSION = 1;
@@ -10,7 +10,7 @@ const ACCOUNT_FINGERPRINT_PATTERN = /^[a-f0-9]{64}$/;
 // Schema-v1 records must remain readable when the launch selector narrows.
 // Treat this compatibility set as append-only until a stored-record migration exists.
 const PERSISTED_ONBOARDING_DURATION_MINUTES = [
-	10, 20, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180, 15, 240,
+	10, 20, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180,
 ] as const;
 const MINUTES_PER_DAY = 24 * 60;
 

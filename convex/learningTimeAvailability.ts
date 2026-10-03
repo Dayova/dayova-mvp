@@ -1,5 +1,5 @@
 export const ONBOARDING_DURATION_MINUTES = [
-	10, 20, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180, 15, 240,
+	10, 20, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180,
 ] as const;
 
 const DAY_OF_WEEK_BY_LABEL = {

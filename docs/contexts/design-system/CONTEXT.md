@@ -247,11 +247,12 @@ component: path 2 background (`#D7DCE3`) with path 3 icon (`#8A8D92`).
 
 The duration selector uses the onboarding appearance of `SnapCarouselSelector`:
 a 128-point thin progress ring and a 96-point selected gradient tick, based on
-the supplied MVP Login 5 reference. It offers 15, 30, 45, 60, 90, 120, 180,
-and 240 minutes. From 60 minutes the ring shows hours (1 h, 1,5 h, 2 h,
-3 h, 4 h), while persistence continues to use minutes. Continue explicitly confirms the initial 30-minute value;
-merely opening the page does not save it. Persisted duration compatibility
-remains append-only, including legacy values absent from the current selector.
+the supplied MVP Login 5 reference. It renders the values supplied by the
+existing learning-time model; this design change defines no allowed duration
+range and makes no backend, validation, or persistence changes. Duration values
+and their compatibility rules belong to PR #813. The ring uses compact min/h
+labels, independently of the allowed values. Continue confirms the displayed
+initial value; merely opening the page does not save it.
 
 Per the 3 October 2026 user direction and MVP Login 18 reference, selected
 weekday pills use the primary interactive gradient with white text. This is a

@@ -4,12 +4,12 @@ Stand: 3. Oktober 2026. Folgeänderungen für PR #825.
 
 ## Umsetzung
 
-- Dauer: 15, 30, 45, 60, 90, 120, 180 und 240 Minuten. Ab 60 Minuten zeigt der Kreis Stunden mit deutschem Dezimalkomma. Weiter bestätigt die angezeigten 30 Minuten; das Öffnen allein speichert keine Auswahl.
+- Darstellung der vom bestehenden Modell gelieferten Dauerwerte im neuen Kreis/Slider; kompakte min/h-Beschriftung mit deutschem Dezimalkomma. Die Auswahlgrenzen werden in dieser PR nicht verändert. Weiter bestätigt den angezeigten Ausgangswert; das Öffnen allein speichert keine Auswahl.
 - Der Infotext zur Dauer passt sich dem gewählten Wert an.
 - Lerntage: keine initiale Vorauswahl, 48pt Mindesthöhe, semibold body-3, 2/2/2/1 angeordnet. Auswahl mit blauem Verlauf und weißer Schrift; zugänglicher Checkbox-Zustand bleibt erhalten.
 - Ein zusätzlicher Lernfakt erklärt verteiltes Wiederholen zwischen Tages- und Startzeitauswahl. Zwölf Profil-/Kontoschritte führen bis zur Verifikation.
 - Der echte Einstieg verwendet `expo-router/entry`. Die lokale Vier-Seiten-Vorschau, die den gemeldeten Rücksprung ausgelöst hatte, ist entfernt.
-- Persistierte ältere Dauern bleiben lesbar. Backend und Outbox akzeptieren zusätzlich 15 und 240 Minuten.
+- Abgrenzung zu #813: keine Änderung an Daueroptionen, Backend, Validierung, Outbox oder Planungslogik. Diese Dateien entsprechen unverändert der gemeinsamen Basis `0f15a796`. #813 bleibt für die fachlichen Zeitvorgaben zuständig.
 
 ## Native Bildbelege
 
@@ -27,12 +27,12 @@ zeigen den Ablauf bis zur Zusammenfassung bei Schritt 7.
 
 ## Validierung
 
-- Gezielte Unit-/Backend-Prüfung: 84 Tests bestanden, einschließlich Speicherung von 15 und 240 Minuten über die öffentliche Mutation, Mitternachtsgrenze und Kompatibilität mit älteren Dauern.
+- Nach Scope-Korrektur: 66 gezielte Unit-/Backend-Tests bestanden; die Fachlogik entspricht wieder unverändert der Basis.
 - UI-Regressionsprüfung: 56 Tests für Auth-Screens, Lernfakt und Slider. Ein zusätzlicher Test betätigt Weiter auf jedem der zwölf Schritte und prüft den jeweiligen Folgerouten-Aufruf bis zur Verifikation. Auth-Dienste sind dabei gemockt.
-- Vollständige Testsuiten: 968 Vitest-Tests und 393 Jest-UI-Tests bestanden.
+- Vor Scope-Korrektur: vollständige Testsuiten mit 968 Vitest- und 393 Jest-UI-Tests bestanden. Danach gezielte Unit-/UI-Prüfung erneut ausgeführt.
 - TypeScript, gezieltes ESLint/Biome und Diff-Review bestanden.
 - Maestro prüfte im echten Router Intro → Name → Dauer → Erklärung → leere Tagesauswahl → Lernfakt → Startzeitauswahl sowie Zurücknavigation und erhaltene Antworten.
-- Backend einschließlich Typprüfung erfolgreich in der isolierten lokalen Convex-Deployment `local-philipp_schossig-dayova_mvp-2` bereitgestellt. Dies ersetzt den zuvor durch fremde `learningPlanDocuments`-Felder blockierten Versuch auf dem gemeinsamen Dev-Ziel. Dessen Schema und Daten wurden nicht verändert.
+- Scope-Diff bestätigt: keine Backend- oder Persistenzänderung gegenüber der Basis. Der zuvor erfolgreiche isolierte Backend-Deploy gehört zum Stand vor dieser bewussten Herausnahme und ist keine zusätzliche Backend-Änderung dieser PR.
 
 Die echte Kontoanlage mit E-Mail-Code und anschließender Dashboard-Anmeldung wurde nicht erneut durchgeführt; die vorhandenen Auth-Tests prüfen diese Übergänge mit Testdiensten. Es wurde kein neues Nutzerkonto angelegt und kein Produktionsdeploy ausgeführt.
 

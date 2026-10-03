@@ -57,7 +57,6 @@ import {
 	dateForOnboardingTime,
 	formatOnboardingTime,
 	getDefaultOnboardingLearningStartTime,
-	getOnboardingDurationDisplay,
 	getOnboardingLearningTimeSummary,
 	getOnboardingLearningTimeValidationError,
 	ONBOARDING_DURATION_OPTIONS,
@@ -3018,6 +3017,12 @@ function OtpCodeInput({
 	);
 }
 
+// Presentation only: allowed values and persistence belong to the learning-time model.
+const getDurationRingLabel = (minutes: number) => ({
+	value: String(minutes >= 60 ? minutes / 60 : minutes).replace(".", ","),
+	unit: minutes >= 60 ? "h" : "min",
+});
+
 function RangeAnswer({
 	step,
 }: {
@@ -3065,15 +3070,11 @@ function RangeAnswer({
 				items={step.values}
 				selectedIndex={selectedIndex}
 				getItemKey={(value) => String(value)}
-				getItemPrimaryLabel={(value) =>
-					getOnboardingDurationDisplay(value).value
-				}
-				getItemSecondaryLabel={(value) =>
-					getOnboardingDurationDisplay(value).unit
-				}
+				getItemPrimaryLabel={(value) => getDurationRingLabel(value).value}
+				getItemSecondaryLabel={(value) => getDurationRingLabel(value).unit}
 				getItemProgress={(_, index) => (index + 1) / step.values.length}
-				primaryLabel={getOnboardingDurationDisplay(displayedStudyTime).value}
-				secondaryLabel={getOnboardingDurationDisplay(displayedStudyTime).unit}
+				primaryLabel={getDurationRingLabel(displayedStudyTime).value}
+				secondaryLabel={getDurationRingLabel(displayedStudyTime).unit}
 				progress={
 					selectedValue === undefined
 						? 0

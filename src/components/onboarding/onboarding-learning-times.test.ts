@@ -2,7 +2,6 @@ import { describe, expect, test } from "vitest";
 import {
 	dateForOnboardingTime,
 	formatOnboardingTime,
-	getOnboardingDurationDisplay,
 	getOnboardingLearningTimeSummary,
 	getOnboardingLearningTimeValidationError,
 	getOnboardingLearningTimeWindow,
@@ -45,15 +44,6 @@ describe("onboarding learning times", () => {
 			durationLabel: "45 Minuten",
 			windowLabel: "16:30–17:15 Uhr",
 		});
-	});
-
-	test.each([
-		["15", "16:15"],
-		["240", "20:00"],
-	])("derives the %s-minute boundary", (studyTime, endTime) => {
-		expect(
-			getOnboardingLearningTimeWindow({ studyTime, learningTime: "16:00" }),
-		).toMatchObject({ startTime: "16:00", endTime });
 	});
 
 	test("never renders an invalid duration as NaN minutes", () => {
@@ -118,20 +108,5 @@ describe("onboarding learning times", () => {
 		expect(formatOnboardingTime(dateForOnboardingTime("nach der Schule"))).toBe(
 			"16:00",
 		);
-	});
-});
-
-test.each([
-	[15, "15", "min"],
-	[45, "45", "min"],
-	[60, "1", "h"],
-	[90, "1,5", "h"],
-	[120, "2", "h"],
-	[180, "3", "h"],
-	[240, "4", "h"],
-])("formats %i minutes for the duration ring", (minutes, value, unit) => {
-	expect(getOnboardingDurationDisplay(Number(minutes))).toEqual({
-		value,
-		unit,
 	});
 });
