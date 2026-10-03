@@ -372,6 +372,8 @@ export const createReport = () => {
 	}
 
 	try {
+		// Missing workflow inputs must fail before starting expensive config work.
+		const fingerprints = readWorkflowFingerprints();
 		const baseline = JSON.parse(readFileSync(baselinePath, "utf8"));
 		const config = runJsonCommand(process.execPath, [
 			expoCliPath,
@@ -380,7 +382,6 @@ export const createReport = () => {
 			"public",
 			"--json",
 		]);
-		const fingerprints = readWorkflowFingerprints();
 		const sourceSha =
 			process.env.GITHUB_SHA ??
 			execFileSync("git", ["rev-parse", "HEAD"], {
