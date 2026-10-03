@@ -224,6 +224,28 @@ describe("DayovaSheetFrame", () => {
 		for (const callback of callbacks) callback(performance.now());
 	};
 
+	test("uses a short handoff dismissal without firing completion early", async () => {
+		const onDismiss = jest.fn();
+		const onClose = jest.fn();
+		const view = await render(
+			<DayovaSheetFrame visible onClose={onClose} onDismiss={onDismiss} />,
+		);
+		await act(flushAnimationFrames);
+		await view.rerender(
+			<DayovaSheetFrame
+				visible={false}
+				dismissDurationMs={120}
+				onClose={onClose}
+				onDismiss={onDismiss}
+			/>,
+		);
+		expect(mockSheetHarness.dismiss).toHaveBeenCalledWith({ duration: 120 });
+		expect(onDismiss).not.toHaveBeenCalled();
+		await act(() => mockSheetHarness.onDismiss?.());
+		expect(onDismiss).toHaveBeenCalledTimes(1);
+		expect(onClose).not.toHaveBeenCalled();
+	});
+
 	test("reopens after an in-flight controlled dismissal without closing the new sheet", async () => {
 		const onClose = jest.fn();
 		const onDismiss = jest.fn();
