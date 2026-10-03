@@ -11,7 +11,7 @@ export function SelectionIndicator({ selected }: { selected: boolean }) {
 		>
 			{selected ? (
 				<LinearGradient
-					{...DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive}
+					{...DAYOVA_DESIGN_SYSTEM.gradients.selection}
 					// LinearGradient exposes its native geometry through style.
 					style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
 				>

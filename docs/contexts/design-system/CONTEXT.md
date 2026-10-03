@@ -105,7 +105,8 @@ compact controls. Do not reuse `surface` or theme-dependent primary text as an
 implicit foreground token.
 
 Exam/subject and learning-session answer selection instead use the shared
-primary-interactive gradient with white indicators; answer rows match the
+`selection` gradient (`#006699` → `#0077AA`) with white indicators and answer
+letters (minimum 4.97:1 contrast); answer rows match the
 exam/subject accent fill, primary selected label, border, and shadow-free treatment. See the [code-facing decision](adr/answer-selection-colors.md)
 and its linked native comparison and canonical Notion rationale.
 
@@ -182,7 +183,7 @@ acknowledges a real transition without becoming recurring friction.
 ### Personal-subject action appearance
 
 Exam-type and subject selection share `SelectionOptionRow`: identical card
-geometry, icon treatment, radio checked semantics and a primary-gradient check
+geometry, icon treatment, radio checked semantics and a selection-gradient check
 indicator with a white check, as specified in the
 [selection color decision](adr/answer-selection-colors.md). The subject catalog
 is one continuous list, without a

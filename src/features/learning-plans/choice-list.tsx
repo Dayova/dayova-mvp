@@ -113,7 +113,7 @@ function ChoiceCard({
 				<View className="h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-system-subtle">
 					{selected ? (
 						<LinearGradient
-							{...DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive}
+							{...DAYOVA_DESIGN_SYSTEM.gradients.selection}
 							// Native gradient geometry fills the letter badge.
 							style={{
 								position: "absolute",
