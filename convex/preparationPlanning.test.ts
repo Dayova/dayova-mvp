@@ -478,3 +478,88 @@ test("moving an interrupted step preserves its identity, study time and learning
 		targetTopicIds: before?.targetTopicIds,
 	});
 });
+
+test("ten-question diagnostic credits active time once and adjusts the remaining schedule", async () => {
+	const { t, id, root } = await setup("diagnostic", "Klassenarbeit");
+	const questions = Array.from({ length: 10 }, (_, i) => ({
+		id: `q${i}`,
+		prompt: `Löse ${i}+1.`,
+		targetInsight: "Addition",
+		topicId: "algebra",
+		kind: "performance" as const,
+		responseKind: "multipleChoice" as const,
+		options: ["richtig", "falsch"],
+		correctAnswer: "richtig",
+		idealAnswer: "richtig",
+		explanation: "Die erste Antwort ist richtig.",
+		evidenceDimension: "understanding" as const,
+		evaluationKeywords: ["richtig"],
+	}));
+	await t.run((ctx) =>
+		ctx.db.patch("learningPlans", id, {
+			status: "questionsReady",
+			scopeConfirmedAt: Date.now(),
+			knowledgeQuestions: questions,
+		}),
+	);
+	const sessionId = await t.mutation(api.learningPlans.prepareDiagnostic, {
+		learningPlanId: id,
+	});
+	await t.mutation(api.learningPlans.acceptDiagnostic, { learningPlanId: id });
+	await t.mutation(api.learningPlans.startSession, { sessionId });
+	const content = await t.query(api.learningSessionContent.getSessionContent, {
+		sessionId,
+	});
+	expect(content?.items).toHaveLength(10);
+	for (const [i, item] of (content?.items ?? []).entries()) {
+		await t.mutation(api.learningSessionContent.submitAnswer, {
+			itemId: item.id,
+			selectedChoiceId: item.choices?.find(
+				(c) => c.text === (i < 9 ? "richtig" : "falsch"),
+			)?.id,
+		});
+	}
+	vi.setSystemTime(new Date("2026-10-05T12:10:00Z"));
+	await t.mutation(api.learningPlans.checkpointStudyTime, {
+		sessionId,
+		activeStudySeconds: 600,
+	});
+	await expect(
+		root
+			.withIdentity({ tokenIdentifier: "other" })
+			.mutation(api.learningPlans.checkpointStudyTime, {
+				sessionId,
+				activeStudySeconds: 600,
+			}),
+	).rejects.toThrow();
+	vi.setSystemTime(new Date("2026-10-05T12:30:00Z"));
+	await t.mutation(api.learningPlans.recordSessionOutcome, {
+		sessionId,
+		outcome: "completed",
+		activeStudySeconds: 900,
+	});
+	const schedule = await t.query(api.learningPlans.getPreparationSchedule, {
+		learningPlanId: id,
+		now: { dateKey: "2026-10-05", minutes: 900 },
+	});
+	expect(schedule).toMatchObject({
+		correctCount: 9,
+		questionCount: 10,
+		baseMinutes: 180,
+		totalMinutes: 135,
+		diagnosticMinutes: 15,
+		budgetMinutes: 120,
+	});
+	expect(schedule.slots.reduce((n, s) => n + s.durationMinutes, 0)).toBe(120);
+	expect(
+		(await t.query(api.learningPlans.getSnapshot, { id }))?.plan
+			.targetStudyMinutes,
+	).toBe(135);
+	await expect(
+		t.mutation(api.learningPlans.recordSessionOutcome, {
+			sessionId,
+			outcome: "completed",
+			activeStudySeconds: 900,
+		}),
+	).rejects.toThrow();
+});

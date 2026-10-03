@@ -1611,6 +1611,7 @@ export const getSessionContent = query({
 				expectedOutcome: session.expectedOutcome,
 				completed: session.completed ?? false,
 				executionStatus: getSessionExecutionStatus(session),
+				activeStudySeconds: session.activeStudySeconds ?? 0,
 				compositionVariant: session.compositionVariant ?? "control",
 				knowledgeValidationStatus: session.knowledgeValidationStatus,
 				knowledgeValidationConfidence: session.knowledgeValidationConfidence,

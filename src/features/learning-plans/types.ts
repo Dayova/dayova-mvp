@@ -47,6 +47,7 @@ export type PlanSession = {
 	sortOrder: number;
 	completed: boolean;
 	executionStatus: SessionExecutionStatus;
+	activeStudySeconds?: number;
 	startedAt?: number;
 	outcomeAt?: number;
 	missedReason?: MissedReason;
@@ -143,6 +144,7 @@ export type LearningSessionContentSnapshot = {
 		expectedOutcome: string;
 		completed: boolean;
 		executionStatus: SessionExecutionStatus;
+		activeStudySeconds?: number;
 	};
 	praxisDurationSeconds: number | null;
 	items: SessionContentItem[];

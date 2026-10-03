@@ -104,7 +104,11 @@ export default function PreparationScreen() {
 		setError(null);
 		try {
 			const sessionId = await startFlexible({ learningPlanId: id });
-			router.replace(`/learning-plans/${id}/sessions/${sessionId}`);
+			router.replace(
+				budget === 0
+					? `/learning-plans/${id}`
+					: `/learning-plans/${id}/sessions/${sessionId}`,
+			);
 		} catch (cause) {
 			setError(
 				getErrorMessage(cause, "Dein Lernplan konnte nicht gestartet werden."),
@@ -158,9 +162,15 @@ export default function PreparationScreen() {
 					</Text>
 					<Text className="mt-3 text-center font-poppins text-body-3 text-secondary-text">
 						{schedule
-							? `Für diese Prüfung planen wir etwa ${durationLabel(budget)} Vorbereitung. Die Themen passen zu deinem Wissenscheck.`
+							? `Du hast ${schedule.correctCount} von ${schedule.questionCount} Fragen richtig beantwortet. Für deine Vorbereitung empfehlen wir insgesamt etwa ${durationLabel(schedule.totalMinutes)}.`
 							: "Deine Termine werden vorbereitet …"}
 					</Text>
+					{schedule ? (
+						<Text className="mt-3 text-center text-body-3 text-secondary-text">
+							{durationLabel(schedule.diagnosticMinutes)} Wissenscheck
+							angerechnet · noch {durationLabel(budget)} Lernen.
+						</Text>
+					) : null}
 				</View>
 
 				{snapshot?.plan.topicReadiness?.length ? (
@@ -255,7 +265,7 @@ export default function PreparationScreen() {
 						<Text className="mb-3 text-center font-poppins text-body-4 text-secondary-text">
 							{durationLabel(total)} eingeplant
 							{total < budget
-								? ` · ${durationLabel(budget - total)} unter dem Richtwert. Du kannst mit diesen Zeiten starten und später ergänzen.`
+								? ` · ${durationLabel(budget - total)} weniger als empfohlen. Wir konzentrieren uns auf die wichtigsten Übungsschwerpunkte.`
 								: ""}
 						</Text>
 						{error ? (
@@ -266,11 +276,12 @@ export default function PreparationScreen() {
 						{!slots.length && snapshot?.plan.preparationState === "review" ? (
 							<View className="mb-4 gap-3">
 								<Text className="text-secondary-text">
-									Gerade passt kein Lerntermin. Du kannst deinen Plan ohne feste
-									Termine beginnen und später Zeiten ergänzen.
+									{budget === 0
+										? "Dein Wissenscheck deckt die empfohlene Vorbereitungszeit bereits ab. Du kannst danach freiwillig weiterlernen."
+										: "Gerade passt kein Lerntermin. Du kannst deinen Plan ohne feste Termine beginnen und später Zeiten ergänzen."}
 								</Text>
 								<Button disabled={busy} onPress={() => void startNow()}>
-									<Text>Jetzt lernen</Text>
+									<Text>{budget === 0 ? "Abschließen" : "Jetzt lernen"}</Text>
 								</Button>
 							</View>
 						) : null}

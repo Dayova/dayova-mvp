@@ -85,3 +85,19 @@ Der gemeinsame `DurationPickerSheet` verwendet echte native Stunden-/Minutenräd
 Native Komponentenprüfung im separaten iOS-Simulator: Lerndauer öffnen, Stundenrad drehen, Übernehmen und Rückkehr erfolgreich bedient. Ergebnis 150 Minuten bei Beginn 17:00 ergibt Ende 19:30. Maestro-Aufnahme schlug zunächst nur wegen eines nicht erlaubten absoluten Screenshotpfads fehl; der Screenshot wurde anschließend unverändert mit simctl aufgenommen. Vorschau nutzt feste lokale Beispieldaten und wird nicht ausgeliefert. Kein Nachweis des kompletten authentifizierten Lernflows. Android/Web, VoiceOver und große Schrift nicht manuell geprüft.
 
 Aktuelle Validierung: 9/9 UI-Tests, 17/17 Lint-Regeltests, TypeScript und ESLint bestanden. Editor in Light/Dark visuell geprüft, Dauerwähler in Light; vollständige Accessibility- und Android/Web-Abnahme bleibt offen.
+
+## Aktuell: ergebnisabhängige Vorbereitung und zehn Fragen
+
+Diese Entscheidung ersetzt die früheren Aussagen über fünf Fragen und unveränderte Budgets. Neue Wissenschecks erzeugen genau zehn Fragen über die bestätigten Themen. Bestehende Checks mit fünf Fragen bleiben abschließbar; Ergebnisstufen verwenden den Anteil der ersten richtigen Antworten (Wiederholungen erhöhen den Wert nicht).
+
+- 90–100 % richtig: 75 % des Basisbudgets; 70–<90 %: 100 %; 40–<70 %: 125 %; unter 40 %: 150 %.
+- Aktive Wissenscheck-Minuten werden angerechnet. Die restliche Planung wird auf fünf Minuten aufgerundet. Keine negative Restzeit und keine erfundene Mindest-Lerneinheit, wenn der Check das Budget abdeckt.
+- Erfassung nur während aktiver Session im Vordergrund. Checkpoints alle 15 Sekunden sowie beim Verlassen/Hintergrundwechsel erhalten Zeit beim Wiederöffnen; bei abruptem Prozessabbruch können höchstens die seit dem letzten erfolgreichen Checkpoint erfassten Sekunden fehlen. Offline fehlgeschlagene Checkpoints werden beim nächsten Checkpoint/Abschluss nachgeliefert, solange der Prozess lebt.
+- Vorschläge bevorzugen gespeicherte Zeiten und ergänzen bei Bedarf Blöcke rund um die bevorzugte Uhrzeit. Automatisch maximal 120 Minuten pro Tag, Zusatzblöcke 08–21 Uhr mit mindestens zehn Minuten Abstand zu anderen Lernblöcken. Kalendereinträge bleiben gesperrt. Manuelle Bearbeitung bleibt möglich.
+- Sieben und drei Tage verteilen denselben Bedarf; ein Tag begrenzt die tatsächlich planbare Kapazität, nicht die Bedarfsschätzung. Fehlende Zeit wird in der Übersicht ausgewiesen. Nach 21 Uhr keine automatischen Zusatztermine; Sofortstart bleibt möglich. Keine automatische Wiederherstellung entfernter Termine nach Übernahme.
+
+Validierung: vollständiger Vitest-Lauf 1.039/1.039, Jest 415/415. Anschließend zusätzlicher Backend-Integrationstest ergänzt: zehn Fragen, neun richtige Antworten, Eigentümerschutz der Zeit-Checkpoints, 900 aktive Sekunden, 135 Gesamtminuten und 120 Restminuten; betroffene Suite 14/14 bestanden. TypeScript und ESLint geprüft. Änderungen lokal auf `anonymous-agent` (3230) eingespielt. Echte KI-Neugenerierung weiterhin mangels lokalem Vertex-Schlüssel offen.
+
+Lokaler Testplan für Philipp: `kh7bfb5hj74w6fsa9s9dfc36qh8fj5qz`, Route `/learning-plans/kh7bfb5hj74w6fsa9s9dfc36qh8fj5qz/preparation`, bestehendes lokales Testkonto. Die zehn Beispielantworten und 15 Minuten aktive Zeit wurden als Testdaten gesetzt, nicht real 15 Minuten im Simulator absolviert.
+
+Native Ansicht: separater Simulator B240CC0C-9883-4E16-86C5-1FD0607A1080, Metro 8083. Keine Anmeldung; deshalb gekennzeichnete lokale Vorschau mit dem tatsächlichen Backend-Ergebnis. Vorschau lässt UI-Termine bearbeiten, speichert keine Backend-Änderungen; sie ist nicht Bestandteil des PR. `Simulator.app` fehlt in dieser Installation, CoreSimulator läuft dennoch. Keine vollständige manuelle Live-Abnahme behauptet. Aufnahme `adaptive-result-preview.png` zeigt diesen begrenzten Teststand.

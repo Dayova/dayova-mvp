@@ -55,3 +55,32 @@ export function recommendLearningPreparation(args: {
 		praxisSessionCount: recommendedMinutes <= 60 ? 1 : 2,
 	};
 }
+
+/** Product heuristic: first answers determine the band; topic evidence still steers content. */
+export function diagnosticPreparationBudget(
+	examTypeLabel: string,
+	correct: number,
+	questionCount: number,
+	activeSeconds: number,
+) {
+	const baseMinutes = preparationBudget(examTypeLabel).minutes;
+	const ratio = questionCount > 0 ? correct / questionCount : 0.75;
+	const multiplier =
+		ratio >= 0.9 ? 0.75 : ratio >= 0.7 ? 1 : ratio >= 0.4 ? 1.25 : 1.5;
+	const totalMinutes = Math.ceil((baseMinutes * multiplier) / 5) * 5;
+	const diagnosticMinutes = Math.min(
+		totalMinutes,
+		Math.floor(
+			Math.max(0, Number.isFinite(activeSeconds) ? activeSeconds : 0) / 60,
+		),
+	);
+	return {
+		baseMinutes,
+		totalMinutes,
+		diagnosticMinutes,
+		remainingMinutes:
+			Math.ceil(Math.max(0, totalMinutes - diagnosticMinutes) / 5) * 5,
+		correctCount: correct,
+		questionCount,
+	};
+}

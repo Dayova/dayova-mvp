@@ -28,6 +28,7 @@ import { normalizeGeneratedGermanText } from "./generatedGermanText";
 import { calculateAvailableStudyMinutes } from "./learningPlanAvailability";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 import {
+	diagnosticPreparationBudget,
 	getDefaultPreparationDepth,
 	type PreparationDepth,
 	preparationBudget,
@@ -1433,7 +1434,9 @@ export const listOverview = query({
 			const completedStudyMinutes = sessions.reduce((total, session) => {
 				const status = getSessionExecutionStatus(session);
 				const activeMinutes = Math.min(
-					session.durationMinutes,
+					session.sessionPurpose === "diagnostic"
+						? Infinity
+						: session.durationMinutes,
 					Math.max(0, (session.activeStudySeconds ?? 0) / 60),
 				);
 				if (status === "completed") {
@@ -2791,6 +2794,34 @@ export const startSession = mutation({
 	},
 });
 
+/** Checkpoint foreground study time so reopening a diagnostic preserves prior work. */
+export const checkpointStudyTime = mutation({
+	args: {
+		sessionId: v.id("learningPlanSessions"),
+		activeStudySeconds: v.number(),
+	},
+	returns: v.null(),
+	handler: async (ctx, args) => {
+		const { session } = await getOwnedSessionAndPlan(ctx, args.sessionId);
+		if (
+			!Number.isInteger(args.activeStudySeconds) ||
+			args.activeStudySeconds < 0
+		)
+			throwUserFacingError("Die aktive Lernzeit ist ungültig.");
+		if (getSessionExecutionStatus(session) !== "started") return null;
+		const elapsed = Math.max(
+			0,
+			Math.floor((Date.now() - (session.startedAt ?? Date.now())) / 1000),
+		);
+		await ctx.db.patch("learningPlanSessions", session._id, {
+			activeStudySeconds: Math.max(
+				session.activeStudySeconds ?? 0,
+				Math.min(elapsed, args.activeStudySeconds),
+			),
+		});
+		return null;
+	},
+});
 export const recordSessionOutcome = mutation({
 	args: {
 		sessionId: v.id("learningPlanSessions"),
@@ -2830,7 +2861,10 @@ export const recordSessionOutcome = mutation({
 						? "notStarted"
 						: args.outcome,
 				outcomeAt: now,
-				activeStudySeconds: args.activeStudySeconds,
+				activeStudySeconds: Math.max(
+					session.activeStudySeconds ?? 0,
+					args.activeStudySeconds ?? 0,
+				),
 				completed: args.outcome === "completed",
 			},
 		);
@@ -2838,6 +2872,21 @@ export const recordSessionOutcome = mutation({
 			await ctx.db.patch("learningPlans", plan._id, {
 				preparationRevision: (plan.preparationRevision ?? 0) + 1,
 			});
+		if (session.sessionPurpose === "diagnostic" && plan.preparationState) {
+			const budget = await getDiagnosticBudget(ctx, plan, [
+				{
+					...session,
+					completed: true,
+					activeStudySeconds: Math.max(
+						session.activeStudySeconds ?? 0,
+						args.activeStudySeconds ?? 0,
+					),
+				},
+			]);
+			await ctx.db.patch("learningPlans", plan._id, {
+				targetStudyMinutes: budget.totalMinutes,
+			});
+		}
 		const rollingUpdate = await advanceOwnedRollingLearningPlan(ctx, plan);
 
 		return {
@@ -3195,7 +3244,7 @@ export const prepareDiagnostic = mutation({
 			throwUserFacingError("Dieser Lernplan wurde bereits erstellt.");
 		if (!plan.scopeConfirmedAt)
 			throwUserFacingError("Bestätige zuerst deinen Prüfungsstoff.");
-		const questions = (plan.knowledgeQuestions ?? []).slice(0, 5);
+		const questions = (plan.knowledgeQuestions ?? []).slice(0, 10);
 		validateFirstSessionDiagnosticQuestions(questions, plan.topicMap);
 		const now = Date.now();
 		const current = berlinNow();
@@ -3212,7 +3261,7 @@ export const prepareDiagnostic = mutation({
 			durationMinutes: 10,
 			unscheduled: true,
 			goal: "Finde heraus, was du schon kannst.",
-			tasks: ["Beantworte fünf kurze Fragen."],
+			tasks: ["Beantworte zehn kurze Fragen."],
 			expectedOutcome: "Deine Stärken und Übungsschwerpunkte für den Lernplan.",
 			compositionVariant: "control",
 			planningStatus: "committed",
@@ -3225,7 +3274,7 @@ export const prepareDiagnostic = mutation({
 		await insertFirstSessionDiagnosticItems(ctx, {
 			plan,
 			sessionId,
-			questions: questions.slice(0, 5),
+			questions,
 			now,
 		});
 		await ctx.db.patch("learningPlans", plan._id, {
@@ -3318,6 +3367,34 @@ function preparationGroupSlot(group: Doc<"learningPlanSessions">[]) {
 	};
 }
 
+async function getDiagnosticBudget(
+	ctx: QueryCtx,
+	plan: Doc<"learningPlans">,
+	sessions: Doc<"learningPlanSessions">[],
+) {
+	const diagnostic = sessions.find(
+		(s) => s.sessionPurpose === "diagnostic" && s.completed,
+	);
+	if (!diagnostic)
+		return diagnosticPreparationBudget(plan.examTypeLabel, 0, 0, 0);
+	const attempts = await ctx.db
+		.query("learningSessionAnswerAttempts")
+		.withIndex("by_sessionId_and_createdAt", (q) =>
+			q.eq("sessionId", diagnostic._id),
+		)
+		.order("asc")
+		.take(100);
+	const first = new Map<string, (typeof attempts)[number]>();
+	for (const attempt of attempts)
+		if (!first.has(attempt.itemId)) first.set(attempt.itemId, attempt);
+	return diagnosticPreparationBudget(
+		plan.examTypeLabel,
+		[...first.values()].filter((a) => a.rating === "correct").length,
+		first.size,
+		diagnostic.activeStudySeconds ?? 0,
+	);
+}
+
 export const getPreparationSchedule = query({
 	args: {
 		learningPlanId: v.id("learningPlans"),
@@ -3334,6 +3411,11 @@ export const getPreparationSchedule = query({
 		),
 		revision: v.number(),
 		budgetMinutes: v.number(),
+		baseMinutes: v.number(),
+		totalMinutes: v.number(),
+		diagnosticMinutes: v.number(),
+		correctCount: v.number(),
+		questionCount: v.number(),
 	}),
 	handler: async (ctx, args) => {
 		const plan = await ownedPreparationPlan(ctx, args.learningPlanId);
@@ -3344,6 +3426,11 @@ export const getPreparationSchedule = query({
 			)
 			.order("desc")
 			.take(500);
+		const { remainingMinutes, ...budget } = await getDiagnosticBudget(
+			ctx,
+			plan,
+			sessions,
+		);
 		const groups = new Map<string, typeof sessions>();
 		for (const s of sessions) {
 			if (s.preparationSlotId && !s.unscheduled) {
@@ -3361,7 +3448,8 @@ export const getPreparationSchedule = query({
 			return {
 				slots,
 				revision: plan.preparationRevision ?? 0,
-				budgetMinutes: preparationBudget(plan.examTypeLabel).minutes,
+				budgetMinutes: remainingMinutes,
+				...budget,
 			};
 		const now = args.now;
 		const occupied = await getSchedulingOccupiedEntries(ctx, {
@@ -3383,6 +3471,7 @@ export const getPreparationSchedule = query({
 			.take(50);
 		return {
 			slots: proposePreparationSchedule({
+				budgetMinutes: remainingMinutes,
 				examTypeLabel: plan.examTypeLabel,
 				examDateKey: plan.examDateKey,
 				now,
@@ -3395,7 +3484,8 @@ export const getPreparationSchedule = query({
 				completedMinutes: 0,
 			})),
 			revision: plan.preparationRevision ?? 0,
-			budgetMinutes: preparationBudget(plan.examTypeLabel).minutes,
+			budgetMinutes: remainingMinutes,
+			...budget,
 		};
 	},
 });
@@ -3647,7 +3737,8 @@ export const startFlexiblePreparation = mutation({
 		let order = Math.max(0, ...previous.map((s) => s.sortOrder)) + 1;
 		let first: Id<"learningPlanSessions"> | undefined;
 		for (
-			let remaining = preparationBudget(plan.examTypeLabel).minutes;
+			let remaining = (await getDiagnosticBudget(ctx, plan, previous))
+				.remainingMinutes;
 			remaining > 0;
 			remaining -= 10
 		) {
@@ -3683,8 +3774,16 @@ export const startFlexiblePreparation = mutation({
 			...plan,
 			preparationState: "ready",
 		});
-		if (!first)
-			throwUserFacingError("Der Lernplan konnte nicht gestartet werden.");
+		if (!first) {
+			await ctx.db.patch("learningPlans", plan._id, {
+				preparationState: "completed",
+			});
+			const diagnostic = previous.find(
+				(s) => s.sessionPurpose === "diagnostic",
+			);
+			if (!diagnostic) throwUserFacingError("Der Wissenscheck fehlt noch.");
+			return diagnostic._id;
+		}
 		return first;
 	},
 });

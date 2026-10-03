@@ -94,6 +94,7 @@ export function validatePreparationSlots(
 /** Preferred days first; extra days reuse the preferred clock time. Spread across the horizon. */
 export function proposePreparationSchedule(args: {
 	examTypeLabel: string;
+	budgetMinutes?: number;
 	examDateKey: string;
 	now: { dateKey: string; minutes: number };
 	learningTimes: LearningTimeWindow[];
@@ -182,7 +183,7 @@ export function proposePreparationSchedule(args: {
 		}
 	}
 	const result: PreparationSlot[] = [];
-	let remaining = policy.minutes;
+	let remaining = args.budgetMinutes ?? policy.minutes;
 	for (const preferredDay of [true, false]) {
 		const pool = candidates.filter((c) => c.preferred === preferredDay);
 		const total = pool.reduce((sum, c) => sum + c.durationMinutes, 0);
@@ -191,10 +192,18 @@ export function proposePreparationSchedule(args: {
 		let used = 0;
 		// Proportional selection keeps an early start and distributes study across weeks.
 		for (const candidate of pool) {
-			if (remaining <= 0) break;
+			if (remaining <= 0 || result.length >= 180) break;
 			const threshold = total > 0 ? (accumulated / total) * desired : 0;
 			if (used <= threshold + 0.001) {
-				const duration = Math.min(candidate.durationMinutes, remaining);
+				const dailyUsed = result
+					.filter((s) => s.dateKey === candidate.dateKey)
+					.reduce((n, s) => n + s.durationMinutes, 0);
+				const duration = Math.min(
+					candidate.durationMinutes,
+					remaining,
+					120 - dailyUsed,
+				);
+				if (duration < 5) continue;
 				result.push({
 					id: candidate.id,
 					dateKey: candidate.dateKey,
@@ -206,6 +215,64 @@ export function proposePreparationSchedule(args: {
 			}
 			accumulated += candidate.durationMinutes;
 		}
+	}
+
+	// Add one block per day per round, preserving gaps and the student's clock preference.
+	// Only suggested capacity: bounded to two hours/day and 08:00–21:00.
+	for (let round = 0; round < 24 && remaining > 0; round++) {
+		if (result.length >= 180) break;
+		let added = false;
+		for (
+			let day = startOffset;
+			day < days && remaining > 0 && result.length < 180;
+			day++
+		) {
+			const date = new Date(today);
+			date.setUTCDate(date.getUTCDate() + day);
+			const dateKey = date.toISOString().slice(0, 10);
+			const used = result
+				.filter((s) => s.dateKey === dateKey)
+				.reduce((n, s) => n + s.durationMinutes, 0);
+			const duration = Math.min(30, remaining, 120 - used);
+			if (duration < 5) continue;
+			const earliest = Math.max(
+				480,
+				day === 0 ? Math.ceil((args.now.minutes + 1) / 5) * 5 : 480,
+			);
+			const starts = Array.from({ length: 157 }, (_, i) => 480 + i * 5).filter(
+				(t) => t >= earliest && t + duration <= 1260,
+			);
+			starts.sort(
+				(a, b) =>
+					Math.abs(a - commonStart) - Math.abs(b - commonStart) || a - b,
+			);
+			const start = starts.find(
+				(at) =>
+					!result.some(
+						(s) =>
+							s.dateKey === dateKey &&
+							(timeMinutes(s.startTime) ?? 0) < at + duration + 10 &&
+							(timeMinutes(s.startTime) ?? 0) + s.durationMinutes + 10 > at,
+					) &&
+					!args.occupiedEntries.some(
+						(e) =>
+							e.dayKey.slice(0, 10) === dateKey &&
+							e.time &&
+							(timeMinutes(e.time) ?? 0) < at + duration &&
+							(timeMinutes(e.time) ?? 0) + (e.durationMinutes ?? 0) > at,
+					),
+			);
+			if (start === undefined) continue;
+			result.push({
+				id: `${dateKey}-${timeLabel(start)}`,
+				dateKey,
+				startTime: timeLabel(start),
+				durationMinutes: duration,
+			});
+			remaining -= duration;
+			added = true;
+		}
+		if (!added) break;
 	}
 	return result.sort(
 		(a, b) =>

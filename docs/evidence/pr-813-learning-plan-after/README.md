@@ -14,3 +14,9 @@ Der aktuelle Editor verwendet Beginn und Lerndauer; Ende wird automatisch berech
 <img src="time-picker.png" width="240" alt="Nativer Zeitwähler" />
 
 Details und offene Prüfungen: [Testblatt](../../qa/pr-813-learning-planning.md).
+
+## Ergebnisabhängige Auswertung
+
+Native lokale Vorschau des neuen Auswertungsscreens mit einem aus dem Test-Backend gelesenen Ergebnis. Zehn vorbereitete Beispielantworten, davon neun richtig; 15 Minuten Check-Zeit als Testwert gesetzt. Authentifizierter Gesamtflow und echtes Speichern sind damit nicht belegt.
+
+<img src="adaptive-result-preview.png" width="320" alt="Auswertung: neun von zehn richtig, 15 Minuten angerechnet, zwei Stunden verbleibend" />
