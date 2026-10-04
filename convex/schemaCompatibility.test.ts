@@ -69,3 +69,72 @@ test("AI budget accounting data from prior deployments remains schema-compatible
 		reservationDocumentId: expect.any(String),
 	});
 });
+
+test("preserves metadata written by earlier development backends", async () => {
+	const t = convexTest(schema, import.meta.glob("./**/*.ts"));
+	await t.run(async (ctx) => {
+		const dismissal = { learningRoutineDismissedDateKey: "2026-09-24" };
+		const userId = await ctx.db.insert("users", {
+			tokenIdentifier: "compat:owner",
+			clerkId: "fixture-user",
+			email: "fixture@example.com",
+			...dismissal,
+		});
+		expect(await ctx.db.get("users", userId)).toMatchObject(dismissal);
+		const legacyPlanMetadata = {
+			initialLearningTimePromptDismissedAt: 1,
+			masteryStatus: "learning" as const,
+		};
+		const planId = await ctx.db.insert("learningPlans", {
+			ownerTokenIdentifier: "compat:owner",
+			subject: "Mathematik",
+			examTypeLabel: "Test",
+			examDateKey: "2027-06-01",
+			examDateLabel: "1. Juni",
+			durationMinutes: 30,
+			topicDescription: "Gleichungen",
+			status: "accepted",
+			createdAt: 1,
+			updatedAt: 1,
+			...legacyPlanMetadata,
+		});
+		expect(await ctx.db.get("learningPlans", planId)).toMatchObject(
+			legacyPlanMetadata,
+		);
+		const metadata = {
+			processingStatus: "ready" as const,
+			processingVersion: 2,
+		};
+		const id = await ctx.db.insert("learningPlanDocuments", {
+			ownerTokenIdentifier: "compat:owner",
+			learningPlanId: planId,
+			storageId: "fixture",
+			storageProvider: "convex",
+			fileName: "fixture.pdf",
+			fileType: "application/pdf",
+			fileSizeBytes: 100,
+			sourceKind: "school",
+			createdAt: 1,
+			...metadata,
+		});
+		expect(await ctx.db.get("learningPlanDocuments", id)).toMatchObject(
+			metadata,
+		);
+		const preference = {
+			preferenceStatus: "proposed" as const,
+			proposedForLearningPlanId: planId,
+		};
+		const timeId = await ctx.db.insert("userLearningTimes", {
+			ownerTokenIdentifier: "compat:owner",
+			dayOfWeek: 1,
+			startTime: "16:00",
+			endTime: "17:00",
+			createdAt: 1,
+			updatedAt: 1,
+			...preference,
+		});
+		expect(await ctx.db.get("userLearningTimes", timeId)).toMatchObject(
+			preference,
+		);
+	});
+});
