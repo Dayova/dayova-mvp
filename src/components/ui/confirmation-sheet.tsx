@@ -24,11 +24,12 @@ type ConfirmationSheetProps = {
 	confirmTone?: "primary" | "destructive";
 	closeAccessibilityLabel?: string;
 	actionLayout?: ConfirmationActionLayout;
+	actionAppearance?: "default" | "outlined";
 	maxWidth?: number;
 	scrollable?: boolean;
 };
 
-function ConfirmationSheet({
+function ConfirmationPresentation({
 	visible,
 	title,
 	description,
@@ -41,9 +42,11 @@ function ConfirmationSheet({
 	confirmTone = "destructive",
 	closeAccessibilityLabel = "Bestätigung schließen",
 	actionLayout: requestedActionLayout = "inline",
+	actionAppearance = "default",
 	maxWidth,
 	scrollable = true,
-}: ConfirmationSheetProps) {
+	embedded = false,
+}: ConfirmationSheetProps & { embedded?: boolean }) {
 	const { colors } = useDayovaTheme();
 	const { shouldStackInlineContent } = useContentSizeLayout();
 	const actionLayout = shouldStackInlineContent
@@ -62,13 +65,21 @@ function ConfirmationSheet({
 			className={actionLayout === "stacked" ? "w-full" : "flex-1"}
 			disabled={isBusy}
 			onPress={onConfirm}
-			variant={confirmTone === "destructive" ? "destructive" : "default"}
+			variant={
+				confirmTone === "destructive"
+					? actionAppearance === "outlined"
+						? "destructive-outline"
+						: "destructive"
+					: "default"
+			}
 		>
 			{isBusy ? (
 				<ActivityIndicator
 					color={
 						confirmTone === "destructive"
-							? colors.background
+							? actionAppearance === "outlined"
+								? colors.dangerAction
+								: colors.background
 							: DAYOVA_DESIGN_SYSTEM.colors.light1
 					}
 				/>
@@ -86,7 +97,7 @@ function ConfirmationSheet({
 			)}
 			disabled={isBusy}
 			onPress={safeClose}
-			variant="neutral"
+			variant={actionAppearance === "outlined" ? "cancel" : "neutral"}
 		>
 			<Text className="shrink text-center">{cancelLabel}</Text>
 		</Button>
@@ -107,6 +118,17 @@ function ConfirmationSheet({
 		/>
 	) : null;
 
+	if (embedded) {
+		return (
+			<View className="gap-6">
+				<Text className="font-poppins text-body-3 text-secondary-text">
+					{description}
+				</Text>
+				{error}
+				{actions}
+			</View>
+		);
+	}
 	return (
 		<DayovaSheetFrame
 			visible={visible}
@@ -131,4 +153,15 @@ function ConfirmationSheet({
 	);
 }
 
-export { ConfirmationSheet };
+function ConfirmationSheet(props: ConfirmationSheetProps) {
+	return <ConfirmationPresentation {...props} />;
+}
+
+/** Confirmation inside an already presented sheet; keeps its backdrop mounted. */
+function ConfirmationSheetContent(
+	props: Omit<ConfirmationSheetProps, "visible" | "title">,
+) {
+	return <ConfirmationPresentation {...props} visible title={null} embedded />;
+}
+
+export { ConfirmationSheet, ConfirmationSheetContent };

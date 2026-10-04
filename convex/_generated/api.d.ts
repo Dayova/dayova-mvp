@@ -24,6 +24,8 @@ import type * as crmSync from "../crmSync.js";
 import type * as crmSyncState from "../crmSyncState.js";
 import type * as crmUpdates from "../crmUpdates.js";
 import type * as crons from "../crons.js";
+import type * as dashboardMigrations from "../dashboardMigrations.js";
+import type * as dashboardNextStep from "../dashboardNextStep.js";
 import type * as dayEntries from "../dayEntries.js";
 import type * as dayKeyVariants from "../dayKeyVariants.js";
 import type * as diagnosticReadiness from "../diagnosticReadiness.js";
@@ -53,6 +55,7 @@ import type * as learningTimes from "../learningTimes.js";
 import type * as learningTimesBackfill from "../learningTimesBackfill.js";
 import type * as learningTopicMap from "../learningTopicMap.js";
 import type * as notifications from "../notifications.js";
+import type * as personalSubjects from "../personalSubjects.js";
 import type * as questionNovelty from "../questionNovelty.js";
 import type * as revenueCat from "../revenueCat.js";
 import type * as scheduleConflicts from "../scheduleConflicts.js";
@@ -89,6 +92,8 @@ declare const fullApi: ApiFromModules<{
   crmSyncState: typeof crmSyncState;
   crmUpdates: typeof crmUpdates;
   crons: typeof crons;
+  dashboardMigrations: typeof dashboardMigrations;
+  dashboardNextStep: typeof dashboardNextStep;
   dayEntries: typeof dayEntries;
   dayKeyVariants: typeof dayKeyVariants;
   diagnosticReadiness: typeof diagnosticReadiness;
@@ -118,6 +123,7 @@ declare const fullApi: ApiFromModules<{
   learningTimesBackfill: typeof learningTimesBackfill;
   learningTopicMap: typeof learningTopicMap;
   notifications: typeof notifications;
+  personalSubjects: typeof personalSubjects;
   questionNovelty: typeof questionNovelty;
   revenueCat: typeof revenueCat;
   scheduleConflicts: typeof scheduleConflicts;
@@ -160,4 +166,5 @@ export declare const internal: FilterApi<
 
 export declare const components: {
   convexFilesControl: import("@gilhrpenner/convex-files-control/_generated/component.js").ComponentApi<"convexFilesControl">;
+  migrations: import("@convex-dev/migrations/_generated/component.js").ComponentApi<"migrations">;
 };

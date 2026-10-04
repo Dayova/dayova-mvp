@@ -80,6 +80,11 @@ production fingerprint and OTA jobs used on `main` verify both platform exports
 and compare the candidate with the distributed-binary baseline. Expo does not
 start this `pull_request` workflow for fork PRs.
 
+GitHub merge queue branches (`gh-readonly-queue/main/**`) run the same required
+lint, typecheck, and test job on the combined candidate commit. These temporary
+branches do not perform OTA assessment or publish releases; production deployment
+and publication still run only after the candidate lands on `main`.
+
 The **PR OTA compatibility report** in the EAS workflow shows the checked commit,
 run link, result, reason, baseline and fingerprints, including an explicit
 unconfirmed result when an upstream job fails or is skipped. The native EAS

@@ -19,15 +19,16 @@ const requestFrom = (pages: ReturnType<typeof parent>[][]) =>
 describe("OTA stack root", () => {
 	it("accepts a direct PR to main without calling GitHub", async () => {
 		const request = requestFrom([]);
-		expect(await reachesMainThroughOpenPrs("main", repository, request)).toBe(true);
+		expect(await reachesMainThroughOpenPrs("main", repository, request)).toBe(
+			true,
+		);
 		expect(request).not.toHaveBeenCalled();
 	});
 
 	it("follows open parent PRs until their base is main", async () => {
-		const request = requestFrom([[
-			parent("codex/child", "codex/parent"),
-			parent("codex/parent", "main"),
-		]]);
+		const request = requestFrom([
+			[parent("codex/child", "codex/parent"), parent("codex/parent", "main")],
+		]);
 		expect(
 			await reachesMainThroughOpenPrs("codex/child", repository, request),
 		).toBe(true);
@@ -36,28 +37,30 @@ describe("OTA stack root", () => {
 
 	it("rejects a branch without an open parent PR", async () => {
 		expect(
-			await reachesMainThroughOpenPrs("codex/orphan", repository, requestFrom([])),
+			await reachesMainThroughOpenPrs(
+				"codex/orphan",
+				repository,
+				requestFrom([]),
+			),
 		).toBe(false);
 	});
 
 	it("rejects ambiguous parent PRs", async () => {
-		const request = requestFrom([[
-				parent("codex/parent", "main"),
-				parent("codex/parent", "other"),
-		]]);
+		const request = requestFrom([
+			[parent("codex/parent", "main"), parent("codex/parent", "other")],
+		]);
 		expect(
 			await reachesMainThroughOpenPrs("codex/parent", repository, request),
 		).toBe(false);
 	});
 
 	it("rejects a cyclic stack", async () => {
-		const request = requestFrom([[
-			parent("codex/a", "codex/b"),
-			parent("codex/b", "codex/a"),
-		]]);
-		expect(await reachesMainThroughOpenPrs("codex/a", repository, request)).toBe(
-			false,
-		);
+		const request = requestFrom([
+			[parent("codex/a", "codex/b"), parent("codex/b", "codex/a")],
+		]);
+		expect(
+			await reachesMainThroughOpenPrs("codex/a", repository, request),
+		).toBe(false);
 		expect(request).toHaveBeenCalledTimes(1);
 	});
 
@@ -69,12 +72,16 @@ describe("OTA stack root", () => {
 			firstPage,
 			[parent("codex/child", "codex/parent"), parent("codex/parent", "main")],
 		]);
-		expect(await reachesMainThroughOpenPrs("codex/child", repository, request)).toBe(true);
+		expect(
+			await reachesMainThroughOpenPrs("codex/child", repository, request),
+		).toBe(true);
 		expect(request).toHaveBeenCalledTimes(2);
 	});
 
 	it("fails closed when GitHub lookup fails", async () => {
-		const request = vi.fn<typeof fetch>(async () => new Response(null, { status: 503 }));
+		const request = vi.fn<typeof fetch>(
+			async () => new Response(null, { status: 503 }),
+		);
 		await expect(
 			reachesMainThroughOpenPrs("codex/parent", repository, request),
 		).rejects.toThrow("HTTP 503");

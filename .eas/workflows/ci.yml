@@ -11,6 +11,7 @@ on:
   push:
     branches:
       - main
+      - gh-readonly-queue/main/**
   workflow_dispatch: {}
 
 concurrency:
@@ -30,6 +31,16 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.id && github.event.pull_request.head.repo.id == github.event.pull_request.base.repo.id) }}
     params:
       md: "CI source is eligible: pull requests must originate from this repository."
+
+  contributor_gate:
+    name: CI contributor eligibility
+    type: doc
+    needs:
+      - source_gate
+    # Separate contributor trust from branch routing to fit EAS's condition limit.
+    if: ${{ github.event_name != 'pull_request' || contains('OWNER,MEMBER,COLLABORATOR', github.event.pull_request.author_association) }}
+    params:
+      md: "CI contributor is eligible: pull requests must come from trusted contributors."
 
   stack_root_gate:
     name: Main-rooted PR stack
@@ -52,6 +63,18 @@ jobs:
           root_main="$(node scripts/ota-stack-root.mts)"
           set-output root_main "$root_main"
 
+  target_gate:
+    name: CI target eligibility
+    type: doc
+    needs:
+      - contributor_gate
+    after:
+      - stack_root_gate
+    # Keep stack eligibility separate from push routing for EAS's condition limit.
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.ref == 'main' || after.stack_root_gate.outputs.root_main == 'true' }}
+    params:
+      md: "CI target is eligible: pull requests must have an open base chain to main."
+
   production_fingerprint:
     name: Production native fingerprints
     type: fingerprint
@@ -66,11 +89,9 @@ jobs:
     type: custom
     runs_on: linux-medium
     needs:
-      - source_gate
-    after:
-      - stack_root_gate
+      - target_gate
     # This custom job uses production scope; fork code must not reach checkout.
-    if: ${{ github.event_name != 'pull_request' || (contains('OWNER,MEMBER,COLLABORATOR', github.event.pull_request.author_association) && (github.event.pull_request.base.ref == 'main' || after.stack_root_gate.outputs.root_main == 'true')) }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || (github.event_name == 'push' && (github.ref_name == 'main' || startsWith(github.ref_name, 'gh-readonly-queue/main/'))) }}
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules

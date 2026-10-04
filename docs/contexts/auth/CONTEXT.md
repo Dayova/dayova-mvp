@@ -12,7 +12,8 @@ Notion is Dayova's main internal documentation and knowledge workspace. Keep thi
   provider UI, dependencies, or native capabilities without a new product and
   authentication decision that covers cross-platform account linking and
   account lifecycle behavior.
-- Launch onboarding restores a three-page product explanation, then collects
+- Launch onboarding opens with four product explanation pages (getting started, learning times,
+  material upload, and the scheduled learning path), then collects
   duration, recurring weekdays, and a start time. After authentication these
   values create the `userLearningTimes` windows consumed by learning-plan
   scheduling; local copy changes alone are not accepted as personalization.
@@ -22,7 +23,7 @@ Notion is Dayova's main internal documentation and knowledge workspace. Keep thi
 - Onboarding profile/account steps are native history entries in the existing
   auth stack. Answers and field errors live above route screens; the route
   history, not a parallel `activeIndex`, owns forward/back navigation. The
-  three homogeneous intro pages remain one native pager route, and a cold
+  four homogeneous intro pages remain one native pager route, and a cold
   direct step URL falls back to the auth choice. See
   [mobile-app ADR 0003](../mobile-app/adr/0003-model-onboarding-as-native-stack-history.md).
 - Clerk `unsafeMetadata.schoolType` stores only the stable bounded `Schulart`

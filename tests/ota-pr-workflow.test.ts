@@ -125,6 +125,7 @@ const evaluate = (expression: string, context: Record<string, unknown>) =>
 	runInNewContext(expression.slice(3, -2), {
 		...context,
 		contains: (value: string, part: string) => value.includes(part),
+		startsWith: (value: string, prefix: string) => value.startsWith(prefix),
 	});
 
 const event = (
@@ -158,7 +159,8 @@ describe("PR OTA workflow routing", () => {
 		expect(workflow.on.pull_request.types).toContain("synchronize");
 		expect(workflow.on.pull_request.types).toContain("base_ref_changed");
 		expect(workflow.jobs.stack_root_gate.needs).toContain("source_gate");
-		expect(workflow.jobs.checks.after).toContain("stack_root_gate");
+		expect(workflow.jobs.target_gate.after).toContain("stack_root_gate");
+		expect(workflow.jobs.checks.needs).toContain("target_gate");
 	});
 
 	it.each([undefined, null])("rejects missing repository IDs (%s)", (id) => {
@@ -197,6 +199,16 @@ describe("PR OTA workflow routing", () => {
 			false,
 			false,
 		],
+		[
+			"untrusted stacked PR",
+			event("pull_request", "CONTRIBUTOR", false, "codex/parent"),
+			false,
+		],
+		[
+			"trusted fork stacked PR",
+			event("pull_request", "MEMBER", true, "codex/parent"),
+			false,
+		],
 		["untrusted PR", event("pull_request", "CONTRIBUTOR"), false],
 		["owner fork PR", event("pull_request", "OWNER", true), false],
 		["member fork PR", event("pull_request", "MEMBER", true), false],
@@ -206,8 +218,26 @@ describe("PR OTA workflow routing", () => {
 			false,
 		],
 		["main push", event("push"), true],
+		["other push", { ...event("push"), ref_name: "feature" }, false],
+		[
+			"main merge queue push",
+			{ ...event("push"), ref_name: "gh-readonly-queue/main/pr-123-test" },
+			false,
+			true,
+			true,
+		],
+		[
+			"other merge queue push",
+			{ ...event("push"), ref_name: "gh-readonly-queue/release/pr-123-test" },
+			false,
+		],
+		[
+			"similar queue prefix push",
+			{ ...event("push"), ref_name: "gh-readonly-queue/main-malicious/test" },
+			false,
+		],
 		["manual CI", event("workflow_dispatch"), false],
-	])("routes %s to production compatibility checks", (_label, github, expected, rooted = true) => {
+	])("routes %s to production compatibility checks", (_label, github, expected, rooted = true, queueChecks = false) => {
 		const context = {
 			github,
 			after: {
@@ -231,7 +261,7 @@ describe("PR OTA workflow routing", () => {
 				),
 		);
 		expect(canRun("checks")).toBe(
-			expected || github.event_name === "workflow_dispatch",
+			expected || queueChecks || github.event_name === "workflow_dispatch",
 		);
 		expect(canRun("production_fingerprint")).toBe(expected);
 		expect(canRun("ota_checks")).toBe(expected);
@@ -253,6 +283,36 @@ describe("PR OTA workflow routing", () => {
 		expect(Boolean(evaluate(workflow.jobs.pr_ota_comment.if, context))).toBe(
 			github.event_name === "pull_request",
 		);
+	});
+
+	it("runs queue quality checks without a pull request payload", () => {
+		const context = {
+			github: {
+				event_name: "push",
+				ref_name: "gh-readonly-queue/main/pr-123-test",
+				event: {},
+			},
+			after: { stack_root_gate: { outputs: {} } },
+		};
+		for (const id of [
+			"source_gate",
+			"contributor_gate",
+			"target_gate",
+			"checks",
+		]) {
+			expect(Boolean(evaluate(workflow.jobs[id].if, context))).toBe(true);
+		}
+		for (const id of [
+			"stack_root_gate",
+			"production_fingerprint",
+			"ota_checks",
+			"deploy_convex",
+			"send_updates",
+			"pr_ota_report",
+			"pr_ota_comment",
+		]) {
+			expect(Boolean(evaluate(workflow.jobs[id].if, context))).toBe(false);
+		}
 	});
 
 	it.each([
@@ -286,7 +346,11 @@ describe("PR OTA workflow routing", () => {
 		const report = workflow.jobs.pr_ota_report;
 		expect(report.needs).toBeUndefined();
 		expect(report.after).toEqual(
-			expect.arrayContaining(["stack_root_gate", "production_fingerprint", "ota_checks"]),
+			expect.arrayContaining([
+				"stack_root_gate",
+				"production_fingerprint",
+				"ota_checks",
+			]),
 		);
 		const context = {
 			github: event("pull_request"),
@@ -305,7 +369,9 @@ describe("PR OTA workflow routing", () => {
 		);
 		expect(rendered).toContain(`### ${expected}`);
 		expect(rendered).toContain(`**Checked commit:** \`${context.github.sha}\``);
-		expect(rendered).toContain("**This report applies only to the checked commit.**");
+		expect(rendered).toContain(
+			"**This report applies only to the checked commit.**",
+		);
 		expect(rendered).toContain("this result is **outdated**");
 		expect(rendered).toContain("latest commit is **unconfirmed**");
 		expect(rendered).toContain(`[View EAS run](${context.workflow.url})`);
@@ -329,16 +395,21 @@ describe("PR OTA workflow routing", () => {
 		const github = event("pull_request", "MEMBER", false, "codex/orphan");
 		const context = {
 			github,
-			workflow: { url: "https://expo.dev/accounts/dayova/projects/dayova/workflows/unrooted" },
+			workflow: {
+				url: "https://expo.dev/accounts/dayova/projects/dayova/workflows/unrooted",
+			},
 			after: {
-				stack_root_gate: { status: gateStatus, outputs: { root_main: rootMain } },
+				stack_root_gate: {
+					status: gateStatus,
+					outputs: { root_main: rootMain },
+				},
 				production_fingerprint: { status: "skipped", outputs: {} },
 				ota_checks: { status: "skipped", outputs: {} },
 			},
 		};
 		const report = workflow.jobs.pr_ota_report;
 		const comment = workflow.jobs.pr_ota_comment;
-		expect(evaluate(workflow.jobs.checks.if, context)).toBe(false);
+		expect(evaluate(workflow.jobs.target_gate.if, context)).toBe(false);
 		expect(evaluate(report.if, context)).toBe(true);
 		expect(evaluate(comment.if, context)).toBe(true);
 		const rendered = comment.params.payload.replace(
