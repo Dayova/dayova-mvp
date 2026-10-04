@@ -6,8 +6,9 @@ import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
 
 // The card content ends 24 points from the edge. This keeps the footer another
-// 32 points inward so it clears the 48-point action and its notched border.
-const FOOTER_ACTION_INSET = 32;
+// 44 points inward, leaving 20 points before the 48-point action and
+// comfortable breathing room beside its notched border.
+const FOOTER_ACTION_INSET = 44;
 
 export function LearningPlanCardFooter({
 	fixedTextScale = false,
@@ -24,11 +25,11 @@ export function LearningPlanCardFooter({
 
 	return (
 		<View
-			className="mt-4 w-full max-w-[300px] gap-1"
+			className="mt-4 w-full gap-1"
 			style={{ paddingRight: FOOTER_ACTION_INSET }}
 			testID="plan-card-footer"
 		>
-			<View className="flex-row items-start">
+			<View className="flex-row items-end">
 				<Text
 					allowFontScaling={!fixedTextScale}
 					className="font-poppins text-body-5 text-secondary-text"
@@ -60,7 +61,7 @@ export function LearningPlanCardFooter({
 					text: `${progress} Prozent`,
 				}}
 				accessibilityRole="progressbar"
-				className="h-2 w-[258px] max-w-full overflow-hidden rounded-full bg-light-2"
+				className="h-2 w-full overflow-hidden rounded-full bg-light-2"
 			>
 				<LinearGradient
 					colors={DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.colors}

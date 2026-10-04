@@ -96,6 +96,14 @@ function AppNavigator() {
 								presentation: "card",
 							}}
 						/>
+						<Stack.Screen
+							name="personal-subjects"
+							options={{
+								contentStyle: { backgroundColor: colors.background },
+								gestureEnabled: true,
+								presentation: "card",
+							}}
+						/>
 					</Stack>
 				</AuthNavigationGate>
 			</View>

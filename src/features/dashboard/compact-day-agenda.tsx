@@ -13,13 +13,15 @@ import {
 } from "./dashboard-agenda";
 
 /** Displays an entry with completion derived from its explicit state, not elapsed time. */
-function AgendaRow({
+export function AgendaRow({
 	item,
 	onOpenItem,
-}: {
-	item: DashboardAgendaItem;
-	onOpenItem: (item: DashboardAgendaItem) => void;
-}) {
+	mode = "screen",
+}: { item: DashboardAgendaItem } & (
+	| { mode?: "screen"; onOpenItem: (item: DashboardAgendaItem) => void }
+	| { mode: "artwork"; onOpenItem?: never }
+)) {
+	const isArtwork = mode === "artwork";
 	const { colors } = useDayovaTheme();
 	const { shouldStackInlineContent } = useContentSizeLayout();
 	const subject = formatGermanUiText(item.entry.subject ?? "").trim();
@@ -87,14 +89,16 @@ function AgendaRow({
 			<View className="min-w-0 flex-1 gap-1">
 				<Text
 					className="font-poppins font-semibold text-body-3 text-text"
-					numberOfLines={shouldStackInlineContent ? undefined : 1}
+					allowFontScaling={!isArtwork}
+					numberOfLines={!isArtwork && shouldStackInlineContent ? undefined : 1}
 					ellipsizeMode="tail"
 				>
 					{[subject, topic].filter(Boolean).join(" · ")}
 				</Text>
 				<Text
 					className="font-poppins text-body-4 text-secondary-text"
-					numberOfLines={shouldStackInlineContent ? undefined : 1}
+					allowFontScaling={!isArtwork}
+					numberOfLines={!isArtwork && shouldStackInlineContent ? undefined : 1}
 					ellipsizeMode="tail"
 				>
 					{metadata}
@@ -126,6 +130,19 @@ function AgendaRow({
 		</View>
 	);
 	const className = "border border-border bg-card px-4 py-3";
+	if (isArtwork) {
+		return (
+			<Surface
+				className={className}
+				accessible={false}
+				accessibilityElementsHidden
+				importantForAccessibility="no-hide-descendants"
+				pointerEvents="none"
+			>
+				{content}
+			</Surface>
+		);
+	}
 	return item.kind === "schoolLesson" ? (
 		<Surface className={className} accessible accessibilityLabel={label}>
 			{content}
@@ -141,7 +158,7 @@ function AgendaRow({
 					? "Öffnet den zugehörigen Lernplan."
 					: "Öffnet diesen Eintrag."
 			}
-			onPress={() => onOpenItem(item)}
+			onPress={() => onOpenItem?.(item)}
 		>
 			{content}
 		</ActionSurface>
