@@ -649,6 +649,10 @@ export default function LearningSessionContentScreen() {
 	const submitCurrentAnswer = async (submitAsUnknown = false) => {
 		if (!currentItem || isBusy) return;
 
+		const answerInteraction = submitAsUnknown
+			? "learning_session.answer_unknown"
+			: "learning_session.answer";
+		let didComplete = false;
 		setIsBusy(true);
 		setErrorMessage(null);
 		try {
@@ -663,13 +667,7 @@ export default function LearningSessionContentScreen() {
 			) {
 				return;
 			}
-			trackFeature(
-				submitAsUnknown
-					? "learning_session.answer_unknown"
-					: "learning_session.answer",
-				"attempted",
-				sessionId,
-			);
+			trackFeature(answerInteraction, "attempted", sessionId);
 			const attempt =
 				currentItem.kind === "multipleChoice"
 					? await submitAnswer({
@@ -682,13 +680,6 @@ export default function LearningSessionContentScreen() {
 							itemId: currentItem.id,
 							answerText: writtenAnswer,
 						});
-			trackFeature(
-				submitAsUnknown
-					? "learning_session.answer_unknown"
-					: "learning_session.answer",
-				"succeeded",
-				sessionId,
-			);
 			if (attempt.rating === "correct" && !isPreTheoryQuestion) {
 				void triggerSuccessHaptic({
 					platform: process.env.EXPO_OS,
@@ -698,32 +689,28 @@ export default function LearningSessionContentScreen() {
 				resetItemState();
 				if (currentIndex < content.items.length - 1) {
 					setCurrentIndex((value) => value + 1);
-					return;
+				} else {
+					setCompletionPhase("rehearsal");
 				}
-				setCompletionPhase("rehearsal");
-				return;
-			}
-			if (isPreTheoryQuestion) {
+			} else if (isPreTheoryQuestion) {
 				if (advancedPreTheoryQuestionItemIdRef.current !== currentItem.id) {
 					advancedPreTheoryQuestionItemIdRef.current = currentItem.id;
 					advancePastCurrentItem();
 				}
-				return;
+			} else {
+				setLocalAttempt(attempt as SessionAnswerAttempt);
 			}
-			setLocalAttempt(attempt as SessionAnswerAttempt);
+			didComplete = true;
 		} catch (error) {
-			trackFeature(
-				submitAsUnknown
-					? "learning_session.answer_unknown"
-					: "learning_session.answer",
-				"failed",
-				sessionId,
-			);
+			trackFeature(answerInteraction, "failed", sessionId);
 			setErrorMessage(
 				getErrorMessage(error, "Die Antwort konnte nicht gespeichert werden."),
 			);
 		} finally {
 			setIsBusy(false);
+		}
+		if (didComplete) {
+			trackFeature(answerInteraction, "succeeded", sessionId);
 		}
 	};
 

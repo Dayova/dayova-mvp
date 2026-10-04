@@ -169,7 +169,11 @@ export default function ProfileScreen() {
 				return;
 			}
 
-			trackFeature("settings.profile_saved", "succeeded");
+			try {
+				trackFeature("settings.profile_saved", "succeeded");
+			} catch {
+				// Analytics must not turn a saved profile into a failed update.
+			}
 			setFeedback({
 				tone: "success",
 				message: "Dein Profil wurde gespeichert.",
@@ -197,7 +201,11 @@ export default function ProfileScreen() {
 		setFeedback(null);
 		try {
 			await verifyProfileEmailCode(code);
-			trackFeature("settings.profile_saved", "succeeded");
+			try {
+				trackFeature("settings.profile_saved", "succeeded");
+			} catch {
+				// Analytics must not turn a verified email into a failed update.
+			}
 			setIsEmailVerificationPending(false);
 			setCode("");
 			setFeedback({

@@ -203,13 +203,17 @@ export default function NotificationSettingsScreen() {
 
 			try {
 				await updatePreferences(patch);
-				for (const key of patchKeys)
-					trackFeature(
-						"settings.notification_changed",
-						"succeeded",
-						undefined,
-						key,
-					);
+				try {
+					for (const key of patchKeys)
+						trackFeature(
+							"settings.notification_changed",
+							"succeeded",
+							undefined,
+							key,
+						);
+				} catch {
+					// Analytics must not turn a saved preference into a failed update.
+				}
 			} catch (error) {
 				setOptimisticPreferencePatch((currentPatch) =>
 					removeNotificationPreferencePatchKeys(currentPatch, patchKeys),

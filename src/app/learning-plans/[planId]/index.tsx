@@ -297,6 +297,10 @@ export default function LearningPlanSessionsScreen() {
 		api.learningPlanAi.ensureSessionContent,
 	);
 	const preparingSessionIdRef = useRef<Id<"learningPlanSessions"> | null>(null);
+	const trackFeatureRef = useRef(trackFeature);
+	useEffect(() => {
+		trackFeatureRef.current = trackFeature;
+	}, [trackFeature]);
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
@@ -314,12 +318,12 @@ export default function LearningPlanSessionsScreen() {
 	useFocusEffect(
 		useCallback(() => {
 			if (visiblePlanId)
-				trackFeature(
+				trackFeatureRef.current(
 					"learning_plan.content_viewed",
 					"performed",
 					visiblePlanId,
 				);
-		}, [visiblePlanId, trackFeature]),
+		}, [visiblePlanId]),
 	);
 	const selectedSessionIndex =
 		snapshot && selectedSession
