@@ -3164,7 +3164,8 @@ function AnimatedStudyDayPill({
 				style={gradientStyle}
 			>
 				<LinearGradient
-					{...DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive}
+					testID={`weekday-gradient-${label}`}
+					{...DAYOVA_DESIGN_SYSTEM.gradients.selection}
 					style={{ width: "100%", height: "100%" }}
 				/>
 			</Animated.View>

@@ -15,6 +15,7 @@ import {
 } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import type { OnboardingCompletionStatus } from "~/lib/auth-routing";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import {
 	AuthChoiceScreen,
 	CreationLoaderScreen,
@@ -1369,13 +1370,17 @@ describe("OnboardingScreen", () => {
 		});
 	});
 
-	test("uses a semantic high-contrast foreground on selected weekdays", async () => {
+	test("uses the contrast-tested selection gradient with white weekday text", async () => {
 		mockOnboarding.answers.studyDays = "Montag";
 		const screen = await render(<OnboardingStepScreen stepId="studyDays" />);
 
 		expect(screen.getByText("Montag")).toHaveStyle({
 			color: "#FFFFFF",
 		});
+		const monday = screen.getByRole("checkbox", { name: "Montag" });
+		expect(
+			within(monday).getByTestId("weekday-gradient-Montag").props.colors,
+		).toEqual(DAYOVA_DESIGN_SYSTEM.gradients.selection.colors);
 	});
 
 	test("renders school type through the shared bottom-sheet select trigger", async () => {

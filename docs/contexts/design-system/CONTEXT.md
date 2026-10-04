@@ -259,9 +259,16 @@ labels, independently of the allowed values. Continue confirms the displayed
 initial value; merely opening the page does not save it.
 
 Per the 3 October 2026 user direction and MVP Login 18 reference, selected
-weekday pills use the primary interactive gradient with white text. This is a
-scoped exception to the solid-cyan selection treatment. Their accessible
-checkbox state is retained; the visual checkmark is omitted. Weekday pills retain the original 48-point minimum height and semibold body-3
+weekday pills use the shared `selection` gradient with white text, following the
+[selection-color ADR](adr/answer-selection-colors.md). The
+[canonical color decision](https://app.notion.com/p/3da2e87228bf8173b2adddaab6e3f5e6)
+records darker blue as the viable alternative when white foregrounds are an
+explicit product requirement. The October direction applies that alternative
+here; the earlier preference for dark foregrounds on solid cyan is historical
+rationale, not approval of white on the brighter action-button gradient.
+This remains scoped to selected weekday pills. Their accessible checkbox state
+is retained; the visual checkmark is omitted. Weekday pills retain the original
+48-point minimum height and semibold body-3
 type, arranged 2/2/2/1 with wrapping for larger content sizes. Initial answers
 are empty; example selections belong only in historical screenshot evidence.
 
