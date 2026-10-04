@@ -82,6 +82,8 @@ export default function NewLearningPlanScreen() {
 		learningPlanId?: string;
 		examDayEntryId?: string;
 		subject?: string;
+		personalSubjectId?: string;
+		subjectIsOneTime?: string;
 		examTypeLabel?: string;
 		examDateKey?: string;
 		examDateLabel?: string;
@@ -105,6 +107,10 @@ export default function NewLearningPlanScreen() {
 	const removeDocument = useMutation(api.learningPlans.removeDocument);
 
 	const subject = params.subject?.trim() || "Fach";
+	const personalSubjectId = params.personalSubjectId as
+		| Id<"personalSubjects">
+		| undefined;
+	const subjectIsOneTime = params.subjectIsOneTime === "true";
 	const examTypeLabel = params.examTypeLabel?.trim() || "Leistungskontrolle";
 	const examDateKey = params.examDateKey || getDateKey(new Date());
 	const examDateLabel =
@@ -204,6 +210,7 @@ export default function NewLearningPlanScreen() {
 			createDraftPlan({
 				examDayEntryId,
 				subject,
+				...(personalSubjectId ? { personalSubjectId } : {}),
 				examTypeLabel,
 				examDateKey,
 				examDateLabel,
@@ -570,6 +577,8 @@ export default function NewLearningPlanScreen() {
 				examEntryResumePath({
 					examDayEntryId,
 					subject,
+					personalSubjectId,
+					subjectIsOneTime,
 					examTypeLabel,
 					examDateKey,
 					durationMinutes,

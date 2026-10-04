@@ -104,8 +104,10 @@ Use `onPrimary` for solid selected pills, tabs, their checkmarks, and equivalent
 compact controls. Do not reuse `surface` or theme-dependent primary text as an
 implicit foreground token.
 
-Answer selection follows this same pairing and retains normal theme text for
-the answer content. See the [code-facing decision](adr/answer-selection-colors.md)
+Exam/subject and learning-session answer selection instead use the shared
+`selection` gradient (`#006699` → `#0077AA`) with white indicators and answer
+letters (minimum 4.97:1 contrast); answer rows match the
+exam/subject accent fill, primary selected label, border, and shadow-free treatment. See the [code-facing decision](adr/answer-selection-colors.md)
 and its linked native comparison and canonical Notion rationale.
 
 Typography uses Poppins only. Body text is Regular; headings, buttons, selected
@@ -131,6 +133,12 @@ Production screens use the shared `Button` and `BackButton` components for
 these actions. A screen-local clone is not an allowed visual variant; add a
 shared variant and update this context if a new interaction contract is truly
 needed.
+
+DAY-490's approved Today calendar navigation is a scoped exception: the
+`DashboardCalendarHeader` reset-to-today control uses the shared ghost Button
+with a bordered card surface and theme text, preserving the approved light
+pill without making it a general-purpose CTA variant. See
+[the dashboard isolation contract](../../dashboard-main-isolation.md).
 
 The empty timetable uses one full-width gradient import button and a full-width
 neutral manual-entry button. File and camera are equal sources inside the shared
@@ -171,6 +179,31 @@ purchase, not after restoring an existing subscription, so the celebration
 acknowledges a real transition without becoming recurring friction.
 
 ## Product-surface previews
+
+### Personal-subject action appearance
+
+Exam-type and subject selection share `SelectionOptionRow`: identical card
+geometry, icon treatment, radio checked semantics and a selection-gradient check
+indicator with a white check, as specified in the
+[selection color decision](adr/answer-selection-colors.md). The subject catalog
+is one continuous list, without a
+separate personal-subject heading. Adding a subject always saves it for reuse;
+there is no permanent-versus-one-time choice or extra confirmation step.
+Existing built-in/personal matches are reused; timetable-only or legacy one-time
+matches are persisted when explicitly added. Legacy selections remain readable
+without silently migrating existing entries. The settings pencil opens "Fach
+bearbeiten" with save and delete actions. Delete opens the existing confirmation
+only after the editor's native dismissal; swipe deletion remains available.
+
+DAY-187 restores the September device-review treatment in the independent
+personal-subject feature. Shared Button variants `cancel` (bordered card,
+theme text) and `destructive-outline` (danger border/text on subtle fill) are
+opt-in exceptions to the general solid/gradient CTA appearances above.
+They reuse the reviewed #729 palette: light `#B01B10` / `#FFF0EE`, dark
+`hsl(4 100% 75%)` / `hsl(4 55% 16%)`. Existing destructive defaults do not
+change. ConfirmationSheet exposes `actionAppearance="outlined"` for this
+consumer; other callers retain their current appearance.
+See [restoration scope and provenance](../../qa/day-187-design-restoration-2026-10-02.md).
 
 Onboarding artwork or other explanatory UI that depicts a live Dayova product
 surface must render the same shared presentation module through an explicit
@@ -213,3 +246,31 @@ component: path 2 background (`#D7DCE3`) with path 3 icon (`#8A8D92`).
 - Use NativeWind for static app UI. Follow the rendering-choice matrix in
   `docs/styling.md` when deciding between NativeWind, RN geometry styles, SVGs,
   and native artwork modules.
+
+## Onboarding learning-time controls
+
+The duration selector uses the onboarding appearance of `SnapCarouselSelector`:
+a 128-point thin progress ring and a 96-point selected gradient tick, based on
+the supplied MVP Login 5 reference. It renders the values supplied by the
+existing learning-time model; this design change defines no allowed duration
+range and makes no backend, validation, or persistence changes. Duration values
+and their compatibility rules belong to PR #813. The ring uses compact min/h
+labels, independently of the allowed values. Continue confirms the displayed
+initial value; merely opening the page does not save it.
+
+Per the 3 October 2026 user direction and MVP Login 18 reference, selected
+weekday pills use the shared `selection` gradient with white text, following the
+[selection-color ADR](adr/answer-selection-colors.md). The
+[canonical color decision](https://app.notion.com/p/3da2e87228bf8173b2adddaab6e3f5e6)
+records darker blue as the viable alternative when white foregrounds are an
+explicit product requirement. The October direction applies that alternative
+here; the earlier preference for dark foregrounds on solid cyan is historical
+rationale, not approval of white on the brighter action-button gradient.
+This remains scoped to selected weekday pills. Their accessible checkbox state
+is retained; the visual checkmark is omitted. Weekday pills retain the original
+48-point minimum height and semibold body-3
+type, arranged 2/2/2/1 with wrapping for larger content sizes. Initial answers
+are empty; example selections belong only in historical screenshot evidence.
+
+The duration explanation adapts to the chosen value; an additional explanation
+between weekdays and start time brings the profile flow to twelve steps.

@@ -59,6 +59,7 @@ import { parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { dismissToOrReplace } from "~/lib/navigation";
+import { getSafeReturnTo, ROUTES } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
 import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
@@ -287,7 +288,7 @@ export default function LearningPlanSessionsScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const today = useCurrentLocalDay();
-	const params = useLocalSearchParams<{ planId?: string }>();
+	const params = useLocalSearchParams<{ planId?: string; returnTo?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const { user } = useAuthSession();
 	const { requestAiConsent } = useAiConsent();
@@ -397,7 +398,10 @@ export default function LearningPlanSessionsScreen() {
 	}, [defaultSession, prepareSession]);
 
 	const goBack = () => {
-		dismissToOrReplace(router, "/learning-plans");
+		dismissToOrReplace(
+			router,
+			getSafeReturnTo(params.returnTo) ?? ROUTES.learningPlans,
+		);
 	};
 
 	return (

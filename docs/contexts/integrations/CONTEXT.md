@@ -106,6 +106,12 @@ internal users.
 
 ## Notes
 
+- The student CRM is a read-only projection of Convex effective access, joined
+  through Clerk User ID. New authenticated accounts queue creation of a minimal
+  CRM contact; collisions require review. See [DAY-366 runtime contract and runbook](crm-sync.md)
+  for matching, dry-run, schema, deployment isolation and recovery. PostHog never
+  determines paid access; Notion edits never change it.
+
 - PostHog identifies validation-phase students with Clerk's stable user ID. The Validation Student Code should live in Dayova data, not Clerk auth metadata, and should be sent to PostHog as a profile property when present.
 - PostHog tracking is identified-only during the Validation Phase. Anonymous pre-auth app activity, autocapture, lifecycle events, and session replay are intentionally out of scope unless login or onboarding becomes a measured blocker.
 - Names, email addresses, birth dates, avatar URLs, school names, raw notes, filenames, uploaded content, learner answers, transcripts, and diagnostic error detail are never custom person or event properties.

@@ -1,6 +1,6 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { ScrollView, TouchableOpacity, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -13,11 +13,12 @@ import Animated, {
 	withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-screens/experimental";
 import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { CreateTypePickerModal } from "~/components/create-type-picker-modal";
-import { Button } from "~/components/ui/button";
+import { BackButton, Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import {
 	ArrowUpRight,
@@ -41,7 +42,8 @@ import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
-import { ROUTES } from "~/lib/routes";
+import { dismissToOrReplace } from "~/lib/navigation";
+import { getSafeReturnTo, ROUTES } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
 
 const PLAN_ACTION_RAIL_WIDTH = 104;
@@ -738,6 +740,8 @@ function HomeworkCard({
 }
 
 export default function LearningPlansScreen() {
+	const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
+	const returnTarget = getSafeReturnTo(returnTo);
 	const insets = useSafeAreaInsets();
 	const { colors } = useDayovaTheme();
 	const { user } = useAuthSession();
@@ -830,7 +834,11 @@ export default function LearningPlansScreen() {
 	};
 
 	return (
-		<View className="flex-1 bg-background">
+		<SafeAreaView
+			edges={{ bottom: true }}
+			// The native safe area needs the current theme color at runtime.
+			style={{ flex: 1, backgroundColor: colors.background }}
+		>
 			<ThemedStatusBar />
 			<View
 				className="gap-6 px-6"
@@ -840,6 +848,15 @@ export default function LearningPlansScreen() {
 				}}
 			>
 				<View className="mt-7 flex-row items-center justify-between">
+					{returnTarget ? (
+						<BackButton
+							accessibilityLabel="Zurück zu Heute"
+							onPress={() => {
+								router.setParams({ returnTo: undefined });
+								dismissToOrReplace(router, returnTarget);
+							}}
+						/>
+					) : null}
 					<Text className="font-poppins font-semibold text-heading-1 text-text">
 						Deine Pläne
 					</Text>
@@ -861,11 +878,7 @@ export default function LearningPlansScreen() {
 
 			<ScrollView
 				className="flex-1"
-				contentContainerStyle={{
-					paddingHorizontal: 24,
-					paddingTop: 0,
-					paddingBottom: Math.max(insets.bottom + 72, 104),
-				}}
+				contentContainerClassName="px-6 pb-6"
 				showsVerticalScrollIndicator={false}
 			>
 				{activeTab === "learningPlans" ? (
@@ -1020,6 +1033,6 @@ export default function LearningPlansScreen() {
 				onClose={closeDeleteSheet}
 				onConfirm={() => void deleteSelectedItem()}
 			/>
-		</View>
+		</SafeAreaView>
 	);
 }
