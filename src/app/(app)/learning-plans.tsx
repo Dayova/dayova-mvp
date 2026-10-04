@@ -465,6 +465,7 @@ function LearningPlanCard({
 	const [isActionRailVisible, setIsActionRailVisible] = useState(false);
 	const translateX = useSharedValue(0);
 	const gestureStartX = useSharedValue(0);
+	const didSwipe = useSharedValue(false);
 	const cardAnimatedStyle = useAnimatedStyle(() => ({
 		transform: [{ translateX: translateX.get() }],
 	}));
@@ -482,6 +483,11 @@ function LearningPlanCard({
 		.onBegin(() => {
 			"worklet";
 			gestureStartX.set(translateX.get());
+			didSwipe.set(false);
+		})
+		.onStart(() => {
+			"worklet";
+			didSwipe.set(true);
 			scheduleOnRN(setIsActionRailVisible, true);
 		})
 		.onUpdate((event) => {
@@ -517,6 +523,17 @@ function LearningPlanCard({
 						),
 			);
 		});
+	const pressCard = () => {
+		// A native Pressable can still deliver onPress after the pan finishes.
+		// Keep this guard until the next touch, including swipes that snap shut.
+		if (didSwipe.get()) return;
+		if (translateX.get() !== 0) {
+			translateX.set(0);
+			setIsActionRailVisible(false);
+			return;
+		}
+		onPress();
+	};
 	const editPlan = () => {
 		translateX.set(0);
 		setIsActionRailVisible(false);
@@ -575,7 +592,7 @@ function LearningPlanCard({
 											rollingWindowLabel,
 										},
 						}}
-						onPress={onPress}
+						onPress={pressCard}
 					/>
 				</Animated.View>
 			</GestureDetector>
