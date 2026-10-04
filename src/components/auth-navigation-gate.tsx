@@ -1,6 +1,6 @@
 import { usePathname, useRootNavigationState, useRouter } from "expo-router";
-import { type ReactNode, useEffect } from "react";
-import { View } from "react-native";
+import { type ReactNode, useEffect, useState } from "react";
+import { ActivityIndicator, Text, View } from "react-native";
 import { useAccess } from "~/context/AccessContext";
 import { useAuthSession } from "~/context/AuthContext";
 import { resolveAccessRoute } from "~/lib/access-policy";
@@ -10,6 +10,33 @@ import { cn } from "~/lib/utils";
 type AuthNavigationGateProps = {
 	children: ReactNode;
 };
+
+const BACKEND_BOOTSTRAP_STALL_MS = 10_000;
+
+function StalledConnectionMessage() {
+	const [isStalled, setIsStalled] = useState(false);
+
+	useEffect(() => {
+		const timeout = setTimeout(
+			() => setIsStalled(true),
+			BACKEND_BOOTSTRAP_STALL_MS,
+		);
+		return () => clearTimeout(timeout);
+	}, []);
+
+	if (!isStalled) return null;
+
+	return (
+		<View className="mt-6 items-center gap-2">
+			<Text className="text-center font-semibold text-foreground text-lg">
+				Die Verbindung zu Dayova dauert länger als erwartet.
+			</Text>
+			<Text className="text-center text-muted-foreground">
+				Wir versuchen es weiter. Prüfe bitte deine Internetverbindung.
+			</Text>
+		</View>
+	);
+}
 
 export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 	const router = useRouter();
@@ -46,6 +73,11 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 		onboardingCompletionStatus === "loading" ||
 		(onboardingCompletionStatus === "none" && isAccessLoading) ||
 		targetRoute !== null;
+	const isBackendBootstrapPending =
+		Boolean(user) &&
+		!isSessionLoading &&
+		onboardingCompletionStatus === "none" &&
+		isAccessLoading;
 
 	useEffect(() => {
 		if (!targetRoute || !rootNavigationState?.key) return;
@@ -76,8 +108,13 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 					accessible={false}
 					importantForAccessibility="no"
 					pointerEvents="auto"
-					className="absolute inset-0 bg-background"
-				/>
+					className="absolute inset-0 items-center justify-center bg-background px-8"
+				>
+					<ActivityIndicator accessibilityLabel="Dayova lädt" size="large" />
+					{isBackendBootstrapPending ? (
+						<StalledConnectionMessage key={user?.clerkId} />
+					) : null}
+				</View>
 			) : null}
 		</View>
 	);
