@@ -185,6 +185,8 @@ export default defineSchema({
 		error: v.optional(crmError),
 	}).index("by_key", ["key"]),
 	users: defineTable({
+		// Keep the persisted coaching dismissal when switching development branches.
+		learningRoutineDismissedDateKey: v.optional(v.string()),
 		tokenIdentifier: v.string(),
 		clerkId: v.string(),
 		email: v.string(),
@@ -278,6 +280,11 @@ export default defineSchema({
 		dayOfWeek: v.number(),
 		startTime: v.string(),
 		endTime: v.string(),
+		// Preserve preferences stored by earlier development backends.
+		preferenceStatus: v.optional(
+			v.union(v.literal("proposed"), v.literal("confirmed")),
+		),
+		proposedForLearningPlanId: v.optional(v.id("learningPlans")),
 		createdAt: v.number(),
 		updatedAt: v.number(),
 	})
@@ -483,6 +490,9 @@ export default defineSchema({
 		insight: v.optional(planInsightValidator),
 		planningHint: v.optional(v.string()),
 		rollingPlanEnabled: v.optional(v.boolean()),
+		masteryStatus: v.optional(
+			v.union(v.literal("learning"), v.literal("mastered")),
+		),
 		adaptationRevision: v.optional(v.number()),
 		contentGenerationStage: v.optional(contentGenerationStageValidator),
 		contentGenerationId: v.optional(v.string()),
@@ -490,6 +500,9 @@ export default defineSchema({
 		sessionCompositionVariant: v.optional(sessionCompositionVariantValidator),
 		examDayEntryId: v.optional(v.id("dayEntries")),
 		acceptedAt: v.optional(v.number()),
+		// Earlier development backends persisted these reminder timestamps.
+		initialLearningTimePromptDismissedAt: v.optional(v.number()),
+		postDiagnosticLearningTimeReminderDismissedAt: v.optional(v.number()),
 		createdAt: v.number(),
 		updatedAt: v.number(),
 	})
@@ -546,6 +559,17 @@ export default defineSchema({
 		fileType: v.string(),
 		fileSizeBytes: v.number(),
 		sourceKind: v.optional(v.union(v.literal("school"), v.literal("external"))),
+		// Retain metadata written by earlier backends until it is migrated away.
+		processingStatus: v.optional(
+			v.union(
+				v.literal("queued"),
+				v.literal("processing"),
+				v.literal("ready"),
+				v.literal("failed"),
+			),
+		),
+		processingVersion: v.optional(v.number()),
+		processingError: v.optional(v.string()),
 		createdAt: v.number(),
 	})
 		.index("by_learningPlanId", ["learningPlanId"])
