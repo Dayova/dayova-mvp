@@ -330,3 +330,7 @@ test("editor keeps the sheet open when switching to deletion confirmation", asyn
 	expect(mockMutation).toHaveBeenCalledTimes(1);
 	expect(mockMutation).toHaveBeenCalledWith({ id: subject.id });
 });
+
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+);

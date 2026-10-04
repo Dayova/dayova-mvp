@@ -190,6 +190,7 @@ jest.mock("react-native-reanimated", () => {
 		withRepeat: (value: unknown) => value,
 		withSequence: (...values: unknown[]) => values.at(-1),
 		withTiming: (value: unknown) => value,
+		withSpring: (value: unknown) => value,
 	};
 });
 
@@ -1370,16 +1371,16 @@ describe("OnboardingScreen", () => {
 		});
 	});
 
-	test("uses the contrast-tested selection gradient with white weekday text", async () => {
+	test("uses the Dayova gradient with contrasting weekday text", async () => {
 		mockOnboarding.answers.studyDays = "Montag";
 		const screen = await render(<OnboardingStepScreen stepId="studyDays" />);
 
 		expect(screen.getByText("Montag")).toHaveStyle({
-			color: "#FFFFFF",
+			color: DAYOVA_DESIGN_SYSTEM.colors.onPrimary,
 		});
 		const monday = screen.getByRole("checkbox", { name: "Montag" });
 		expect(
-			within(monday).getByTestId("weekday-gradient-Montag").props.colors,
+			within(monday).getByTestId("selection-gradient").props.colors,
 		).toEqual(DAYOVA_DESIGN_SYSTEM.gradients.selection.colors);
 	});
 
@@ -1440,7 +1441,7 @@ describe("OnboardingScreen", () => {
 		const screen = await render(<OnboardingStepScreen stepId="studyDays" />);
 
 		const monday = screen.getByRole("checkbox", { name: "Montag" });
-		expect(monday.props.accessibilityState).toEqual({ checked: false });
+		expect(monday.props.accessibilityState).toMatchObject({ checked: false });
 		for (const day of screen.getAllByRole("checkbox"))
 			expect(day.props.accessibilityState.checked).toBe(false);
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();

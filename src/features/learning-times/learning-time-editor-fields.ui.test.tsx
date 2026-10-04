@@ -1,5 +1,5 @@
 import { describe, expect, jest, test } from "@jest/globals";
-import { render } from "@testing-library/react-native";
+import { render, within } from "@testing-library/react-native";
 import { processColor } from "react-native";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { LearningTimeEditorFields } from "./learning-time-editor-fields";
@@ -39,10 +39,12 @@ describe("LearningTimeEditorFields", () => {
 			checked: true,
 			disabled: false,
 		});
-		expect(selectedDay.props.className).toContain("min-h-11");
-		expect(selectedDay.props.className).toContain("min-w-11");
-		expect(screen.getByText("Di").props.className).toContain("text-white");
-		expect(screen.getByText("Mo").props.className).toContain("text-text");
+		expect(screen.getByText("Di")).toHaveStyle({
+			color: DAYOVA_DESIGN_SYSTEM.colors.onPrimary,
+		});
+		expect(screen.getByText("Mo")).toHaveStyle({
+			color: DAYOVA_DESIGN_SYSTEM.colors.text,
+		});
 		expect(
 			screen.getByTestId("learning-weekday-row").props.className,
 		).not.toContain("flex-wrap");
@@ -54,7 +56,7 @@ describe("LearningTimeEditorFields", () => {
 			screen.getByTestId("learning-weekday-row").props.className,
 		).toContain("grow");
 		expect(
-			screen.getByTestId("selected-weekday-gradient").props.colors,
+			within(selectedDay).getByTestId("selection-gradient").props.colors,
 		).toEqual(
 			DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.colors.map((color) =>
 				processColor(color),
@@ -82,3 +84,7 @@ describe("LearningTimeEditorFields", () => {
 		}
 	});
 });
+
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+);

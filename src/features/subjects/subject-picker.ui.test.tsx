@@ -449,3 +449,7 @@ test("settings blocks duplicate submits and cancellation during a pending save",
 	expect(onCancel).not.toHaveBeenCalled();
 	await act(async () => resolveSave({ name: "Italienisch" }));
 });
+
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+);

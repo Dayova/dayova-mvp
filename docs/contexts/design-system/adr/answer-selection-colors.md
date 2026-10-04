@@ -1,23 +1,39 @@
-# Selected answer colors
+# Selection colors and motion
 
-As requested in [DAY-497](https://linear.app/dayova/issue/DAY-497), exam/subject
-selection and learning-session answer selection retain white checkmarks and
-white answer letters on a blue gradient. Following the CodeRabbit contrast
-review on 4 October 2026, these compact glyphs use the shared `selection`
-gradient (`#006699` → `#0077AA`), not the lighter `primaryInteractive` gradient.
-The action-button gradient remains unchanged.
+The user's device review on 5 October 2026 supersedes DAY-497's 4 October
+contrast correction: dark blue (`#006699` → `#0077AA`) is not the Dayova selection
+palette. `selection` now aliases the canonical `primaryInteractive` gradient
+(`#00A0E6` → `#4FD8FF`), so buttons and selections cannot drift apart.
 
-White has 6.25:1 contrast at the dark stop and 4.97:1 at the light stop.
-Every channel increases monotonically between these stops, so the light stop
-is the lowest contrast across the interpolation. This exceeds the repository's
-4.5:1 reference for small text and 3:1 for meaningful shapes in both themes.
-`src/lib/selection-contrast.test.ts` checks the gradient, including intermediate
-samples. This is a scoped glyph-contrast fix, not app-wide WCAG certification.
+Use fixed `onPrimary` (`#1A1A1A`) for selected checkmarks, answer letters and pill
+labels in both themes. The bright gradient with white small text would have
+insufficient contrast; changing the foreground preserves the requested brand
+colors. `src/lib/selection-contrast.test.ts` checks all intermediate samples
+against 4.5:1. This is a scoped contrast check, not app-wide certification.
 
-Selection rows keep the exam/subject pattern: border, accent fill, emphasized
-primary label, and no shadow. Checked radio semantics and the check shape remain
-unchanged. Selection never implies answer correctness. Solid cyan controls
-outside this pattern retain `onPrimary`.
+Decision brief:
+- Job: choose an answer, subject, exam type or schedule value confidently.
+- Hierarchy: prompt, choices and checked state, then the separate continue action.
+- Primary action: choose immediately; submit only with the existing CTA.
+- Friction: eliminate inconsistent dark-blue markers and abrupt state changes.
+- Decision: reuse PR #694's shared controlled-selection motion on current main,
+  preserve current layouts, and apply the canonical gradient to markers/pills.
+
+`SelectionControl` now covers answer lists, exam/subject rows, selection sheets,
+onboarding/recovery choices and learning-time/timetable weekdays. State changes
+are immediate, with 180 ms color/opacity transitions, a small press scale and a
+240 ms settling spring. The outer hit target stays fixed. Reduced motion skips
+these animations. Indicator slots stay mounted and labels wrap without line caps.
+Answer badges grow with text scaling. A selected answer is not a correctness state.
+
+Already animated gradient controls (theme toggle, duration carousel and segmented
+navigation) retain their specialized motion. Subscription cards retain their
+separate translucent payment appearance and existing selection motion. Native
+switches and date/time pickers retain the documented native wrappers.
+
+PR #694 also contains payment-footer work; that unrelated change is not included
+here. Its overlapping selection migrations must use this implementation when
+that PR is reconciled, rather than restoring its older colors/layouts.
 
 ## Historical rationale
 
