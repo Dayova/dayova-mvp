@@ -4,8 +4,9 @@ import * as DocumentPicker from "expo-document-picker";
 import { File } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { usePreventRemove } from "expo-router/react-navigation";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, Keyboard, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { isMeaningfulTopicDescription } from "#convex/topicDescriptionValidation";
@@ -16,6 +17,7 @@ import {
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import { Attachment, ScanImage } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
+import { Text } from "~/components/ui/text";
 import { useAuthSession } from "~/context/AuthContext";
 import {
 	getLearningPlanCreationBackIntent,
@@ -28,6 +30,7 @@ import {
 	examEntrySuccessPath,
 	learningPlanStepPath,
 } from "~/features/learning-plans/creation-routes";
+import { LearningPlanEditor } from "~/features/learning-plans/learning-plan-editor";
 import { useLearningPlanSetupOrigin } from "~/features/learning-plans/learning-plan-setup-origin";
 import {
 	MaterialUploadStep,
@@ -77,6 +80,7 @@ export default function NewLearningPlanScreen() {
 	const router = useRouter();
 	const params = useLocalSearchParams<{
 		step?: string;
+		mode?: string;
 		learningPlanId?: string;
 		examDayEntryId?: string;
 		subject?: string;
@@ -118,6 +122,9 @@ export default function NewLearningPlanScreen() {
 	const initialLearningPlanId = params.learningPlanId as
 		| Id<"learningPlans">
 		| undefined;
+	const isEditing = params.mode === "edit" && Boolean(initialLearningPlanId);
+	const [exitApproved, setExitApproved] = useState(false);
+	const [isSavingEdits, setIsSavingEdits] = useState(false);
 	const setupOrigin = useLearningPlanSetupOrigin(initialLearningPlanId);
 
 	const [learningPlanId, setLearningPlanId] =
@@ -138,6 +145,7 @@ export default function NewLearningPlanScreen() {
 		useState(false);
 	const pendingUploadRequestRef = useRef<PendingUploadRequest | null>(null);
 	const topicActionGateRef = useRef(createAsyncActionGate());
+	const removeActionGateRef = useRef(createAsyncActionGate());
 	const [openingUploadAction, setOpeningUploadAction] =
 		useState<PendingUploadAction | null>(null);
 	const [errorMessage, setErrorMessage] = useState<string | null>(
@@ -145,14 +153,21 @@ export default function NewLearningPlanScreen() {
 	);
 
 	const hasExamEntry = Boolean(examDayEntryId || learningPlanId);
-	const snapshot = (useQuery(
+	const snapshotResult = useQuery(
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && learningPlanId
 			? { id: learningPlanId }
 			: "skip",
-	) ?? null) as LearningPlanSnapshot | null;
+	) as LearningPlanSnapshot | null | undefined;
+	const snapshot = snapshotResult ?? null;
 	const canWrite = Boolean(user && isConvexAuthenticated);
 	const topics = topicsInput ?? snapshot?.plan.topicDescription ?? "";
+	const canEditTopics =
+		snapshot?.plan.status === "draft" ||
+		snapshot?.plan.status === "questionsReady";
+	const hasUnsavedTopics =
+		canEditTopics &&
+		topics.trim() !== (snapshot?.plan.topicDescription ?? "").trim();
 	const hasSchoolMaterial = Boolean(
 		snapshot?.documents.some((document) => document.sourceKind === "school"),
 	);
@@ -162,7 +177,7 @@ export default function NewLearningPlanScreen() {
 		!isBusy &&
 		!openingUploadAction &&
 		!isPlanSnapshotLoading &&
-		isMeaningfulTopicDescription(topics);
+		(isEditing || isMeaningfulTopicDescription(topics));
 	const canContinueTopics =
 		canWrite &&
 		!isBusy &&
@@ -559,7 +574,15 @@ export default function NewLearningPlanScreen() {
 	const removeUploadedDocument = async (
 		documentId: Id<"learningPlanDocuments">,
 	) => {
-		await removeDocument({ id: documentId });
+		if (isBusy) return;
+		await removeActionGateRef.current.run(async () => {
+			await runWithErrorHandling(
+				"Das Material konnte nicht entfernt werden.",
+				async () => {
+					await removeDocument({ id: documentId });
+				},
+			);
+		});
 	};
 
 	const exitCreation = () => {
@@ -615,9 +638,66 @@ export default function NewLearningPlanScreen() {
 		return exitCreation();
 	};
 
-	useBackIntent(hasExamEntry, goBack);
+	const requestEditExit = () => {
+		Keyboard.dismiss();
+		if (isUploadSheetVisible) {
+			closeUploadSheet();
+			return;
+		}
+		if (isPauseConfirmationVisible) {
+			setIsPauseConfirmationVisible(false);
+			return;
+		}
+		// An in-flight mutation may still finish after leaving; never promise
+		// that its changes can be discarded or trap the user on a slow connection.
+		if (topicActionGateRef.current.isRunning) {
+			setIsPauseConfirmationVisible(true);
+			return;
+		}
+		if (hasUnsavedTopics) {
+			setIsPauseConfirmationVisible(true);
+			return;
+		}
+		setExitApproved(true);
+	};
+	usePreventRemove(isEditing && canWrite && !exitApproved, requestEditExit);
+	useEffect(() => {
+		if (exitApproved) dismissToOrReplace(router, ROUTES.learningPlans);
+	}, [exitApproved, router]);
+	const saveEdits = async () => {
+		if (
+			!canWrite ||
+			!learningPlanId ||
+			!snapshot ||
+			isBusy ||
+			openingUploadAction ||
+			exitApproved
+		)
+			return;
+		if (canEditTopics && !isMeaningfulTopicDescription(topics)) return;
+		await topicActionGateRef.current.run(async () => {
+			setIsSavingEdits(true);
+			try {
+				await runWithErrorHandling(
+					"Der Lernplan konnte nicht gespeichert werden.",
+					async () => {
+						if (hasUnsavedTopics)
+							await updateRequiredTopics({
+								id: learningPlanId,
+								topicDescription: topics,
+							});
+						Keyboard.dismiss();
+						setExitApproved(true);
+					},
+				);
+			} finally {
+				setIsSavingEdits(false);
+			}
+		});
+	};
+	useBackIntent(hasExamEntry && !isEditing, goBack);
 	useLearningPlanCreationProgress({
-		active: true,
+		active: !isEditing,
 		currentStep: currentProgressStep,
 		onBack: goBack,
 	});
@@ -632,40 +712,82 @@ export default function NewLearningPlanScreen() {
 	return (
 		<Screen>
 			<Stack.Screen options={{ gestureEnabled: true }} />
-			<ScreenScroll
-				key={setupStep}
-				includeTopSafeArea={false}
-				topPadding={0}
-				contentContainerStyle={{ flexGrow: 1 }}
-			>
-				<View key={setupStep} className="flex-1">
-					{setupStep === "requiredTopics" ? (
-						<RequiredTopicsStep
-							canContinue={canContinueTopics}
-							errorMessage={errorMessage}
-							isBusy={isBusy}
-							onChangeTopics={setTopicsInput}
-							onContinue={() => void continueToMaterial()}
-							topics={topics}
-						/>
-					) : (
+			{isEditing ? (
+				<LearningPlanEditor
+					topics={topics}
+					onChangeTopics={setTopicsInput}
+					canEditTopics={canEditTopics}
+					isLoading={snapshotResult === undefined}
+					isMissing={snapshotResult === null}
+					isBusy={isBusy}
+					canSave={
+						canWrite &&
+						Boolean(snapshot) &&
+						!openingUploadAction &&
+						(!canEditTopics || isMeaningfulTopicDescription(topics))
+					}
+					errorMessage={errorMessage}
+					onCancel={requestEditExit}
+					onSave={() => void saveEdits()}
+				>
+					<View className="gap-3">
+						<Text className="text-body-3 text-secondary-text">
+							Hochgeladenes oder entferntes Material wird sofort gespeichert.
+							Abbrechen verwirft nur ungespeicherte Themenänderungen.
+						</Text>
 						<MaterialUploadStep
 							canUpload={canUpload}
-							canContinue={canContinueUpload}
+							canContinue={false}
 							documents={snapshot?.documents ?? []}
-							errorMessage={errorMessage}
+							errorMessage={null}
 							isBusy={isBusy}
 							isUploading={isUploading}
-							onContinue={continueToAnalysis}
+							onContinue={() => {}}
 							onOpenUpload={() => setIsUploadSheetVisible(true)}
 							onRemoveDocument={(id) => void removeUploadedDocument(id)}
-							onSkip={finishWithMaterialLater}
+							onSkip={() => {}}
 							openingUploadAction={openingUploadAction}
-							showSkip={setupOrigin === "newExam"}
+							showSkip={false}
+							showActions={false}
 						/>
-					)}
-				</View>
-			</ScreenScroll>
+					</View>
+				</LearningPlanEditor>
+			) : (
+				<ScreenScroll
+					key={setupStep}
+					includeTopSafeArea={false}
+					topPadding={0}
+					contentContainerStyle={{ flexGrow: 1 }}
+				>
+					<View key={setupStep} className="flex-1">
+						{setupStep === "requiredTopics" ? (
+							<RequiredTopicsStep
+								canContinue={canContinueTopics}
+								errorMessage={errorMessage}
+								isBusy={isBusy}
+								onChangeTopics={setTopicsInput}
+								onContinue={() => void continueToMaterial()}
+								topics={topics}
+							/>
+						) : (
+							<MaterialUploadStep
+								canUpload={canUpload}
+								canContinue={canContinueUpload}
+								documents={snapshot?.documents ?? []}
+								errorMessage={errorMessage}
+								isBusy={isBusy}
+								isUploading={isUploading}
+								onContinue={continueToAnalysis}
+								onOpenUpload={() => setIsUploadSheetVisible(true)}
+								onRemoveDocument={(id) => void removeUploadedDocument(id)}
+								onSkip={finishWithMaterialLater}
+								openingUploadAction={openingUploadAction}
+								showSkip={setupOrigin === "newExam"}
+							/>
+						)}
+					</View>
+				</ScreenScroll>
+			)}
 
 			<ActionSheet
 				visible={isUploadSheetVisible}
@@ -711,14 +833,37 @@ export default function NewLearningPlanScreen() {
 			/>
 			<ConfirmationSheet
 				visible={isPauseConfirmationVisible}
-				title="Lernplan-Erstellung pausieren?"
-				description="Deine bisherigen Angaben und Unterlagen bleiben gespeichert. Du kannst die Erstellung später unter Lernpläne fortsetzen."
+				title={
+					isEditing
+						? isSavingEdits
+							? "Speichern läuft noch"
+							: "Änderungen verwerfen?"
+						: "Lernplan-Erstellung pausieren?"
+				}
+				description={
+					isEditing
+						? isSavingEdits
+							? "Du kannst zu Pläne zurückkehren. Der bereits gestartete Speichervorgang kann trotzdem noch abgeschlossen werden."
+							: "Deine ungespeicherten Themenänderungen werden verworfen. Bereits geändertes Material bleibt gespeichert."
+						: "Deine bisherigen Angaben und Unterlagen bleiben gespeichert. Du kannst die Erstellung später unter Lernpläne fortsetzen."
+				}
 				cancelLabel="Weiter bearbeiten"
-				confirmLabel="Später fortsetzen"
-				confirmTone="primary"
+				confirmLabel={
+					isEditing
+						? isSavingEdits
+							? "Zurück zu Pläne"
+							: "Verwerfen"
+						: "Später fortsetzen"
+				}
+				actionLayout="stacked"
+				confirmTone={isEditing ? "destructive" : "primary"}
 				onClose={() => setIsPauseConfirmationVisible(false)}
 				onConfirm={() => {
 					setIsPauseConfirmationVisible(false);
+					if (isEditing) {
+						setExitApproved(true);
+						return;
+					}
 					dismissToOrReplace(router, ROUTES.learningPlans);
 				}}
 			/>

@@ -520,7 +520,9 @@ function LearningPlanCard({
 	const editPlan = () => {
 		translateX.set(0);
 		setIsActionRailVisible(false);
-		router.push(`/learning-plans/new?learningPlanId=${plan.id}` as const);
+		router.push(
+			`/learning-plans/new?learningPlanId=${plan.id}&mode=edit` as const,
+		);
 	};
 	const deletePlan = () => {
 		translateX.set(0);
