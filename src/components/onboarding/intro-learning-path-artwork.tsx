@@ -1,11 +1,12 @@
-import { View } from "react-native";
+import { Text } from "~/components/ui/text";
 import {
-	LearningPathVisual,
 	type LearningPathArtworkNode,
+	LearningPathVisual,
 } from "~/features/learning-plans/learning-path-visual";
+import { IntroPhoneFrame } from "./intro-phone-frame";
 
 const ARTWORK_WIDTH = 345;
-const ARTWORK_HEIGHT = 276;
+const ARTWORK_HEIGHT = 550;
 
 type IntroLearningPathArtworkProps = {
 	height?: number;
@@ -35,21 +36,27 @@ export function IntroLearningPathArtwork({
 	height = ARTWORK_HEIGHT,
 }: IntroLearningPathArtworkProps) {
 	return (
-		<View
-			accessible={false}
-			accessibilityElementsHidden
-			importantForAccessibility="no-hide-descendants"
-			className="items-center justify-center"
-			// Content-size layout provides the artwork's runtime frame dimensions.
-			style={{ width, height }}
+		<IntroPhoneFrame
+			width={width}
+			height={height}
 			testID="intro-learning-path-artwork"
 		>
+			<Text
+				allowFontScaling={false}
+				className="mb-3 text-center font-poppins font-semibold text-heading-2 text-text"
+			>
+				Dein Lernplan
+			</Text>
 			<LearningPathVisual
-				height={height}
 				mode="artwork"
 				nodes={learningPathPreview}
-				width={width}
+				width={293}
+				height={430}
+				continuation={{
+					examDateLabel: "Freitag, 30. Oktober",
+					examCountdownLabel: "Noch 25 Tage",
+				}}
 			/>
-		</View>
+		</IntroPhoneFrame>
 	);
 }
