@@ -50,7 +50,11 @@ export function LearningPlanEditor({
 					Lernplan bearbeiten
 				</Text>
 			</PortraitContent>
-			<ScreenScroll includeTopSafeArea={false} topPadding={8}>
+			<ScreenScroll
+				includeTopSafeArea={false}
+				topPadding={8}
+				bottomPadding={32}
+			>
 				{isLoading ? (
 					<ActivityIndicator accessibilityLabel="Lernplan wird geladen" />
 				) : isMissing ? (
@@ -88,48 +92,54 @@ export function LearningPlanEditor({
 						) : null}
 					</View>
 				)}
-				<View className="mt-6 w-full flex-row items-stretch gap-3">
-					<Button
-						variant="cancel"
-						className="min-w-0 px-2"
-						style={{ flexBasis: 0, flexGrow: 1, flexShrink: 1 }}
-						onPress={onCancel}
-						accessibilityLabel="Abbrechen"
-					>
-						<Text
-							className="min-w-0 shrink text-center"
-							numberOfLines={1}
-							adjustsFontSizeToFit
-						>
-							Abbrechen
-						</Text>
-					</Button>
-					{!isLoading && !isMissing ? (
-						<Button
-							className="min-w-0 px-2"
-							style={{ flexBasis: 0, flexGrow: 1, flexShrink: 1 }}
-							disabled={!canSave || isBusy}
-							accessibilityLabel={
-								isBusy ? "Speichern, wird geladen" : "Speichern"
-							}
-							accessibilityState={{ busy: isBusy }}
-							onPress={onSave}
-						>
-							{isBusy ? (
-								<ActivityIndicator color="#FFFFFF" />
-							) : (
-								<Text
-									className="min-w-0 shrink text-center"
-									numberOfLines={1}
-									adjustsFontSizeToFit
-								>
-									Speichern
-								</Text>
-							)}
-						</Button>
-					) : null}
-				</View>
 			</ScreenScroll>
+			<PortraitContent
+				className="flex-row items-stretch gap-3 bg-background pt-6"
+				style={{
+					paddingHorizontal: horizontalPadding,
+					paddingBottom: Math.max(insets.bottom, 20),
+				}}
+			>
+				<Button
+					variant="cancel"
+					className="min-h-16 min-w-0 px-3 py-4"
+					style={{ flexBasis: 0, flexGrow: 1, flexShrink: 1 }}
+					onPress={onCancel}
+					accessibilityLabel="Abbrechen"
+				>
+					<Text
+						className="min-w-0 shrink text-center"
+						numberOfLines={1}
+						adjustsFontSizeToFit
+					>
+						Abbrechen
+					</Text>
+				</Button>
+				{!isLoading && !isMissing ? (
+					<Button
+						className="min-h-16 min-w-0 px-3 py-4"
+						style={{ flexBasis: 0, flexGrow: 1, flexShrink: 1 }}
+						disabled={!canSave || isBusy}
+						accessibilityLabel={
+							isBusy ? "Speichern, wird geladen" : "Speichern"
+						}
+						accessibilityState={{ busy: isBusy }}
+						onPress={onSave}
+					>
+						{isBusy ? (
+							<ActivityIndicator color="#FFFFFF" />
+						) : (
+							<Text
+								className="min-w-0 shrink text-center"
+								numberOfLines={1}
+								adjustsFontSizeToFit
+							>
+								Speichern
+							</Text>
+						)}
+					</Button>
+				) : null}
+			</PortraitContent>
 		</>
 	);
 }
