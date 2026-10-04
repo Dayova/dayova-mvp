@@ -29,7 +29,7 @@ const mockLaunchImageLibrary =
 		(_options: unknown) => Promise<{
 			canceled: boolean;
 			assets: Array<{
-				fileName: string;
+				fileName: string | null;
 				fileSize: number;
 				mimeType: string;
 				uri: string;
@@ -401,7 +401,7 @@ describe("exam creation across the topics boundary", () => {
 					uri: "file:///mitschrift-1.jpg",
 				},
 				{
-					fileName: "mitschrift-2.png",
+					fileName: null,
 					fileSize: 2_048,
 					mimeType: "image/png",
 					uri: "file:///mitschrift-2.png",
@@ -442,7 +442,7 @@ describe("exam creation across the topics boundary", () => {
 		expect(mockRegisterUploadedDocument).toHaveBeenNthCalledWith(
 			2,
 			expect.objectContaining({
-				fileName: "mitschrift-2.png",
+				fileName: expect.stringMatching(/^galerie-\d+-2\.png$/),
 				fileType: "image/png",
 				learningPlanId: "plan-1",
 				sourceKind: "school",

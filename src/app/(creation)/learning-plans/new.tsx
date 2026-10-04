@@ -512,7 +512,7 @@ export default function NewLearningPlanScreen() {
 							uri: asset.uri,
 							name:
 								asset.fileName ??
-								`mediathek-${Date.now()}-${index + 1}.${fallbackExtension}`,
+								`galerie-${Date.now()}-${index + 1}.${fallbackExtension}`,
 							mimeType: asset.mimeType ?? "image/jpeg",
 							size: asset.fileSize,
 						});
