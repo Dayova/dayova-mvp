@@ -48,7 +48,9 @@ const mockOpenExternalUrl = jest.fn<(url?: string) => Promise<boolean>>(
 );
 let mockProfileName: string | undefined = "Test Person";
 
-let mockAccess: { state: "trial" } | { state: "paid"; store: string } = {
+let mockAccess:
+	| { state: "trial" }
+	| { state: "paid" | "billingGrace"; store: string } = {
 	state: "trial",
 };
 
@@ -158,7 +160,7 @@ describe("SettingsScreen", () => {
 		mockOpenAiConsentSettings.mockReset();
 	});
 
-	test("prioritizes profile, subscription, and support and keeps legal destinations last", async () => {
+	test("places the trial offer directly below support and keeps legal destinations last", async () => {
 		const screen = await render(<SettingsScreen />);
 		expect(screen.getByRole("header", { name: "Lernen" })).toBeOnTheScreen();
 		expect(screen.getByRole("header", { name: "App" })).toBeOnTheScreen();
@@ -173,8 +175,8 @@ describe("SettingsScreen", () => {
 		expect(screen.getByText("Profil & Konto")).toBeOnTheScreen();
 		expect(screen.getAllByRole("button").slice(0, 3)).toEqual([
 			screen.getByRole("button", { name: "Test Person, Profil & Konto" }),
-			screen.getByRole("button", { name: "Dayova abonnieren" }),
 			screen.getByRole("button", { name: "Support kontaktieren" }),
+			screen.getByRole("button", { name: "Dayova abonnieren" }),
 		]);
 		expect(
 			screen.queryByRole("button", { name: "Passwort ändern" }),
@@ -194,6 +196,34 @@ describe("SettingsScreen", () => {
 		expect(screen.queryByRole("button", { name: "Stundenplan" })).toBeNull();
 		await fireEvent.press(screen.getByRole("button", { name: "Lernzeiten" }));
 		expect(mockPush).toHaveBeenCalledWith("/learning-times");
+	});
+
+	test.each([
+		"paid",
+		"billingGrace",
+	] as const)("places %s subscription management after app settings and directly before legal", async (state) => {
+		mockAccess = { state, store: "unknown" };
+		const screen = await render(<SettingsScreen />);
+		const buttons = screen.getAllByRole("button");
+		expect(buttons.slice(0, 3)).toEqual([
+			screen.getByRole("button", { name: "Test Person, Profil & Konto" }),
+			screen.getByRole("button", { name: "Support kontaktieren" }),
+			screen.getByRole("button", { name: "Lernzeiten" }),
+		]);
+		const subscription = screen.getByRole("button", {
+			name: "Dayova, Hilfe zum Abo",
+		});
+		expect(buttons.indexOf(subscription)).toBeGreaterThan(
+			buttons.indexOf(screen.getByRole("button", { name: "Mitteilungen" })),
+		);
+		expect(buttons[buttons.indexOf(subscription) + 1]).toBe(
+			screen.getByRole("button", { name: "KI & Datenschutz, Nicht aktiv" }),
+		);
+		expect(screen.getAllByTestId("settings-subscription")).toHaveLength(1);
+		await fireEvent.press(subscription);
+		expect(mockOpenExternalUrl).toHaveBeenCalledWith(
+			"https://example.com/support",
+		);
 	});
 
 	test("opens and closes app information from the reorganized settings", async () => {
