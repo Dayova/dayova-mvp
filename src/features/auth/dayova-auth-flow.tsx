@@ -39,6 +39,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IntroUploadArtwork } from "~/components/intro-upload-artwork";
+import { IntroCalendarArtwork } from "~/components/onboarding/intro-calendar-artwork";
 import { IntroLearningPathArtwork } from "~/components/onboarding/intro-learning-path-artwork";
 import {
 	getIntroDotWidth,
@@ -57,7 +58,6 @@ import {
 	formatOnboardingDuration,
 	formatOnboardingTime,
 	getDefaultOnboardingLearningStartTime,
-	getOnboardingDurationDisplay,
 	getOnboardingLearningTimeSummary,
 	getOnboardingLearningTimeValidationError,
 	ONBOARDING_DURATION_OPTIONS,
@@ -86,7 +86,6 @@ import {
 	GreekHelmet,
 	Palette,
 	Plant,
-	Route2,
 	SquareRootSquare,
 	Telescope,
 } from "~/components/ui/icon";
@@ -108,7 +107,6 @@ import {
 	getOnboardingStep,
 	getOnboardingStepPath,
 	getOnboardingStepProgress,
-	ONBOARDING_PROFILE_STEPS,
 	type OnboardingProfileStep,
 	type OnboardingStepId,
 } from "~/features/auth/onboarding-route-model";
@@ -162,35 +160,48 @@ type PasswordResetStage =
 
 type IntroStep = {
 	kind: "intro";
-	id: "intro-upload" | "intro-path" | "intro-tasks";
+	id: "intro-upload" | "intro-path" | "intro-tasks" | "intro-calendar";
+	eyebrow: string;
 	title: string;
 	description: string;
-	illustration: "path" | "tasks" | "upload";
+	illustration: "path" | "tasks" | "upload" | "calendar";
 };
 
 const INTRO_STEPS = [
 	{
 		kind: "intro",
 		id: "intro-tasks",
-		title: "Du weißt, was heute wirklich zählt.",
+		eyebrow: "DEIN START MIT DAYOVA",
+		title: "Schluss mit Aufschieben.",
 		description:
-			"Ein machbarer nächster Lernschritt bringt dich jeden Tag näher an deine Prüfung.",
+			"Du musst nicht alles auf einmal schaffen. Dayova zeigt dir, was als Nächstes dran ist – damit du leichter anfängst und dranbleibst.",
 		illustration: "tasks",
 	},
 	{
 		kind: "intro",
-		id: "intro-upload",
-		title: "Deine Prüfung. Alles an einem Ort.",
+		id: "intro-calendar",
+		eyebrow: "01 · DEINE LERNZEITEN",
+		title: "Lernzeiten festlegen.",
 		description:
-			"Lade Aufgaben, Mitschriften und Lernmaterial hoch. Dayova verbindet sie mit deinem echten Prüfungsziel.",
+			"Sag Dayova, wann du Zeit hast. Dein Lernplan passt in deinen Alltag – mit festen Lernzeiten, die dir beim Dranbleiben helfen.",
+		illustration: "calendar",
+	},
+	{
+		kind: "intro",
+		id: "intro-upload",
+		eyebrow: "02 · DEIN SCHULMATERIAL",
+		title: "Schulmaterial hochladen.",
+		description:
+			"Fotografiere deine Mitschriften oder lade Arbeitsblätter hoch. So lernst du mit dem Stoff, der für deine Prüfung zählt.",
 		illustration: "upload",
 	},
 	{
 		kind: "intro",
 		id: "intro-path",
-		title: "Aus Stoff wird ein klarer Weg.",
+		eyebrow: "03 · DEIN LERNPLAN",
+		title: "Lernplan erstellen lassen.",
 		description:
-			"Dayova erkennt Themen und Lücken und ordnet sie so, dass du nicht mehr raten musst, wo du anfängst.",
+			"Dayova macht aus deinem Stoff einen Lernplan – passend zu deinen Lernzeiten. Du weißt, was du wann lernst.",
 		illustration: "path",
 	},
 ] as const satisfies readonly IntroStep[];
@@ -600,6 +611,7 @@ export function OnboardingStepScreen({ stepId }: { stepId: OnboardingStepId }) {
 	} = useAuthFlow();
 	const {
 		answers,
+		setAnswer,
 		progressOrigin,
 		setRegistrationStage,
 		setProgressOrigin,
@@ -681,12 +693,17 @@ export function OnboardingStepScreen({ stepId }: { stepId: OnboardingStepId }) {
 			return;
 		}
 		updateError(null);
-		const decision = getOnboardingStepDecision(step, answers);
+		const confirmedAnswers =
+			step.kind === "range" && !answers.studyTime.trim()
+				? { ...answers, studyTime: "30" }
+				: answers;
+		const decision = getOnboardingStepDecision(step, confirmedAnswers);
 		if (step.kind === "text") Keyboard.dismiss();
 		if (decision.error) {
 			updateError(decision.error);
 			return;
 		}
+		if (confirmedAnswers !== answers) setAnswer("studyTime", "30");
 		if (step.kind === "text" && step.field === "email") {
 			await registrationActionGateRef.current.run(async () => {
 				try {
@@ -964,7 +981,7 @@ export function OnboardingCreationScreen() {
 	);
 }
 
-function IntroStepView({
+export function IntroStepView({
 	activeIndex,
 	topInset,
 	bottomInset,
@@ -1044,24 +1061,12 @@ function IntroStepView({
 					showsVerticalScrollIndicator={false}
 					// Runtime safe-area and content-size values define the scrollable frame.
 					contentContainerStyle={{
-						alignItems: "center",
+						alignItems: "stretch",
 						paddingBottom: Math.max(bottomInset + 20, 28),
 						paddingHorizontal: contentSizeLayout.horizontalPadding,
 					}}
 				>
-					<View className="w-full">
-						<IntroArtwork accessibleLayout item={item} />
-					</View>
-
-					<Text
-						accessibilityRole="header"
-						className="mt-6 max-w-[350px] text-center font-poppins font-semibold text-heading-2 text-text"
-					>
-						{item.title}
-					</Text>
-					<Text className="mt-3 max-w-[340px] text-center font-poppins text-body-3 text-secondary-text">
-						{item.description}
-					</Text>
+					<IntroPageContent item={item} accessibleLayout />
 
 					<View className="mt-8 w-full">
 						<IntroDots
@@ -1081,10 +1086,6 @@ function IntroStepView({
 								{isLastIntro ? "Meinen Start personalisieren" : "Weiter"}
 							</Text>
 						</Button>
-						<Text className="mt-3 text-center font-poppins text-body-5 text-secondary-text">
-							Danach {ONBOARDING_PROFILE_STEPS.length} kurze, bewusste Schritte
-							· etwa 2 Minuten
-						</Text>
 					</View>
 				</ScrollView>
 			</View>
@@ -1100,15 +1101,6 @@ function IntroStepView({
 				paddingBottom: Math.max(bottomInset + 20, 28),
 			}}
 		>
-			<View className="items-center px-6">
-				<View className="flex-row items-center gap-2 rounded-full bg-primary/10 px-4 py-2">
-					<Route2 size={16} color={COLORS.primary} strokeWidth={2.2} />
-					<Text className="font-poppins font-semibold text-body-5 text-primary">
-						SO FUNKTIONIERT DAYOVA
-					</Text>
-				</View>
-			</View>
-
 			<Animated.FlatList
 				ref={listRef}
 				testID="intro-pager"
@@ -1131,29 +1123,18 @@ function IntroStepView({
 				onScroll={scrollHandler}
 				onMomentumScrollEnd={handleScrollEnd}
 				onScrollEndDrag={handleScrollEnd}
-				renderItem={({ item }) => {
-					// Pager width and artwork height are measured runtime geometry.
-					return (
-						<View style={{ width }} className="items-center px-6 pt-4">
-							<IntroArtwork compactHeight={isCompactHeight} item={item} />
-
-							<Text
-								accessibilityRole="header"
-								className={cn(
-									"max-w-[350px] text-center font-poppins font-semibold text-text",
-									isCompactHeight
-										? "mt-4 text-heading-2"
-										: "mt-6 text-heading-1",
-								)}
-							>
-								{item.title}
-							</Text>
-							<Text className="mt-3 max-w-[340px] text-center font-poppins text-body-3 text-secondary-text">
-								{item.description}
-							</Text>
+				renderItem={({ item }) => (
+					// Pager pages follow the runtime viewport width; content scrolls on short phones.
+					<ScrollView
+						style={{ width }}
+						contentContainerStyle={{ flexGrow: 1 }}
+						showsVerticalScrollIndicator={false}
+					>
+						<View className="flex-1 px-6 pb-6">
+							<IntroPageContent item={item} compactHeight={isCompactHeight} />
 						</View>
-					);
-				}}
+					</ScrollView>
+				)}
 			/>
 
 			<View className="px-6">
@@ -1172,50 +1153,67 @@ function IntroStepView({
 				>
 					<Text>{isLastIntro ? "Meinen Start personalisieren" : "Weiter"}</Text>
 				</Button>
-				<Text className="mt-3 text-center font-poppins text-body-5 text-secondary-text">
-					Danach {ONBOARDING_PROFILE_STEPS.length} kurze, bewusste Schritte ·
-					etwa 2 Minuten
-				</Text>
 			</View>
 		</View>
 	);
 }
 
-function IntroArtwork({
+function IntroPageContent({
+	item,
 	accessibleLayout = false,
 	compactHeight = false,
-	item,
 }: {
+	item: IntroStep;
 	accessibleLayout?: boolean;
 	compactHeight?: boolean;
-	item: IntroStep;
 }) {
-	const containerHeight = accessibleLayout ? 184 : compactHeight ? 220 : 286;
-
+	const { usableWidth } = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
+	const artworkWidth = Math.min(usableWidth, 380);
+	const artworkHeight = accessibleLayout ? 360 : compactHeight ? 340 : 400;
 	return (
-		<View
-			className="w-full items-center justify-center overflow-hidden rounded-[32px] bg-system-subtle"
-			// Runtime content-size mode chooses the bounded decorative-artwork height.
-			style={{ height: containerHeight }}
-		>
-			{item.illustration === "upload" ? (
-				<IntroUploadArtwork
-					width={accessibleLayout ? 210 : compactHeight ? 246 : 280}
-					height={accessibleLayout ? 190 : compactHeight ? 222 : 254}
-				/>
-			) : null}
-			{item.illustration === "path" ? (
-				<IntroLearningPathArtwork
-					width={accessibleLayout ? 250 : compactHeight ? 284 : 330}
-					height={accessibleLayout ? 168 : compactHeight ? 208 : 254}
-				/>
-			) : null}
-			{item.illustration === "tasks" ? (
-				<IntroTasksArtwork
-					width={accessibleLayout ? 262 : compactHeight ? 294 : 345}
-					height={accessibleLayout ? 178 : compactHeight ? 200 : 236}
-				/>
-			) : null}
+		<View className="mx-auto w-full max-w-[480px] flex-1">
+			<Text className="mb-4 font-poppins font-semibold text-body-4 text-primary-strong">
+				{item.eyebrow}
+			</Text>
+			<Text
+				accessibilityRole="header"
+				className="font-poppins font-semibold text-heading-1 text-text"
+			>
+				{item.title}
+			</Text>
+			<Text className="mt-3 font-poppins text-body-3 text-secondary-text">
+				{item.description}
+			</Text>
+			<View className="mt-5 flex-1 items-center justify-center">
+				<View className="w-full items-center justify-center">
+					{item.illustration === "tasks" ? (
+						<IntroTasksArtwork
+							width={artworkWidth - 16}
+							height={artworkHeight}
+						/>
+					) : null}
+					{item.illustration === "calendar" ? (
+						<IntroCalendarArtwork
+							width={artworkWidth - 24}
+							height={artworkHeight}
+						/>
+					) : null}
+					{item.illustration === "upload" ? (
+						<IntroUploadArtwork
+							width={artworkWidth - 24}
+							height={artworkHeight}
+						/>
+					) : null}
+					{item.illustration === "path" ? (
+						<IntroLearningPathArtwork
+							width={artworkWidth - 24}
+							height={artworkHeight}
+						/>
+					) : null}
+				</View>
+			</View>
 		</View>
 	);
 }
@@ -1341,7 +1339,12 @@ function QuestionStepView({
 	const reducedMotion = useReducedMotion();
 	const isWheelStep = step.kind === "wheel";
 	const stepDecision = getOnboardingStepDecision(step, answers);
-	const canContinue = isOnboardingStepReady(step, answers);
+	const canContinue = isOnboardingStepReady(
+		step,
+		step.kind === "range" && !answers.studyTime.trim()
+			? { ...answers, studyTime: "30" }
+			: answers,
+	);
 	const currentAnswer = "field" in step ? answers[step.field] : "";
 	const localValidationError =
 		step.kind === "text" && currentAnswer.trim() && step.field !== "password"
@@ -1508,6 +1511,16 @@ function QuestionStepView({
 							<StudyTimeFactContent
 								title={step.title}
 								studyTime={answers.studyTime}
+								source={
+									step.id === "learning-routine-fact"
+										? "Quelle: Cepeda et al. (2006) · verteiltes Lernen"
+										: undefined
+								}
+								body={
+									step.id === "learning-routine-fact"
+										? step.description
+										: undefined
+								}
 							/>
 						) : null}
 						{step.kind === "payoff" ? <PayoffAnswer /> : null}
@@ -3005,6 +3018,12 @@ function OtpCodeInput({
 	);
 }
 
+// Presentation only: allowed values and persistence belong to the learning-time model.
+const getDurationRingLabel = (minutes: number) => ({
+	value: String(minutes >= 60 ? minutes / 60 : minutes).replace(".", ","),
+	unit: minutes >= 60 ? "h" : "min",
+});
+
 function RangeAnswer({
 	step,
 }: {
@@ -3040,6 +3059,7 @@ function RangeAnswer({
 	return (
 		<View className="w-full items-center">
 			<SnapCarouselSelector
+				appearance="onboarding"
 				accessibilityLabel="Tägliche Lernzeit"
 				accessibilityValue={
 					hasExplicitSelection
@@ -3051,15 +3071,11 @@ function RangeAnswer({
 				items={step.values}
 				selectedIndex={selectedIndex}
 				getItemKey={(value) => String(value)}
-				getItemPrimaryLabel={(value) =>
-					getOnboardingDurationDisplay(value).value
-				}
-				getItemSecondaryLabel={(value) =>
-					getOnboardingDurationDisplay(value).unit
-				}
+				getItemPrimaryLabel={(value) => getDurationRingLabel(value).value}
+				getItemSecondaryLabel={(value) => getDurationRingLabel(value).unit}
 				getItemProgress={(_, index) => (index + 1) / step.values.length}
-				primaryLabel={getOnboardingDurationDisplay(displayedStudyTime).value}
-				secondaryLabel={getOnboardingDurationDisplay(displayedStudyTime).unit}
+				primaryLabel={getDurationRingLabel(displayedStudyTime).value}
+				secondaryLabel={getDurationRingLabel(displayedStudyTime).unit}
 				progress={
 					selectedValue === undefined
 						? 0
@@ -3067,16 +3083,6 @@ function RangeAnswer({
 				}
 				onSelect={(value) => setAnswer("studyTime", String(value))}
 			/>
-			{hasExplicitSelection ? null : (
-				<Button
-					size="sm"
-					accessibilityLabel={`${formatOnboardingDuration(displayedStudyTime)} auswählen`}
-					className="mt-4 self-center"
-					onPress={() => setAnswer("studyTime", String(displayedStudyTime))}
-				>
-					<Text>{formatOnboardingDuration(displayedStudyTime)} auswählen</Text>
-				</Button>
-			)}
 		</View>
 	);
 }
@@ -3111,27 +3117,23 @@ function AnimatedStudyDayPill({
 		backgroundColor: interpolateColor(
 			selectionProgress.get(),
 			[0, 1],
-			[colors.systemSubtle, colors.primary],
+			[colors.surface, colors.primary],
 		),
 		borderColor: interpolateColor(
 			selectionProgress.get(),
 			[0, 1],
-			[colors.path1, colors.primary],
+			[colors.border, colors.primary],
 		),
 		transform: [{ scale: pressedScale.get() }],
 	}));
-	const checkStyle = useAnimatedStyle(() => {
-		const progress = selectionProgress.get();
-		return {
-			opacity: progress,
-			transform: [{ scale: 0.72 + progress * 0.28 }],
-		};
-	});
+	const gradientStyle = useAnimatedStyle(() => ({
+		opacity: selectionProgress.get(),
+	}));
 	const labelStyle = useAnimatedStyle(() => ({
 		color: interpolateColor(
 			selectionProgress.get(),
 			[0, 1],
-			[colors.text, colors.onPrimary],
+			[colors.text, "#FFFFFF"],
 		),
 	}));
 
@@ -3153,23 +3155,23 @@ function AnimatedStudyDayPill({
 			onPress={onToggle}
 			onPressIn={() => setPressedScale(0.97, STUDY_DAY_PRESS_IN_DURATION_MS)}
 			onPressOut={() => setPressedScale(1, STUDY_DAY_PRESS_OUT_DURATION_MS)}
-			className="min-h-12 min-w-[100px] flex-row items-center justify-center rounded-full border px-3 py-3"
+			className="min-h-12 min-w-[100px] flex-row items-center justify-center overflow-hidden rounded-full border px-6 py-3"
 			// Runtime state and press feedback intentionally animate outside NativeWind.
 			style={pillStyle}
 		>
-			<View
-				testID={`study-day-pill-check-slot-${label}`}
-				className="h-4 w-4 items-center justify-center"
+			<Animated.View
+				pointerEvents="none"
+				className="absolute inset-0"
+				style={gradientStyle}
 			>
-				<Animated.View
-					// Selection animates the checkmark on the UI thread.
-					style={checkStyle}
-				>
-					<Check size={16} color={colors.onPrimary} strokeWidth={2.4} />
-				</Animated.View>
-			</View>
+				<LinearGradient
+					testID={`weekday-gradient-${label}`}
+					{...DAYOVA_DESIGN_SYSTEM.gradients.selection}
+					style={{ width: "100%", height: "100%" }}
+				/>
+			</Animated.View>
 			<Animated.Text
-				className="ml-2 font-poppins font-semibold text-body-3"
+				className="font-poppins font-semibold text-body-3"
 				// Selection animation and Android font metrics require native styles.
 				style={[
 					Platform.select({ android: { includeFontPadding: false } }),
@@ -3178,10 +3180,6 @@ function AnimatedStudyDayPill({
 			>
 				{label}
 			</Animated.Text>
-			<View
-				testID={`study-day-pill-balance-slot-${label}`}
-				className="ml-2 h-4 w-4"
-			/>
 		</AnimatedPressable>
 	);
 }
@@ -3191,22 +3189,34 @@ function StudyDaysAnswer() {
 	const selectedDays = new Set(parseOnboardingStudyDays(answers.studyDays));
 
 	return (
-		<View className="w-full flex-row flex-wrap justify-center gap-3 px-2">
-			{LEARNING_DAYS.map((day) => (
-				<AnimatedStudyDayPill
-					key={day.value}
-					label={day.label}
-					isSelected={selectedDays.has(day.label)}
-					onToggle={() =>
-						setAnswer(
-							"studyDays",
-							toggleOnboardingStudyDay(
-								answers.studyDays,
-								day.label as LearningDayLabel,
-							),
-						)
-					}
-				/>
+		<View className="w-full gap-3">
+			{[
+				LEARNING_DAYS.slice(0, 2),
+				LEARNING_DAYS.slice(2, 4),
+				LEARNING_DAYS.slice(4, 6),
+				LEARNING_DAYS.slice(6),
+			].map((days) => (
+				<View
+					key={days[0].value}
+					className="flex-row flex-wrap justify-center gap-3"
+				>
+					{days.map((day) => (
+						<AnimatedStudyDayPill
+							key={day.value}
+							label={day.label}
+							isSelected={selectedDays.has(day.label)}
+							onToggle={() =>
+								setAnswer(
+									"studyDays",
+									toggleOnboardingStudyDay(
+										answers.studyDays,
+										day.label as LearningDayLabel,
+									),
+								)
+							}
+						/>
+					))}
+				</View>
 			))}
 		</View>
 	);

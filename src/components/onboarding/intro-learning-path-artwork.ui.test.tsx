@@ -88,6 +88,12 @@ describe("IntroLearningPathArtwork", () => {
 		).toBe(52);
 		expect(screen.queryByRole("button", hidden)).toBeNull();
 		expect(mockWithRepeat).not.toHaveBeenCalled();
+		expect(
+			screen.getByText("Dayova plant mit dir weiter", hidden),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByTestId("adaptive-continuation-path", hidden),
+		).toBeOnTheScreen();
 	});
 
 	test("preserves explicit numeric artwork dimensions", async () => {
@@ -101,3 +107,14 @@ describe("IntroLearningPathArtwork", () => {
 		expect(artwork).toHaveStyle({ width: 250, height: 168 });
 	});
 });
+
+jest.mock("~/lib/theme", () => ({
+	useDayovaTheme: () => ({
+		isDark: false,
+		colors: (
+			jest.requireActual(
+				"~/lib/design-system",
+			) as typeof import("~/lib/design-system")
+		).DAYOVA_DESIGN_SYSTEM.colors,
+	}),
+}));

@@ -140,6 +140,15 @@ with a bordered card surface and theme text, preserving the approved light
 pill without making it a general-purpose CTA variant. See
 [the dashboard isolation contract](../../dashboard-main-isolation.md).
 
+Learning-time settings restore the personal-subject management pattern: muted
+weekday badges, bordered cards, a visible pencil, and swipe-to-delete with a
+text-only rounded action. The shared `destructive-outline` Button is a scoped
+management-action exception, not a new primary CTA: `danger-action` foreground
+and border on `danger-subtle` fill in both themes. It matches the independently
+introduced personal-subject variant in PR #816 without changing existing Button
+defaults. Screen readers retain a named delete action on the pencil. See
+[the restoration record](../../qa/learning-times-settings-restoration-2026-10-02.md).
+
 The empty timetable uses one full-width gradient import button and a full-width
 neutral manual-entry button. File and camera are equal sources inside the shared
 `ActionSheet`, following the school-material upload pattern. Use source rows
@@ -257,3 +266,31 @@ invalid combinations cannot be confirmed. Selection is staged until Übernehmen;
 closing discards it. Present it after the editor dismisses and return only after
 the duration sheet dismisses. Native picker geometry/theme is owned here; app
 screens must not import the platform picker directly.
+
+## Onboarding learning-time controls
+
+The duration selector uses the onboarding appearance of `SnapCarouselSelector`:
+a 128-point thin progress ring and a 96-point selected gradient tick, based on
+the supplied MVP Login 5 reference. It renders the values supplied by the
+existing learning-time model; this design change defines no allowed duration
+range and makes no backend, validation, or persistence changes. Duration values
+and their compatibility rules belong to PR #813. The ring uses compact min/h
+labels, independently of the allowed values. Continue confirms the displayed
+initial value; merely opening the page does not save it.
+
+Per the 3 October 2026 user direction and MVP Login 18 reference, selected
+weekday pills use the shared `selection` gradient with white text, following the
+[selection-color ADR](adr/answer-selection-colors.md). The
+[canonical color decision](https://app.notion.com/p/3da2e87228bf8173b2adddaab6e3f5e6)
+records darker blue as the viable alternative when white foregrounds are an
+explicit product requirement. The October direction applies that alternative
+here; the earlier preference for dark foregrounds on solid cyan is historical
+rationale, not approval of white on the brighter action-button gradient.
+This remains scoped to selected weekday pills. Their accessible checkbox state
+is retained; the visual checkmark is omitted. Weekday pills retain the original
+48-point minimum height and semibold body-3
+type, arranged 2/2/2/1 with wrapping for larger content sizes. Initial answers
+are empty; example selections belong only in historical screenshot evidence.
+
+The duration explanation adapts to the chosen value; an additional explanation
+between weekdays and start time brings the profile flow to twelve steps.

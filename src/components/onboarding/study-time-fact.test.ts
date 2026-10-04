@@ -7,7 +7,7 @@ describe("getStudyTimeFactBody", () => {
 		ONBOARDING_DURATION_OPTIONS,
 	)("uses the selected %i-minute duration", (minutes) => {
 		expect(getStudyTimeFactBody(`${minutes} min`)).toContain(
-			`Wir verwenden ${minutes} Minuten als Dauer`,
+			`${minutes} Minuten`,
 		);
 	});
 
@@ -16,8 +16,6 @@ describe("getStudyTimeFactBody", () => {
 		"min",
 		"unbekannt",
 	])("falls back to 30 minutes for an invalid value (%s)", (value) => {
-		expect(getStudyTimeFactBody(value)).toContain(
-			"Wir verwenden 30 Minuten als Dauer",
-		);
+		expect(getStudyTimeFactBody(value)).toContain("30 Minuten");
 	});
 });

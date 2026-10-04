@@ -133,7 +133,6 @@ export function PreparationSlotEditor({
 								</Text>
 							</Pressable>
 							<LearningTimeEditorFields
-								outlinedDays
 								selectedDay={
 									LEARNING_DAYS[
 										(new Date(`${draft.dateKey}T12:00:00Z`).getUTCDay() + 6) % 7
