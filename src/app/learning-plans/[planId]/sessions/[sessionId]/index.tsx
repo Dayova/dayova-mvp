@@ -18,7 +18,6 @@ import { BackButton, Button } from "~/components/ui/button";
 import { ErrorMessage } from "~/components/ui/error-message";
 import { Timer } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
-import { Textarea } from "~/components/ui/textarea";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
@@ -36,6 +35,7 @@ import {
 	getTheoryTopicPosition,
 	isPairedTheoryQuestionItem,
 } from "~/features/learning-plans/session-progress";
+import { TextAnswer } from "~/features/learning-plans/text-answer";
 import { runTheoryTopicPrimaryAction } from "~/features/learning-plans/theory-topic";
 import { TheoryTopicPage } from "~/features/learning-plans/theory-topic-page";
 import type {
@@ -111,37 +111,6 @@ function ActionRow({
 				)}
 			</Button>
 		</View>
-	);
-}
-
-function TextAnswer({
-	value,
-	onChange,
-	placeholder,
-	editable,
-	fillAvailableSpace = false,
-	autoFocus,
-}: {
-	value: string;
-	onChange: (value: string) => void;
-	placeholder: string;
-	editable: boolean;
-	fillAvailableSpace?: boolean;
-	autoFocus?: boolean;
-}) {
-	return (
-		<Textarea
-			autoFocus={(autoFocus ?? fillAvailableSpace) && editable}
-			accessibilityLabel="Antwort"
-			className={cn(
-				"mt-4 px-0 py-2",
-				fillAvailableSpace ? "min-h-[180px] flex-1" : "min-h-40",
-			)}
-			editable={editable}
-			value={value}
-			onChangeText={onChange}
-			placeholder={placeholder}
-		/>
 	);
 }
 

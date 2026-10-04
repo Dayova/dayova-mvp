@@ -1,5 +1,6 @@
 import { Pressable, View } from "react-native";
-import { Check } from "~/components/ui/icon";
+import type { Check } from "~/components/ui/icon";
+import { SelectionIndicator } from "~/components/ui/selection-indicator";
 import { Text } from "~/components/ui/text";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
@@ -54,17 +55,7 @@ export function SelectionOptionRow({
 					<Text className="text-body-4 text-secondary-text">{description}</Text>
 				) : null}
 			</View>
-			<View
-				accessible={false}
-				className={cn(
-					"h-6 w-6 items-center justify-center rounded-full border-2",
-					selected ? "border-primary bg-primary" : "border-primary/40",
-				)}
-			>
-				{selected ? (
-					<Check size={14} color={colors.onPrimary} strokeWidth={2.5} />
-				) : null}
-			</View>
+			<SelectionIndicator selected={selected} />
 		</Pressable>
 	);
 }
