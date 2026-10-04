@@ -216,9 +216,6 @@ export function DashboardScreen() {
 							{getTodaySummary(entriesByDay?.[todayKey])}
 						</Text>
 					</View>
-					<View className="shrink-0">
-						<CreateEntryButton returnTo={ROUTES.home} />
-					</View>
 				</View>
 			</View>
 			<ScrollView
@@ -246,6 +243,7 @@ export function DashboardScreen() {
 				<View className="px-6" testID="dashboard-calendar">
 					<DashboardCalendarHeader
 						selectedDate={selectedDate}
+						createAction={<CreateEntryButton returnTo={ROUTES.home} />}
 						onToday={() => {
 							if (!dayPagerKeys.includes(todayKey)) {
 								setDayPagerKeys(
