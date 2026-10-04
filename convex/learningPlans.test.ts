@@ -119,6 +119,62 @@ const createAcceptedPlanWithSession = async (
 	return { learningPlanId, session };
 };
 
+test("calendar resync replaces personal-subject references for rename and removal", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const { learningPlanId, session } = await createAcceptedPlanWithSession(t);
+	const first = await t.mutation(api.personalSubjects.create, {
+		name: "Theater",
+	});
+	const second = await t.mutation(api.personalSubjects.create, {
+		name: "Astronomie",
+	});
+	if (first.kind !== "personal" || second.kind !== "personal")
+		throw new Error("Expected personal subjects");
+	const dayEntryId = await t.run(async (ctx) => {
+		const stored = await ctx.db.get("learningPlanSessions", session.id);
+		if (!stored?.dayEntryId) throw new Error("Expected calendar entry");
+		return stored.dayEntryId;
+	});
+	for (const subject of [first, second]) {
+		await t.run(async (ctx) => {
+			await ctx.db.patch("learningPlans", learningPlanId, {
+				subject: subject.name,
+				personalSubjectId: subject.id,
+			});
+		});
+		await t.mutation(api.learningPlans.syncSessionsToCalendar, {
+			learningPlanId,
+		});
+		// Repeated syncs must not duplicate the reference.
+		await t.mutation(api.learningPlans.syncSessionsToCalendar, {
+			learningPlanId,
+		});
+		const references = await t.run(
+			async (ctx) =>
+				await ctx.db
+					.query("personalSubjectReferences")
+					.withIndex("by_dayEntryId", (q) => q.eq("dayEntryId", dayEntryId))
+					.take(10),
+		);
+		expect(references).toEqual([
+			expect.objectContaining({ personalSubjectId: subject.id }),
+		]);
+	}
+	await t.mutation(api.personalSubjects.rename, {
+		id: second.id,
+		name: "Sternkunde",
+	});
+	expect(
+		await t.run(async (ctx) => await ctx.db.get("dayEntries", dayEntryId)),
+	).toMatchObject({ subject: "Sternkunde", personalSubjectId: second.id });
+	await t.mutation(api.personalSubjects.remove, { id: second.id });
+	const entry = await t.run(
+		async (ctx) => await ctx.db.get("dayEntries", dayEntryId),
+	);
+	expect(entry?.subject).toBe("Sternkunde");
+	expect(entry?.personalSubjectId).toBeUndefined();
+});
+
 test("lists a materialless draft so the upload can be resumed", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const examDayEntryId = await t.mutation(api.dayEntries.create, {

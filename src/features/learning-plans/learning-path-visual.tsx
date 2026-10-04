@@ -337,11 +337,6 @@ function StepPuck({
 				height: puckHeight,
 				alignItems: "center",
 				borderRadius: puckHeight / 2,
-				boxShadow: isCompleted
-					? "0 5px 9px rgba(0, 160, 230, 0.2)"
-					: locked
-						? "0 5px 8px rgba(105, 117, 134, 0.16)"
-						: "0 5px 9px rgba(105, 117, 134, 0.22)",
 			}}
 		>
 			<View
@@ -568,6 +563,7 @@ type ScreenLearningPathVisualProps = {
 };
 
 type ArtworkLearningPathVisualProps = {
+	continuation?: { examDateLabel: string; examCountdownLabel: string | null };
 	mode: "artwork";
 	height: number;
 	nodes: readonly LearningPathArtworkNode[];
@@ -581,6 +577,7 @@ type LearningPathVisualProps =
 function LearningPathSurface({ props }: { props: LearningPathVisualProps }) {
 	const { mode } = props;
 	const screenProps = props.mode === "screen" ? props : null;
+	const continuation = props.mode === "screen" ? props : props.continuation;
 	const currentIndex = screenProps
 		? getCommittedSessionIndex(screenProps.sessions)
 		: null;
@@ -594,7 +591,8 @@ function LearningPathSurface({ props }: { props: LearningPathVisualProps }) {
 			: props.nodes;
 	const activeSegmentLimit = getActiveSegmentLimit(nodes);
 	const showsAdaptiveContinuation =
-		screenProps?.showsAdaptiveContinuation === true;
+		screenProps?.showsAdaptiveContinuation === true ||
+		(props.mode === "artwork" && !!props.continuation);
 	const continuationSegmentIndex = Math.max(nodes.length - 1, 0);
 	const continuationPath = getSegmentPath(continuationSegmentIndex);
 	const continuationEndpoint = getSegmentEndPoint(continuationSegmentIndex);
@@ -704,14 +702,14 @@ function LearningPathSurface({ props }: { props: LearningPathVisualProps }) {
 						/>
 					))}
 
-			{showsAdaptiveContinuation && screenProps ? (
+			{showsAdaptiveContinuation && continuation ? (
 				<View
 					accessible
 					accessibilityLabel={`Dayova plant mit dir weiter. Nach deinem Abschluss passt Dayova die Vorschau an und plant den nächsten Termin. Prüfung am ${
-						screenProps.examDateLabel
+						continuation.examDateLabel
 					}${
-						screenProps.examCountdownLabel
-							? `, ${screenProps.examCountdownLabel}`
+						continuation.examCountdownLabel
+							? `, ${continuation.examCountdownLabel}`
 							: ""
 					}.`}
 					className="absolute right-2 left-2 gap-4 overflow-hidden rounded-card border border-primary/20 bg-system-subtle px-4 py-4"
@@ -728,10 +726,16 @@ function LearningPathSurface({ props }: { props: LearningPathVisualProps }) {
 							/>
 						</View>
 						<View className="min-w-0 flex-1">
-							<Text className="font-poppins font-semibold text-body-3 text-text">
+							<Text
+								allowFontScaling={mode !== "artwork"}
+								className="font-poppins font-semibold text-body-3 text-text"
+							>
 								Dayova plant mit dir weiter
 							</Text>
-							<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
+							<Text
+								allowFontScaling={mode !== "artwork"}
+								className="mt-1 font-poppins text-body-4 text-secondary-text"
+							>
 								Nach deinem Abschluss passt Dayova die Vorschau an und plant den
 								nächsten Termin.
 							</Text>
@@ -749,20 +753,27 @@ function LearningPathSurface({ props }: { props: LearningPathVisualProps }) {
 							/>
 						</View>
 						<View className="min-w-0 flex-1">
-							<Text className="font-poppins font-semibold text-body-5 text-primary">
+							<Text
+								allowFontScaling={mode !== "artwork"}
+								className="font-poppins font-semibold text-body-5 text-primary"
+							>
 								Prüfung
 							</Text>
 							<Text
+								allowFontScaling={mode !== "artwork"}
 								className="font-poppins text-body-4 text-text"
 								numberOfLines={1}
 							>
-								{screenProps.examDateLabel}
+								{continuation.examDateLabel}
 							</Text>
 						</View>
-						{screenProps.examCountdownLabel ? (
+						{continuation.examCountdownLabel ? (
 							<View className="shrink-0 rounded-full bg-card px-3 py-2">
-								<Text className="font-poppins font-semibold text-body-5 text-primary">
-									{screenProps.examCountdownLabel}
+								<Text
+									allowFontScaling={mode !== "artwork"}
+									className="font-poppins font-semibold text-body-5 text-primary"
+								>
+									{continuation.examCountdownLabel}
 								</Text>
 							</View>
 						) : null}
@@ -778,7 +789,12 @@ export function LearningPathVisual(props: LearningPathVisualProps) {
 		return <LearningPathSurface props={props} />;
 	}
 
-	const artworkHeight = getPathHeight(props.nodes.length, "artwork");
+	const artworkHeight = props.continuation
+		? Math.max(
+				getPathHeight(props.nodes.length, "artwork"),
+				getSegmentEndPoint(Math.max(props.nodes.length - 1, 0)).y + 16 + 220,
+			)
+		: getPathHeight(props.nodes.length, "artwork");
 	const scale = Math.min(
 		props.width / PATH_WIDTH,
 		props.height / artworkHeight,

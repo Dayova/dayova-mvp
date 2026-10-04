@@ -39,6 +39,13 @@ import {
 	learningTopicValidator,
 	normalizeLearningTopics,
 } from "./learningTopicMap";
+import {
+	addPersonalSubjectReference,
+	deleteDayEntryWithPersonalSubjectReference,
+	deleteLearningPlanWithPersonalSubjectReference,
+	replacePersonalSubjectReference,
+} from "./personalSubjectReferences";
+import { resolveSubjectSelection } from "./personalSubjects";
 import { assertNoScheduleConflict, isExamEntry } from "./scheduleConflicts";
 import {
 	getActiveTimetableLessons,
@@ -357,6 +364,7 @@ const requireOwnerTokenIdentifierForMutation = async (ctx: MutationCtx) => {
 type CreateLearningPlanArgs = {
 	examDayEntryId: Id<"dayEntries">;
 	subject: string;
+	personalSubjectId?: Id<"personalSubjects">;
 	examTypeLabel: string;
 	examDateKey: string;
 	examDateLabel: string;
@@ -382,7 +390,13 @@ const createLearningPlan = async (
 		throwUserFacingError("Ein Lernplan braucht zuerst eine Prüfung.");
 	}
 
-	const subject = args.subject.trim();
+	const resolvedSubject = await resolveSubjectSelection(ctx, {
+		ownerTokenIdentifier,
+		subject: args.subject,
+		personalSubjectId:
+			args.personalSubjectId ?? examEntry.personalSubjectId ?? undefined,
+	});
+	const subject = resolvedSubject.subject;
 	const examTypeLabel = args.examTypeLabel.trim();
 	const topicDescription = args.topicDescription.trim();
 	const notes = args.notes?.trim() ?? "";
@@ -400,6 +414,9 @@ const createLearningPlan = async (
 	const learningPlanId = await ctx.db.insert("learningPlans", {
 		ownerTokenIdentifier,
 		subject,
+		...(resolvedSubject.personalSubjectId
+			? { personalSubjectId: resolvedSubject.personalSubjectId }
+			: {}),
 		examTypeLabel,
 		examDateKey: args.examDateKey,
 		examDateLabel: args.examDateLabel,
@@ -411,6 +428,11 @@ const createLearningPlan = async (
 		examDayEntryId: args.examDayEntryId,
 		createdAt: now,
 		updatedAt: now,
+	});
+	await addPersonalSubjectReference(ctx, {
+		ownerTokenIdentifier,
+		personalSubjectId: resolvedSubject.personalSubjectId,
+		target: { targetKind: "learningPlan", learningPlanId },
 	});
 	await ctx.db.patch("dayEntries", args.examDayEntryId, {
 		relatedLearningPlanId: learningPlanId,
@@ -737,10 +759,14 @@ const createSessionDayEntry = async (
 	session: Doc<"learningPlanSessions">,
 ) => {
 	const executionStatus = getSessionExecutionStatus(session);
-	return await ctx.db.insert("dayEntries", {
+	const dayEntryId = await ctx.db.insert("dayEntries", {
 		ownerTokenIdentifier: session.ownerTokenIdentifier,
 		dayKey: session.dateKey,
 		title: getSessionDayEntryTitle(plan, session),
+		subject: plan.subject,
+		...(plan.personalSubjectId
+			? { personalSubjectId: plan.personalSubjectId }
+			: {}),
 		time: session.startTime,
 		kind: "Lernen",
 		notes: getSessionDayEntryNotes(session),
@@ -755,6 +781,12 @@ const createSessionDayEntry = async (
 		relatedLearningPlanId: session.learningPlanId,
 		relatedLearningPlanSessionId: session._id,
 	});
+	await addPersonalSubjectReference(ctx, {
+		ownerTokenIdentifier: session.ownerTokenIdentifier,
+		personalSubjectId: plan.personalSubjectId,
+		target: { targetKind: "dayEntry", dayEntryId },
+	});
+	return dayEntryId;
 };
 
 const syncSessionDayEntry = async (
@@ -794,9 +826,17 @@ const syncSessionDayEntry = async (
 	}
 
 	const executionStatus = getSessionExecutionStatus(session);
+	await replacePersonalSubjectReference(ctx, {
+		ownerTokenIdentifier: session.ownerTokenIdentifier,
+		previousPersonalSubjectId: existingEntry.personalSubjectId,
+		nextPersonalSubjectId: plan.personalSubjectId,
+		target: { targetKind: "dayEntry", dayEntryId: session.dayEntryId },
+	});
 	await ctx.db.patch("dayEntries", session.dayEntryId, {
 		dayKey: session.dateKey,
 		title: getSessionDayEntryTitle(plan, session),
+		subject: plan.subject,
+		personalSubjectId: plan.personalSubjectId,
 		time: session.startTime,
 		kind: "Lernen",
 		notes: getSessionDayEntryNotes(session),
@@ -822,7 +862,7 @@ const clearSessionDayEntry = async (
 
 	const dayEntry = await ctx.db.get("dayEntries", session.dayEntryId);
 	if (dayEntry?.ownerTokenIdentifier === session.ownerTokenIdentifier) {
-		await ctx.db.delete("dayEntries", session.dayEntryId);
+		await deleteDayEntryWithPersonalSubjectReference(ctx, session.dayEntryId);
 	}
 	await ctx.db.patch("learningPlanSessions", session._id, {
 		dayEntryId: undefined,
@@ -899,6 +939,7 @@ export const start = mutation({
 	args: {
 		examDayEntryId: v.id("dayEntries"),
 		subject: v.string(),
+		personalSubjectId: v.optional(v.id("personalSubjects")),
 		examTypeLabel: v.string(),
 		examDateKey: v.string(),
 		examDateLabel: v.string(),
@@ -918,6 +959,7 @@ export const createDraft = mutation({
 	args: {
 		examDayEntryId: v.id("dayEntries"),
 		subject: v.string(),
+		personalSubjectId: v.optional(v.id("personalSubjects")),
 		examTypeLabel: v.string(),
 		examDateKey: v.string(),
 		examDateLabel: v.string(),
@@ -1691,7 +1733,10 @@ export const removePlan = mutation({
 			if (session.dayEntryId) {
 				const dayEntry = await ctx.db.get("dayEntries", session.dayEntryId);
 				if (dayEntry?.ownerTokenIdentifier === ownerTokenIdentifier) {
-					await ctx.db.delete("dayEntries", session.dayEntryId);
+					await deleteDayEntryWithPersonalSubjectReference(
+						ctx,
+						session.dayEntryId,
+					);
 				}
 			}
 			await ctx.db.delete("learningPlanSessions", session._id);
@@ -1736,7 +1781,7 @@ export const removePlan = mutation({
 			}
 		}
 
-		await ctx.db.delete("learningPlans", args.id);
+		await deleteLearningPlanWithPersonalSubjectReference(ctx, args.id);
 		return args.id;
 	},
 });
@@ -2152,7 +2197,10 @@ export const replaceGeneratedSessions = internalMutation({
 			if (session.dayEntryId) {
 				const dayEntry = await ctx.db.get("dayEntries", session.dayEntryId);
 				if (dayEntry) {
-					await ctx.db.delete("dayEntries", session.dayEntryId);
+					await deleteDayEntryWithPersonalSubjectReference(
+						ctx,
+						session.dayEntryId,
+					);
 				}
 			}
 			await ctx.db.delete("learningPlanSessions", session._id);
@@ -2174,6 +2222,7 @@ export const replaceGeneratedSessions = internalMutation({
 				ownerTokenIdentifier: plan.ownerTokenIdentifier,
 				learningPlanId: args.learningPlanId,
 				...session,
+				berlinDayKey: getBerlinDayKey(session.dateKey),
 				...(session.compositionVariant === "split"
 					? { knowledgeValidationStatus: "pending" as const }
 					: {}),
@@ -2457,6 +2506,7 @@ export const updateSession = mutation({
 		await ctx.db.patch("learningPlanSessions", args.id, {
 			phase: args.phase,
 			dateKey: args.dateKey,
+			berlinDayKey: getBerlinDayKey(args.dateKey),
 			dateLabel: args.dateLabel,
 			startTime: args.startTime,
 			durationMinutes: args.durationMinutes,
@@ -2547,6 +2597,7 @@ export const addSession = mutation({
 			title: "Zusatzübung",
 			sessionPurpose: "learning",
 			dateKey,
+			berlinDayKey: getBerlinDayKey(dateKey),
 			dateLabel: formatDateLabel(nextDate),
 			startTime,
 			durationMinutes,
@@ -2794,6 +2845,7 @@ export const adjustMissedSession = mutation({
 				: `Recovery: ${session.title}`,
 			sessionPurpose: session.sessionPurpose ?? "learning",
 			dateKey: args.dateKey,
+			berlinDayKey: getBerlinDayKey(args.dateKey),
 			dateLabel: args.dateLabel,
 			startTime: args.startTime,
 			durationMinutes: args.durationMinutes,
@@ -2912,7 +2964,7 @@ export const removeSession = mutation({
 		}
 
 		if (session.dayEntryId) {
-			await ctx.db.delete("dayEntries", session.dayEntryId);
+			await deleteDayEntryWithPersonalSubjectReference(ctx, session.dayEntryId);
 		}
 		await deleteSessionLearningDataForSession(ctx, args.id);
 		await ctx.db.delete("learningPlanSessions", args.id);
@@ -2971,11 +3023,20 @@ export const acceptPlan = mutation({
 				ownerTokenIdentifier,
 				dayKey: plan.examDateKey,
 				title: `${plan.subject} ${plan.examTypeLabel}`,
+				subject: plan.subject,
+				...(plan.personalSubjectId
+					? { personalSubjectId: plan.personalSubjectId }
+					: {}),
 				kind: "Leistungskontrolle",
 				plannedDateLabel: plan.examDateLabel,
 				durationMinutes: plan.durationMinutes,
 				examTypeLabel: plan.examTypeLabel,
 				relatedLearningPlanId: args.learningPlanId,
+			});
+			await addPersonalSubjectReference(ctx, {
+				ownerTokenIdentifier,
+				personalSubjectId: plan.personalSubjectId,
+				target: { targetKind: "dayEntry", dayEntryId: examDayEntryId },
 			});
 		}
 

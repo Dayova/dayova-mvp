@@ -52,6 +52,7 @@
 		"@convex-dev/agent": "^0.6.2",
 		"@convex-dev/workflow": "^0.4.8",
 		"@convex-dev/workpool": "^0.4.12",
+		"@convex-dev/migrations": "^0.3.4",
 		"@expo/metro-runtime": "~57.0.15",
 		"@expo/ui": "~57.0.16",
 		"@gilhrpenner/convex-files-control": "^0.5.3",

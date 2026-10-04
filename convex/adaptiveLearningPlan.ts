@@ -10,6 +10,7 @@ import {
 } from "./adaptiveLearningPlanPolicy";
 import { deleteSessionLearningDataForSession } from "./learningSessionContent";
 import { normalizeLearningTopics } from "./learningTopicMap";
+import { deleteDayEntryWithPersonalSubjectReference } from "./personalSubjectReferences";
 import { getScheduleConflictMessage } from "./scheduleConflicts";
 
 const MAX_LEARNING_TIMES = 50;
@@ -282,6 +283,7 @@ const getRollingSessionSchedule = async (
 			if (!conflict) {
 				return {
 					dateKey,
+					berlinDayKey: dateKey,
 					dateLabel: formatDateLabel(cursor),
 					startTime: candidate.startTime,
 					durationMinutes: candidate.durationMinutes,
@@ -315,7 +317,7 @@ const removeRollingSession = async (
 	if (session.dayEntryId) {
 		const dayEntry = await ctx.db.get("dayEntries", session.dayEntryId);
 		if (dayEntry?.ownerTokenIdentifier === session.ownerTokenIdentifier) {
-			await ctx.db.delete("dayEntries", session.dayEntryId);
+			await deleteDayEntryWithPersonalSubjectReference(ctx, session.dayEntryId);
 		}
 	}
 	await ctx.db.delete("learningPlanSessions", session._id);

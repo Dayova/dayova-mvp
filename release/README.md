@@ -65,6 +65,51 @@ uncommitted upload is not acceptable provenance.
 
 ## Phase-equivalent fingerprints
 
+### Pull request feedback
+
+CI checks OTA compatibility before merge for trusted contributors' PRs targeting
+`main` from this repository. After lint, typecheck and tests pass, the same
+production fingerprint and OTA jobs used on `main` verify both platform exports
+and compare the candidate with the distributed-binary baseline. Fork PRs do not
+run the production-scoped quality-check, fingerprint, or OTA jobs, including
+forks opened by repository owners, members, or collaborators.
+
+The **PR OTA compatibility report** in the EAS workflow shows the checked commit,
+run link, result, reason, baseline and fingerprints, including an explicit
+unconfirmed result when an upstream job fails or is skipped. The native EAS
+`github-comment` job posts that same rendered report to the PR conversation using
+the existing GitHub integration.
+
+Expo updates one PR comment across runs. The report puts its checked commit and
+EAS run link at the top and explicitly says that its verdict applies only to
+that commit. If the PR head differs, the visible result is outdated and OTA
+compatibility for the latest commit is unconfirmed until Expo updates the
+comment. A canceled run can leave the previous result visible, so reviewers
+must compare the checked commit with the live PR head before merging.
+
+The GitHub Actions token cannot edit Expo's comment. The previous notifier
+attempted that edit and failed with HTTP 403; it was removed to keep OTA
+feedback in a single comment. The **OTA report freshness** commit status marks
+the current PR head pending while Expo's report covers an older commit, then
+marks it current when the Expo bot updates its comment. A current status only
+confirms that the report covers the head; reviewers must still read the OTA
+verdict. The status also covers same-repository stacked PRs; it only reads PR
+metadata and comments and does not run quality or OTA jobs. It does not create
+or edit PR comments.
+
+Incompatibility is advisory: a legitimate native change can merge, but
+production OTA remains blocked until the required
+native release or exact reviewed compatibility record is verified. Export or
+preflight execution errors fail the check rather than masquerading as a completed
+compatibility assessment.
+
+PR results describe the checked source and baseline; they do not authorize a
+release or prove device behavior. The merged `main` commit must pass the checks
+again before publishing. Manual CI runs remain quality-only; use
+`ota-preflight.yml` for a manual, non-publishing production assessment.
+
+### Gate inputs
+
 The production workflow uses EAS's CNG-aware `fingerprint` job with the
 `production` environment. Its iOS and Android outputs are the only accepted gate
 inputs. This is the same EAS-supported phase used to match CNG builds and avoids

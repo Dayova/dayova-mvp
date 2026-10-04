@@ -64,7 +64,7 @@ export function SubscriptionSuccessScreen() {
 			>
 				<View className="flex-1 justify-between px-7 pt-10">
 					<View className="items-center">
-						<View className="mb-8 h-32 w-32 items-center justify-center rounded-full border border-white/70 bg-white shadow-black/5 shadow-sm">
+						<View className="mb-8 h-32 w-32 items-center justify-center rounded-full border border-white/70 bg-white">
 							<Check
 								size={62}
 								color={BRAND_COLORS.primaryStrong}
@@ -87,7 +87,7 @@ export function SubscriptionSuccessScreen() {
 						</Text>
 
 						<View
-							className="mt-8 w-full rounded-card border px-5 py-5 shadow-black/5 shadow-sm"
+							className="mt-8 w-full rounded-card border px-5 py-5"
 							style={confirmationCardStyle}
 							testID="subscription-success-confirmation-card"
 						>

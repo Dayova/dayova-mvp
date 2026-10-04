@@ -36,6 +36,9 @@ importers:
       '@convex-dev/workpool':
         specifier: ^0.4.12
         version: 0.4.12(convex-helpers@0.1.115(@standard-schema/spec@1.1.0)(convex@1.41.0(@clerk/react@6.12.5(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(react@19.2.3)(typescript@6.0.3)(zod@4.4.2))(convex@1.41.0(@clerk/react@6.12.5(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(react@19.2.3)
+      '@convex-dev/migrations':
+        specifier: ^0.3.4
+        version: 0.3.4(convex@1.41.0(@clerk/react@6.12.5(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))
       '@expo/metro-runtime':
         specifier: ~57.0.15
         version: 57.0.15(expo@57.0.20)(react-dom@19.2.3(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.0(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
@@ -1122,6 +1125,10 @@ packages:
     peerDependencies:
       convex: ^1.36.1
       convex-helpers: ^0.1.94
+  '@convex-dev/migrations@0.3.4':
+    resolution: {integrity: sha512-fCUkc4hDzkZTgxicjV1WN4QfUdDDPPrMtvC7VgSLTGssg1B8pm+XlPC6NbZ2Aes38Xf5iiodX+y8VnU96narKQ==}
+    peerDependencies:
+      convex: ^1.24.8
 
   '@edge-runtime/primitives@6.0.0':
     resolution: {integrity: sha512-FqoxaBT+prPBHBwE1WXS1ocnu/VLTQyZ6NMUBAdbP7N2hsFTTxMC/jMu2D/8GAlMQfxeuppcPuCUk/HO3fpIvA==}
@@ -8385,6 +8392,9 @@ snapshots:
       convex-helpers: 0.1.115(@standard-schema/spec@1.1.0)(convex@1.41.0(@clerk/react@6.12.5(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(react@19.2.3)(typescript@6.0.3)(zod@4.4.2)
     transitivePeerDependencies:
       - react
+  '@convex-dev/migrations@0.3.4(convex@1.41.0(@clerk/react@6.12.5(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))':
+    dependencies:
+      convex: 1.41.0(@clerk/react@6.12.5(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
 
   '@edge-runtime/primitives@6.0.0': {}
 
