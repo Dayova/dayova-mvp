@@ -15,19 +15,25 @@ const createAdapter = () => ({
 });
 
 describe("validation analytics contract", () => {
-	it("disables PostHog on iOS even when a production key is configured", () => {
+	it("enables PostHog on iOS and Android when a key is configured", () => {
 		expect(
 			isPostHogConfiguredForPlatform({
 				apiKey: "phc_production",
 				platform: "ios",
 			}),
-		).toBe(false);
+		).toBe(true);
 		expect(
 			isPostHogConfiguredForPlatform({
 				apiKey: "phc_production",
 				platform: "android",
 			}),
 		).toBe(true);
+		expect(
+			isPostHogConfiguredForPlatform({
+				apiKey: "  ",
+				platform: "ios",
+			}),
+		).toBe(false);
 	});
 
 	it("exposes validation events and bounded feature instrumentation", () => {

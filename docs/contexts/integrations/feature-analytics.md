@@ -22,9 +22,10 @@ additive schema-1 events are:
 
 `FeatureAnalyticsProvider` requires a loaded Clerk user, authenticated Convex
 session, and configured PostHog. EAS channel, runtime, update/embedded-launch
-context and validation student code are added when available. The existing
-platform restriction disables iOS even with a key (PR #537). Do not interpret
-this dataset as all app users. Restoration of iOS is pending a separate decision.
+context and validation student code are added when available. PostHog is enabled
+on both iOS and Android when the public API key is configured. Do not interpret
+this dataset as all app users because authentication and configuration gates still
+apply.
 
 The provider rejects callbacks retained from a previous account. It does not
 write backend activity on every tap: screen exposure must not redefine the
