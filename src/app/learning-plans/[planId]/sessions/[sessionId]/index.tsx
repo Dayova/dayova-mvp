@@ -1,14 +1,11 @@
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, AppState, View } from "react-native";
 import {
-	ActivityIndicator,
-	AppState,
 	KeyboardAvoidingView,
-	Platform,
-	ScrollView,
-	View,
-} from "react-native";
+	type KeyboardAwareScrollViewRef,
+} from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -17,6 +14,7 @@ import { ScreenHeader } from "~/components/screen-header";
 import { BackButton, Button } from "~/components/ui/button";
 import { ErrorMessage } from "~/components/ui/error-message";
 import { Timer } from "~/components/ui/icon";
+import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAiConsent } from "~/context/AiConsentContext";
@@ -171,7 +169,7 @@ export default function LearningSessionContentScreen() {
 	const activeStudyStartedAtRef = useRef<number | null>(null);
 	const isStudyInteractionActiveRef = useRef(false);
 	const appStateRef = useRef(AppState.currentState);
-	const contentScrollRef = useRef<ScrollView>(null);
+	const contentScrollRef = useRef<KeyboardAwareScrollViewRef>(null);
 	const startSessionPromiseRef = useRef<ReturnType<typeof startSession> | null>(
 		null,
 	);
@@ -870,7 +868,7 @@ export default function LearningSessionContentScreen() {
 					) : null}
 				</View>
 			) : null}
-			<ScrollView
+			<KeyboardSafeScrollView
 				ref={contentScrollRef}
 				className="flex-1"
 				bounces={
@@ -881,7 +879,7 @@ export default function LearningSessionContentScreen() {
 					Boolean(visibleAttempt) ||
 					Boolean(completionPhase)
 				}
-				automaticallyAdjustKeyboardInsets={currentItem?.kind === "written"}
+				enabled={currentItem?.kind === "written"}
 				contentContainerStyle={{
 					flexGrow: 1,
 					paddingHorizontal: 32,
@@ -890,8 +888,6 @@ export default function LearningSessionContentScreen() {
 							? 24
 							: Math.max(insets.bottom + 28, 60),
 				}}
-				keyboardShouldPersistTaps="handled"
-				showsVerticalScrollIndicator={false}
 			>
 				{!content || content.items.length === 0 || needsTheoryContentUpgrade ? (
 					<View className="flex-1 items-center justify-center px-4 py-24">
@@ -985,11 +981,9 @@ export default function LearningSessionContentScreen() {
 						{errorMessage}
 					</Text>
 				) : null}
-			</ScrollView>
+			</KeyboardSafeScrollView>
 			{showQuestionActions && content ? (
-				<KeyboardAvoidingView
-					behavior={Platform.OS === "ios" ? "padding" : undefined}
-				>
+				<KeyboardAvoidingView behavior="padding">
 					<View
 						className="border-border border-t-hairline bg-background px-8 pt-4"
 						style={{ paddingBottom: Math.max(insets.bottom, 16) }}

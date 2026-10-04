@@ -335,6 +335,11 @@ jest.mock("~/components/ui/animated-flower-loader", () => {
 	};
 });
 
+jest.mock("react-native-keyboard-controller", () => ({
+	KeyboardAvoidingView:
+		jest.requireActual<typeof import("react-native")>("react-native").View,
+}));
+
 jest.mock("~/components/ui/keyboard-safe-scroll-view", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
 	const ReactNative =
