@@ -201,6 +201,7 @@ export function MaterialUploadStep({
 	onOpenUpload,
 	onRemoveDocument,
 	onSkip,
+	onPause,
 	openingUploadAction,
 	showSkip = true,
 	showActions = true,
@@ -215,6 +216,7 @@ export function MaterialUploadStep({
 	onOpenUpload: () => void;
 	onRemoveDocument: (id: Id<"learningPlanDocuments">) => void;
 	onSkip: () => void;
+	onPause?: () => void;
 	openingUploadAction: PendingUploadAction | null;
 	showSkip?: boolean;
 	showActions?: boolean;
@@ -233,7 +235,7 @@ export function MaterialUploadStep({
 				onPress={onOpenUpload}
 			/>
 
-			{showSkip && !hasSchoolMaterial ? (
+			{(showSkip || onPause) && !hasSchoolMaterial ? (
 				<Text className="mt-3 font-poppins text-body-4 text-secondary-text">
 					Dein Lernplan-Entwurf bleibt gespeichert. Schulmaterial kannst du
 					später ergänzen.
@@ -279,6 +281,17 @@ export function MaterialUploadStep({
 						>
 							<Text className="min-w-0 shrink text-center">
 								Ohne Lernmaterial erstellen
+							</Text>
+						</Button>
+					) : null}
+					{onPause ? (
+						<Button
+							variant="cancel"
+							disabled={isBusy || isUploading || openingUploadAction !== null}
+							onPress={onPause}
+						>
+							<Text className="min-w-0 shrink text-center">
+								Später fortsetzen
 							</Text>
 						</Button>
 					) : null}

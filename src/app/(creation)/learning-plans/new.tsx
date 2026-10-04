@@ -785,6 +785,7 @@ export default function NewLearningPlanScreen() {
 								onOpenUpload={() => setIsUploadSheetVisible(true)}
 								onRemoveDocument={(id) => void removeUploadedDocument(id)}
 								onSkip={finishWithMaterialLater}
+								onPause={() => setIsPauseConfirmationVisible(true)}
 								openingUploadAction={openingUploadAction}
 								showSkip={setupOrigin === "newExam"}
 							/>

@@ -88,10 +88,10 @@ export function LearningPlanEditor({
 						) : null}
 					</View>
 				)}
-				<View className="mt-6 flex-row gap-3">
+				<View className="mt-6 w-full gap-3">
 					<Button
 						variant="cancel"
-						className="min-w-0 flex-1"
+						className="w-full"
 						onPress={onCancel}
 						accessibilityLabel="Abbrechen"
 					>
@@ -99,7 +99,7 @@ export function LearningPlanEditor({
 					</Button>
 					{!isLoading && !isMissing ? (
 						<Button
-							className="min-w-0 flex-1"
+							className="w-full"
 							disabled={!canSave || isBusy}
 							accessibilityLabel={
 								isBusy ? "Speichern, wird geladen" : "Speichern"

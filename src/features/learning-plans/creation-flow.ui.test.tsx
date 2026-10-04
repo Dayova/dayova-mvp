@@ -492,6 +492,37 @@ describe("confirming pause after navigating back from material", () => {
 });
 
 describe("continuing a paused creation", () => {
+	test("can pause directly from the material step without uploading a file", async () => {
+		mockParams = { learningPlanId: "plan-1", step: "material" };
+		mockSnapshot = {
+			plan: { topicDescription: "Lineare Gleichung", status: "draft" },
+			documents: [],
+		};
+		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Später fortsetzen" }),
+		);
+		expect(
+			screen.getByText("Lernplan-Erstellung pausieren?"),
+		).toBeOnTheScreen();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Weiter bearbeiten" }),
+		);
+		expect(screen.getByText("Schulmaterial hinzufügen")).toBeOnTheScreen();
+		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Später fortsetzen" }),
+		);
+		await fireEvent.press(
+			screen.getAllByRole("button", { name: "Später fortsetzen" })[1],
+		);
+		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans");
+		await act(() => {
+			expect(mockPreventRemove()).toBe(false);
+		});
+		expect(mockUpdateEntry).not.toHaveBeenCalled();
+	});
+
 	test("keeps the topics when continuing, then allows a later confirmed exit", async () => {
 		mockParams = { learningPlanId: "plan-1", step: "topic" };
 		mockSnapshot = {
