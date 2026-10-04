@@ -57,17 +57,12 @@ const IDENTITY_INPUT_KEYS = new Set([
 	"state",
 ]);
 
-export const isPostHogConfiguredForPlatform = ({
-	apiKey,
-}: {
-	apiKey?: string;
-	platform?: string;
-}) => Boolean(apiKey?.trim());
+export const isPostHogConfiguredForApiKey = (apiKey?: string) =>
+	Boolean(apiKey?.trim());
 
-export const isPostHogConfigured = isPostHogConfiguredForPlatform({
-	apiKey: env.EXPO_PUBLIC_POSTHOG_API_KEY,
-	platform: process.env.EXPO_OS,
-});
+export const isPostHogConfigured = isPostHogConfiguredForApiKey(
+	env.EXPO_PUBLIC_POSTHOG_API_KEY,
+);
 
 export const postHogApiKey = env.EXPO_PUBLIC_POSTHOG_API_KEY?.trim() ?? "";
 

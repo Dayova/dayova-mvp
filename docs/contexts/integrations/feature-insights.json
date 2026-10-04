@@ -4,7 +4,7 @@
   "queries": [
     {
       "name": "Feature coverage · awaiting DAY-435 release",
-      "description": "No feature events exist at setup. Zero means unmeasured, not unused. Only identified production-channel devices with configured analytics are eligible. Fixed rolling 30 days. Verify a release and known-user actions before interpreting adoption.",
+      "description": "Zero means unmeasured, not unused. Identified production-channel devices with configured analytics are eligible. iOS joins only from the first verified PR #648 release; rollout date pending. Fixed rolling 30 days. Verify known-user actions before interpreting adoption.",
       "sql": "SELECT if(count() = 0, 'AWAITING_INSTRUMENTED_RELEASE', 'RECORDED_SUBSET_ONLY') AS coverage_status, count() AS recorded_events, uniq(distinct_id) AS instrumented_users FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.eas_channel = 'production' AND distinct_id NOT LIKE 'analytics-smoke-%' AND event IN ('feature_interaction','app_screen_viewed')"
     },
     {
@@ -14,7 +14,7 @@
     },
     {
       "name": "Screen reach · feature exposure denominator",
-      "description": "DAY-435 release required. Unique identified users who viewed each named surface, plus observations. Production channel only. Fixed rolling 30 days. Screen exposure is not successful feature use. Compare with matching successful actions, not all registered users.",
+      "description": "Unique identified users who viewed each named surface, plus observations. Production channel only. iOS joins only from the first verified PR #648 release; rollout date pending. Fixed rolling 30 days. Exposure is not successful feature use; compare with matching successful actions, not all registered users.",
       "sql": "SELECT properties.screen AS screen, uniq(distinct_id) AS exposed_users, count() AS observations FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.eas_channel = 'production' AND distinct_id NOT LIKE 'analytics-smoke-%' AND event = 'app_screen_viewed' GROUP BY screen ORDER BY exposed_users DESC"
     },
     {

@@ -74,6 +74,10 @@ not close either issue or the DAY-319 ingestion-smoke task.
 
 ## Reports and rollout verification
 
+Rollout date: pending a verified production release. Merging this change does
+not by itself establish ingestion; record the release date and build/update
+provenance here after the device receipt checks below pass.
+
 [Production dashboard](https://eu.posthog.com/project/190091/dashboard/818617)
 now defaults to 30 days. Its existing three overviews cover eight observed
 validation events; existing funnels and retention are preserved. Four new saved
