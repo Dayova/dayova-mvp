@@ -88,18 +88,26 @@ export function LearningPlanEditor({
 						) : null}
 					</View>
 				)}
-				<View className="mt-6 w-full gap-3">
+				<View className="mt-6 w-full flex-row items-stretch gap-3">
 					<Button
 						variant="cancel"
-						className="w-full"
+						className="min-w-0 px-2"
+						style={{ flexBasis: 0, flexGrow: 1, flexShrink: 1 }}
 						onPress={onCancel}
 						accessibilityLabel="Abbrechen"
 					>
-						<Text className="min-w-0 shrink text-center">Abbrechen</Text>
+						<Text
+							className="min-w-0 shrink text-center"
+							numberOfLines={1}
+							adjustsFontSizeToFit
+						>
+							Abbrechen
+						</Text>
 					</Button>
 					{!isLoading && !isMissing ? (
 						<Button
-							className="w-full"
+							className="min-w-0 px-2"
+							style={{ flexBasis: 0, flexGrow: 1, flexShrink: 1 }}
 							disabled={!canSave || isBusy}
 							accessibilityLabel={
 								isBusy ? "Speichern, wird geladen" : "Speichern"
@@ -110,7 +118,13 @@ export function LearningPlanEditor({
 							{isBusy ? (
 								<ActivityIndicator color="#FFFFFF" />
 							) : (
-								<Text className="min-w-0 shrink text-center">Speichern</Text>
+								<Text
+									className="min-w-0 shrink text-center"
+									numberOfLines={1}
+									adjustsFontSizeToFit
+								>
+									Speichern
+								</Text>
 							)}
 						</Button>
 					) : null}
