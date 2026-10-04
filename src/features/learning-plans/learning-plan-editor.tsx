@@ -36,7 +36,9 @@ export function LearningPlanEditor({
 	children: ReactNode;
 }) {
 	const insets = useSafeAreaInsets();
-	const { horizontalPadding } = useContentSizeLayout();
+	const { horizontalPadding, usableWidth } = useContentSizeLayout();
+	const actionWidth =
+		isLoading || isMissing ? usableWidth : Math.max(0, (usableWidth - 12) / 2);
 	return (
 		<>
 			<PortraitContent
@@ -103,7 +105,7 @@ export function LearningPlanEditor({
 				<Button
 					variant="cancel"
 					className="min-h-16 min-w-0 px-3 py-4"
-					style={{ flexBasis: 0, flexGrow: 1, flexShrink: 1 }}
+					style={{ width: actionWidth }}
 					onPress={onCancel}
 					accessibilityLabel="Abbrechen"
 				>
@@ -118,7 +120,7 @@ export function LearningPlanEditor({
 				{!isLoading && !isMissing ? (
 					<Button
 						className="min-h-16 min-w-0 px-3 py-4"
-						style={{ flexBasis: 0, flexGrow: 1, flexShrink: 1 }}
+						style={{ width: actionWidth }}
 						disabled={!canSave || isBusy}
 						accessibilityLabel={
 							isBusy ? "Speichern, wird geladen" : "Speichern"
