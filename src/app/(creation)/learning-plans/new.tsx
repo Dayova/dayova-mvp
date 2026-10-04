@@ -661,9 +661,6 @@ export default function NewLearningPlanScreen() {
 		setExitApproved(true);
 	};
 	usePreventRemove(isEditing && canWrite && !exitApproved, requestEditExit);
-	useEffect(() => {
-		if (exitApproved) dismissToOrReplace(router, ROUTES.learningPlans);
-	}, [exitApproved, router]);
 	const saveEdits = async () => {
 		if (
 			!canWrite ||
@@ -695,7 +692,14 @@ export default function NewLearningPlanScreen() {
 			}
 		});
 	};
-	useBackIntent(hasExamEntry && !isEditing, goBack);
+	useBackIntent(hasExamEntry && !isEditing && !exitApproved, goBack, {
+		allowRouteRemoval: setupStep === "requiredTopics" && !learningPlanId,
+	});
+	// Commit removal permission before Expo Router dispatches the queued POP.
+	// Otherwise confirming the pause is interpreted as another back request.
+	useEffect(() => {
+		if (exitApproved) dismissToOrReplace(router, ROUTES.learningPlans);
+	}, [exitApproved, router]);
 	useLearningPlanCreationProgress({
 		active: !isEditing,
 		currentStep: currentProgressStep,
@@ -860,11 +864,7 @@ export default function NewLearningPlanScreen() {
 				onClose={() => setIsPauseConfirmationVisible(false)}
 				onConfirm={() => {
 					setIsPauseConfirmationVisible(false);
-					if (isEditing) {
-						setExitApproved(true);
-						return;
-					}
-					dismissToOrReplace(router, ROUTES.learningPlans);
+					setExitApproved(true);
 				}}
 			/>
 		</Screen>

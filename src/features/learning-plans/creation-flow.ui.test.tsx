@@ -22,7 +22,21 @@ let mockSnapshot:
 	| null
 	| undefined;
 let mockPauseVisible = false;
-let mockPreventRemove: (() => void) | undefined;
+type RemovalCallback = (event: { data: { action: { type: string } } }) => void;
+const mockRemovalGuards = new Map<
+	string,
+	{ enabled: boolean; callback: RemovalCallback }
+>();
+const mockNativeDispatch = jest.fn();
+const mockPreventRemove = () => {
+	let prevented = false;
+	for (const guard of mockRemovalGuards.values()) {
+		if (!guard.enabled) continue;
+		prevented = true;
+		guard.callback({ data: { action: { type: "POP" } } });
+	}
+	return prevented;
+};
 jest.mock("convex/react", () => ({
 	useConvexAuth: () => ({ isAuthenticated: true }),
 	useQueries: () => ({
@@ -51,21 +65,28 @@ jest.mock("expo-router", () => ({
 	useLocalSearchParams: () => mockParams,
 	Stack: { Screen: () => null },
 }));
-jest.mock("expo-router/react-navigation", () => ({
-	usePreventRemove: (enabled: boolean, callback: () => void) => {
-		mockPreventRemove = enabled ? callback : undefined;
-	},
-}));
+jest.mock("expo-router/react-navigation", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	return {
+		useIsFocused: () => true,
+		useNavigation: () => ({ dispatch: mockNativeDispatch }),
+		useFocusEffect: (effect: () => undefined | (() => void)) =>
+			React.useEffect(effect, [effect]),
+		usePreventRemove: (enabled: boolean, callback: RemovalCallback) => {
+			const id = React.useId();
+			React.useEffect(() => {
+				mockRemovalGuards.set(id, { enabled, callback });
+				return () => {
+					mockRemovalGuards.delete(id);
+				};
+			}, [id, enabled, callback]);
+		},
+	};
+});
 jest.mock("~/features/learning-plans/creation-progress-shell", () => ({
 	useLearningPlanCreationProgress: (configuration: typeof mockProgress) => {
 		mockProgress = configuration;
 	},
-}));
-jest.mock("~/lib/navigation", () => ({
-	...jest.requireActual<typeof import("~/lib/navigation-actions")>(
-		"~/lib/navigation-actions",
-	),
-	useBackIntent: (_enabled: boolean, onBack: () => boolean) => onBack,
 }));
 jest.mock("~/context/AuthContext", () => ({
 	useAuthSession: () => ({ user: { id: "user" } }),
@@ -109,45 +130,33 @@ jest.mock("~/components/ui/screen", () => {
 	return { Screen: View, ScreenScroll: ScrollView };
 });
 jest.mock("~/components/ui/action-sheet", () => ({ ActionSheet: () => null }));
-jest.mock("~/components/ui/confirmation-sheet", () => ({
-	ConfirmationSheet: (props: {
-		visible: boolean;
-		title: string;
-		confirmLabel: string;
-		cancelLabel?: string;
-		onConfirm: () => void;
-		onClose: () => void;
-	}) => {
-		mockPauseVisible = props.visible;
-		const { View, Text, Pressable } =
-			jest.requireActual<typeof import("react-native")>("react-native");
-		return props.visible ? (
-			<View>
-				<Text>{props.title}</Text>
-				<Pressable
-					accessibilityRole="button"
-					accessibilityLabel={props.confirmLabel}
-					onPress={props.onConfirm}
-				>
-					<Text>{props.confirmLabel}</Text>
-				</Pressable>
-				<Pressable
-					accessibilityRole="button"
-					accessibilityLabel={props.cancelLabel}
-					onPress={props.onClose}
-				>
-					<Text>{props.cancelLabel}</Text>
-				</Pressable>
-			</View>
-		) : null;
-	},
-}));
 jest.mock("~/components/ui/date-time-picker-sheet", () => ({
 	DateTimePickerSheet: () => null,
 }));
 jest.mock("~/components/ui/select-sheet", () => ({ SelectSheet: () => null }));
 jest.mock("~/components/ui/dayova-sheet-frame", () => ({
-	DayovaSheetFrame: () => null,
+	DayovaSheetFrame: ({
+		visible,
+		title,
+		children,
+		footer,
+	}: {
+		visible: boolean;
+		title: string;
+		children: import("react").ReactNode;
+		footer: import("react").ReactNode;
+	}) => {
+		mockPauseVisible = visible;
+		const { View, Text } =
+			jest.requireActual<typeof import("react-native")>("react-native");
+		return visible ? (
+			<View>
+				<Text>{title}</Text>
+				{children}
+				{footer}
+			</View>
+		) : null;
+	},
 }));
 jest.mock("~/components/ui/icon", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
@@ -163,6 +172,7 @@ jest.mock("~/lib/theme", () => ({
 
 beforeEach(() => {
 	jest.clearAllMocks();
+	mockRemovalGuards.clear();
 	mockCreateEntry.mockResolvedValue("exam-1");
 	mockUpdateEntry.mockResolvedValue(undefined);
 	mockSnapshot = undefined;
@@ -277,6 +287,9 @@ describe("exam creation across the topics boundary", () => {
 		await render(<NewLearningPlanScreen />);
 		await act(() => mockProgress.onBack());
 		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/entry/exam-1");
+		await act(() => {
+			expect(mockPreventRemove()).toBe(false);
+		});
 		expect(mockRouter.replace).not.toHaveBeenCalled();
 	});
 
@@ -444,6 +457,67 @@ describe("learning-plan editor recovery", () => {
 		);
 		expect(mockRouter.dismissTo).toHaveBeenCalledTimes(1);
 		await act(async () => finish());
+		expect(mockRouter.dismissTo).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("confirming pause after navigating back from material", () => {
+	test("lets the confirmed POP reach Pläne instead of reopening the pause dialog", async () => {
+		mockParams = { learningPlanId: "plan-1", step: "material" };
+		mockSnapshot = {
+			plan: { topicDescription: "Lineare Gleichung", status: "draft" },
+			documents: [],
+		};
+		const screen = await render(<NewLearningPlanScreen />);
+		await act(() => mockProgress.onBack());
+		expect(screen.getByLabelText("Prüfungsthemen")).toHaveDisplayValue(
+			"Lineare Gleichung",
+		);
+		await act(() => mockProgress.onBack());
+		expect(
+			screen.getByText("Lernplan-Erstellung pausieren?"),
+		).toBeOnTheScreen();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Später fortsetzen" }),
+		);
+		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans");
+		// Expo Router queues dismissTo; the native stack removes the route after render.
+		let prevented = false;
+		await act(() => {
+			prevented = mockPreventRemove();
+		});
+		expect(prevented).toBe(false);
+		expect(screen.queryByText("Lernplan-Erstellung pausieren?")).toBeNull();
+	});
+});
+
+describe("continuing a paused creation", () => {
+	test("keeps the topics when continuing, then allows a later confirmed exit", async () => {
+		mockParams = { learningPlanId: "plan-1", step: "topic" };
+		mockSnapshot = {
+			plan: { topicDescription: "Lineare Gleichung", status: "draft" },
+			documents: [],
+		};
+		const screen = await render(<NewLearningPlanScreen />);
+		await act(() => {
+			expect(mockPreventRemove()).toBe(true);
+		});
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Weiter bearbeiten" }),
+		);
+		expect(screen.queryByText("Lernplan-Erstellung pausieren?")).toBeNull();
+		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+		await fireEvent.changeText(
+			screen.getByLabelText("Prüfungsthemen"),
+			"Lineare Gleichungen und Funktionen",
+		);
+		await act(() => mockProgress.onBack());
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Später fortsetzen" }),
+		);
+		await act(() => {
+			expect(mockPreventRemove()).toBe(false);
+		});
 		expect(mockRouter.dismissTo).toHaveBeenCalledTimes(1);
 	});
 });
