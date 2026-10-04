@@ -8,8 +8,15 @@ import {
 } from "@jest/globals";
 import { act, fireEvent, render } from "@testing-library/react-native";
 import type { ReactElement, ReactNode } from "react";
-import { AccessibilityInfo, BackHandler, Platform, View } from "react-native";
+import {
+	AccessibilityInfo,
+	BackHandler,
+	Keyboard,
+	Platform,
+	View,
+} from "react-native";
 import { DayovaSheetFrame } from "./dayova-sheet-frame";
+import { Input } from "./input";
 import {
 	SheetAccessibilityProvider,
 	useSheetAccessibility,
@@ -119,6 +126,11 @@ jest.mock("@gorhom/bottom-sheet", () => {
 		BottomSheetBackdrop: (props: Record<string, unknown>) =>
 			React.createElement("BottomSheetBackdrop", props),
 		BottomSheetModal,
+		BottomSheetTextInput: (props: Record<string, unknown>) =>
+			React.createElement("TextInput", {
+				...props,
+				testID: "sheet-native-input",
+			}),
 		BottomSheetFooter: ({ children }: { children?: ReactNode }) =>
 			React.createElement("BottomSheetFooter", {}, children),
 		BottomSheetScrollView: ({ children, ...props }: { children?: ReactNode }) =>
@@ -129,6 +141,27 @@ jest.mock("@gorhom/bottom-sheet", () => {
 });
 
 describe("DayovaSheetFrame", () => {
+	test("registers sheet inputs with the keyboard-aware primitive only inside the sheet", async () => {
+		const onChangeText = jest.fn();
+		const screen = await render(
+			<View>
+				<Input accessibilityLabel="Outside" />
+				<DayovaSheetFrame visible onClose={() => {}} title="Input test">
+					<Input accessibilityLabel="Inside" onChangeText={onChangeText} />
+				</DayovaSheetFrame>
+			</View>,
+		);
+		expect(screen.getByLabelText("Inside").props.testID).toBe(
+			"sheet-native-input",
+		);
+		expect(screen.queryByLabelText("Outside")).toBeNull();
+		expect(
+			screen.getByLabelText("Outside", { includeHiddenElements: true }).props
+				.testID,
+		).toBeUndefined();
+		await fireEvent.changeText(screen.getByLabelText("Inside"), "Name");
+		expect(onChangeText).toHaveBeenCalledWith("Name");
+	});
 	let animationFrames: FrameRequestCallback[];
 	let focusSpy: jest.SpiedFunction<
 		typeof AccessibilityInfo.setAccessibilityFocus
@@ -526,5 +559,52 @@ describe("DayovaSheetFrame", () => {
 			view.getByTestId("background", { includeHiddenElements: true }).props
 				.accessibilityElementsHidden,
 		).toBe(false);
+	});
+	test("starts input focus with the opening animation, once per opening", async () => {
+		const onOpening = jest.fn();
+		const view = await render(
+			<DayovaSheetFrame
+				visible
+				onClose={jest.fn()}
+				onOpening={onOpening}
+				title="Fach hinzufügen"
+			/>,
+		);
+		await act(flushAnimationFrames);
+		expect(onOpening).not.toHaveBeenCalled();
+		await act(() =>
+			view.getByTestId("bottom-sheet-modal").props.onAnimate?.(-1, 0),
+		);
+		expect(onOpening).toHaveBeenCalledTimes(1);
+		await act(() => mockSheetHarness.onChange?.(0));
+		expect(onOpening).toHaveBeenCalledTimes(1);
+		await act(() => mockSheetHarness.onChange?.(1));
+		expect(onOpening).toHaveBeenCalledTimes(1);
+		await act(() =>
+			view.getByTestId("bottom-sheet-modal").props.onAnimate?.(0, 1),
+		);
+		expect(onOpening).toHaveBeenCalledTimes(1);
+	});
+	test("dismisses the keyboard when a drag starts closing the sheet", async () => {
+		const dismissKeyboard = jest.spyOn(Keyboard, "dismiss");
+		const view = await render(<DayovaSheetFrame visible onClose={jest.fn()} />);
+		await act(flushAnimationFrames);
+		await act(() => mockSheetHarness.onChange?.(0));
+		await act(() =>
+			view.getByTestId("bottom-sheet-modal").props.onAnimate?.(0, -1),
+		);
+		expect(dismissKeyboard).toHaveBeenCalledTimes(1);
+	});
+	test("dismisses the keyboard before a controlled sheet close", async () => {
+		const dismissKeyboard = jest.spyOn(Keyboard, "dismiss");
+		const onClose = jest.fn();
+		const view = await render(<DayovaSheetFrame visible onClose={onClose} />);
+		await act(flushAnimationFrames);
+		await act(() => mockSheetHarness.onChange?.(0));
+		await view.rerender(<DayovaSheetFrame visible={false} onClose={onClose} />);
+		expect(dismissKeyboard).toHaveBeenCalled();
+		expect(dismissKeyboard.mock.invocationCallOrder[0]).toBeLessThan(
+			mockSheetHarness.dismiss.mock.invocationCallOrder[0],
+		);
 	});
 });

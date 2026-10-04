@@ -104,8 +104,10 @@ Use `onPrimary` for solid selected pills, tabs, their checkmarks, and equivalent
 compact controls. Do not reuse `surface` or theme-dependent primary text as an
 implicit foreground token.
 
-Answer selection follows this same pairing and retains normal theme text for
-the answer content. See the [code-facing decision](adr/answer-selection-colors.md)
+Exam/subject and learning-session answer selection instead use the shared
+`selection` gradient (`#006699` → `#0077AA`) with white indicators and answer
+letters (minimum 4.97:1 contrast); answer rows match the
+exam/subject accent fill, primary selected label, border, and shadow-free treatment. See the [code-facing decision](adr/answer-selection-colors.md)
 and its linked native comparison and canonical Notion rationale.
 
 Typography uses Poppins only. Body text is Regular; headings, buttons, selected
@@ -177,6 +179,31 @@ purchase, not after restoring an existing subscription, so the celebration
 acknowledges a real transition without becoming recurring friction.
 
 ## Product-surface previews
+
+### Personal-subject action appearance
+
+Exam-type and subject selection share `SelectionOptionRow`: identical card
+geometry, icon treatment, radio checked semantics and a selection-gradient check
+indicator with a white check, as specified in the
+[selection color decision](adr/answer-selection-colors.md). The subject catalog
+is one continuous list, without a
+separate personal-subject heading. Adding a subject always saves it for reuse;
+there is no permanent-versus-one-time choice or extra confirmation step.
+Existing built-in/personal matches are reused; timetable-only or legacy one-time
+matches are persisted when explicitly added. Legacy selections remain readable
+without silently migrating existing entries. The settings pencil opens "Fach
+bearbeiten" with save and delete actions. Delete opens the existing confirmation
+only after the editor's native dismissal; swipe deletion remains available.
+
+DAY-187 restores the September device-review treatment in the independent
+personal-subject feature. Shared Button variants `cancel` (bordered card,
+theme text) and `destructive-outline` (danger border/text on subtle fill) are
+opt-in exceptions to the general solid/gradient CTA appearances above.
+They reuse the reviewed #729 palette: light `#B01B10` / `#FFF0EE`, dark
+`hsl(4 100% 75%)` / `hsl(4 55% 16%)`. Existing destructive defaults do not
+change. ConfirmationSheet exposes `actionAppearance="outlined"` for this
+consumer; other callers retain their current appearance.
+See [restoration scope and provenance](../../qa/day-187-design-restoration-2026-10-02.md).
 
 Onboarding artwork or other explanatory UI that depicts a live Dayova product
 surface must render the same shared presentation module through an explicit
