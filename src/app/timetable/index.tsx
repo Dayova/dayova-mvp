@@ -28,6 +28,8 @@ import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
 import { getUploadFailureMessage } from "~/features/learning-plans/utils";
+import { SubjectPickerSheet } from "~/features/subjects/subject-picker";
+import type { SubjectSelection } from "~/features/subjects/use-subject-options";
 import {
 	createEmptyTimetableLesson,
 	getTimetableLessonError,
@@ -179,6 +181,9 @@ export default function TimetableScreen() {
 	const [dayPickerLessonKey, setDayPickerLessonKey] = useState<string | null>(
 		null,
 	);
+	const [subjectPickerLessonKey, setSubjectPickerLessonKey] = useState<
+		string | null
+	>(null);
 	const [selectedDay, setSelectedDay] = useState(1);
 	const taskInFlightRef = useRef(false);
 	const manualLessonKeyRef = useRef(0);
@@ -189,6 +194,10 @@ export default function TimetableScreen() {
 				key: lesson.id,
 				dayOfWeek: lesson.dayOfWeek,
 				subject: lesson.subject,
+				...(lesson.personalSubjectId
+					? { personalSubjectId: lesson.personalSubjectId }
+					: {}),
+				...(lesson.subjectIsOneTime ? { subjectIsOneTime: true } : {}),
 				startTime: lesson.startTime,
 				endTime: lesson.endTime,
 				room: lesson.room ?? "",
@@ -435,6 +444,10 @@ export default function TimetableScreen() {
 				lessons: sortTimetableLessons(lessons).map((lesson) => ({
 					dayOfWeek: lesson.dayOfWeek,
 					subject: lesson.subject,
+					...(lesson.personalSubjectId
+						? { personalSubjectId: lesson.personalSubjectId }
+						: {}),
+					...(lesson.subjectIsOneTime ? { subjectIsOneTime: true } : {}),
 					startTime: lesson.startTime,
 					endTime: lesson.endTime,
 					...(lesson.room.trim() ? { room: lesson.room.trim() } : {}),
@@ -455,6 +468,9 @@ export default function TimetableScreen() {
 			: "08:00";
 	const activeDayPickerLesson = dayPickerLessonKey
 		? lessons.find((lesson) => lesson.key === dayPickerLessonKey)
+		: null;
+	const activeSubjectPickerLesson = subjectPickerLessonKey
+		? lessons.find((lesson) => lesson.key === subjectPickerLessonKey)
 		: null;
 	const isAddDisabled =
 		isImportDisabled || lessons.length >= MAX_TIMETABLE_LESSONS;
@@ -581,6 +597,7 @@ export default function TimetableScreen() {
 									setTimePickerTarget({ lessonKey, field })
 								}
 								onOpenDayPicker={setDayPickerLessonKey}
+								onOpenSubjectPicker={setSubjectPickerLessonKey}
 							/>
 
 							<View className="border-border border-t pt-5">
@@ -664,6 +681,30 @@ export default function TimetableScreen() {
 					setSelectedDay(dayOfWeek);
 				}}
 				onClose={() => setDayPickerLessonKey(null)}
+			/>
+
+			<SubjectPickerSheet
+				visible={Boolean(activeSubjectPickerLesson)}
+				selected={{
+					name: activeSubjectPickerLesson?.subject ?? "",
+					...(activeSubjectPickerLesson?.personalSubjectId
+						? {
+								personalSubjectId: activeSubjectPickerLesson.personalSubjectId,
+							}
+						: {}),
+					...(activeSubjectPickerLesson?.subjectIsOneTime
+						? { isOneTime: true }
+						: {}),
+				}}
+				onSelect={(selection: SubjectSelection) => {
+					if (!activeSubjectPickerLesson) return;
+					updateLesson(activeSubjectPickerLesson.key, {
+						subject: selection.name,
+						personalSubjectId: selection.personalSubjectId,
+						subjectIsOneTime: selection.isOneTime,
+					});
+				}}
+				onClose={() => setSubjectPickerLessonKey(null)}
 			/>
 		</Screen>
 	);

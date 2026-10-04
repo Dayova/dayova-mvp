@@ -147,7 +147,7 @@ export function MaterialUploadActionCard(props: MaterialUploadActionCardProps) {
 		</>
 	);
 	const className =
-		"mt-7 min-h-[112px] flex-row items-center rounded-[32px] px-5 py-5";
+		"mt-7 min-h-[112px] flex-row items-center rounded-[32px] border border-border px-5 py-5";
 
 	if (props.mode === "artwork") {
 		return (

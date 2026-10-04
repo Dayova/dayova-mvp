@@ -23,6 +23,9 @@ const buttonVariants = cva(
 	{
 		variants: {
 			variant: {
+				cancel: "border border-border bg-card active:bg-muted",
+				"destructive-outline":
+					"border border-danger-action bg-danger-subtle active:opacity-80",
 				default: cn(
 					"border-hairline border-white bg-primary active:opacity-90",
 					Platform.select({ web: "hover:opacity-90" }),
@@ -47,7 +50,9 @@ const buttonVariants = cva(
 					"active:bg-accent",
 					Platform.select({ web: "hover:bg-accent" }),
 				),
-				link: "shadow-none",
+				// Text links can wrap flush with the content edge at large font sizes.
+				// A pill-shaped clipping mask would cut into their first/last glyphs.
+				link: "overflow-visible rounded-none shadow-none",
 			},
 			size: {
 				default: cn(
@@ -55,11 +60,11 @@ const buttonVariants = cva(
 					Platform.select({ web: "has-[>svg]:px-5" }),
 				),
 				sm: cn(
-					"min-h-12 gap-2 rounded-button px-4 py-2",
+					"min-h-12 gap-2 px-4 py-2",
 					Platform.select({ web: "has-[>svg]:px-3" }),
 				),
 				lg: cn(
-					"min-h-14 rounded-button px-8 py-3",
+					"min-h-14 px-8 py-3",
 					Platform.select({ web: "has-[>svg]:px-6" }),
 				),
 				icon: "h-11 min-h-11 w-11 py-0",
@@ -80,6 +85,8 @@ const buttonTextVariants = cva(
 	{
 		variants: {
 			variant: {
+				cancel: "text-text",
+				"destructive-outline": "text-danger-action",
 				default: "text-white",
 				neutral: "text-background",
 				destructive: "text-background",

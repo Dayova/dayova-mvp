@@ -74,7 +74,11 @@ function SettingsDivider() {
 }
 
 function SettingsCard({ children }: { children: ReactNode }) {
-	return <Surface className="overflow-hidden p-2">{children}</Surface>;
+	return (
+		<Surface className="overflow-hidden border border-border p-2">
+			{children}
+		</Surface>
+	);
 }
 
 function SettingsSection({
