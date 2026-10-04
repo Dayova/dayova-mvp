@@ -2,13 +2,12 @@ name: Continuous Integration
 
 on:
   pull_request:
-    branches:
-      - main
     types:
       - opened
       - ready_for_review
       - reopened
       - synchronize
+      - base_ref_changed
   push:
     branches:
       - main
@@ -32,6 +31,27 @@ jobs:
     params:
       md: "CI source is eligible: pull requests must originate from this repository."
 
+  stack_root_gate:
+    name: Main-rooted PR stack
+    type: custom
+    runs_on: linux-medium
+    needs:
+      - source_gate
+    # Direct PRs to main need no API lookup or worker for this gate.
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.ref != 'main' && contains('OWNER,MEMBER,COLLABORATOR', github.event.pull_request.author_association) }}
+    outputs:
+      root_main: ${{ steps.resolve_root.outputs.root_main }}
+    steps:
+      - uses: eas/checkout
+      - id: resolve_root
+        name: Follow open parent PRs to main
+        env:
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PR_REPOSITORY: ${{ github.event.pull_request.base.repo.full_name }}
+        run: |
+          root_main="$(node scripts/ota-stack-root.mts)"
+          set-output root_main "$root_main"
+
   production_fingerprint:
     name: Production native fingerprints
     type: fingerprint
@@ -47,8 +67,10 @@ jobs:
     runs_on: linux-medium
     needs:
       - source_gate
+    after:
+      - stack_root_gate
     # This custom job uses production scope; fork code must not reach checkout.
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref_name == 'main') || (github.event_name == 'pull_request' && contains('OWNER,MEMBER,COLLABORATOR', github.event.pull_request.author_association)) }}
+    if: ${{ github.event_name != 'pull_request' || (contains('OWNER,MEMBER,COLLABORATOR', github.event.pull_request.author_association) && (github.event.pull_request.base.ref == 'main' || after.stack_root_gate.outputs.root_main == 'true')) }}
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules
@@ -136,8 +158,10 @@ jobs:
     name: PR OTA compatibility report
     type: doc
     after: &pr_ota_report_dependencies
+      - stack_root_gate
       - production_fingerprint
       - ota_checks
+    # A failed stack gate must replace any earlier compatible PR comment.
     if: ${{ github.event_name == 'pull_request' }}
     params:
       md: &pr_ota_report_markdown |
@@ -162,7 +186,7 @@ jobs:
         <details>
         <summary>🛠️ Technical details — reason, builds & fingerprints</summary>
 
-        **Reason:** ${{ after.ota_checks.outputs.ota_reason || 'Assessment did not complete. Production checks run only for trusted, same-repository PRs after quality checks pass.' }}
+        **Reason:** ${{ after.ota_checks.outputs.ota_reason || 'Assessment did not complete. Production checks require a trusted, same-repository PR with an open base chain to main and passing quality checks.' }}
 
         **📦 Distributed builds:** `${{ after.ota_checks.outputs.ota_baseline || 'Not assessed' }}`
 
