@@ -49,13 +49,6 @@ export function LearningPlanEditor({
 				<Text accessibilityRole="header" className="font-semibold text-body-1">
 					Lernplan bearbeiten
 				</Text>
-				<Button
-					variant="neutral"
-					onPress={onCancel}
-					accessibilityLabel="Abbrechen"
-				>
-					<Text className="min-w-0 shrink text-center">Abbrechen</Text>
-				</Button>
 			</PortraitContent>
 			<ScreenScroll includeTopSafeArea={false} topPadding={8}>
 				{isLoading ? (
@@ -93,7 +86,20 @@ export function LearningPlanEditor({
 								{errorMessage}
 							</Text>
 						) : null}
+					</View>
+				)}
+				<View className="mt-6 flex-row gap-3">
+					<Button
+						variant="cancel"
+						className="min-w-0 flex-1"
+						onPress={onCancel}
+						accessibilityLabel="Abbrechen"
+					>
+						<Text className="min-w-0 shrink text-center">Abbrechen</Text>
+					</Button>
+					{!isLoading && !isMissing ? (
 						<Button
+							className="min-w-0 flex-1"
 							disabled={!canSave || isBusy}
 							accessibilityLabel={
 								isBusy ? "Speichern, wird geladen" : "Speichern"
@@ -107,8 +113,8 @@ export function LearningPlanEditor({
 								<Text className="min-w-0 shrink text-center">Speichern</Text>
 							)}
 						</Button>
-					</View>
-				)}
+					) : null}
+				</View>
 			</ScreenScroll>
 		</>
 	);
