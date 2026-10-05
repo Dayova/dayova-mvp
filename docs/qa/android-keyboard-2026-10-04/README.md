@@ -1,5 +1,9 @@
 # Android keyboard visibility — 2026-10-04
 
+The initial component pass below is now supplemented by
+[authenticated Android and iOS QA](authenticated-native-qa.md), including real
+subject persistence and recordings from the regular app entry point.
+
 ## Result and cause
 
 Opening “Fach hinzufügen” on the unchanged `098a1851` baseline reproduced the
@@ -57,15 +61,17 @@ run in this pass.
 Open the relevant form in a development build, focus its field and run:
 
 ```sh
-python3 docs/qa/android-keyboard-2026-10-04/assert-above-keyboard.py 'Name des Fachs'
-python3 docs/qa/android-keyboard-2026-10-04/assert-above-keyboard.py 'Neuer Fachname'
-python3 docs/qa/android-keyboard-2026-10-04/assert-above-keyboard.py 'Name der Prüfungsart'
-python3 docs/qa/android-keyboard-2026-10-04/assert-above-keyboard.py 'Bestätigungscode'
-python3 docs/qa/android-keyboard-2026-10-04/assert-above-keyboard.py 'Antwort'
+python3 docs/qa/android-keyboard-2026-10-04/assert-above-keyboard.py 'Name des Fachs' --input
+python3 docs/qa/android-keyboard-2026-10-04/assert-above-keyboard.py 'Neuer Fachname' --input
+python3 docs/qa/android-keyboard-2026-10-04/assert-above-keyboard.py 'Name der Prüfungsart' --input
+python3 docs/qa/android-keyboard-2026-10-04/assert-above-keyboard.py 'Bestätigungscode' --input
+python3 docs/qa/android-keyboard-2026-10-04/assert-above-keyboard.py 'Antwort' --input
+python3 docs/qa/android-keyboard-2026-10-04/assert-above-keyboard.py 'Beantworten'
 ```
 
 The helper reads live Android window insets and UIAutomator bounds. It requires a
-visible IME and fails for an absent, empty or covered control. `--adb` and
+visible IME and fails for an absent, empty or covered control. `--input` requires
+the actual EditText, preventing a static label from satisfying the check. `--adb` and
 `--serial` can select another SDK/device. Also check the screenshot, action
 reachability, keyboard dismissal and refocusing; a mocked JS tree cannot prove
 native geometry. Repeat with enlarged system text, restoring the prior setting.

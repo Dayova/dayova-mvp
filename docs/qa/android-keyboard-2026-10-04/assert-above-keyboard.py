@@ -12,6 +12,7 @@ from pathlib import Path
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("label", help="Exact accessibility label, resource ID or text")
+parser.add_argument("--input", action="store_true", help="Require the input itself, excluding its static label")
 parser.add_argument("--adb", default=str(Path.home() / "Library/Android/sdk/platform-tools/adb"))
 parser.add_argument("--serial", default="emulator-5554")
 args = parser.parse_args()
@@ -29,7 +30,8 @@ keyboard_top = min(int(frame[1]) for frame in ime_frames)
 adb("shell", "uiautomator", "dump", "/sdcard/dayova-keyboard-check.xml")
 root = ET.fromstring(adb("shell", "cat", "/sdcard/dayova-keyboard-check.xml"))
 nodes = [node for node in root.iter("node") if args.label in
-         (node.get("content-desc"), node.get("text"), node.get("resource-id"))]
+         (node.get("content-desc"), node.get("text"), node.get("resource-id"))
+         and (not args.input or node.get("class") == "android.widget.EditText")]
 for node in nodes:
     bounds = [int(value) for value in re.findall(r"\d+", node.get("bounds", ""))]
     if len(bounds) == 4:
