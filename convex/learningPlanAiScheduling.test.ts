@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { __testOnlyLearningPlanAi } from "./learningPlanAi";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
-import { getDefaultLearningTimes } from "./learningTimePlanning";
 
 const germanText = (text: string) => text;
 
@@ -48,7 +47,7 @@ const expectPracticeFirstMix = (
 };
 
 describe("learning plan AI scheduling", () => {
-	test("creates initial sessions in remaining default windows without personal availability", () => {
+	test("creates initial sessions in remaining learner-saved windows", () => {
 		vi.setSystemTime(new Date("2026-06-01T15:00:00.000Z"));
 		const result = __testOnlyLearningPlanAi.normalizeSessions(
 			"2026-06-02",
@@ -65,7 +64,7 @@ describe("learning plan AI scheduling", () => {
 					expectedOutcome: "Dein Wissensstand ist erfasst.",
 				},
 			],
-			getDefaultLearningTimes("8"),
+			[{ dayOfWeek: 1, startTime: "16:00", endTime: "20:00" }],
 			[],
 			20,
 			[],

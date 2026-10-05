@@ -125,9 +125,17 @@ Validierung: vier gezielte UI-Tests für passend, mehr, weniger und gesperrte Ak
 ## CodeRabbit follow-up · 3 October 2026
 
 - Structured-output/schema failures now participate in the bounded three-attempt generation retry before conversion to a safe user-facing error. German-text and duplicate-prompt retries remain; unrelated errors propagate immediately.
-- Preparation proposals use `getPlanningLearningTimes`, including grade defaults when no personal windows exist; proposals do not persist personal availability.
+- Preparation proposals use `getPlanningLearningTimes`. The grade fallback from this follow-up was removed by the 5 October review correction below; missing personal windows now yield no automatic appointments.
 - Appointment reconciliation excludes unscheduled steps and counts them toward the 500-step limit. Adding appointments retains untouched, running and interrupted flexible work.
 - The diagnostic introduction says ten questions. The obsolete completion callback and quick-add-sheet wiring are removed: the agreed preparation overview replaces that historical prompt.
 - The older QA table formatting finding is also corrected.
 
 Validation: 52 targeted Vitest tests, 6 Jest UI tests, TypeScript, scoped ESLint, Biome and diff checks passed. Local Convex deployment to `anonymous-agent` at `127.0.0.1:3230` succeeded. No production deployment. Retry tests use synthetic SDK errors; live model generation remains outside this verification.
+
+## Review follow-up · 5 October 2026
+
+- Missing learning times return an empty availability list in creation, AI context, rolling planning and preparation proposals. No grade-based windows or implicit Monday appointment are generated. Learners can still add and confirm one-off appointments or start flexible preparation immediately.
+- The current session screen already completes after the last theory page or answered task, irrespective of unused planned minutes. A screen-level regression covers theory, practice and Praxis finishing early without automatically extending content or repeating it. This finding did not reproduce on the current PR head; no new timer-padding fix is claimed.
+- `learningPlanCalendar.ts` owns calendar occupancy and session/event reconciliation. `learningPlanDiagnostic.ts` validates and stores diagnostic items. `learningPreparation.ts` owns diagnostic lifecycle, result budget, preparation appointment reconciliation, flexible start and additional practice. Existing registered functions and validators stay in `learningPlans.ts`, preserving caller paths and scheduled callbacks; the extracted modules expose no additional Convex endpoints.
+
+Validation results are recorded in the PR description. Automated screen tests mock backend responses; they do not establish native device acceptance or live AI generation.

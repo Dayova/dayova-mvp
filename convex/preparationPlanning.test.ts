@@ -481,6 +481,11 @@ test("moving an interrupted step preserves its identity, study time and learning
 
 test("ten-question diagnostic credits active time once and adjusts the remaining schedule", async () => {
 	const { t, id, root } = await setup("diagnostic", "Klassenarbeit");
+	await t.mutation(api.learningTimes.upsertMine, {
+		dayOfWeek: 1,
+		startTime: "17:00",
+		endTime: "18:00",
+	});
 	const questions = Array.from({ length: 10 }, (_, i) => ({
 		id: `q${i}`,
 		prompt: `Löse ${i}+1.`,
@@ -564,7 +569,7 @@ test("ten-question diagnostic credits active time once and adjusts the remaining
 	).rejects.toThrow();
 });
 
-test("preparation proposals use grade defaults without saving personal times", async () => {
+test("preparation has no proposals without personal times, even with a grade", async () => {
 	const { t, id } = await setup();
 	await t.run((ctx) =>
 		ctx.db.insert("users", {
@@ -578,8 +583,7 @@ test("preparation proposals use grade defaults without saving personal times", a
 		learningPlanId: id,
 		now: { dateKey: "2026-10-05", minutes: 840 },
 	});
-	expect(schedule.slots.length).toBeGreaterThan(0);
-	expect(schedule.slots[0].startTime).toBe("16:00");
+	expect(schedule.slots).toEqual([]);
 	expect(await t.query(api.learningTimes.listMine, {})).toEqual([]);
 });
 

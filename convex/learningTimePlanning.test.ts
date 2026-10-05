@@ -4,27 +4,9 @@ import { expect, test } from "vitest";
 import { api, internal } from "./_generated/api";
 import { calculateAvailableStudyMinutes } from "./learningPlanAvailability";
 import { parseLearningTimeToMinutes } from "./learningSessionScheduleFormatting";
-import { getDefaultLearningTimes } from "./learningTimePlanning";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
-test.each([
-	["5", "20:00"],
-	["8", "20:00"],
-	["9", "22:00"],
-	["10", "22:00"],
-	["11", "24:00"],
-	["13", "24:00"],
-	[undefined, "20:00"],
-])("proposes windows for grade %s", (grade, endTime) => {
-	expect(getDefaultLearningTimes(grade)).toEqual(
-		Array.from({ length: 7 }, (_, i) => ({
-			dayOfWeek: i + 1,
-			startTime: "16:00",
-			endTime,
-		})),
-	);
-});
 test("midnight is an exclusive planning boundary", () => {
 	expect(parseLearningTimeToMinutes("24:00")).toBe(1440);
 	expect(parseLearningTimeToMinutes("24:01")).toBeNull();
@@ -36,7 +18,7 @@ test("midnight is an exclusive planning boundary", () => {
 		}),
 	).toBe(60);
 });
-test("no manual times: creation availability and AI context use proposals without persisting them", async () => {
+test("no manual times: availability and AI context remain empty even with a grade", async () => {
 	const t = convexTest(schema, modules).withIdentity({
 		tokenIdentifier: "test:defaults",
 		subject: "defaults",
@@ -50,17 +32,15 @@ test("no manual times: creation availability and AI context use proposals withou
 			fromTimeMinutes: 17 * 60,
 			examDateKey: "2026-10-06",
 		}),
-	).toMatchObject({ status: "available" });
-	expect(await t.query(api.learningTimes.listForPlanning, {})).toEqual(
-		getDefaultLearningTimes("9"),
-	);
+	).toMatchObject({ status: "missing", availableStudyMinutes: 0 });
+	expect(await t.query(api.learningTimes.listForPlanning, {})).toEqual([]);
 	expect(
 		await t.query(api.learningPlans.getSchedulingAvailability, {
 			fromDateKey: "2026-10-05",
 			fromTimeMinutes: 9 * 60,
 			examDateKey: "2026-10-12",
 		}),
-	).toMatchObject({ status: "available" });
+	).toMatchObject({ status: "missing", availableStudyMinutes: 0 });
 	const examDayEntryId = await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-10-12",
 		title: "Mathematik Test",
@@ -80,10 +60,10 @@ test("no manual times: creation availability and AI context use proposals withou
 	expect(
 		(await t.query(internal.learningPlans.getAiContext, { learningPlanId }))
 			.learningTimes,
-	).toEqual(getDefaultLearningTimes("9"));
+	).toEqual([]);
 	expect(await t.query(api.learningTimes.listMine, {})).toEqual([]);
 });
-test("personal times override proposals and remain isolated by owner", async () => {
+test("personal times remain isolated by owner", async () => {
 	const backend = convexTest(schema, modules);
 	const owner = backend.withIdentity({ tokenIdentifier: "test:owner" });
 	const other = backend.withIdentity({ tokenIdentifier: "test:other" });
@@ -95,9 +75,7 @@ test("personal times override proposals and remain isolated by owner", async () 
 	expect(await owner.query(api.learningTimes.listForPlanning, {})).toEqual([
 		{ dayOfWeek: 2, startTime: "18:00", endTime: "19:00" },
 	]);
-	expect(await other.query(api.learningTimes.listForPlanning, {})).toEqual(
-		getDefaultLearningTimes(),
-	);
+	expect(await other.query(api.learningTimes.listForPlanning, {})).toEqual([]);
 	await expect(
 		backend.query(api.learningTimes.listForPlanning, {}),
 	).rejects.toThrow();

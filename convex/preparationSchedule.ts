@@ -106,11 +106,9 @@ export function proposePreparationSchedule(args: {
 	if (!Number.isFinite(exam.getTime()) || !Number.isFinite(today.getTime()))
 		return [];
 	const days = Math.ceil((exam.getTime() - today.getTime()) / 86400000);
-	if (days <= 0 || days > 366) return [];
+	if (days <= 0 || days > 366 || args.learningTimes.length === 0) return [];
 	const startOffset = Math.max(0, days - policy.horizonDays);
-	const times = args.learningTimes.length
-		? args.learningTimes
-		: [{ dayOfWeek: 1, startTime: "17:00", endTime: "17:30" }];
+	const times = args.learningTimes;
 	const preferred = [...times].sort((a, b) =>
 		a.startTime.localeCompare(b.startTime),
 	)[0];

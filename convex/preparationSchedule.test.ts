@@ -216,3 +216,9 @@ test("large adjusted budgets stay within the calendar slot limit", () => {
 	expect(slots.length).toBeLessThanOrEqual(180);
 	expect(validatePreparationSlots(slots, "2027-01-25")).toBeNull();
 });
+
+test("does not propose calendar availability without learning times", () => {
+	expect(
+		proposePreparationSchedule({ ...defaults, learningTimes: [] }),
+	).toEqual([]);
+});
