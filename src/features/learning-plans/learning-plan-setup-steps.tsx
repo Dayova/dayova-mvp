@@ -180,6 +180,7 @@ export function MaterialUploadActionCard(props: MaterialUploadActionCardProps) {
 	);
 }
 
+/** Offers upload, continuation, or postponement without losing the saved draft. */
 export function MaterialUploadStep({
 	canUpload,
 	canContinue,
@@ -192,7 +193,6 @@ export function MaterialUploadStep({
 	onRemoveDocument,
 	onSkip,
 	openingUploadAction,
-	showSkip = true,
 }: {
 	canUpload: boolean;
 	canContinue: boolean;
@@ -205,7 +205,6 @@ export function MaterialUploadStep({
 	onRemoveDocument: (id: Id<"learningPlanDocuments">) => void;
 	onSkip: () => void;
 	openingUploadAction: PendingUploadAction | null;
-	showSkip?: boolean;
 }) {
 	const schoolDocuments = documents.filter(
 		(document) => document.sourceKind === "school",
@@ -221,7 +220,7 @@ export function MaterialUploadStep({
 				onPress={onOpenUpload}
 			/>
 
-			{showSkip && !hasSchoolMaterial ? (
+			{!hasSchoolMaterial ? (
 				<Text className="mt-3 font-poppins text-body-4 text-secondary-text">
 					Dein Lernplan-Entwurf bleibt gespeichert. Schulmaterial kannst du
 					später ergänzen.
@@ -257,16 +256,17 @@ export function MaterialUploadStep({
 						isBusy={isBusy}
 						onPress={onContinue}
 					/>
-				) : showSkip ? (
+				) : (
 					<Button
 						accessibilityHint="Speichert den Lernplan-Entwurf. Material kann später hochgeladen werden."
+						accessibilityState={{ busy: isBusy, disabled: !canUpload }}
 						variant="neutral"
 						disabled={!canUpload}
 						onPress={onSkip}
 					>
-						<Text>Ohne Lernmaterial erstellen</Text>
+						<Text>Später hinzufügen</Text>
 					</Button>
-				) : null}
+				)}
 			</View>
 		</View>
 	);
