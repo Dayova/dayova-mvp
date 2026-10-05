@@ -198,6 +198,16 @@ export const syncSessionDayEntry = async (
 				getSessionExecutionStatus(s) === "started" ||
 				getSessionExecutionStatus(s) === "completed",
 		);
+		let entryId = first.dayEntryId;
+		const existingEntry = entryId
+			? await ctx.db.get("dayEntries", entryId)
+			: null;
+		const startTimes = group.flatMap((s) =>
+			s.startedAt === undefined ? [] : [s.startedAt],
+		);
+		const outcomeTimes = group.flatMap((s) =>
+			s.outcomeAt === undefined ? [] : [s.outcomeAt],
+		);
 		const representative = {
 			...first,
 			durationMinutes: duration,
@@ -207,9 +217,19 @@ export const syncSessionDayEntry = async (
 				: started
 					? ("started" as const)
 					: ("notStarted" as const),
+			startedAt: startTimes.length
+				? Math.min(...startTimes)
+				: existingEntry?.startedAt,
+			outcomeAt: completed
+				? outcomeTimes.length
+					? Math.max(...outcomeTimes)
+					: existingEntry?.outcomeAt
+				: undefined,
 		};
-		let entryId = first.dayEntryId;
-		if (!entryId) {
+		if (
+			!existingEntry ||
+			existingEntry.ownerTokenIdentifier !== plan.ownerTokenIdentifier
+		) {
 			await assertNoScheduleConflict(ctx, {
 				ownerTokenIdentifier: plan.ownerTokenIdentifier,
 				dayKey: first.dateKey,
@@ -226,13 +246,12 @@ export const syncSessionDayEntry = async (
 				group.find((s) =>
 					["notStarted", "started"].includes(getSessionExecutionStatus(s)),
 				) ?? first;
-			await ctx.db.patch("dayEntries", entryId, {
+			await ctx.db.patch("dayEntries", existingEntry._id, {
 				completed,
 				executionStatus: representative.executionStatus,
 				relatedLearningPlanSessionId: next._id,
-				title: `${plan.subject} · Lernen`,
-				startedAt: started ? Date.now() : undefined,
-				outcomeAt: completed ? Date.now() : undefined,
+				startedAt: representative.startedAt,
+				outcomeAt: representative.outcomeAt,
 			});
 		}
 		return entryId;

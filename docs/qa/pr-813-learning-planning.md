@@ -139,3 +139,20 @@ Validation: 52 targeted Vitest tests, 6 Jest UI tests, TypeScript, scoped ESLint
 - `learningPlanCalendar.ts` owns calendar occupancy and session/event reconciliation. `learningPlanDiagnostic.ts` validates and stores diagnostic items. `learningPreparation.ts` owns diagnostic lifecycle, result budget, preparation appointment reconciliation, flexible start and additional practice. Existing registered functions and validators stay in `learningPlans.ts`, preserving caller paths and scheduled callbacks; the extracted modules expose no additional Convex endpoints.
 
 Validation results are recorded in the PR description. Automated screen tests mock backend responses; they do not establish native device acceptance or live AI generation.
+
+
+## CodeRabbit follow-up · 5 October 2026
+
+The seven comments in [review 5420109215](https://github.com/Dayova/dayova-mvp/pull/813#pullrequestreview-5420109215) were checked against the current branch:
+
+- Deleted grouped calendar entries are recreated on synchronization; moving the remaining steps skips a deleted historical entry. Ownership is checked before patching.
+- Grouped event titles stay unchanged. Start and completion timestamps come from the group's recorded step timestamps, with existing event timestamps retained when no member has the relevant metadata. Interrupted groups keep their start time.
+- Outcome recording caps submitted study seconds at nonnegative elapsed time, preserving previously recorded seconds. Storage and diagnostic budgeting use the same capped value.
+- Open required flexible steps consume the appointment editor's budget. Completed steps and voluntary practice are excluded from that subtraction; the result cannot become negative.
+- Functional QA expectations now require empty availability without saved times, irrespective of grade, while retaining explicit one-off appointments and immediate flexible study.
+- The appointment picker's minimum is Berlin's current date and its maximum is the calendar day before the exam. Both are represented at local noon; calendar arithmetic preserves noon across daylight-saving transitions.
+- The login-test reset finding is already satisfied: the enclosing `OnboardingScreen` `beforeEach` resets `mockOnboarding.answers.studyTime` to `"30"` before every test, including the duration cases. No redundant reset was added.
+
+Validation: new regressions first reproduced the failures (13 backend failures and 2 picker failures). After corrections, 72 targeted backend tests and the complete Vitest suite (137 files, 1,058 tests) passed. The full suite used four workers and a 30-second test timeout; an initial unrelated PNG/Git subprocess hang was stopped before the successful rerun. Five targeted Jest suites passed with 76 tests. The seven picker tests also passed separately in Los Angeles and Tokyo timezones, alongside the Berlin run. Jest used the temporary CommonJS-icon transform bypass documented in the previous follow-up; the repository's Jest configuration was unchanged. TypeScript, scoped ESLint, Biome and whitespace checks passed.
+
+The separate anonymous local Convex deployment compiled successfully. A deployed save/start/interrupted-outcome smoke test stored fewer than 60 seconds after submitting 999,999 seconds immediately after starting, and retained the resumable step. The workspace environment was restored and the local process stopped. No cloud deployment, new native device acceptance, or live model generation is claimed.

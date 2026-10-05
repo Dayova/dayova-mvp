@@ -32,26 +32,21 @@ automatic assignment of the entire window as workload.
 ## Planning without personal learning times
 
 A learner can create a learning plan without manually entering learning times.
-The server and generation screen use the same effective planning windows:
+The server and generation screen use the same saved planning windows:
 
 | Source | Effective windows |
 | --- | --- |
 | At least one saved personal window, including onboarding | Only the saved windows; no filling other days with defaults |
-| No personal windows, grade 5–8 | Every day 16:00–20:00 |
-| No personal windows, grade 9–10 | Every day 16:00–22:00 |
-| No personal windows, grade 11–13 | Every day 16:00–24:00 |
-| Missing/invalid legacy grade | Conservative 16:00–20:00 fallback |
+| No personal windows, regardless of grade | Empty availability; no automatic appointments |
+| Missing/invalid legacy grade and no personal windows | Empty availability; no fallback window |
 
-Grade 5 is included in the profile/onboarding vocabulary. Class boundaries apply
-to automatic proposals, not silent truncation of explicitly chosen personal
-windows. Proposals are computed, not inserted into `userLearningTimes`; Settings
-therefore does not claim that the learner already chose them. The grade windows
-are a product policy, not a scientific recommendation about children's bedtime.
+Without saved windows, the learner can explicitly add and confirm one-off
+appointments or start flexible preparation immediately. Neither action invents
+or saves recurring availability in `userLearningTimes`.
 
-Explicit precedence example: a grade-5 learner chooses 60 minutes on Monday and
-Wednesday starting at 20:00. Their initial personal windows are 20:00–21:00 on
-those two days, even though the grade fallback ends at 20:00. The app neither
-moves that choice to 16:00 nor cuts it off at the grade boundary.
+Explicit example: a grade-5 learner chooses 60 minutes on Monday and Wednesday
+starting at 20:00. Their personal windows are exactly 20:00–21:00 on those two
+days. The app neither moves that choice nor truncates it based on grade.
 
 Availability, initial plan generation and rolling follow-up scheduling share
 `getPlanningLearningTimes`. Existing occupied appointments and active timetable
@@ -118,10 +113,10 @@ Automated results and actual native evidence are reported separately below.
 | Duration selection | No answer manufactured merely by opening the screen |
 | Days/time/summary | 60 min + Monday/Wednesday + 16:00 yields two exact 16–17 windows |
 | Boundary | Late start plus duration reaching midnight rejected visibly, never silently shortened |
-| No personal times | Plan creation proceeds using grade proposals; Settings still empty |
-| Grades 5/8, 9/10, 11/13 | End bounds 20, 22, 24; no overlap with existing school/events |
-| Today after 16:00 | Remaining window remains usable before tomorrow's exam |
-| Explicit personal times | Override proposals, including chosen days; other owners' times never leak |
+| No personal times | No automatic appointments; manual one-off appointments and immediate flexible preparation remain available; Settings still empty |
+| Grades 5/8, 9/10, 11/13 | No grade-derived windows; only saved windows count as availability |
+| Today within a saved window | Its remaining free portion stays usable before tomorrow's exam |
+| Explicit personal times | Exact chosen days and times; other owners' times never leak |
 | Wissenscheck complete, no times | Benefit explanation and voluntary action; Zum Lernplan still usable |
 | Reminder action | Completion saved before opening the inline day/time sheet; closing returns to completion, Save persists the window |
 | Time picker | Editor dismisses before the wheel opens; closing the wheel restores the draft |

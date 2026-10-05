@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Platform, Pressable, View } from "react-native";
 import type { PreparationSlot } from "#convex/preparationSchedule";
 import {
+	berlinNow,
 	slotDateLabel,
 	timeLabel,
 	timeMinutes,
@@ -47,6 +48,8 @@ export function PreparationSlotEditor({
 		draft.durationMinutes <= 240 &&
 		draft.durationMinutes % 5 === 0;
 	const pickerDate = new Date(`${draft.dateKey}T${draft.startTime}:00`);
+	const lastPreparationDay = new Date(`${examDateKey.slice(0, 10)}T12:00:00`);
+	lastPreparationDay.setDate(lastPreparationDay.getDate() - 1);
 	return (
 		<DayovaSheetFrame
 			visible={visible}
@@ -180,15 +183,12 @@ export function PreparationSlotEditor({
 				mode={picker === "date" ? "date" : "time"}
 				display="spinner"
 				value={pickerDate}
-				minimumDate={picker === "date" ? new Date() : undefined}
-				maximumDate={
+				minimumDate={
 					picker === "date"
-						? new Date(
-								new Date(`${examDateKey.slice(0, 10)}T12:00:00`).getTime() -
-									86400000,
-							)
+						? new Date(`${berlinNow().dateKey}T12:00:00`)
 						: undefined
 				}
+				maximumDate={picker === "date" ? lastPreparationDay : undefined}
 				onChange={(event, date) => {
 					if (event.type !== "set" || !date) return;
 					setDraft({

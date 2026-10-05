@@ -1,4 +1,4 @@
-import { beforeEach, expect, jest, test } from "@jest/globals";
+import { afterEach, beforeEach, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render } from "@testing-library/react-native";
 import { PreparationSlotEditor } from "./preparation-slot-editor";
 
@@ -28,6 +28,8 @@ jest.mock("~/lib/theme", () => ({
 	}),
 }));
 let mockPicker: {
+	minimumDate?: Date;
+	maximumDate?: Date;
 	onChange: (event: { type: string }, date: Date) => void;
 	onClose: () => void;
 };
@@ -220,4 +222,45 @@ test("editing offers remove beside save, without a duplicate cancel action", asy
 	await fireEvent.press(screen.getByRole("button", { name: "Entfernen" }));
 	expect(remove).toHaveBeenCalledTimes(1);
 	expect(save).not.toHaveBeenCalled();
+});
+
+afterEach(() => {
+	jest.useRealTimers();
+});
+test.each([
+	"2026-10-05T00:30:00Z",
+	"2026-10-05T16:30:00Z",
+])("date bounds use Berlin calendar days at %s, preserving picker keys", async (now) => {
+	jest.useFakeTimers();
+	jest.setSystemTime(new Date(now));
+	const save = jest.fn();
+	const screen = await render(
+		<PreparationSlotEditor
+			slot={{
+				id: "slot",
+				dateKey: "2026-10-06",
+				startTime: "17:00",
+				durationMinutes: 30,
+			}}
+			examDateKey="2026-10-26"
+			onSave={save}
+			onClose={jest.fn()}
+		/>,
+	);
+	await fireEvent.press(screen.getByRole("button", { name: /Datum ändern:/ }));
+	const localKey = (date?: Date) =>
+		date &&
+		`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+	expect(localKey(mockPicker.minimumDate)).toBe("2026-10-05");
+	expect(mockPicker.minimumDate?.getHours()).toBe(12);
+	expect(localKey(mockPicker.maximumDate)).toBe("2026-10-25");
+	expect(mockPicker.maximumDate?.getHours()).toBe(12);
+	await act(async () =>
+		mockPicker.onChange({ type: "set" }, new Date("2026-10-25T12:00:00")),
+	);
+	await act(async () => mockPicker.onClose());
+	await fireEvent.press(screen.getByRole("button", { name: "Hinzufügen" }));
+	expect(save).toHaveBeenCalledWith(
+		expect.objectContaining({ dateKey: "2026-10-25" }),
+	);
 });

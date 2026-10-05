@@ -249,11 +249,15 @@ export async function getPreparationSchedule(
 			a.dateKey.localeCompare(b.dateKey) ||
 			a.startTime.localeCompare(b.startTime),
 	);
+	const openFlexibleMinutes = sessions
+		.filter((s) => s.unscheduled && s.preparationSlotId && !s.completed)
+		.reduce((sum, s) => sum + s.durationMinutes, 0);
+	const budgetMinutes = Math.max(0, remainingMinutes - openFlexibleMinutes);
 	if (plan.preparationState !== "review" || slots.length)
 		return {
 			slots,
 			revision: plan.preparationRevision ?? 0,
-			budgetMinutes: remainingMinutes,
+			budgetMinutes,
 			...budget,
 		};
 	const now = args.now;
@@ -268,7 +272,7 @@ export async function getPreparationSchedule(
 	const saved = await getPlanningLearningTimes(ctx, plan.ownerTokenIdentifier);
 	return {
 		slots: proposePreparationSchedule({
-			budgetMinutes: remainingMinutes,
+			budgetMinutes,
 			examTypeLabel: plan.examTypeLabel,
 			examDateKey: plan.examDateKey,
 			now,
@@ -281,7 +285,7 @@ export async function getPreparationSchedule(
 			completedMinutes: 0,
 		})),
 		revision: plan.preparationRevision ?? 0,
-		budgetMinutes: remainingMinutes,
+		budgetMinutes,
 		...budget,
 	};
 }
@@ -351,8 +355,11 @@ export async function savePreparationSchedule(
 				await ctx.db.patch("learningPlanSessions", session._id, {
 					preparationSlotId: historyId,
 				});
-			if (entryId)
-				await ctx.db.patch("dayEntries", entryId, {
+			const existingEntry = entryId
+				? await ctx.db.get("dayEntries", entryId)
+				: null;
+			if (existingEntry?.ownerTokenIdentifier === plan.ownerTokenIdentifier)
+				await ctx.db.patch("dayEntries", existingEntry._id, {
 					durationMinutes: done.reduce(
 						(sum, session) => sum + session.durationMinutes,
 						0,

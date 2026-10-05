@@ -2442,6 +2442,14 @@ export const recordSessionOutcome = mutation({
 		}
 
 		const now = Date.now();
+		const elapsedSeconds =
+			session.startedAt === undefined
+				? 0
+				: Math.max(0, Math.floor((now - session.startedAt) / 1000));
+		const activeStudySeconds = Math.max(
+			session.activeStudySeconds ?? 0,
+			Math.min(args.activeStudySeconds ?? 0, elapsedSeconds),
+		);
 		const updatedSession = await patchSessionAndSyncedEntry(
 			ctx,
 			plan,
@@ -2452,10 +2460,7 @@ export const recordSessionOutcome = mutation({
 						? "notStarted"
 						: args.outcome,
 				outcomeAt: now,
-				activeStudySeconds: Math.max(
-					session.activeStudySeconds ?? 0,
-					args.activeStudySeconds ?? 0,
-				),
+				activeStudySeconds,
 				completed: args.outcome === "completed",
 			},
 		);
@@ -2468,10 +2473,7 @@ export const recordSessionOutcome = mutation({
 				{
 					...session,
 					completed: true,
-					activeStudySeconds: Math.max(
-						session.activeStudySeconds ?? 0,
-						args.activeStudySeconds ?? 0,
-					),
+					activeStudySeconds,
 				},
 			]);
 			await ctx.db.patch("learningPlans", plan._id, {

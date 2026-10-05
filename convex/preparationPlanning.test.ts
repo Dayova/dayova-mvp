@@ -439,6 +439,7 @@ test("moving an interrupted step preserves its identity, study time and learning
 		});
 		return { itemId, attemptId };
 	});
+	vi.setSystemTime(Date.now() + 120_000);
 	await t.mutation(api.learningPlans.recordSessionOutcome, {
 		sessionId: first.id,
 		outcome: "partiallyCompleted",
@@ -479,7 +480,10 @@ test("moving an interrupted step preserves its identity, study time and learning
 	});
 });
 
-test("ten-question diagnostic credits active time once and adjusts the remaining schedule", async () => {
+test.each([
+	[900, 15, 120],
+	[999_999, 30, 105],
+])("diagnostic caps %s submitted seconds, credits %s minutes once and leaves %s minutes", async (submittedSeconds, diagnosticMinutes, budgetMinutes) => {
 	const { t, id, root } = await setup("diagnostic", "Klassenarbeit");
 	await t.mutation(api.learningTimes.upsertMine, {
 		dayOfWeek: 1,
@@ -541,7 +545,7 @@ test("ten-question diagnostic credits active time once and adjusts the remaining
 	await t.mutation(api.learningPlans.recordSessionOutcome, {
 		sessionId,
 		outcome: "completed",
-		activeStudySeconds: 900,
+		activeStudySeconds: submittedSeconds,
 	});
 	const schedule = await t.query(api.learningPlans.getPreparationSchedule, {
 		learningPlanId: id,
@@ -552,10 +556,16 @@ test("ten-question diagnostic credits active time once and adjusts the remaining
 		questionCount: 10,
 		baseMinutes: 180,
 		totalMinutes: 135,
-		diagnosticMinutes: 15,
-		budgetMinutes: 120,
+		diagnosticMinutes,
+		budgetMinutes,
 	});
-	expect(schedule.slots.reduce((n, s) => n + s.durationMinutes, 0)).toBe(120);
+	expect(schedule.slots.reduce((n, s) => n + s.durationMinutes, 0)).toBe(
+		budgetMinutes,
+	);
+	expect(
+		(await t.run((ctx) => ctx.db.get("learningPlanSessions", sessionId)))
+			?.activeStudySeconds,
+	).toBe(diagnosticMinutes * 60);
 	expect(
 		(await t.query(api.learningPlans.getSnapshot, { id }))?.plan
 			.targetStudyMinutes,
@@ -564,7 +574,7 @@ test("ten-question diagnostic credits active time once and adjusts the remaining
 		t.mutation(api.learningPlans.recordSessionOutcome, {
 			sessionId,
 			outcome: "completed",
-			activeStudySeconds: 900,
+			activeStudySeconds: submittedSeconds,
 		}),
 	).rejects.toThrow();
 });
@@ -617,6 +627,7 @@ test.each([
 		now: { dateKey: "2026-10-05", minutes: 840 },
 	});
 	expect(schedule.slots).toEqual([]);
+	expect(schedule.budgetMinutes).toBe(0);
 	await t.mutation(api.learningPlans.savePreparationSchedule, {
 		learningPlanId: id,
 		revision: schedule.revision,
@@ -637,4 +648,213 @@ test.each([
 		{ learningPlanId: id, now: { dateKey: "2026-10-05", minutes: 840 } },
 	);
 	expect(afterSchedule.slots).toHaveLength(1);
+});
+
+test("deleted grouped calendar entries are recreated when a step is started", async () => {
+	const { t, id } = await setup();
+	await t.mutation(api.learningPlans.savePreparationSchedule, {
+		learningPlanId: id,
+		revision: 0,
+		slots: [slot],
+	});
+	const [entry] = await t.run((ctx) => ctx.db.query("dayEntries").take(10));
+	await t.mutation(api.dayEntries.remove, { id: entry._id });
+	const snapshot = await t.query(api.learningPlans.getSnapshot, { id });
+	const first = snapshot?.sessions[0];
+	if (!first) throw Error("Missing first step");
+	await t.mutation(api.learningPlans.startSession, { sessionId: first.id });
+	const entries = await t.run((ctx) => ctx.db.query("dayEntries").take(10));
+	expect(entries).toHaveLength(1);
+	expect(entries[0]._id).not.toBe(entry._id);
+	expect(entries[0]).toMatchObject({
+		durationMinutes: 30,
+		executionStatus: "started",
+		startedAt: Date.now(),
+	});
+	const sessions = await t.run((ctx) =>
+		ctx.db
+			.query("learningPlanSessions")
+			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+				q.eq("learningPlanId", id),
+			)
+			.take(10),
+	);
+	expect(
+		sessions.every((session) => session.dayEntryId === entries[0]._id),
+	).toBe(true);
+});
+
+test("moving the remainder skips a deleted historical calendar entry", async () => {
+	const { t, id } = await setup();
+	await t.mutation(api.learningPlans.savePreparationSchedule, {
+		learningPlanId: id,
+		revision: 0,
+		slots: [slot],
+	});
+	const first = (await t.query(api.learningPlans.getSnapshot, { id }))
+		?.sessions[0];
+	if (!first) throw Error("Missing first step");
+	await t.mutation(api.learningPlans.startSession, { sessionId: first.id });
+	await t.mutation(api.learningPlans.recordSessionOutcome, {
+		sessionId: first.id,
+		outcome: "completed",
+	});
+	const [entry] = await t.run((ctx) => ctx.db.query("dayEntries").take(10));
+	await t.mutation(api.dayEntries.remove, { id: entry._id });
+	const schedule = await t.query(api.learningPlans.getPreparationSchedule, {
+		learningPlanId: id,
+		now: { dateKey: "2026-10-05", minutes: 840 },
+	});
+	await t.mutation(api.learningPlans.savePreparationSchedule, {
+		learningPlanId: id,
+		revision: schedule.revision,
+		slots: [{ ...slot, dateKey: "2026-10-07", durationMinutes: 20 }],
+	});
+	const entries = await t.run((ctx) => ctx.db.query("dayEntries").take(10));
+	expect(entries).toHaveLength(1);
+	expect(entries[0]).toMatchObject({
+		dayKey: "2026-10-07",
+		durationMinutes: 20,
+	});
+	expect(
+		await t.run((ctx) => ctx.db.get("learningPlanSessions", first.id)),
+	).toMatchObject({ completed: true });
+});
+
+test("grouped calendar title and actual start/completion times survive repeated syncs", async () => {
+	const { t, id } = await setup();
+	await t.mutation(api.learningPlans.savePreparationSchedule, {
+		learningPlanId: id,
+		revision: 0,
+		slots: [slot],
+	});
+	const [initial] = await t.run((ctx) => ctx.db.query("dayEntries").take(10));
+	const startedAt = Date.now();
+	for (let i = 0; i < 3; i++) {
+		const next = (
+			await t.query(api.learningPlans.getSnapshot, { id })
+		)?.sessions.find((s) => s.planningStatus === "committed" && !s.completed);
+		if (!next) throw Error("Missing next step");
+		await t.mutation(api.learningPlans.startSession, { sessionId: next.id });
+		vi.setSystemTime(Date.now() + 60_000);
+		await t.mutation(api.learningPlans.recordSessionOutcome, {
+			sessionId: next.id,
+			outcome: "completed",
+		});
+		const entry = await t.run((ctx) => ctx.db.get("dayEntries", initial._id));
+		expect(entry).toMatchObject({ title: initial.title, startedAt });
+	}
+	const outcomeAt = Date.now();
+	vi.setSystemTime(Date.now() + 60_000);
+	await t.mutation(api.learningPlans.syncSessionsToCalendar, {
+		learningPlanId: id,
+	});
+	expect(
+		await t.run((ctx) => ctx.db.get("dayEntries", initial._id)),
+	).toMatchObject({
+		title: initial.title,
+		startedAt,
+		outcomeAt,
+		completed: true,
+	});
+});
+
+test("interrupted groups retain their start time while all steps are idle", async () => {
+	const { t, id } = await setup();
+	await t.mutation(api.learningPlans.savePreparationSchedule, {
+		learningPlanId: id,
+		revision: 0,
+		slots: [slot],
+	});
+	const first = (await t.query(api.learningPlans.getSnapshot, { id }))
+		?.sessions[0];
+	if (!first) throw Error("Missing first step");
+	const startedAt = Date.now();
+	await t.mutation(api.learningPlans.startSession, { sessionId: first.id });
+	vi.setSystemTime(Date.now() + 60_000);
+	await t.mutation(api.learningPlans.recordSessionOutcome, {
+		sessionId: first.id,
+		outcome: "partiallyCompleted",
+	});
+	const [entry] = await t.run((ctx) => ctx.db.query("dayEntries").take(10));
+	expect(entry.startedAt).toBe(startedAt);
+	expect(entry.outcomeAt).toBeUndefined();
+});
+
+test.each([
+	[undefined, 0, 0],
+	[60_000, 0, 0],
+	[-60_000, 0, 60],
+	[-60_000, 120, 120],
+])("outcome caps submitted time for start offset %s and preserves %s recorded seconds", async (offset, previous, expected) => {
+	const { t, id } = await setup();
+	const sessionId = await t.mutation(
+		api.learningPlans.startFlexiblePreparation,
+		{ learningPlanId: id },
+	);
+	await t.mutation(api.learningPlans.startSession, { sessionId });
+	await t.run((ctx) =>
+		ctx.db.patch("learningPlanSessions", sessionId, {
+			startedAt: offset === undefined ? undefined : Date.now() + offset,
+			activeStudySeconds: previous,
+		}),
+	);
+	await t.mutation(api.learningPlans.recordSessionOutcome, {
+		sessionId,
+		outcome: "partiallyCompleted",
+		activeStudySeconds: 999_999,
+	});
+	expect(
+		await t.run((ctx) => ctx.db.get("learningPlanSessions", sessionId)),
+	).toMatchObject({ activeStudySeconds: expected });
+});
+
+test("flexible budget counts only open required steps and clamps to zero", async () => {
+	const { t, id } = await setup();
+	const first = await t.mutation(api.learningPlans.startFlexiblePreparation, {
+		learningPlanId: id,
+	});
+	await t.mutation(api.learningPlans.startSession, { sessionId: first });
+	await t.mutation(api.learningPlans.recordSessionOutcome, {
+		sessionId: first,
+		outcome: "completed",
+	});
+	const args = {
+		learningPlanId: id,
+		now: { dateKey: "2026-10-05", minutes: 840 },
+	};
+	expect(
+		(await t.query(api.learningPlans.getPreparationSchedule, args))
+			.budgetMinutes,
+	).toBe(10);
+	await t.run((ctx) =>
+		ctx.db.patch("learningPlanSessions", first, {
+			additionalPractice: true,
+			preparationSlotId: undefined,
+			completed: false,
+		}),
+	);
+	expect(
+		(await t.query(api.learningPlans.getPreparationSchedule, args))
+			.budgetMinutes,
+	).toBe(10);
+	const open = await t.run((ctx) =>
+		ctx.db
+			.query("learningPlanSessions")
+			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+				q.eq("learningPlanId", id),
+			)
+			.take(500),
+	);
+	const flexible = open.find((s) => s.preparationSlotId === "flexible");
+	if (!flexible) throw Error("Missing flexible step");
+	await t.run((ctx) =>
+		ctx.db.patch("learningPlanSessions", flexible._id, {
+			durationMinutes: 240,
+		}),
+	);
+	expect(
+		(await t.query(api.learningPlans.getPreparationSchedule, args))
+			.budgetMinutes,
+	).toBe(0);
 });
