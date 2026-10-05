@@ -239,6 +239,15 @@ export default function PreparationScreen() {
 								</Text>
 							</View>
 						) : null}
+						<Button
+							variant="cancel"
+							className="border-primary/40 border-dashed"
+							disabled={busy || !snapshot}
+							onPress={add}
+						>
+							<Plus size={18} color="#00A0E6" />
+							<Text className="text-primary">Hinzufügen</Text>
+						</Button>
 					</>
 				)}
 			</ScreenScroll>
@@ -256,16 +265,6 @@ export default function PreparationScreen() {
 								{error}
 							</Text>
 						) : null}
-						<Button
-							variant="cancel"
-							className="border-primary/40 border-dashed"
-							disabled={busy || !snapshot}
-							onPress={add}
-						>
-							<Plus size={18} color="#00A0E6" />
-							<Text className="text-primary">Hinzufügen</Text>
-						</Button>
-
 						{!slots.length && snapshot?.plan.preparationState === "review" ? (
 							<Button disabled={busy} onPress={() => void startNow()}>
 								<Text>{budget === 0 ? "Abschließen" : "Jetzt lernen"}</Text>
