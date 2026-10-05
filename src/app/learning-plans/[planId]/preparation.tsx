@@ -2,6 +2,7 @@ import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import type { PreparationSlot } from "#convex/preparationSchedule";
@@ -14,6 +15,10 @@ import {
 import { ScreenHeader } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
 import { Pencil, Plus, Time04 } from "~/components/ui/icon";
+import {
+	PortraitContent,
+	useContentSizeLayout,
+} from "~/components/ui/portrait-content";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { PreparationAcceptAction } from "~/features/learning-plans/preparation-accept-action";
@@ -38,6 +43,10 @@ export default function PreparationScreen() {
 	const { planId } = useLocalSearchParams<{ planId: string }>();
 	const id = planId as Id<"learningPlans">;
 	const router = useRouter();
+	const insets = useSafeAreaInsets();
+	const { horizontalPadding } = useContentSizeLayout({
+		requestedHorizontalPadding: 32,
+	});
 	const { isAuthenticated } = useConvexAuth();
 	const [proposalTime] = useState(() => berlinNow());
 	const schedule = useQuery(
@@ -218,21 +227,8 @@ export default function PreparationScreen() {
 								))}
 							</View>
 						))}
-						<Button
-							variant="cancel"
-							className="mb-5 border-primary/40 border-dashed"
-							onPress={add}
-						>
-							<Plus size={18} color="#00A0E6" />
-							<Text className="text-primary">Hinzufügen</Text>
-						</Button>
 						{total < budget ? (
 							<Text className="mb-3 text-center font-poppins text-body-4 text-secondary-text">{`${durationLabel(budget - total)} weniger als empfohlen. Wir konzentrieren uns auf die wichtigsten Übungsschwerpunkte.`}</Text>
-						) : null}
-						{error ? (
-							<Text accessibilityRole="alert" className="mb-4 text-destructive">
-								{error}
-							</Text>
 						) : null}
 						{!slots.length && snapshot?.plan.preparationState === "review" ? (
 							<View className="mb-4 gap-3">
@@ -241,21 +237,51 @@ export default function PreparationScreen() {
 										? "Dein Wissenscheck deckt die empfohlene Vorbereitungszeit bereits ab. Du kannst danach freiwillig weiterlernen."
 										: "Gerade passt kein Lerntermin. Du kannst deinen Plan ohne feste Termine beginnen und später Zeiten ergänzen."}
 								</Text>
-								<Button disabled={busy} onPress={() => void startNow()}>
-									<Text>{budget === 0 ? "Abschließen" : "Jetzt lernen"}</Text>
-								</Button>
 							</View>
 						) : null}
-						<PreparationAcceptAction
-							plannedMinutes={total}
-							recommendedMinutes={budget}
-							busy={busy}
-							disabled={!slots.length}
-							onAccept={accept}
-						/>
 					</>
 				)}
 			</ScreenScroll>
+			{schedule ? (
+				<View
+					className="shrink-0 border-border border-t bg-background pt-3"
+					style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+				>
+					<PortraitContent
+						className="gap-3"
+						style={{ paddingHorizontal: horizontalPadding }}
+					>
+						{error ? (
+							<Text accessibilityRole="alert" className="text-destructive">
+								{error}
+							</Text>
+						) : null}
+						<Button
+							variant="cancel"
+							className="border-primary/40 border-dashed"
+							disabled={busy || !snapshot}
+							onPress={add}
+						>
+							<Plus size={18} color="#00A0E6" />
+							<Text className="text-primary">Hinzufügen</Text>
+						</Button>
+
+						{!slots.length && snapshot?.plan.preparationState === "review" ? (
+							<Button disabled={busy} onPress={() => void startNow()}>
+								<Text>{budget === 0 ? "Abschließen" : "Jetzt lernen"}</Text>
+							</Button>
+						) : (
+							<PreparationAcceptAction
+								plannedMinutes={total}
+								recommendedMinutes={budget}
+								busy={busy}
+								disabled={!slots.length}
+								onAccept={accept}
+							/>
+						)}
+					</PortraitContent>
+				</View>
+			) : null}
 			{editing && snapshot ? (
 				<PreparationSlotEditor
 					slot={editing}
