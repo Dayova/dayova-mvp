@@ -140,6 +140,15 @@ with a bordered card surface and theme text, preserving the approved light
 pill without making it a general-purpose CTA variant. See
 [the dashboard isolation contract](../../dashboard-main-isolation.md).
 
+Learning-time settings restore the personal-subject management pattern: muted
+weekday badges, bordered cards, a visible pencil, and swipe-to-delete with a
+text-only rounded action. The shared `destructive-outline` Button is a scoped
+management-action exception, not a new primary CTA: `danger-action` foreground
+and border on `danger-subtle` fill in both themes. It matches the independently
+introduced personal-subject variant in PR #816 without changing existing Button
+defaults. Screen readers retain a named delete action on the pencil. See
+[the restoration record](../../qa/learning-times-settings-restoration-2026-10-02.md).
+
 The empty timetable uses one full-width gradient import button and a full-width
 neutral manual-entry button. File and camera are equal sources inside the shared
 `ActionSheet`, following the school-material upload pattern. Use source rows
