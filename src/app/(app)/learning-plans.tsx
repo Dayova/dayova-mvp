@@ -20,6 +20,7 @@ import type { Id } from "#convex/_generated/dataModel";
 import { CreateTypePickerModal } from "~/components/create-type-picker-modal";
 import { BackButton, Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
+import { CreateEntryIcon } from "~/components/ui/create-entry-icon";
 import {
 	ArrowUpRight,
 	ClipboardEdit,
@@ -841,13 +842,13 @@ export default function LearningPlansScreen() {
 		>
 			<ThemedStatusBar />
 			<View
-				className="gap-6 px-6"
+				className="gap-6 px-6 pb-6"
+				// Use the same runtime safe-area offset as the current Today header.
 				style={{
-					paddingTop: Math.max(insets.top - 4, 32),
-					paddingBottom: 18,
+					paddingTop: insets.top + 16,
 				}}
 			>
-				<View className="mt-7 flex-row items-center justify-between">
+				<View className="min-h-12 flex-row items-center justify-between gap-6">
 					{returnTarget ? (
 						<BackButton
 							accessibilityLabel="Zurück zu Heute"
@@ -857,7 +858,10 @@ export default function LearningPlansScreen() {
 							}}
 						/>
 					) : null}
-					<Text className="font-poppins font-semibold text-heading-1 text-text">
+					<Text
+						accessibilityRole="header"
+						className="min-w-0 flex-1 font-poppins font-semibold text-heading-2 text-text"
+					>
 						Deine Pläne
 					</Text>
 
@@ -867,9 +871,9 @@ export default function LearningPlansScreen() {
 						accessibilityHint="Öffnet den Eintragserstellungsdialog, um entweder eine Prüfung oder Hausaufgabe zu erstellen."
 						activeOpacity={0.88}
 						onPress={openCreateTypePicker}
-						className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
+						className="h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border bg-card"
 					>
-						<Plus size={28} color={colors.text} strokeWidth={1.8} />
+						<CreateEntryIcon />
 					</TouchableOpacity>
 				</View>
 

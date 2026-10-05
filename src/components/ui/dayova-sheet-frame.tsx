@@ -53,6 +53,8 @@ type DayovaSheetFrameProps = {
 	// Native content is mounted and its opening animation has started: safe to
 	// focus an input without waiting for a second, serial keyboard animation.
 	onOpening?: () => void;
+	/** Shorten a controlled handoff; native onDismiss remains the completion gate. */
+	dismissDurationMs?: number;
 	title?: ReactNode;
 	description?: ReactNode;
 	children?: ReactNode;
@@ -88,6 +90,7 @@ function DayovaSheetFrame({
 	onClose,
 	onDismiss,
 	onOpening,
+	dismissDurationMs,
 	title,
 	description,
 	children,
@@ -177,14 +180,18 @@ function DayovaSheetFrame({
 		if (phaseRef.current === "opening" || phaseRef.current === "presented") {
 			phaseRef.current = "closing";
 			Keyboard.dismiss();
-			sheetRef.current?.dismiss();
+			if (dismissDurationMs === undefined) {
+				sheetRef.current?.dismiss();
+			} else {
+				sheetRef.current?.dismiss({ duration: dismissDurationMs });
+			}
 			return;
 		}
 
 		if (phaseRef.current === "closed") {
 			setIsNativeSheetActive(false);
 		}
-	}, [presentIfDesired, visible]);
+	}, [dismissDurationMs, presentIfDesired, visible]);
 
 	useEffect(
 		() => () => {
