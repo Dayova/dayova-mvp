@@ -84,7 +84,7 @@ proposals without storing them as personal availability. Plan creation must not
 require manual learning-time entry. A voluntary benefit explanation after the
 Wissenscheck replaces proposed intelligent routine/check-in workflows for this
 scope. This overrides the older bounded-duration statement below. See the
-[functional contract and acceptance sheet](../../../qa/pr-813-learning-times-functional.md)
+[functional contract and acceptance sheet](https://github.com/Dayova/dayova-mvp/blob/f5633529c492f1bd311846475cc1f317d631a4a7/docs/qa/pr-813-learning-times-functional.md)
 for precedence, fallback limits, sources and verification.
 
 The launch flow is ordered as follows:
