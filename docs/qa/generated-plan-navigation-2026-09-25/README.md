@@ -76,3 +76,32 @@ Current validation: three rendered navigation regression tests, TypeScript,
 targeted ESLint/Biome and diff checks passed. Independent Standards and Spec
 reviews found no blocking issues. The hook is mocked: these tests do not prove
 native navigation transition timing.
+
+## Integration check — 5 October 2026
+
+Current main `c33f3e64` was merged into the isolated PR head. The 13 targeted
+generation-navigation and shared navigation-guard tests passed. TypeScript,
+targeted ESLint and Biome passed. These tests do not replace native device
+acceptance. No new before/after device evidence was captured in this check.
+
+Pairwise Git merge checks against this updated PR found:
+
+- #813 (`e44ee6bc`): content conflict in `generating.tsx`.
+- #829 (`14392aa6`): no pairwise Git conflict.
+- #830 (`4cc7bfc0`): no pairwise Git conflict.
+- #837 (`91a8e42d`): no pairwise Git conflict.
+- #836 (`09334a28`): no pairwise Git conflict.
+- #835 (`62d5b990`): no pairwise Git conflict.
+- #824 (`91117fc9`): no pairwise Git conflict.
+
+#813 replaces the generation screen, removes its `useBackIntent` guard, and
+routes both generated and accepted plans to review before diagnostic preparation.
+The #747 patch targets the old guard. Do not resolve this by restoring the old
+screen over #813. Integration order must be settled before final device evidence:
+if #813 lands first, reassess whether #747 is superseded and port only useful
+regression coverage to the new flow. If #747 is needed first, validate the old
+flow on a device and reconcile #813 afterward.
+
+Pairwise clean merges are not a combined runtime acceptance or a guarantee of
+no semantic conflicts. Device verification of the final integrated flow remains
+open. Historical September screenshots above remain historical evidence only.
