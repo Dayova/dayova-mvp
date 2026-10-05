@@ -475,14 +475,6 @@ export default function NewLearningPlanScreen() {
 
 		setErrorMessage(null);
 		try {
-			const permission =
-				await ImagePicker.requestMediaLibraryPermissionsAsync();
-			if (!permission.granted) {
-				throw new Error(
-					"Erlaube den Zugriff auf deine Fotos, um Bilder aus deiner Galerie hochzuladen.",
-				);
-			}
-
 			const result = await ImagePicker.launchImageLibraryAsync({
 				mediaTypes: ["images"],
 				allowsEditing: false,
@@ -502,18 +494,27 @@ export default function NewLearningPlanScreen() {
 				"Die Fotos konnten nicht hochgeladen werden.",
 				async () => {
 					const preparedAssets = result.assets.map((asset, index) => {
-						const fallbackExtension =
-							asset.mimeType === "image/png"
-								? "png"
-								: asset.mimeType === "image/webp"
-									? "webp"
-									: "jpg";
+						const mimeType = asset.mimeType;
+						if (
+							mimeType !== "image/jpeg" &&
+							mimeType !== "image/png" &&
+							mimeType !== "image/webp"
+						) {
+							throw new Error(
+								"Dieser Bildtyp wird nicht unterstützt. Bitte nutze JPEG, PNG oder WebP.",
+							);
+						}
+						const fallbackExtension = {
+							"image/jpeg": "jpg",
+							"image/png": "png",
+							"image/webp": "webp",
+						}[mimeType];
 						return prepareUploadAsset({
 							uri: asset.uri,
 							name:
 								asset.fileName ??
 								`galerie-${Date.now()}-${index + 1}.${fallbackExtension}`,
-							mimeType: asset.mimeType ?? "image/jpeg",
+							mimeType,
 							size: asset.fileSize,
 						});
 					});

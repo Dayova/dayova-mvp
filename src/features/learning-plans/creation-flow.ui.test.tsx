@@ -31,7 +31,7 @@ const mockLaunchImageLibrary =
 			assets: Array<{
 				fileName: string | null;
 				fileSize: number;
-				mimeType: string;
+				mimeType: string | undefined;
 				uri: string;
 			}> | null;
 		}>
@@ -381,7 +381,8 @@ describe("exam creation across the topics boundary", () => {
 		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
 	});
 
-	test("uploads existing gallery photos through the learning-material pipeline", async () => {
+	test("uploads gallery photos without library-wide permission", async () => {
+		mockRequestMediaLibraryPermissions.mockResolvedValue({ granted: false });
 		mockParams = {
 			learningPlanId: "plan-1",
 			examDayEntryId: "exam-1",
@@ -422,6 +423,7 @@ describe("exam creation across the topics boundary", () => {
 		await waitFor(() => {
 			expect(mockRegisterUploadedDocument).toHaveBeenCalledTimes(2);
 		});
+		expect(mockRequestMediaLibraryPermissions).not.toHaveBeenCalled();
 		expect(mockLaunchImageLibrary).toHaveBeenCalledWith(
 			expect.objectContaining({
 				allowsMultipleSelection: true,
@@ -450,7 +452,11 @@ describe("exam creation across the topics boundary", () => {
 		);
 	});
 
-	test("keeps a denied gallery permission recoverable in the upload step", async () => {
+	test.each([
+		"image/heic",
+		"image/avif",
+		undefined,
+	])("rejects unsupported or unknown gallery MIME type %s before any upload", async (mimeType) => {
 		mockParams = {
 			learningPlanId: "plan-1",
 			examDayEntryId: "exam-1",
@@ -460,7 +466,23 @@ describe("exam creation across the topics boundary", () => {
 			plan: { topicDescription: "Zellteilung und Mitose" },
 			documents: [],
 		};
-		mockRequestMediaLibraryPermissions.mockResolvedValue({ granted: false });
+		mockLaunchImageLibrary.mockResolvedValue({
+			canceled: false,
+			assets: [
+				{
+					fileName: "valid.jpg",
+					fileSize: 1024,
+					mimeType: "image/jpeg",
+					uri: "file:///valid.jpg",
+				},
+				{
+					fileName: null,
+					fileSize: 1024,
+					mimeType,
+					uri: "file:///unsupported",
+				},
+			],
+		});
 
 		const screen = await render(<NewLearningPlanScreen />);
 		await fireEvent.press(
@@ -475,10 +497,12 @@ describe("exam creation across the topics boundary", () => {
 		await waitFor(() => {
 			expect(
 				screen.getByText(
-					"Erlaube den Zugriff auf deine Fotos, um Bilder aus deiner Galerie hochzuladen.",
+					"Dieser Bildtyp wird nicht unterstützt. Bitte nutze JPEG, PNG oder WebP.",
 				),
 			).toBeOnTheScreen();
 		});
-		expect(mockLaunchImageLibrary).not.toHaveBeenCalled();
+		expect(mockGenerateUploadUrl).not.toHaveBeenCalled();
+		expect(mockFetch).not.toHaveBeenCalled();
+		expect(mockRegisterUploadedDocument).not.toHaveBeenCalled();
 	});
 });
