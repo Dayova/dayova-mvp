@@ -14,6 +14,7 @@ import {
 	ActionSheet,
 	actionSheetIconColor,
 } from "~/components/ui/action-sheet";
+import { Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import { Attachment, ScanImage } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
@@ -36,6 +37,7 @@ import {
 	MaterialUploadStep,
 	RequiredTopicsStep,
 } from "~/features/learning-plans/learning-plan-setup-steps";
+import { MaterialUpdatePanel } from "~/features/learning-plans/material-update-panel";
 import type {
 	LearningPlanSnapshot,
 	UploadAsset,
@@ -107,6 +109,12 @@ export default function NewLearningPlanScreen() {
 		api.learningPlans.registerUploadedDocument,
 	);
 	const removeDocument = useMutation(api.learningPlans.removeDocument);
+	const applyMaterialChanges = useAction(
+		api.learningPlanAi.applyMaterialChanges,
+	);
+	const [isApplyingMaterial, setIsApplyingMaterial] = useState(false);
+	const [materialResult, setMaterialResult] = useState<string | null>(null);
+	const materialActionGateRef = useRef(createAsyncActionGate());
 
 	const subject = params.subject?.trim() || "Fach";
 	const personalSubjectId = params.personalSubjectId as
@@ -162,6 +170,25 @@ export default function NewLearningPlanScreen() {
 	const snapshot = snapshotResult ?? null;
 	const canWrite = Boolean(user && isConvexAuthenticated);
 	const topics = topicsInput ?? snapshot?.plan.topicDescription ?? "";
+	const materialPending =
+		(snapshot?.plan.materialRevision ?? 0) >
+		(snapshot?.plan.appliedMaterialRevision ?? 0);
+	const [materialClock, setMaterialClock] = useState(() => Date.now());
+	useEffect(() => {
+		const startedAt = snapshot?.plan.materialUpdateStartedAt;
+		if (!startedAt) return;
+		const timer = setTimeout(
+			() => setMaterialClock(Date.now()),
+			Math.max(0, startedAt + 11 * 60_000 - Date.now()) + 100,
+		);
+		return () => clearTimeout(timer);
+	}, [snapshot?.plan.materialUpdateStartedAt]);
+	const materialUpdating =
+		isApplyingMaterial ||
+		Boolean(
+			snapshot?.plan.materialUpdateStartedAt &&
+				materialClock - snapshot.plan.materialUpdateStartedAt < 11 * 60_000,
+		);
 	const canEditTopics =
 		snapshot?.plan.status === "draft" ||
 		snapshot?.plan.status === "questionsReady";
@@ -661,6 +688,28 @@ export default function NewLearningPlanScreen() {
 		setExitApproved(true);
 	};
 	usePreventRemove(isEditing && canWrite && !exitApproved, requestEditExit);
+	const applyMaterial = async () => {
+		if (!learningPlanId || !canWrite || isBusy || materialUpdating) return;
+		await materialActionGateRef.current.run(async () => {
+			setIsApplyingMaterial(true);
+			setMaterialResult(null);
+			try {
+				await runWithErrorHandling(
+					"Die Materialänderungen konnten nicht berücksichtigt werden.",
+					async () => {
+						const result = await applyMaterialChanges({ learningPlanId });
+						setMaterialResult(
+							result.updatedSessionCount > 0
+								? `${result.updatedSessionCount} noch nicht begonnene Lernblöcke wurden aktualisiert. Begonnene Inhalte und Termine bleiben erhalten.`
+								: "Das Material ist für künftig erzeugte Lerninhalte berücksichtigt. Es gab keine noch nicht begonnenen Lernblöcke zu aktualisieren.",
+						);
+					},
+				);
+			} finally {
+				setIsApplyingMaterial(false);
+			}
+		});
+	};
 	const saveEdits = async () => {
 		if (
 			!canWrite ||
@@ -735,12 +784,49 @@ export default function NewLearningPlanScreen() {
 					errorMessage={errorMessage}
 					onCancel={requestEditExit}
 					onSave={() => void saveEdits()}
+					footer={
+						snapshot?.plan.status === "accepted" ? (
+							<View className="flex-1 gap-2">
+								{materialPending || materialUpdating ? (
+									<>
+										<Button
+											onPress={() => void applyMaterial()}
+											disabled={!canWrite || isBusy || materialUpdating}
+											accessibilityLabel="Für weiteres Lernen berücksichtigen"
+											accessibilityState={{ busy: materialUpdating }}
+										>
+											{materialUpdating ? (
+												<ActivityIndicator color="#FFFFFF" />
+											) : (
+												<Text className="shrink text-center">
+													Für weiteres Lernen berücksichtigen
+												</Text>
+											)}
+										</Button>
+										<Button variant="link" onPress={requestEditExit}>
+											<Text>
+												{materialUpdating
+													? "Schließen – Aktualisierung läuft weiter"
+													: "Später"}
+											</Text>
+										</Button>
+									</>
+								) : (
+									<Button onPress={requestEditExit}>
+										<Text>Fertig</Text>
+									</Button>
+								)}
+							</View>
+						) : undefined
+					}
 				>
 					<View className="gap-3">
-						<Text className="text-body-3 text-secondary-text">
-							Hochgeladenes oder entferntes Material wird sofort gespeichert.
-							Abbrechen verwirft nur ungespeicherte Themenänderungen.
-						</Text>
+						{snapshot?.plan.status !== "accepted" ? (
+							<Text className="text-body-3 text-secondary-text">
+								Hochgeladenes oder entferntes Material wird sofort gespeichert.
+								Abbrechen verwirft nur ungespeicherte Themenänderungen.
+							</Text>
+						) : null}
 						<MaterialUploadStep
 							canUpload={canUpload}
 							canContinue={false}
@@ -756,6 +842,18 @@ export default function NewLearningPlanScreen() {
 							showSkip={false}
 							showActions={false}
 						/>
+						{snapshot?.plan.status === "accepted" ? (
+							<MaterialUpdatePanel
+								showAction={false}
+								pending={materialPending}
+								busy={materialUpdating}
+								error={snapshot.plan.materialUpdateError}
+								additionalMinutes={snapshot.plan.materialAdditionalMinutes}
+								uncoveredTopics={snapshot.plan.materialUncoveredTopics}
+								result={materialResult}
+								onApply={() => void applyMaterial()}
+							/>
+						) : null}
 					</View>
 				</LearningPlanEditor>
 			) : (

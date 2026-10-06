@@ -17,8 +17,25 @@ const mockCreateEntry = jest.fn<() => Promise<string>>();
 const mockUpdateEntry = jest.fn<() => Promise<void>>();
 const mockCapture = jest.fn();
 const mockAvailability = { status: "available" };
+const mockApplyMaterial =
+	jest.fn<
+		() => Promise<{
+			updatedSessionCount: number;
+			preservedSessionCount: number;
+			additionalMinutes: number;
+		}>
+	>();
 let mockSnapshot:
-	| { plan: { topicDescription: string; status?: string }; documents: never[] }
+	| {
+			plan: {
+				topicDescription: string;
+				status?: string;
+				materialRevision?: number;
+				appliedMaterialRevision?: number;
+				materialUpdateStartedAt?: number;
+			};
+			documents: never[];
+	  }
 	| null
 	| undefined;
 let mockPauseVisible = false;
@@ -58,7 +75,15 @@ jest.mock("convex/react", () => ({
 			? mockCreateEntry
 			: mockUpdateEntry;
 	},
-	useAction: () => jest.fn(),
+	useAction: (reference: unknown) => {
+		const { getFunctionName } =
+			jest.requireActual<typeof import("convex/server")>("convex/server");
+		return getFunctionName(
+			reference as Parameters<typeof getFunctionName>[0],
+		) === "learningPlanAi:applyMaterialChanges"
+			? mockApplyMaterial
+			: jest.fn();
+	},
 }));
 jest.mock("expo-router", () => ({
 	useRouter: () => mockRouter,
@@ -428,7 +453,7 @@ describe("editing from a learning-plan card", () => {
 		};
 		const screen = await render(<NewLearningPlanScreen />);
 		expect(screen.queryByLabelText("Prüfungsthemen")).toBeNull();
-		await fireEvent.press(screen.getByRole("button", { name: "Speichern" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Fertig" }));
 		expect(mockUpdateEntry).not.toHaveBeenCalled();
 		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans");
 	});
@@ -593,5 +618,67 @@ describe("continuing a paused creation", () => {
 			expect(mockPreventRemove()).toBe(false);
 		});
 		expect(mockRouter.dismissTo).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("accepted-plan material updates", () => {
+	test("applies material explicitly without saving topics or leaving the editor", async () => {
+		mockParams = { learningPlanId: "plan-1", mode: "edit" };
+		mockSnapshot = {
+			plan: {
+				topicDescription: "Gleichungen und Brüche",
+				status: "accepted",
+				materialRevision: 2,
+				appliedMaterialRevision: 1,
+			},
+			documents: [],
+		};
+		mockApplyMaterial.mockResolvedValueOnce({
+			updatedSessionCount: 2,
+			preservedSessionCount: 1,
+			additionalMinutes: 0,
+		});
+		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: "Für weiteres Lernen berücksichtigen",
+			}),
+		);
+		expect(mockApplyMaterial).toHaveBeenCalledWith({
+			learningPlanId: "plan-1",
+		});
+		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+		expect(mockUpdateEntry).not.toHaveBeenCalled();
+	});
+	test("expired update locks become retryable without leaving the editor", async () => {
+		jest.useFakeTimers();
+		try {
+			mockParams = { learningPlanId: "plan-1", mode: "edit" };
+			mockSnapshot = {
+				plan: {
+					topicDescription: "Gleichungen und Brüche",
+					status: "accepted",
+					materialRevision: 2,
+					materialUpdateStartedAt: Date.now() - 11 * 60_000 + 500,
+				},
+				documents: [],
+			};
+			const screen = await render(<NewLearningPlanScreen />);
+			expect(
+				screen.getByRole("button", {
+					name: "Für weiteres Lernen berücksichtigen",
+				}),
+			).toBeDisabled();
+			await act(async () => {
+				jest.advanceTimersByTime(700);
+			});
+			expect(
+				screen.getByRole("button", {
+					name: "Für weiteres Lernen berücksichtigen",
+				}),
+			).toBeEnabled();
+		} finally {
+			jest.useRealTimers();
+		}
 	});
 });

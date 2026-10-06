@@ -621,6 +621,8 @@ type LearningPlanAiContext = {
 
 type LearningSessionContentAiContext = {
 	plan: LearningPlanAiContext["plan"] & {
+		materialRevision?: number;
+		appliedMaterialRevision?: number;
 		sourceSummary?: string;
 		insight?: {
 			summary: string;
@@ -672,6 +674,7 @@ type LearningSessionContentAiContext = {
 		evidenceDimension?: "understanding" | "problemSolving" | "independent";
 	}>;
 	priorCoverageKeys: string[];
+	expectedContent?: string;
 	existingItemCount: number;
 	hasTheoryKnowledgeCheck: boolean;
 	hasCompleteTheoryPracticePairs: boolean;
@@ -2126,16 +2129,36 @@ const generateSessionContent = async (
 	sessionId: Id<"learningPlanSessions">,
 	preparedDocuments?: PreparedModelDocuments,
 	includePriorContent = true,
+	materialUpdate?: {
+		context: LearningSessionContentAiContext;
+		capture: (items: GeneratedSessionContentInput[]) => void;
+		signal?: AbortSignal;
+	},
 ): Promise<{ itemCount: number }> => {
-	const context: LearningSessionContentAiContext = await ctx.runQuery(
-		internal.learningSessionContent.getSessionGenerationContext,
-		{ sessionId, includePriorContent },
-	);
+	const context: LearningSessionContentAiContext =
+		materialUpdate?.context ??
+		(await ctx.runQuery(
+			internal.learningSessionContent.getSessionGenerationContext,
+			{ sessionId, includePriorContent },
+		));
 
-	if (context.existingItemCount > 0 && !context.needsLegacyContentReplacement) {
+	if (
+		!materialUpdate &&
+		context.existingItemCount > 0 &&
+		!context.needsLegacyContentReplacement
+	) {
 		return { itemCount: context.existingItemCount };
 	}
 
+	if (
+		!materialUpdate &&
+		(context.plan.materialRevision ?? 0) >
+			(context.plan.appliedMaterialRevision ?? 0)
+	) {
+		throwUserFacingError(
+			"Berücksichtige zuerst die Materialänderungen unter Lernplan bearbeiten.",
+		);
+	}
 	const replaceExisting = context.needsLegacyContentReplacement;
 
 	try {
@@ -2256,7 +2279,9 @@ ${personalLearningTimes}`,
 									6_000,
 									800 + block.questions.length * 1_000,
 								),
-								abortSignal,
+								abortSignal: materialUpdate?.signal
+									? AbortSignal.any([abortSignal, materialUpdate.signal])
+									: abortSignal,
 								providerOptions: vertexProviderOptions,
 								output: Output.object({ schema: blockSchema }),
 								system: theoryGenerationSystemInstruction(attempt),
@@ -2308,7 +2333,9 @@ ${personalLearningTimes}`,
 								4_000,
 								500 + block.questions.length * 550,
 							),
-							abortSignal,
+							abortSignal: materialUpdate?.signal
+								? AbortSignal.any([abortSignal, materialUpdate.signal])
+								: abortSignal,
 							providerOptions: vertexProviderOptions,
 							output: Output.object({ schema: blockSchema }),
 							system: `Du bist ein praxisnaher Lerncoach. Erstelle natürliche, konkrete Aufgaben, die der Schüler ohne Entschlüsseln einer Meta-Anweisung direkt bearbeiten kann. Gib bei Rechen- oder Anwendungsaufgaben alle nötigen Werte und Bedingungen an. Frage pro Aufgabe genau eine Leistung ab. Zitiere keine andere Aufgabenformulierung, verwende keine internen Labels wie „Variante 1“ und schreibe nie Konstruktionen wie „Erkläre deinen Lösungsweg zu …“. Halte die vorgegebene Reihenfolge, Antwortmodi und individuellen Zeitbudgets ein. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
@@ -2338,6 +2365,10 @@ ${personalLearningTimes}`,
 			generatedItems.push(...generatedTasks);
 		}
 
+		if (materialUpdate) {
+			materialUpdate.capture(generatedItems);
+			return { itemCount: generatedItems.length };
+		}
 		return await ctx.runMutation(
 			internal.learningSessionContent.storeGeneratedSessionContent,
 			{
@@ -2419,6 +2450,14 @@ const generateSessionContentBatch = async (
 	}
 
 	const plannedSessions = contexts.map((context) => {
+		if (
+			(context.plan.materialRevision ?? 0) >
+			(context.plan.appliedMaterialRevision ?? 0)
+		) {
+			throwUserFacingError(
+				"Berücksichtige zuerst die Materialänderungen unter Lernplan bearbeiten.",
+			);
+		}
 		if (
 			context.existingItemCount > 0 &&
 			!context.needsLegacyContentReplacement
@@ -3520,6 +3559,210 @@ MVP-Vorgabe:
 				internal.learningPlans.clearEmptyContentGeneration,
 				{ learningPlanId: args.learningPlanId, generationId },
 			);
+			throw error;
+		}
+	},
+});
+
+export const materialReplacementContext = (
+	original: LearningSessionContentAiContext,
+	topics: LearningTopic[],
+	sourceSummary: string,
+	preparedItems: GeneratedSessionContentInput[],
+): LearningSessionContentAiContext => ({
+	...original,
+	plan: { ...original.plan, sourceSummary, topicMap: topics },
+	session: {
+		...original.session,
+		targetTopicIds: topics.map((topic) => topic.id),
+	},
+	priorCoverageKeys: [
+		...original.priorCoverageKeys,
+		...preparedItems.flatMap((item) =>
+			item.coverageKey ? [item.coverageKey] : [],
+		),
+	],
+	priorSessionItems: [
+		...original.priorSessionItems,
+		...preparedItems.map((item) => ({
+			prompt: item.prompt,
+			coverageKey: item.coverageKey,
+		})),
+	],
+	priorTheoryCards: [
+		...original.priorTheoryCards,
+		...preparedItems
+			.filter((item) => item.kind === "learnCard")
+			.map((item) => ({
+				front: item.front ?? item.prompt,
+				back: item.back ?? item.idealAnswer,
+			})),
+	],
+});
+
+/** Prepare replacements off to the side; publish only once every generation succeeded. */
+export const applyMaterialChanges = action({
+	args: { learningPlanId: v.id("learningPlans") },
+	returns: v.object({
+		updatedSessionCount: v.number(),
+		preservedSessionCount: v.number(),
+		additionalMinutes: v.number(),
+	}),
+	handler: async (
+		ctx,
+		args,
+	): Promise<{
+		updatedSessionCount: number;
+		preservedSessionCount: number;
+		additionalMinutes: number;
+	}> => {
+		await ctx.runQuery(internal.aiConsent.requireCurrentConsent, {});
+		const updateId = crypto.randomUUID();
+		const deadline = AbortSignal.timeout(8 * 60_000);
+		const claim = await ctx.runMutation(
+			internal.learningPlanMaterialUpdates.claim,
+			{ ...args, updateId },
+		);
+		try {
+			const planContext: LearningPlanAiContext = await ctx.runQuery(
+				internal.learningPlans.getAiContext,
+				args,
+			);
+			const prepared = await buildModelInputFromDocuments(
+				ctx,
+				planContext.documents,
+				planContext.accessKey,
+			);
+			const contexts: LearningSessionContentAiContext[] = [];
+			for (const sessionId of claim.sessionIds) {
+				contexts.push(
+					await ctx.runQuery(
+						internal.learningSessionContent.getSessionGenerationContext,
+						{ sessionId, excludePriorSessionIds: claim.sessionIds },
+					),
+				);
+			}
+			const availableMinutes = contexts.reduce(
+				(sum, context) => sum + context.session.durationMinutes,
+				0,
+			);
+			const analysisSchema = questionsSchema
+				.pick({ sourceSummary: true, topics: true })
+				.extend({
+					additionalMinutes: z
+						.number()
+						.int()
+						.min(0)
+						.max(600)
+						.describe(
+							"Zusätzlich zu den vorhandenen, noch nicht begonnenen Lernminuten empfohlene Zeit. 0 wenn diese ausreichen.",
+						),
+				});
+			const analysis = await withGeneratedTextRetry(async (attempt) => {
+				const result = await runLlmGeneration((abortSignal) =>
+					generateText({
+						model: createVertexModel()(FLASH_MODEL_ID),
+						temperature: 0.15,
+						maxOutputTokens: 5000,
+						abortSignal: AbortSignal.any([abortSignal, deadline]),
+						providerOptions: vertexProviderOptions,
+						output: Output.object({ schema: analysisSchema }),
+						system: `Analysiere geänderte Schulunterlagen für das weitere Lernen. Bestehende Prüfungsthemen bleiben maßgeblich. Verwende für bestehende Themen exakt deren bisherige IDs; erfinde keine neue ID für dasselbe Thema. Erhalte vorhandene Lernstandsnachweise. Entfernte Unterlagen dürfen nicht als aktuelle Quelle behandelt werden. Wenn keine Unterlagen vorhanden sind, benutze ausschließlich die Prüfungsthemen und kennzeichne die fehlende Materialgrundlage in der Zusammenfassung. Schlage zusätzliche Lernzeit nur bei fachlich begründetem Mehrbedarf vor. Antworte im JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
+						messages: [
+							{
+								role: "user",
+								content: [
+									{
+										type: "text",
+										text: `${buildBaseContext(planContext)}\nBisherige Themen und stabile IDs: ${JSON.stringify(planContext.plan.topicMap ?? [])}\nBisheriger Lernstand: ${JSON.stringify(planContext.plan.topicReadiness ?? [])}\nNoch nicht begonnene Lernzeit: ${availableMinutes} Minuten.\nAktuelle Unterlagen (${planContext.documents.length}): ${prepared.sourceContext}`,
+									},
+									...prepared.fileParts,
+								],
+							},
+						],
+					}),
+				);
+				await recordAiUsage(ctx, {
+					learningPlanId: args.learningPlanId,
+					operation: "plan",
+					modelId: FLASH_MODEL_ID,
+					usage: result.usage,
+				});
+				return {
+					...result.output,
+					sourceSummary: normalizeAiGeneratedGermanText(
+						result.output.sourceSummary,
+					),
+					topics: normalizeLearningTopics(result.output.topics),
+				};
+			}, "Das geänderte Material konnte nicht analysiert werden.");
+			const existingTopics = planContext.plan.topicMap ?? [];
+			const topics = analysis.topics.map((topic) => {
+				const previous = existingTopics.find(
+					(old) =>
+						old.id === topic.id ||
+						old.title.toLocaleLowerCase("de") ===
+							topic.title.toLocaleLowerCase("de"),
+				);
+				return previous ? { ...topic, id: previous.id } : topic;
+			});
+			if (
+				new Set([...existingTopics, ...topics].map((topic) => topic.id)).size >
+				MAX_LEARNING_TOPIC_COUNT
+			) {
+				throwUserFacingError(
+					"Die neuen Themen überschreiten den Umfang dieses Lernplans. Erstelle dafür einen weiteren Lernplan.",
+				);
+			}
+			const generated = [];
+			for (const original of contexts) {
+				deadline.throwIfAborted();
+				if (original.expectedContent === undefined)
+					throw new Error("Missing material update snapshot");
+				let items: GeneratedSessionContentInput[] = [];
+				await generateSessionContent(
+					ctx,
+					original.session._id,
+					prepared,
+					true,
+					{
+						context: materialReplacementContext(
+							original,
+							topics,
+							analysis.sourceSummary,
+							generated.flatMap((session) => session.items),
+						),
+						signal: deadline,
+						capture: (result) => {
+							items = result;
+						},
+					},
+				);
+				generated.push({
+					sessionId: original.session._id,
+					expectedSession: JSON.stringify(original.session),
+					expectedContent: original.expectedContent,
+					items,
+				});
+			}
+			deadline.throwIfAborted();
+			return await ctx.runMutation(
+				internal.learningPlanMaterialUpdates.finish,
+				{
+					...args,
+					updateId,
+					revision: claim.revision,
+					sourceSummary: analysis.sourceSummary,
+					topics,
+					additionalMinutes: analysis.additionalMinutes,
+					sessions: generated,
+				},
+			);
+		} catch (error) {
+			await ctx.runMutation(internal.learningPlanMaterialUpdates.fail, {
+				...args,
+				updateId,
+			});
 			throw error;
 		}
 	},

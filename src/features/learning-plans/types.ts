@@ -193,6 +193,12 @@ export type LearningPlanSnapshot = {
 		teacherGuidance?: string;
 		notes?: string;
 		status: "draft" | "questionsReady" | "generated" | "accepted";
+		materialRevision?: number;
+		appliedMaterialRevision?: number;
+		materialUpdateStartedAt?: number;
+		materialAdditionalMinutes?: number;
+		materialUncoveredTopics?: string[];
+		materialUpdateError?: string;
 		knowledgeQuestions: QuizQuestion[];
 		sourceSummary?: string;
 		topicMap: Array<{

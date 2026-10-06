@@ -22,6 +22,7 @@ export function LearningPlanEditor({
 	onCancel,
 	onSave,
 	children,
+	footer,
 }: {
 	topics: string;
 	onChangeTopics: (value: string) => void;
@@ -34,6 +35,7 @@ export function LearningPlanEditor({
 	onCancel: () => void;
 	onSave: () => void;
 	children: ReactNode;
+	footer?: ReactNode;
 }) {
 	const insets = useSafeAreaInsets();
 	const { horizontalPadding, usableWidth } = useContentSizeLayout();
@@ -102,45 +104,49 @@ export function LearningPlanEditor({
 					paddingBottom: Math.max(insets.bottom, 20),
 				}}
 			>
-				<Button
-					variant="cancel"
-					className="min-h-16 min-w-0 px-3 py-4"
-					style={{ width: actionWidth }}
-					onPress={onCancel}
-					accessibilityLabel="Abbrechen"
-				>
-					<Text
-						className="min-w-0 shrink text-center"
-						numberOfLines={1}
-						adjustsFontSizeToFit
-					>
-						Abbrechen
-					</Text>
-				</Button>
-				{!isLoading && !isMissing ? (
-					<Button
-						className="min-h-16 min-w-0 px-3 py-4"
-						style={{ width: actionWidth }}
-						disabled={!canSave || isBusy}
-						accessibilityLabel={
-							isBusy ? "Speichern, wird geladen" : "Speichern"
-						}
-						accessibilityState={{ busy: isBusy }}
-						onPress={onSave}
-					>
-						{isBusy ? (
-							<ActivityIndicator color="#FFFFFF" />
-						) : (
+				{footer ?? (
+					<>
+						<Button
+							variant="cancel"
+							className="min-h-16 min-w-0 px-3 py-4"
+							style={{ width: actionWidth }}
+							onPress={onCancel}
+							accessibilityLabel="Abbrechen"
+						>
 							<Text
 								className="min-w-0 shrink text-center"
 								numberOfLines={1}
 								adjustsFontSizeToFit
 							>
-								Speichern
+								Abbrechen
 							</Text>
-						)}
-					</Button>
-				) : null}
+						</Button>
+						{!isLoading && !isMissing ? (
+							<Button
+								className="min-h-16 min-w-0 px-3 py-4"
+								style={{ width: actionWidth }}
+								disabled={!canSave || isBusy}
+								accessibilityLabel={
+									isBusy ? "Speichern, wird geladen" : "Speichern"
+								}
+								accessibilityState={{ busy: isBusy }}
+								onPress={onSave}
+							>
+								{isBusy ? (
+									<ActivityIndicator color="#FFFFFF" />
+								) : (
+									<Text
+										className="min-w-0 shrink text-center"
+										numberOfLines={1}
+										adjustsFontSizeToFit
+									>
+										Speichern
+									</Text>
+								)}
+							</Button>
+						) : null}
+					</>
+				)}
 			</PortraitContent>
 		</>
 	);

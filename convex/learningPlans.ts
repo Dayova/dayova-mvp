@@ -1243,6 +1243,12 @@ export const getSnapshot = query({
 				teacherGuidance: plan.teacherGuidance,
 				notes: plan.notes,
 				status: plan.status,
+				materialRevision: plan.materialRevision ?? 0,
+				appliedMaterialRevision: plan.appliedMaterialRevision ?? 0,
+				materialUpdateStartedAt: plan.materialUpdateStartedAt,
+				materialAdditionalMinutes: plan.materialAdditionalMinutes,
+				materialUncoveredTopics: plan.materialUncoveredTopics,
+				materialUpdateError: plan.materialUpdateError,
 				knowledgeQuestions: (plan.knowledgeQuestions ?? []).map(publicQuestion),
 				diagnosticPlacement: plan.diagnosticPlacement,
 				sourceSummary: plan.sourceSummary,
@@ -1596,6 +1602,13 @@ export const storeUploadedDocument = internalMutation({
 			createdAt: now,
 		});
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
+		if (plan?.status === "accepted") {
+			await ctx.db.patch("learningPlans", plan._id, {
+				materialRevision: (plan.materialRevision ?? 0) + 1,
+				materialUpdateError: undefined,
+				materialAdditionalMinutes: undefined,
+			});
+		}
 		if (plan && plan.status !== "accepted" && args.sourceKind === "school") {
 			await invalidateDerivedExamEvidence(ctx, args.learningPlanId, now);
 		}
@@ -1668,6 +1681,13 @@ export const removeDocument = mutation({
 		});
 		await ctx.db.delete("learningPlanDocuments", args.id);
 		const plan = await ctx.db.get("learningPlans", document.learningPlanId);
+		if (plan?.status === "accepted") {
+			await ctx.db.patch("learningPlans", plan._id, {
+				materialRevision: (plan.materialRevision ?? 0) + 1,
+				materialUpdateError: undefined,
+				materialAdditionalMinutes: undefined,
+			});
+		}
 		if (
 			plan &&
 			plan.status !== "accepted" &&
