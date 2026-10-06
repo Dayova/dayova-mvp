@@ -6,9 +6,10 @@ const mockPush = jest.fn();
 const mockRemove = jest.fn();
 type GestureCallbacks = Record<
 	string,
-	(event?: { translationX: number }) => void
+	(event?: { translationX: number; translationY?: number }) => void
 >;
 let mockPan: GestureCallbacks;
+let mockSpringInFlight = false;
 
 jest.mock(
 	"~/components/ui/icon",
@@ -111,8 +112,8 @@ jest.mock("react-native-reanimated", () => {
 			_config: unknown,
 			finished?: (done: boolean) => void,
 		) => {
-			finished?.(true);
-			return value;
+			if (!mockSpringInFlight) finished?.(true);
+			return mockSpringInFlight ? -20 : value;
 		},
 	};
 });
@@ -155,13 +156,14 @@ async function swipe(distance: number) {
 		mockPan.onStart?.();
 		mockPan.onUpdate?.({ translationX: distance });
 		mockPan.onEnd?.();
-		mockPan.onFinalize?.();
+		mockPan.onFinalize?.({ translationX: distance, translationY: 0 });
 	});
 }
 
 beforeEach(() => {
 	mockPush.mockClear();
 	mockRemove.mockClear();
+	mockSpringInFlight = false;
 });
 
 describe("learning plan swipe navigation", () => {
@@ -169,7 +171,7 @@ describe("learning plan swipe navigation", () => {
 		const screen = await render(<LearningPlansScreen />);
 		await act(() => {
 			mockPan.onBegin?.();
-			mockPan.onFinalize?.();
+			mockPan.onFinalize?.({ translationX: 0, translationY: 0 });
 		});
 		await fireEvent.press(screen.getByRole("button", { name: /^Mathematik,/ }));
 		expect(mockPush).toHaveBeenCalledTimes(1);
@@ -188,7 +190,7 @@ describe("learning plan swipe navigation", () => {
 		const screen = await render(<LearningPlansScreen />);
 		await act(() => {
 			mockPan.onBegin?.();
-			mockPan.onFinalize?.();
+			mockPan.onFinalize?.({ translationX: 0, translationY: 0 });
 		});
 		expect(
 			screen.queryByRole("button", { name: "Lernplan bearbeiten" }),
@@ -204,7 +206,7 @@ describe("learning plan swipe navigation", () => {
 		await fireEvent.press(screen.getByRole("button", { name: /^Mathematik,/ }));
 		await act(() => {
 			mockPan.onBegin?.();
-			mockPan.onFinalize?.();
+			mockPan.onFinalize?.({ translationX: 0, translationY: 0 });
 		});
 		await fireEvent.press(screen.getByRole("button", { name: /^Mathematik,/ }));
 		expect(mockPush).toHaveBeenCalledTimes(1);
@@ -215,7 +217,7 @@ describe("learning plan swipe navigation", () => {
 		await swipe(-80);
 		await act(() => {
 			mockPan.onBegin?.();
-			mockPan.onFinalize?.();
+			mockPan.onFinalize?.({ translationX: 0, translationY: 0 });
 		});
 		await fireEvent.press(screen.getByRole("button", { name: /^Mathematik,/ }));
 		expect(mockPush).not.toHaveBeenCalled();
@@ -224,7 +226,7 @@ describe("learning plan swipe navigation", () => {
 		).toBeNull();
 		await act(() => {
 			mockPan.onBegin?.();
-			mockPan.onFinalize?.();
+			mockPan.onFinalize?.({ translationX: 0, translationY: 0 });
 		});
 		await fireEvent.press(screen.getByRole("button", { name: /^Mathematik,/ }));
 		expect(mockPush).toHaveBeenCalledTimes(1);
@@ -236,6 +238,62 @@ describe("learning plan swipe navigation", () => {
 		await swipe(104);
 		await fireEvent.press(screen.getByRole("button", { name: /^Mathematik,/ }));
 		expect(mockPush).not.toHaveBeenCalled();
+	});
+
+	test.each([
+		0, -20,
+	])("does not open after a vertical drag fails the horizontal pan (%s-point X movement)", async (translationX) => {
+		const screen = await render(<LearningPlansScreen />);
+		await act(() => {
+			mockPan.onBegin?.();
+			mockPan.onFinalize?.({ translationX, translationY: -100 });
+		});
+		await fireEvent.press(screen.getByRole("button", { name: /^Mathematik,/ }));
+		expect(mockPush).not.toHaveBeenCalled();
+		expect(
+			screen.queryByRole("button", { name: "Lernplan bearbeiten" }),
+		).toBeNull();
+	});
+
+	test("opens on a fresh tap while a short swipe is still snapping back", async () => {
+		const screen = await render(<LearningPlansScreen />);
+		mockSpringInFlight = true;
+		await swipe(-20);
+		await fireEvent.press(screen.getByRole("button", { name: /^Mathematik,/ }));
+		expect(mockPush).not.toHaveBeenCalled();
+		await act(() => {
+			mockPan.onBegin?.();
+			mockPan.onFinalize?.({ translationX: 0, translationY: 0 });
+		});
+		await fireEvent.press(screen.getByRole("button", { name: /^Mathematik,/ }));
+		expect(mockPush).toHaveBeenCalledTimes(1);
+	});
+
+	test("accessibility activation opens after a short swipe without a new touch", async () => {
+		const screen = await render(<LearningPlansScreen />);
+		await swipe(-20);
+		const card = screen.getByRole("button", { name: /^Mathematik,/ });
+		await fireEvent(card, "accessibilityAction", {
+			nativeEvent: { actionName: "activate" },
+		});
+		expect(mockPush).toHaveBeenCalledTimes(1);
+	});
+
+	test("accessibility activation closes open actions before opening the plan", async () => {
+		const screen = await render(<LearningPlansScreen />);
+		await swipe(-80);
+		const card = screen.getByRole("button", { name: /^Mathematik,/ });
+		await fireEvent(card, "accessibilityAction", {
+			nativeEvent: { actionName: "activate" },
+		});
+		expect(mockPush).not.toHaveBeenCalled();
+		expect(
+			screen.queryByRole("button", { name: "Lernplan bearbeiten" }),
+		).toBeNull();
+		await fireEvent(card, "accessibilityAction", {
+			nativeEvent: { actionName: "activate" },
+		});
+		expect(mockPush).toHaveBeenCalledTimes(1);
 	});
 
 	test("editing a revealed card only opens the editor", async () => {
