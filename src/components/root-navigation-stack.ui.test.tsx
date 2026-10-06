@@ -1,4 +1,4 @@
-import { describe, expect, jest, test } from "@jest/globals";
+import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { router, Stack } from "expo-router";
 import { act, renderRouter, screen } from "expo-router/testing-library";
 import { Text } from "react-native";
@@ -11,18 +11,19 @@ const mockSession = {
 const mockListeners = new Set<() => void>();
 jest.mock("~/context/AuthContext", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
+	const subscribe = (listener: () => void) => {
+		mockListeners.add(listener);
+		return () => {
+			mockListeners.delete(listener);
+		};
+	};
 	return {
 		useAuthSession: () => ({
-			isSessionLoading: mockSession.isSessionLoading,
-			user: React.useSyncExternalStore(
-				(listener) => {
-					mockListeners.add(listener);
-					return () => {
-						mockListeners.delete(listener);
-					};
-				},
-				() => mockSession.user,
+			isSessionLoading: React.useSyncExternalStore(
+				subscribe,
+				() => mockSession.isSessionLoading,
 			),
+			user: React.useSyncExternalStore(subscribe, () => mockSession.user),
 		}),
 	};
 });
@@ -45,6 +46,12 @@ const fixtures = {
 };
 
 describe("auth root history isolation", () => {
+	beforeEach(() => {
+		mockSession.user = null;
+		mockSession.isSessionLoading = false;
+		mockListeners.clear();
+	});
+
 	test("retains a cold settings deep link while a persisted session restores", async () => {
 		mockSession.user = null;
 		mockSession.isSessionLoading = true;
@@ -55,6 +62,20 @@ describe("auth root history isolation", () => {
 			for (const listener of mockListeners) listener();
 		});
 		expect(screen.getByText("Private settings")).toBeTruthy();
+	});
+	test("removes a cold settings deep link when session restoration ends signed out", async () => {
+		mockSession.isSessionLoading = true;
+		await renderRouter(fixtures, { initialUrl: "/settings" });
+		expect(screen.getByText("Private settings")).toBeTruthy();
+		await act(() => {
+			mockSession.isSessionLoading = false;
+			for (const listener of mockListeners) listener();
+		});
+		expect(
+			screen.queryByText("Private settings", { includeHiddenElements: true }),
+		).toBeNull();
+		expect(screen.getByText("Login choice")).toBeTruthy();
+		expect(router.canGoBack()).toBe(false);
 	});
 	test("signed-out deep links cannot mount settings behind the auth flow", async () => {
 		mockSession.user = null;
