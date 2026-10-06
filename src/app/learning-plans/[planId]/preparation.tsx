@@ -12,7 +12,6 @@ import {
 	timeLabel,
 	timeMinutes,
 } from "#convex/preparationSchedule";
-import { ScreenHeader } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
 import { Pencil, Plus, Time04 } from "~/components/ui/icon";
 import {
@@ -156,18 +155,14 @@ export default function PreparationScreen() {
 	return (
 		<Screen>
 			<ScreenScroll includeTopSafeArea>
-				<ScreenHeader
-					title="Deine Lernzeiten"
-					onBack={() => router.replace("/learning-plans")}
-				/>
-				<View className="items-center pt-3 pb-8">
+				<View className="items-center pb-8">
 					<View className="h-20 w-20 items-center justify-center rounded-full bg-system-subtle">
 						<Time04 size={34} color="#00A0E6" strokeWidth={2.4} />
 					</View>
-					<Text className="mt-3 font-poppins font-semibold text-body-3 text-primary">
-						Deine Vorbereitung
-					</Text>
-					<Text className="mt-4 text-center font-poppins font-semibold text-heading-2 text-text">
+					<Text
+						accessibilityRole="header"
+						className="mt-4 text-center font-poppins font-semibold text-heading-2 text-text"
+					>
 						Dein Plan ist bereit
 					</Text>
 					<Text className="mt-3 text-center font-poppins text-body-3 text-secondary-text">
