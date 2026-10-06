@@ -33,17 +33,9 @@ function getImageMimeType(header: Uint8Array) {
 }
 
 export function prepareGalleryUploadAsset(
-	asset: Pick<ImagePickerAsset, "uri" | "fileName" | "mimeType">,
+	asset: Pick<ImagePickerAsset, "uri" | "fileName">,
 	fallbackName: string,
 ): UploadAsset {
-	if (
-		asset.mimeType !== "image/jpeg" &&
-		asset.mimeType !== "image/png" &&
-		asset.mimeType !== "image/webp"
-	) {
-		throw new Error(UNSUPPORTED_IMAGE_MESSAGE);
-	}
-
 	// The picker may transcode images while retaining their original metadata.
 	const file = new File(asset.uri);
 	const size = file.info().size ?? 0;

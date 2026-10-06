@@ -41,7 +41,7 @@ const mockLaunchImageLibrary =
 			assets: Array<{
 				fileName: string | null;
 				fileSize: number;
-				mimeType: string | undefined;
+				mimeType: string | null | undefined;
 				uri: string;
 			}> | null;
 		}>
@@ -507,10 +507,17 @@ describe("exam creation across the topics boundary", () => {
 	});
 
 	test.each([
-		"image/heic",
-		"image/avif",
-		undefined,
-	])("rejects unsupported or unknown gallery MIME type %s before any upload", async (mimeType) => {
+		[
+			"image/heic",
+			[0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69, 0x63],
+		],
+		[
+			"image/avif",
+			[0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70, 0x61, 0x76, 0x69, 0x66],
+		],
+		[undefined, [0, 0, 0, 0]],
+	])("rejects unsupported or unknown exported bytes for picker MIME type %s before any upload", async (mimeType, header) => {
+		mockFiles["file:///unsupported"] = { size: 1_024, header };
 		mockParams = {
 			learningPlanId: "plan-1",
 			examDayEntryId: "exam-1",
@@ -562,6 +569,7 @@ describe("exam creation across the topics boundary", () => {
 
 	test.each([
 		["worksheet.HEIC", "image/jpeg"],
+		["worksheet.HEIC", "image/heic"],
 		["worksheet.webp", "image/webp"],
 	])("uploads JPEG output with a consistent name and MIME type for %s", async (fileName, mimeType) => {
 		mockFiles["file:///exported.webp"] = { size: 90_280, header: JPEG_HEADER };
@@ -581,6 +589,35 @@ describe("exam creation across the topics boundary", () => {
 				fileType: "image/jpeg",
 				fileSizeBytes: 90_280,
 			}),
+		);
+	});
+
+	test.each([
+		["image/jpeg", "jpg", JPEG_HEADER, null],
+		["image/jpeg", "jpg", JPEG_HEADER, undefined],
+		["image/png", "png", PNG_HEADER, null],
+		["image/png", "png", PNG_HEADER, undefined],
+		["image/webp", "webp", WEBP_HEADER, null],
+		["image/webp", "webp", WEBP_HEADER, undefined],
+	])("uploads verified %s bytes without picker MIME metadata", async (fileType, extension, header, mimeType) => {
+		mockFiles["file:///exported"] = { size: 1_024, header };
+		await selectGalleryPhotos([
+			{
+				fileName: "worksheet.HEIC",
+				mimeType,
+				fileSize: 1_024,
+				uri: "file:///exported",
+			},
+		]);
+		await waitFor(() =>
+			expect(mockRegisterUploadedDocument).toHaveBeenCalledTimes(1),
+		);
+		expect(mockFetch).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ headers: { "Content-Type": fileType } }),
+		);
+		expect(mockRegisterUploadedDocument).toHaveBeenCalledWith(
+			expect.objectContaining({ fileName: `worksheet.${extension}`, fileType }),
 		);
 	});
 
