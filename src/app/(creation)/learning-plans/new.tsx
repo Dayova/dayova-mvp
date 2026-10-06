@@ -28,6 +28,7 @@ import {
 	examEntrySuccessPath,
 	learningPlanStepPath,
 } from "~/features/learning-plans/creation-routes";
+import { prepareGalleryUploadAsset } from "~/features/learning-plans/gallery-upload";
 import { useLearningPlanSetupOrigin } from "~/features/learning-plans/learning-plan-setup-origin";
 import {
 	MaterialUploadStep,
@@ -494,29 +495,12 @@ export default function NewLearningPlanScreen() {
 				"Die Fotos konnten nicht hochgeladen werden.",
 				async () => {
 					const preparedAssets = result.assets.map((asset, index) => {
-						const mimeType = asset.mimeType;
-						if (
-							mimeType !== "image/jpeg" &&
-							mimeType !== "image/png" &&
-							mimeType !== "image/webp"
-						) {
-							throw new Error(
-								"Dieser Bildtyp wird nicht unterstützt. Bitte nutze JPEG, PNG oder WebP.",
-							);
-						}
-						const fallbackExtension = {
-							"image/jpeg": "jpg",
-							"image/png": "png",
-							"image/webp": "webp",
-						}[mimeType];
-						return prepareUploadAsset({
-							uri: asset.uri,
-							name:
-								asset.fileName ??
-								`galerie-${Date.now()}-${index + 1}.${fallbackExtension}`,
-							mimeType,
-							size: asset.fileSize,
-						});
+						return prepareUploadAsset(
+							prepareGalleryUploadAsset(
+								asset,
+								`galerie-${Date.now()}-${index + 1}`,
+							),
+						);
 					});
 					const id = await ensurePlan(topics);
 					for (const asset of preparedAssets) {

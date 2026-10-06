@@ -24,6 +24,16 @@ const mockFetch =
 	>();
 const mockRequestMediaLibraryPermissions =
 	jest.fn<() => Promise<{ granted: boolean }>>();
+const JPEG_HEADER = [0xff, 0xd8, 0xff, 0xe1];
+const PNG_HEADER = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+const WEBP_HEADER = [
+	0x52, 0x49, 0x46, 0x46, 0x20, 0, 0, 0, 0x57, 0x45, 0x42, 0x50,
+];
+let mockFiles: Record<
+	string,
+	{ size: number; header: number[]; readError?: string }
+> = {};
+const mockCloseFile = jest.fn();
 const mockLaunchImageLibrary =
 	jest.fn<
 		(_options: unknown) => Promise<{
@@ -113,9 +123,23 @@ jest.mock("expo-file-system", () => ({
 		}
 
 		info() {
-			return { size: 0 };
+			return { size: mockFiles[this.uri]?.size ?? 1_024 };
+		}
+
+		open() {
+			return {
+				readBytes: (length: number) => {
+					const file = mockFiles[this.uri];
+					if (file?.readError) throw new Error(file.readError);
+					return Uint8Array.from(
+						(file?.header ?? JPEG_HEADER).slice(0, length),
+					);
+				},
+				close: mockCloseFile,
+			};
 		}
 	},
+	FileMode: { ReadOnly: "r" },
 }));
 jest.mock("expo-document-picker", () => ({}));
 jest.mock("expo-image-picker", () => ({
@@ -230,6 +254,9 @@ jest.mock("~/lib/theme", () => ({
 
 beforeEach(() => {
 	jest.clearAllMocks();
+	mockFiles = {
+		"file:///mitschrift-2.png": { size: 2_048, header: PNG_HEADER },
+	};
 	mockCreateEntry.mockResolvedValue("exam-1");
 	mockUpdateEntry.mockResolvedValue(undefined);
 	mockGenerateUploadUrl.mockResolvedValue({
@@ -266,6 +293,33 @@ function followReplacement() {
 	mockParams = Object.fromEntries(url.searchParams);
 	mockRouter.replace.mockClear();
 	return url.pathname;
+}
+
+async function selectGalleryPhotos(
+	assets: NonNullable<
+		Awaited<ReturnType<typeof mockLaunchImageLibrary>>["assets"]
+	>,
+) {
+	mockParams = {
+		learningPlanId: "plan-1",
+		examDayEntryId: "exam-1",
+		step: "material",
+	};
+	mockSnapshot = {
+		plan: { topicDescription: "Zellteilung und Mitose" },
+		documents: [],
+	};
+	mockLaunchImageLibrary.mockResolvedValue({ canceled: false, assets });
+	const screen = await render(<NewLearningPlanScreen />);
+	await fireEvent.press(
+		screen.getByRole("button", { name: "Schulmaterial hinzufügen" }),
+	);
+	await fireEvent.press(
+		screen.getByRole("button", {
+			name: "Galerie. Vorhandene Fotos auswählen",
+		}),
+	);
+	return screen;
 }
 
 describe("exam creation across the topics boundary", () => {
@@ -504,5 +558,157 @@ describe("exam creation across the topics boundary", () => {
 		expect(mockGenerateUploadUrl).not.toHaveBeenCalled();
 		expect(mockFetch).not.toHaveBeenCalled();
 		expect(mockRegisterUploadedDocument).not.toHaveBeenCalled();
+	});
+
+	test.each([
+		["worksheet.HEIC", "image/jpeg"],
+		["worksheet.webp", "image/webp"],
+	])("uploads JPEG output with a consistent name and MIME type for %s", async (fileName, mimeType) => {
+		mockFiles["file:///exported.webp"] = { size: 90_280, header: JPEG_HEADER };
+		await selectGalleryPhotos([
+			{ fileName, mimeType, fileSize: 43_536, uri: "file:///exported.webp" },
+		]);
+		await waitFor(() =>
+			expect(mockRegisterUploadedDocument).toHaveBeenCalledTimes(1),
+		);
+		expect(mockFetch).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ headers: { "Content-Type": "image/jpeg" } }),
+		);
+		expect(mockRegisterUploadedDocument).toHaveBeenCalledWith(
+			expect.objectContaining({
+				fileName: "worksheet.jpg",
+				fileType: "image/jpeg",
+				fileSizeBytes: 90_280,
+			}),
+		);
+	});
+
+	test("keeps genuine WebP output labeled as WebP", async () => {
+		mockFiles["file:///exported.webp"] = { size: 43_536, header: WEBP_HEADER };
+		await selectGalleryPhotos([
+			{
+				fileName: "worksheet.JPG",
+				mimeType: "image/webp",
+				fileSize: 43_536,
+				uri: "file:///exported.webp",
+			},
+		]);
+		await waitFor(() =>
+			expect(mockRegisterUploadedDocument).toHaveBeenCalledTimes(1),
+		);
+		expect(mockRegisterUploadedDocument).toHaveBeenCalledWith(
+			expect.objectContaining({
+				fileName: "worksheet.webp",
+				fileType: "image/webp",
+			}),
+		);
+	});
+
+	test.each([
+		6_247_134,
+		7 * 1024 * 1024,
+	])("accepts a %s-byte export even when the original exceeds the limit", async (size) => {
+		mockFiles["file:///compressed.jpg"] = { size, header: JPEG_HEADER };
+		await selectGalleryPhotos([
+			{
+				fileName: "large.jpg",
+				mimeType: "image/jpeg",
+				fileSize: 20_240_594,
+				uri: "file:///compressed.jpg",
+			},
+		]);
+		await waitFor(() =>
+			expect(mockRegisterUploadedDocument).toHaveBeenCalledTimes(1),
+		);
+		expect(mockRegisterUploadedDocument).toHaveBeenCalledWith(
+			expect.objectContaining({ fileSizeBytes: size }),
+		);
+	});
+
+	test.each([
+		[
+			7 * 1024 * 1024 + 1,
+			"Die Datei ist mit 7.00 MiB zu groß (maximal 7 MiB).",
+		],
+		[0, "Die Datei ist leer oder konnte nicht gelesen werden."],
+	])("rejects the entire batch when the actual export size is %s", async (size, message) => {
+		mockFiles["file:///invalid.jpg"] = { size, header: JPEG_HEADER };
+		const screen = await selectGalleryPhotos([
+			{
+				fileName: "valid.jpg",
+				mimeType: "image/jpeg",
+				fileSize: 1_024,
+				uri: "file:///valid.jpg",
+			},
+			{
+				fileName: "invalid.jpg",
+				mimeType: "image/jpeg",
+				fileSize: 1_024,
+				uri: "file:///invalid.jpg",
+			},
+		]);
+		await waitFor(() => expect(screen.getByText(message)).toBeOnTheScreen());
+		expect(mockGenerateUploadUrl).not.toHaveBeenCalled();
+		expect(mockFetch).not.toHaveBeenCalled();
+		expect(mockRegisterUploadedDocument).not.toHaveBeenCalled();
+	});
+
+	test.each([
+		[0x47, 0x49, 0x46, 0x38],
+		[0xff, 0xd8],
+	])("rejects unrecognized output bytes despite an accepted MIME type", async (...header) => {
+		mockFiles["file:///invalid.jpg"] = { size: 1_024, header };
+		const screen = await selectGalleryPhotos([
+			{
+				fileName: "invalid.jpg",
+				mimeType: "image/jpeg",
+				fileSize: 1_024,
+				uri: "file:///invalid.jpg",
+			},
+		]);
+		await waitFor(() =>
+			expect(
+				screen.getByText(
+					"Dieser Bildtyp wird nicht unterstützt. Bitte nutze JPEG, PNG oder WebP.",
+				),
+			).toBeOnTheScreen(),
+		);
+		expect(mockFetch).not.toHaveBeenCalled();
+	});
+
+	test("recovers from an unreadable export without leaving its file open", async () => {
+		mockFiles["file:///unreadable.jpg"] = {
+			size: 1_024,
+			header: JPEG_HEADER,
+			readError: "Foto konnte nicht gelesen werden.",
+		};
+		const screen = await selectGalleryPhotos([
+			{
+				fileName: "worksheet.jpg",
+				mimeType: "image/jpeg",
+				fileSize: 1_024,
+				uri: "file:///unreadable.jpg",
+			},
+		]);
+		await waitFor(() =>
+			expect(
+				screen.getByText("Foto konnte nicht gelesen werden."),
+			).toBeOnTheScreen(),
+		);
+		expect(mockCloseFile).toHaveBeenCalledTimes(1);
+		expect(mockFetch).not.toHaveBeenCalled();
+		mockFiles["file:///unreadable.jpg"].readError = undefined;
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Schulmaterial hinzufügen" }),
+		);
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: "Galerie. Vorhandene Fotos auswählen",
+			}),
+		);
+		await waitFor(() =>
+			expect(mockRegisterUploadedDocument).toHaveBeenCalledTimes(1),
+		);
 	});
 });
