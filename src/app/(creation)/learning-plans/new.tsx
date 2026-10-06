@@ -679,10 +679,12 @@ export default function NewLearningPlanScreen() {
 					"Der Lernplan konnte nicht gespeichert werden.",
 					async () => {
 						if (hasUnsavedTopics)
-							await updateRequiredTopics({
-								id: learningPlanId,
-								topicDescription: topics,
-							});
+							await retryOnceAfterAuthResume(() =>
+								updateRequiredTopics({
+									id: learningPlanId,
+									topicDescription: topics,
+								}),
+							);
 						Keyboard.dismiss();
 						setExitApproved(true);
 					},

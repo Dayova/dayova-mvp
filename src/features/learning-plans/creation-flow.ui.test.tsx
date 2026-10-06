@@ -174,7 +174,7 @@ beforeEach(() => {
 	jest.clearAllMocks();
 	mockRemovalGuards.clear();
 	mockCreateEntry.mockResolvedValue("exam-1");
-	mockUpdateEntry.mockResolvedValue(undefined);
+	mockUpdateEntry.mockReset().mockResolvedValue(undefined);
 	mockSnapshot = undefined;
 	mockPauseVisible = false;
 	mockParams = {
@@ -264,6 +264,7 @@ describe("exam creation across the topics boundary", () => {
 		);
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		expect(screen.getByText("Speichern fehlgeschlagen")).toBeOnTheScreen();
+		expect(mockUpdateEntry).toHaveBeenCalledTimes(1);
 		expect(mockRouter.replace).not.toHaveBeenCalled();
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		expect(mockUpdateEntry).toHaveBeenLastCalledWith(
@@ -360,6 +361,47 @@ describe("editing from a learning-plan card", () => {
 		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans");
 		expect(mockRouter.push).not.toHaveBeenCalled();
 	});
+	test("retries saving topics once when authentication resumes", async () => {
+		mockUpdateEntry.mockRejectedValueOnce(new Error("Nicht authentifiziert."));
+		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.changeText(
+			screen.getByLabelText("Prüfungsthemen"),
+			"Genetik und Vererbung",
+		);
+		await fireEvent.press(screen.getByRole("button", { name: "Speichern" }));
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 750));
+		});
+		expect(mockUpdateEntry).toHaveBeenCalledTimes(2);
+		expect(mockUpdateEntry).toHaveBeenLastCalledWith({
+			id: "plan-1",
+			topicDescription: "Genetik und Vererbung",
+		});
+		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans");
+	});
+	test("keeps the draft editable when the authentication retry also fails", async () => {
+		mockUpdateEntry
+			.mockRejectedValueOnce(new Error("Nicht authentifiziert."))
+			.mockRejectedValueOnce(new Error("Nicht authentifiziert."));
+		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.changeText(
+			screen.getByLabelText("Prüfungsthemen"),
+			"Genetik und Vererbung",
+		);
+		await fireEvent.press(screen.getByRole("button", { name: "Speichern" }));
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 750));
+		});
+		expect(mockUpdateEntry).toHaveBeenCalledTimes(2);
+		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+		expect(screen.getByText("Nicht authentifiziert.")).toBeOnTheScreen();
+		expect(screen.getByLabelText("Prüfungsthemen")).toHaveDisplayValue(
+			"Genetik und Vererbung",
+		);
+		await fireEvent.press(screen.getByRole("button", { name: "Speichern" }));
+		expect(mockUpdateEntry).toHaveBeenCalledTimes(3);
+		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans");
+	});
 	test("retains the draft after a save error and allows retry", async () => {
 		mockUpdateEntry.mockRejectedValueOnce(
 			new Error("Speichern fehlgeschlagen"),
@@ -371,6 +413,7 @@ describe("editing from a learning-plan card", () => {
 		);
 		await fireEvent.press(screen.getByRole("button", { name: "Speichern" }));
 		expect(screen.getByText("Speichern fehlgeschlagen")).toBeOnTheScreen();
+		expect(mockUpdateEntry).toHaveBeenCalledTimes(1);
 		expect(screen.getByLabelText("Prüfungsthemen")).toHaveDisplayValue(
 			"Genetik und Vererbung",
 		);
