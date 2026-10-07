@@ -17,8 +17,13 @@ subject and exam-type selector.
   headings retain the full text width. Only the native date/time wheel opts out
   of the surrounding scroll view.
 - Shared `Input` fields automatically use Gorhom's keyboard-aware input while
-  they are inside `DayovaSheetFrame`. Use `onPresented` when a form should focus
-  its first field only after the native sheet has opened.
+  they are inside `DayovaSheetFrame`. Use `onOpening` to focus
+  the first field as the native opening animation starts.
+- Android sheets use Gorhom's `adjustPan` keyboard calculation because the root
+  `KeyboardProvider` keeps the edge-to-edge container at full height. Gorhom's
+  `adjustResize` path assumes the container shrinks and skips the keyboard offset;
+  that combination hides focused fields underneath the IME. Keep input registration
+  and keyboard positioning in the shared frame.
 - Actions use Gorhom's measured footer and content inset, keeping the last row
   clear of the buttons. At font scales of 1.5 or more, viewports below 480 points,
   or measured action areas exceeding 40% of the maximum sheet height, actions
