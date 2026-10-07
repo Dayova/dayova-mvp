@@ -30,8 +30,8 @@ afterEach(() => {
 	vi.clearAllMocks();
 });
 describe("actual downloaded material bytes", () => {
-	test("passes a 40 MiB PDF to the native model input without truncation", async () => {
-		const bytes = Buffer.alloc(40 * 1024 * 1024, 32);
+	test("passes a 25 MiB PDF to the native model input without truncation", async () => {
+		const bytes = Buffer.alloc(25 * 1024 * 1024, 32);
 		vi.stubGlobal(
 			"fetch",
 			vi.fn(async () => new Response(bytes)),
@@ -47,18 +47,18 @@ describe("actual downloaded material bytes", () => {
 		const fetcher = vi.fn();
 		vi.stubGlobal("fetch", fetcher);
 		await expect(
-			build(ctx, [document(40 * 1024 * 1024 + 1)], "test-access"),
-		).rejects.toThrow("maximal 40 MiB");
+			build(ctx, [document(25 * 1024 * 1024 + 1)], "test-access"),
+		).rejects.toThrow("maximal 25 MiB");
 		expect(fetcher).not.toHaveBeenCalled();
 		expect(createManagedReadUrl).not.toHaveBeenCalled();
 	});
 	test("rejects actual bytes over the limit even when metadata claims a small file", async () => {
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(async () => new Response(Buffer.alloc(40 * 1024 * 1024 + 1))),
+			vi.fn(async () => new Response(Buffer.alloc(25 * 1024 * 1024 + 1))),
 		);
 		await expect(build(ctx, [document(100)], "test-access")).rejects.toThrow(
-			"maximal 40 MiB",
+			"maximal 25 MiB",
 		);
 	});
 	test("keeps image processing at 7 MiB", async () => {
@@ -87,35 +87,35 @@ describe("actual downloaded material bytes", () => {
 	});
 });
 
-test("rejects two 40 MiB PDFs before downloading either", async () => {
+test("rejects two 25 MiB PDFs before downloading either", async () => {
 	const fetcher = vi.fn();
 	vi.stubGlobal("fetch", fetcher);
 	await expect(
 		build(
 			ctx,
-			[document(40 * 1024 * 1024), document(40 * 1024 * 1024)],
+			[document(25 * 1024 * 1024), document(25 * 1024 * 1024)],
 			"test-access",
 		),
-	).rejects.toThrow("zusammen maximal 40 MiB");
+	).rejects.toThrow("zusammen maximal 25 MiB");
 	expect(fetcher).not.toHaveBeenCalled();
 });
 test("enforces aggregate size on actual bytes despite understated metadata", async () => {
 	vi.stubGlobal(
 		"fetch",
-		vi.fn(async () => new Response(Buffer.alloc(21 * 1024 * 1024))),
+		vi.fn(async () => new Response(Buffer.alloc(13 * 1024 * 1024))),
 	);
 	await expect(
 		build(ctx, [document(100), document(100)], "test-access"),
-	).rejects.toThrow("zusammen maximal 40 MiB");
+	).rejects.toThrow("zusammen maximal 25 MiB");
 });
-test("accepts two PDFs totaling exactly 40 MiB", async () => {
+test("accepts two PDFs totaling exactly 25 MiB", async () => {
 	vi.stubGlobal(
 		"fetch",
-		vi.fn(async () => new Response(Buffer.alloc(20 * 1024 * 1024))),
+		vi.fn(async () => new Response(Buffer.alloc(12.5 * 1024 * 1024))),
 	);
 	const result = await build(
 		ctx,
-		[document(20 * 1024 * 1024), document(20 * 1024 * 1024)],
+		[document(12.5 * 1024 * 1024), document(12.5 * 1024 * 1024)],
 		"test-access",
 	);
 	expect(
@@ -123,5 +123,5 @@ test("accepts two PDFs totaling exactly 40 MiB", async () => {
 			(sum, part) => sum + Buffer.byteLength(part.data, "base64"),
 			0,
 		),
-	).toBe(40 * 1024 * 1024);
+	).toBe(25 * 1024 * 1024);
 });

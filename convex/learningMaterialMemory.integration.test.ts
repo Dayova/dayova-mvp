@@ -6,8 +6,8 @@ import { expect, test } from "vitest";
 import { schoolMaterialPdf } from "../tests/fixtures/schoolMaterialPdf";
 
 test.each([
-	[1, 40, 13],
-	[2, 20, 6],
+	[1, 25, 8],
+	[2, 12.5, 4],
 ])(
 	"prepares and serializes %s PDF(s) of %s MiB below the action memory budget",
 	(count, mib, pages) => {
@@ -48,9 +48,9 @@ test.each([
 			expect(result.documents).toBe(count);
 			expect(result.completedRequests).toBe(3);
 			expect(result.peakActiveRequests).toBe(1);
-			expect(result.rawBytes).toBe(40 * 1024 * 1024);
+			expect(result.rawBytes).toBe(25 * 1024 * 1024);
 			expect(result.requestBytes).toBeGreaterThan(result.rawBytes);
-			expect(result.requestBytes).toBeLessThan(60 * 1024 * 1024);
+			expect(result.requestBytes).toBeLessThan(35 * 1024 * 1024);
 			expect(result.peakRssKiB).toBeLessThan(512 * 1024);
 		} finally {
 			rmSync(directory, { recursive: true, force: true });

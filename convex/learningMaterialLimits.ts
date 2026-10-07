@@ -1,6 +1,6 @@
 /** Shared by native validation and server processing; limits are per file. */
 export const LEARNING_MATERIAL_LIMITS = {
-	pdf: 40 * 1024 * 1024,
+	pdf: 25 * 1024 * 1024,
 	document: 25 * 1024 * 1024,
 	image: 7 * 1024 * 1024,
 } as const;
@@ -21,6 +21,6 @@ export function getLearningMaterialLimit(name: string, type?: string | null) {
 }
 
 // Leave headroom for PDF parsing and inline base64/JSON request serialization.
-export const MAX_LEARNING_MATERIAL_TOTAL_BYTES = 40 * 1024 * 1024;
+export const MAX_LEARNING_MATERIAL_TOTAL_BYTES = 25 * 1024 * 1024;
 export const MATERIAL_TOTAL_LIMIT_MESSAGE =
-	"Deine Unterlagen dürfen zusammen maximal 40 MiB groß sein. Entferne nicht benötigte Dateien oder verkleinere die PDFs.";
+	"Deine Unterlagen dürfen zusammen maximal 25 MiB groß sein. Entferne nicht benötigte Dateien oder verkleinere die PDFs.";

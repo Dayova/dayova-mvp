@@ -72,6 +72,7 @@ import {
 } from "./learningTopicMap";
 import { extractPdfText } from "./pdfText";
 import { areSemanticallyDuplicateQuestions } from "./questionNovelty";
+import { vertexFetch } from "./vertexFetch";
 
 const MAX_EXTRACTED_TEXT_CHARS = 90_000;
 const MAX_PROMPT_CONTEXT_CHARS = 70_000;
@@ -696,7 +697,7 @@ type ModelDocumentInput = {
 const createVertexModel = () => {
 	const apiKey = readOptionalEnv("GOOGLE_VERTEX_API_KEY");
 	if (apiKey) {
-		return createVertex({ apiKey });
+		return createVertex({ apiKey, fetch: vertexFetch });
 	}
 
 	const project = readRequiredEnv(
@@ -705,6 +706,7 @@ const createVertexModel = () => {
 	);
 
 	return createVertex({
+		fetch: vertexFetch,
 		project,
 		location: readOptionalEnv("GOOGLE_VERTEX_LOCATION") ?? "global",
 	});
@@ -1776,6 +1778,7 @@ const normalizeSessions = (
 
 export const __testOnlyLearningPlanAi = {
 	buildModelInputFromDocuments,
+	vertexFetch,
 	mapMaterialBatches,
 	normalizeSessions,
 	getEmptyScheduleErrorMessage,

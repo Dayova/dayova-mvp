@@ -71,6 +71,7 @@ import type * as topicDescriptionValidation from "../topicDescriptionValidation.
 import type * as userAnalytics from "../userAnalytics.js";
 import type * as users from "../users.js";
 import type * as validationAnalytics from "../validationAnalytics.js";
+import type * as vertexFetch from "../vertexFetch.js";
 
 import type {
   ApiFromModules,
@@ -142,6 +143,7 @@ declare const fullApi: ApiFromModules<{
   userAnalytics: typeof userAnalytics;
   users: typeof users;
   validationAnalytics: typeof validationAnalytics;
+  vertexFetch: typeof vertexFetch;
 }>;
 
 /**

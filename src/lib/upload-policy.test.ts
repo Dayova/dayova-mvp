@@ -3,8 +3,8 @@ import { validateUploadFile } from "./upload-policy";
 
 describe("learning material size boundaries", () => {
 	test.each([
-		["lesson.pdf", "application/pdf", 40],
-		["LESSON.PDF", "application/octet-stream", 40],
+		["lesson.pdf", "application/pdf", 25],
+		["LESSON.PDF", "application/octet-stream", 25],
 		[
 			"lesson.docx",
 			"application/vnd.openxmlformats-officedocument.wordprocessingml.document",

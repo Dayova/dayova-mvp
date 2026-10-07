@@ -776,8 +776,8 @@ describe("exam creation across the topics boundary", () => {
 
 describe("document picker size limits", () => {
 	test.each([
-		40 * 1024 * 1024,
-		40 * 1024 * 1024 + 1,
+		25 * 1024 * 1024,
+		25 * 1024 * 1024 + 1,
 	])("validates PDF bytes before requesting upload URLs: %s", async (size) => {
 		mockParams = {
 			learningPlanId: "plan-1",
@@ -804,7 +804,7 @@ describe("document picker size limits", () => {
 			screen.getByRole("button", { name: "Schulmaterial hinzufügen" }),
 		);
 		await fireEvent.press(screen.getByRole("button", { name: /Dateien/ }));
-		if (size === 40 * 1024 * 1024) {
+		if (size === 25 * 1024 * 1024) {
 			await waitFor(() =>
 				expect(mockRegisterUploadedDocument).toHaveBeenCalledTimes(1),
 			);
@@ -817,7 +817,7 @@ describe("document picker size limits", () => {
 			expect(mockFetch).toHaveBeenCalledTimes(1);
 		} else {
 			await waitFor(() =>
-				expect(screen.getByText(/maximal 40 MiB/)).toBeOnTheScreen(),
+				expect(screen.getByText(/maximal 25 MiB/)).toBeOnTheScreen(),
 			);
 			expect(mockGenerateUploadUrl).not.toHaveBeenCalled();
 			expect(mockFetch).not.toHaveBeenCalled();
@@ -840,7 +840,7 @@ test("rejects an oversized selection before uploading any document", async () =>
 		assets: [1, 2].map((i) => ({
 			name: `worksheet-${i}.pdf`,
 			uri: `file:///worksheet-${i}.pdf`,
-			size: 21 * 1024 * 1024,
+			size: 13 * 1024 * 1024,
 			mimeType: "application/pdf",
 		})),
 	});
@@ -850,7 +850,7 @@ test("rejects an oversized selection before uploading any document", async () =>
 	);
 	await fireEvent.press(screen.getByRole("button", { name: /Dateien/ }));
 	await waitFor(() =>
-		expect(screen.getByText(/zusammen maximal 40 MiB/)).toBeOnTheScreen(),
+		expect(screen.getByText(/zusammen maximal 25 MiB/)).toBeOnTheScreen(),
 	);
 	expect(mockGenerateUploadUrl).not.toHaveBeenCalled();
 	expect(mockFetch).not.toHaveBeenCalled();
@@ -868,7 +868,7 @@ test("rejects a camera photo that exceeds the existing material total before upl
 			{
 				_id: "doc-1",
 				fileName: "worksheet.pdf",
-				fileSizeBytes: 39 * 1024 * 1024,
+				fileSizeBytes: 24 * 1024 * 1024,
 			},
 		],
 	};
@@ -893,7 +893,7 @@ test("rejects a camera photo that exceeds the existing material total before upl
 	);
 	await fireEvent.press(screen.getByRole("button", { name: "Scannen" }));
 	await waitFor(() =>
-		expect(screen.getByText(/zusammen maximal 40 MiB/)).toBeOnTheScreen(),
+		expect(screen.getByText(/zusammen maximal 25 MiB/)).toBeOnTheScreen(),
 	);
 	expect(mockGenerateUploadUrl).not.toHaveBeenCalled();
 	expect(mockFetch).not.toHaveBeenCalled();
