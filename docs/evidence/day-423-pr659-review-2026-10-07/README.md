@@ -1,5 +1,7 @@
 # DAY-423 / PR #659 — fixes and verification, 2026-10-07
 
+**Fresh native follow-up, 8 October:** the [final integrated Android run](../day-423-pr659-final-android-2026-10-08/README.md) verifies recovery, ten-question analysis, diagnostic preparation with no saved learning times, automatic review navigation and acceptance on `2972612b`. The older screenshots below remain evidence for `ac83adb9`.
+
 **Integration follow-up:** `main` later advanced to `ff285aed3dbc7efb0e9fdf4a507123ac1f12c495`, introducing the unscheduled diagnostic/preparation flow. The conflict-resolution follow-up below applies to that integration. The screenshots and native journey in this report still document the explicitly dated `ac83adb9` source, not a fresh native run of the merged flow.
 
 Application source tested: `ac83adb91a5062a05dddd2402a0f16ccec9e4584`, integrated with `main` at `1fadb77b48653e9f163ad8c0ab9cd37fb319340e`. The subsequent evidence commit changes documentation and screenshots only. This report supersedes the current-status claims in the [historical September review packet](../day-423-pr659-review-packet-2026-09-27.md); that packet remains historical evidence.
@@ -68,7 +70,7 @@ Validation after resolution: full Jest **97 suites / 501 tests**, full Vitest **
 
 No new native screenshots are claimed for this follow-up. The current integration is covered by actual-screen automated tests and transactional backend integration tests; a fresh native run of the revised main flow remains a coverage limit.
 
-## Cross-review recovery follow-up, 8 October
+## Cross-review recovery follow-up added on 8 October
 
 The independent review of `20f9cf9d` identified a genuine recovery gap: old sessions caused `clearEmptyContentGeneration` to skip failure persistence, leaving a new claim running and blocking immediate retry. The current creation UI had already switched to atomic diagnostic preparation, but the public `generatePlan` action still used that failure handler on `89a62982`. Replaying the historical mutation harness confirmed the remaining backend behavior.
 
