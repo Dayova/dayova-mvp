@@ -1,5 +1,7 @@
 # DAY-423 / PR #659 — fixes and verification, 2026-10-07
 
+**Integration follow-up:** `main` later advanced to `ff285aed3dbc7efb0e9fdf4a507123ac1f12c495`, introducing the unscheduled diagnostic/preparation flow. The conflict-resolution follow-up below applies to that integration. The screenshots and native journey in this report still document the explicitly dated `ac83adb9` source, not a fresh native run of the merged flow.
+
 Application source tested: `ac83adb91a5062a05dddd2402a0f16ccec9e4584`, integrated with `main` at `1fadb77b48653e9f163ad8c0ab9cd37fb319340e`. The subsequent evidence commit changes documentation and screenshots only. This report supersedes the current-status claims in the [historical September review packet](../day-423-pr659-review-packet-2026-09-27.md); that packet remains historical evidence.
 
 ## Fixes
@@ -55,3 +57,13 @@ After capture, both synthetic plans, their managed documents/session data and th
 - Synthetic materials establish recovery behavior, not the historical report's original cause or classification accuracy for every real document.
 - Full regeneration can replace existing session content; preservation is guaranteed by the targeted retry path, not full regeneration.
 - Fresh CI/OTA assessment and required human approval must be evaluated on the pushed PR head. Local green checks do not substitute for them.
+
+## Integration with `main` at `ff285aed`
+
+Resolved conflicts in generated API bindings, AI generation, plan mutations and the generating screen. New drafts now call `prepareDiagnostic` and require no saved learning times or creation-time calendar generation. Stale legacy scheduling metadata does not block that mutation. Legacy drafts with incomplete sessions retain targeted content retry; after material reanalysis clears generation metadata, preparation validates the new questions, transactionally replaces obsolete derived sessions/content/calendar links and preserves plan inputs/documents. New preparation clears failure messages and invalidates old generation claims so an earlier action cannot overwrite it.
+
+Sufficient material must generate exactly ten questions with main's 6,000-token budget; insufficient/uncertain assessments can still return empty arrays. Main's structured-output retry behavior is retained. Incomplete sufficient output retries up to three times and keeps the safe technical-generation code on exhaustion. The header remains at 90% until successful preparation. Both generated and accepted states release native removal protection before deferred review navigation. Stale recovery resets when a fresh generation claim arrives.
+
+Validation after resolution: full Jest **97 suites / 499 tests**, full Vitest **141 files / 1,085 tests** (same explicit Windows runner budget), Node test groups **18 tests**, lint and TypeScript passed. Focused backend tests additionally exercise replacement of legacy derived content, cleared stale claims and failure messages. Independent Standards and Spec reviews reported zero remaining findings. CodeRabbit CLI raised two integration findings (incomplete-output retry and stale recovery reset), both corrected and covered by regressions. Fresh GitHub CI and CodeRabbit outcomes must be read on the pushed merge head.
+
+No new native screenshots are claimed for this follow-up. The current integration is covered by actual-screen automated tests and transactional backend integration tests; a fresh native run of the revised main flow remains a coverage limit.

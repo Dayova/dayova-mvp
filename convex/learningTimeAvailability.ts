@@ -1,5 +1,5 @@
 export const ONBOARDING_DURATION_MINUTES = [
-	10, 20, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180,
+	10, 15, 20, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180, 210, 240,
 ] as const;
 
 const DAY_OF_WEEK_BY_LABEL = {
@@ -13,7 +13,7 @@ const DAY_OF_WEEK_BY_LABEL = {
 } as const;
 
 const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
-const durationPattern = /^(\d{1,3})\s*min$/i;
+const durationPattern = /^(\d{1,4})\s*min$/i;
 const MINUTES_PER_DAY = 24 * 60;
 
 export type OnboardingLearningTimeInput = {

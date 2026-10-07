@@ -24,6 +24,9 @@ export type MissedReason =
 	| "other";
 
 export type PlanSession = {
+	preparationSlotId?: string;
+	additionalPractice?: boolean;
+	unscheduled?: boolean;
 	id: Id<"learningPlanSessions">;
 	phase: SessionPhase;
 	title: string;
@@ -45,6 +48,7 @@ export type PlanSession = {
 	sortOrder: number;
 	completed: boolean;
 	executionStatus: SessionExecutionStatus;
+	activeStudySeconds?: number;
 	startedAt?: number;
 	outcomeAt?: number;
 	missedReason?: MissedReason;
@@ -117,6 +121,7 @@ type SessionAnalysis = {
 
 export type LearningSessionContentSnapshot = {
 	plan: {
+		preparationState?: "diagnostic" | "review" | "ready" | "completed";
 		id: Id<"learningPlans">;
 		subject: string;
 		examTypeLabel: string;
@@ -140,6 +145,7 @@ export type LearningSessionContentSnapshot = {
 		expectedOutcome: string;
 		completed: boolean;
 		executionStatus: SessionExecutionStatus;
+		activeStudySeconds?: number;
 	};
 	praxisDurationSeconds: number | null;
 	items: SessionContentItem[];
@@ -189,6 +195,8 @@ export type LearningPlanSnapshot = {
 		examTime?: string;
 		durationMinutes: number;
 		targetStudyMinutes?: number;
+		preparationState?: "diagnostic" | "review" | "ready" | "completed";
+		preparationRevision?: number;
 		preparationDepth: "compact" | "thorough" | "intensive";
 		topicDescription: string;
 		teacherGuidance?: string;

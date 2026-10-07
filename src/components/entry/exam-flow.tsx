@@ -34,6 +34,8 @@ const EXAM_TYPE_OPTIONS = [
 	{ label: "Test", Icon: Pencil },
 	{ label: "Klassenarbeit", Icon: NotebookPen },
 	{ label: "Klausur", Icon: GraduationCap },
+	{ label: "Vorabitur", Icon: GraduationCap },
+	{ label: "Abitur", Icon: GraduationCap },
 	{ label: "Mündliche Prüfung", Icon: Mic },
 	{ label: "Präsentation", Icon: Computer },
 ] as const;
