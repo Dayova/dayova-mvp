@@ -116,6 +116,14 @@ export const getScheduleConflictMessage = async (
 		if (excludeDayEntryId && entry._id === excludeDayEntryId) continue;
 		// Exams are date-only entries. Ignore legacy records that still carry time.
 		if (isExamEntry(entry)) continue;
+		// Completed learning appointments are history, including slots finished early.
+		if (
+			entry.relatedLearningPlanSessionId &&
+			(entry.executionStatus ??
+				(entry.completed ? "completed" : "notStarted")) === "completed"
+		) {
+			continue;
+		}
 		if (
 			excludeLearningPlanSessionId &&
 			entry.relatedLearningPlanSessionId === excludeLearningPlanSessionId
