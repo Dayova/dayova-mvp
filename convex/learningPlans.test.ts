@@ -2,6 +2,7 @@
 
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { AI_CONSENT_VERSION } from "../src/lib/ai-consent";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { USER_FACING_ERROR_KIND } from "./errors";
@@ -949,6 +950,124 @@ test("claims plan generation atomically and persists an empty failed claim for e
 	});
 	expect(retried?.plan.contentGeneration?.failureReason).toBeUndefined();
 	expect(retried?.plan.contentGeneration?.failureMessage).toBeUndefined();
+});
+
+test.each([
+	true,
+	false,
+])("legacy public generation releases a failed claim with existing sessions (material corrected: %s)", async (materialCorrected) => {
+	const t = convexTest(schema, modules).withIdentity({
+		...user,
+		subject: "recovery",
+		email: "recovery@example.com",
+	});
+	await t.mutation(api.users.syncCurrentUser, { name: "Recovery test" });
+	await t.mutation(api.aiConsent.setDecision, {
+		decision: "granted",
+		version: AI_CONSENT_VERSION,
+	});
+	const learningPlanId = await createPlan(t);
+	await t.mutation(api.learningTimes.upsertMine, {
+		dayOfWeek: 1,
+		startTime: "17:00",
+		endTime: "17:15",
+	});
+	await t.mutation(api.learningPlans.setTargetStudyMinutes, {
+		learningPlanId,
+		targetStudyMinutes: 10,
+	});
+	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
+		learningPlanId,
+		knowledgeAnswersJson: "[]",
+		sourceSummary: "Altes Material",
+		insight: { summary: "Vorheriger Versuch.", strengths: [], gaps: [] },
+		sessions: [
+			{
+				phase: "practice",
+				title: "Alte Sitzung",
+				dateKey: "2026-06-01",
+				dateLabel: "1. Juni 2026",
+				startTime: "17:00",
+				durationMinutes: 15,
+				goal: "Wiederholen.",
+				tasks: ["Aufgaben lösen"],
+				expectedOutcome: "Vorbereitet.",
+			},
+		],
+	});
+	const original = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	const oldSessionId = original?.sessions[0]?.id;
+	if (!oldSessionId) throw new Error("Missing legacy session");
+	await t.run(async (ctx) => {
+		await ctx.db.patch("learningPlans", learningPlanId, {
+			status: "questionsReady",
+			contentGenerationStage: "failed",
+		});
+		await ctx.db.patch("learningPlanSessions", oldSessionId, {
+			contentGenerationStatus: "ready",
+		});
+	});
+	if (materialCorrected)
+		await t.mutation(internal.learningPlans.storeUploadedDocument, {
+			ownerTokenIdentifier: user.tokenIdentifier,
+			learningPlanId,
+			storageId: "replacement",
+			storageProvider: "convex",
+			fileName: "replacement.pdf",
+			fileType: "application/pdf",
+			fileSizeBytes: 1024,
+			sourceKind: "school",
+		});
+	await t.run((ctx) =>
+		ctx.db.patch("learningPlans", learningPlanId, {
+			status: "questionsReady",
+			diagnosticPlacement: "firstSession",
+			scopeConfirmedAt: Date.now(),
+			knowledgeQuestions: createKnowledgeQuestions(),
+		}),
+	);
+	for (let attempt = 0; attempt < 2; attempt++) {
+		await expect(
+			t.action(api.learningPlanAi.generatePlan, {
+				learningPlanId,
+				answers: [],
+			}),
+		).rejects.toMatchObject({ data: { code: "scheduling_constraints" } });
+		const failed = await t.query(api.learningPlans.getSnapshot, {
+			id: learningPlanId,
+		});
+		expect(failed?.plan.contentGeneration).toMatchObject({
+			stage: "failed",
+			failureReason: "schedulingConstraints",
+			failureMessage: expect.any(String),
+		});
+		expect(
+			await t.run((ctx) => ctx.db.get("learningPlanSessions", oldSessionId)),
+		).toEqual(
+			materialCorrected
+				? null
+				: expect.objectContaining({ contentGenerationStatus: "ready" }),
+		);
+		expect(failed?.sessions).toHaveLength(materialCorrected ? 0 : 1);
+		expect(failed?.documents).toHaveLength(materialCorrected ? 1 : 0);
+	}
+	await t.mutation(internal.learningPlans.beginContentGeneration, {
+		learningPlanId,
+		generationId: "newer-claim",
+	});
+	await expect(
+		t.mutation(internal.learningPlans.markContentGenerationClaimFailed, {
+			learningPlanId,
+			generationId: "stale-claim",
+			failureReason: "unknown",
+		}),
+	).resolves.toBe(false);
+	expect(
+		(await t.query(api.learningPlans.getSnapshot, { id: learningPlanId }))?.plan
+			.contentGeneration?.stage,
+	).toBe("content");
 });
 
 test("requires scope confirmation before plan generation begins", async () => {

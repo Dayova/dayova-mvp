@@ -1647,6 +1647,13 @@ export const beginContentGeneration = internalMutation({
 		) {
 			throwUserFacingError("Dieser Lernplan wird bereits erstellt.");
 		}
+		// Material reanalysis clears the claim and invalidates legacy derived sessions.
+		if (
+			plan.status === "questionsReady" &&
+			!plan.preparationState &&
+			!plan.contentGenerationStage
+		)
+			await preparation.clearLegacyDraftSessions(ctx, plan);
 
 		await ctx.db.patch("learningPlans", args.learningPlanId, {
 			status: "questionsReady",

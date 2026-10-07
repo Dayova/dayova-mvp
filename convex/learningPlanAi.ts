@@ -3706,7 +3706,7 @@ MVP-Vorgabe:
 				generationId,
 			});
 			await ctx.runMutation(
-				internal.learningPlans.clearEmptyContentGeneration,
+				internal.learningPlans.markContentGenerationClaimFailed,
 				{
 					learningPlanId: args.learningPlanId,
 					generationId,

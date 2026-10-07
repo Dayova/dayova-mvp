@@ -104,6 +104,28 @@ export async function getDiagnosticBudget(
 	);
 }
 
+export async function clearLegacyDraftSessions(
+	ctx: MutationCtx,
+	plan: Doc<"learningPlans">,
+) {
+	const legacySessions = await ctx.db
+		.query("learningPlanSessions")
+		.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+			q.eq("learningPlanId", plan._id),
+		)
+		.take(501);
+	if (legacySessions.length > 500)
+		throwUserFacingError(
+			"Dieser Lernplan enthält zu viele Lerneinheiten. Erstelle einen neuen Lernplan.",
+			"legacy_plan_too_large",
+		);
+	for (const session of legacySessions) {
+		await deleteSessionLearningDataForSession(ctx, session._id);
+		await clearSessionDayEntry(ctx, session);
+		await ctx.db.delete("learningPlanSessions", session._id);
+	}
+}
+
 export async function prepareDiagnostic(
 	ctx: MutationCtx,
 	args: { learningPlanId: Id<"learningPlans"> },
@@ -126,24 +148,7 @@ export async function prepareDiagnostic(
 		throwUserFacingError("Bestätige zuerst deinen Prüfungsstoff.");
 	const questions = (plan.knowledgeQuestions ?? []).slice(0, 10);
 	validateFirstSessionDiagnosticQuestions(questions, plan.topicMap);
-	if (replacesLegacyDraft) {
-		const legacySessions = await ctx.db
-			.query("learningPlanSessions")
-			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
-				q.eq("learningPlanId", plan._id),
-			)
-			.take(501);
-		if (legacySessions.length > 500)
-			throwUserFacingError(
-				"Dieser Lernplan enthält zu viele Lerneinheiten. Erstelle einen neuen Lernplan.",
-				"legacy_plan_too_large",
-			);
-		for (const session of legacySessions) {
-			await deleteSessionLearningDataForSession(ctx, session._id);
-			await clearSessionDayEntry(ctx, session);
-			await ctx.db.delete("learningPlanSessions", session._id);
-		}
-	}
+	if (replacesLegacyDraft) await clearLegacyDraftSessions(ctx, plan);
 	const now = Date.now();
 	const current = berlinNow();
 	const sessionId = await ctx.db.insert("learningPlanSessions", {
