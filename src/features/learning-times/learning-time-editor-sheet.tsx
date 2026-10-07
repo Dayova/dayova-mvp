@@ -258,7 +258,6 @@ export function LearningTimeEditorSheet({
 			>
 				{isRemoveConfirmationVisible ? (
 					<ConfirmationSheetContent
-						actionAppearance="outlined"
 						description={removeDescription}
 						confirmLabel="Löschen"
 						isBusy={isSaving}

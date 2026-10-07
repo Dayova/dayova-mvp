@@ -291,7 +291,6 @@ export default function PersonalSubjectsScreen() {
 			>
 				{deletingSubject ? (
 					<ConfirmationSheetContent
-						actionAppearance="outlined"
 						description={`${deletingSubject.name} wird nicht mehr zur Auswahl angeboten. Bereits gespeicherte Einträge behalten ihren bisherigen Fachnamen.`}
 						confirmLabel="Fach löschen"
 						isBusy={isBusy}
