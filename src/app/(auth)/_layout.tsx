@@ -18,6 +18,8 @@ export default function AuthLayout() {
 				fullScreenGestureEnabled: false,
 			}}
 		>
+			{/* Protected app routes fall back to this stack's first screen. */}
+			<Stack.Screen name="index" />
 			<Stack.Screen
 				name="onboarding/index"
 				options={{
