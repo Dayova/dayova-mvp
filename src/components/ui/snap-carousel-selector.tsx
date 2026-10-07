@@ -158,6 +158,10 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 		valueBubbleConfig.getItemPrimaryLabel
 			? valueBubbleConfig.getItemPrimaryLabel(previewItem, safePreviewIndex)
 			: valueBubbleConfig?.primaryLabel;
+	const previewSecondaryLabel =
+		previewItem !== undefined && valueBubbleConfig?.getItemSecondaryLabel
+			? valueBubbleConfig.getItemSecondaryLabel(previewItem, safePreviewIndex)
+			: valueBubbleConfig?.secondaryLabel;
 	const previewProgress =
 		valueBubbleConfig !== null &&
 		previewItem !== undefined &&
@@ -326,13 +330,7 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 							// Runtime font metrics keep the unit optically aligned with the value.
 							style={{ marginTop: valueContentLayout.unitMarginTop }}
 						>
-							{previewItem !== undefined &&
-							valueBubbleConfig.getItemSecondaryLabel
-								? valueBubbleConfig.getItemSecondaryLabel(
-										previewItem,
-										safePreviewIndex,
-									)
-								: valueBubbleConfig.secondaryLabel}
+							{previewSecondaryLabel}
 						</Text>
 					</View>
 				</View>

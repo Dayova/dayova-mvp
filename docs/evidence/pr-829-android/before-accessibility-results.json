@@ -1,0 +1,152 @@
+[
+  {
+    "seconds": 1.945,
+    "scenario": "fresh accessibility activation",
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791219145472
+        }
+      ],
+      "pathname": "/learning-plans/jn7ekgp0hcwfesp59s1na3f6218fpssj",
+      "route": "learning-plans/[planId]/index"
+    },
+    "extra": "INSTRUMENTATION_RESULT: click=true\r\nINSTRUMENTATION_RESULT: description=Deutsch, Morgen, 2026-10-21, Wissenscheck · 5–10 Fragen, 0 abgeschlossen · 2 weitere Termine geplant, noch 16 Tage\r\nINSTRUMENTATION_RESULT: focus=true\r\nINSTRUMENTATION_RESULT: found=true\r\nINSTRUMENTATION_CODE: 0\r\n"
+  },
+  {
+    "seconds": 5.696,
+    "scenario": "short swipe 1",
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    },
+    "extra": null
+  },
+  {
+    "seconds": 7.584,
+    "scenario": "accessibility click after settled short swipe 1",
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    },
+    "extra": "INSTRUMENTATION_RESULT: click=true\r\nINSTRUMENTATION_RESULT: description=Deutsch, Morgen, 2026-10-21, Wissenscheck · 5–10 Fragen, 0 abgeschlossen · 2 weitere Termine geplant, noch 16 Tage\r\nINSTRUMENTATION_RESULT: focus=true\r\nINSTRUMENTATION_RESULT: found=true\r\nINSTRUMENTATION_CODE: 0\r\n"
+  },
+  {
+    "seconds": 9.414,
+    "scenario": "second accessibility click 1",
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    },
+    "extra": "INSTRUMENTATION_RESULT: click=true\r\nINSTRUMENTATION_RESULT: description=Deutsch, Morgen, 2026-10-21, Wissenscheck · 5–10 Fragen, 0 abgeschlossen · 2 weitere Termine geplant, noch 16 Tage\r\nINSTRUMENTATION_RESULT: focus=false\r\nINSTRUMENTATION_RESULT: found=true\r\nINSTRUMENTATION_CODE: 0\r\n"
+  },
+  {
+    "seconds": 11.82,
+    "scenario": "short swipe 2",
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    },
+    "extra": null
+  },
+  {
+    "seconds": 13.729,
+    "scenario": "accessibility click after settled short swipe 2",
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    },
+    "extra": "INSTRUMENTATION_RESULT: click=true\r\nINSTRUMENTATION_RESULT: description=Deutsch, Morgen, 2026-10-21, Wissenscheck · 5–10 Fragen, 0 abgeschlossen · 2 weitere Termine geplant, noch 16 Tage\r\nINSTRUMENTATION_RESULT: focus=false\r\nINSTRUMENTATION_RESULT: found=true\r\nINSTRUMENTATION_CODE: 0\r\n"
+  },
+  {
+    "seconds": 15.622,
+    "scenario": "second accessibility click 2",
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    },
+    "extra": "INSTRUMENTATION_RESULT: click=true\r\nINSTRUMENTATION_RESULT: description=Deutsch, Morgen, 2026-10-21, Wissenscheck · 5–10 Fragen, 0 abgeschlossen · 2 weitere Termine geplant, noch 16 Tage\r\nINSTRUMENTATION_RESULT: focus=false\r\nINSTRUMENTATION_RESULT: found=true\r\nINSTRUMENTATION_CODE: 0\r\n"
+  },
+  {
+    "seconds": 17.911,
+    "scenario": "short swipe 3",
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    },
+    "extra": null
+  },
+  {
+    "seconds": 19.704,
+    "scenario": "accessibility click after settled short swipe 3",
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    },
+    "extra": "INSTRUMENTATION_RESULT: click=true\r\nINSTRUMENTATION_RESULT: description=Deutsch, Morgen, 2026-10-21, Wissenscheck · 5–10 Fragen, 0 abgeschlossen · 2 weitere Termine geplant, noch 16 Tage\r\nINSTRUMENTATION_RESULT: focus=false\r\nINSTRUMENTATION_RESULT: found=true\r\nINSTRUMENTATION_CODE: 0\r\n"
+  },
+  {
+    "seconds": 21.572,
+    "scenario": "second accessibility click 3",
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    },
+    "extra": "INSTRUMENTATION_RESULT: click=true\r\nINSTRUMENTATION_RESULT: description=Deutsch, Morgen, 2026-10-21, Wissenscheck · 5–10 Fragen, 0 abgeschlossen · 2 weitere Termine geplant, noch 16 Tage\r\nINSTRUMENTATION_RESULT: focus=false\r\nINSTRUMENTATION_RESULT: found=true\r\nINSTRUMENTATION_CODE: 0\r\n"
+  },
+  {
+    "seconds": 23.643,
+    "scenario": "untouched Mathematik accessibility control",
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791219167145
+        }
+      ],
+      "pathname": "/learning-plans/jn7eapfe9eeknntxzf74jgt8hn8fqpk8",
+      "route": "learning-plans/[planId]/index"
+    },
+    "extra": "INSTRUMENTATION_RESULT: click=true\r\nINSTRUMENTATION_RESULT: description=Mathematik, Morgen, 2026-10-20, Wissenscheck · 5–10 Fragen, 0 abgeschlossen · 2 weitere Termine geplant, noch 15 Tage\r\nINSTRUMENTATION_RESULT: focus=true\r\nINSTRUMENTATION_RESULT: found=true\r\nINSTRUMENTATION_CODE: 0\r\n"
+  },
+  {
+    "seconds": 26.223,
+    "scenario": "ordinary touch recovers Deutsch",
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791219169456
+        }
+      ],
+      "pathname": "/learning-plans/jn7ekgp0hcwfesp59s1na3f6218fpssj",
+      "route": "learning-plans/[planId]/index"
+    },
+    "extra": null
+  },
+  {
+    "seconds": 29.58,
+    "scenario": "accessibility activation after ordinary touch",
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791219173072
+        }
+      ],
+      "pathname": "/learning-plans/jn7ekgp0hcwfesp59s1na3f6218fpssj",
+      "route": "learning-plans/[planId]/index"
+    },
+    "extra": "INSTRUMENTATION_RESULT: click=true\r\nINSTRUMENTATION_RESULT: description=Deutsch, Morgen, 2026-10-21, Wissenscheck · 5–10 Fragen, 0 abgeschlossen · 2 weitere Termine geplant, noch 16 Tage\r\nINSTRUMENTATION_RESULT: focus=true\r\nINSTRUMENTATION_RESULT: found=true\r\nINSTRUMENTATION_CODE: 0\r\n"
+  }
+]

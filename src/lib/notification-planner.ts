@@ -20,6 +20,7 @@ export type NotificationPlanningEntry = {
 	kind?: string;
 	durationMinutes?: number;
 	completed?: boolean;
+	executionStatus?: string;
 	relatedLearningPlanId?: string;
 	relatedLearningPlanSessionId?: string;
 };
@@ -93,7 +94,11 @@ const formatEntryForBriefing = (entry: NotificationPlanningEntry) => {
 };
 
 const getBriefingBody = (entries: NotificationPlanningEntry[]) => {
-	const activeEntries = entries.filter((entry) => entry.completed !== true);
+	const activeEntries = entries.filter(
+		(entry) =>
+			entry.completed !== true &&
+			!(entry.relatedLearningPlanId && entry.executionStatus === "started"),
+	);
 	if (activeEntries.length === 0) {
 		return "Heute stehen keine offenen Einträge an.";
 	}
@@ -150,7 +155,11 @@ export const buildLocalNotificationPlan = ({
 		}
 
 		for (const entry of entries) {
-			if (entry.completed === true) continue;
+			if (
+				entry.completed === true ||
+				(entry.relatedLearningPlanId && entry.executionStatus === "started")
+			)
+				continue;
 			const relatedDayEntryId = entry.relatedDayEntryId;
 			if (!relatedDayEntryId) continue;
 			const startMinutes = isExamEntry(entry)

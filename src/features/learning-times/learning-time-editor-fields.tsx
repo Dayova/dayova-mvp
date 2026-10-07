@@ -51,6 +51,7 @@ function TimeControl({ label, value, onPress, disabled }: TimeControlProps) {
 
 type LearningTimeEditorFieldsProps = {
 	selectedDay: LearningDayLabel;
+	endLabel?: string;
 	startTime: string;
 	endTime: string;
 	onDayChange: (day: LearningDayLabel) => void;
@@ -61,6 +62,7 @@ type LearningTimeEditorFieldsProps = {
 
 function LearningTimeEditorFields({
 	selectedDay,
+	endLabel = "Ende",
 	startTime,
 	endTime,
 	onDayChange,
@@ -152,7 +154,7 @@ function LearningTimeEditorFields({
 				/>
 				<TimeControl
 					disabled={disabled}
-					label="Ende"
+					label={endLabel}
 					value={endTime}
 					onPress={onEndTimePress}
 				/>
