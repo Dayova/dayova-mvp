@@ -11,7 +11,7 @@ import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
-type PendingUploadAction = "camera" | "files";
+type PendingUploadAction = "camera" | "library" | "files";
 
 function SetupContinueButton({
 	canContinue,
@@ -57,9 +57,11 @@ function UploadActivity({
 			<Text className="flex-1 font-poppins text-body-4 text-secondary-text">
 				{openingUploadAction === "files"
 					? "Dateiauswahl wird geöffnet …"
-					: openingUploadAction === "camera"
-						? "Kamera wird geöffnet …"
-						: "Material wird hochgeladen …"}
+					: openingUploadAction === "library"
+						? "Galerie wird geöffnet …"
+						: openingUploadAction === "camera"
+							? "Kamera wird geöffnet …"
+							: "Material wird hochgeladen …"}
 			</Text>
 		</View>
 	);
