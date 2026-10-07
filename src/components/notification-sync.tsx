@@ -79,6 +79,7 @@ export function NotificationSync() {
 			const deliveredNotification = getDeliveredNotificationInput(
 				notification,
 				user.clerkId,
+				Platform.OS === "ios" ? "seconds" : "milliseconds",
 			);
 			if (!deliveredNotification) return;
 
