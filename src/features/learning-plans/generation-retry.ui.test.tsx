@@ -9,6 +9,7 @@ import {
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import LearningPlanGeneratingScreen from "~/app/(creation)/learning-plans/[planId]/generating";
 import { getDayKey } from "~/lib/day-key";
+import { getLearningPlanCreationProgressPercentage } from "./creation-progress";
 import type { LearningPlanGenerationFailureReason } from "./generation-recovery";
 import { calculateAvailableStudyMinutes } from "./plan-workload";
 
@@ -18,6 +19,8 @@ const mockRetryFailedContent = jest.fn(async () => ({ isReady: true }));
 const mockRequestAiConsent = jest.fn(async () => true);
 const mockSetTargetStudyMinutes = jest.fn(async () => undefined);
 const mockCapture = jest.fn();
+const mockConfigureProgress =
+	jest.fn<(configuration: { currentStep: number }) => void>();
 let mockRetryPress: (() => void) | undefined;
 let mockLearningTimes: Array<{
 	dayOfWeek: number;
@@ -75,7 +78,8 @@ jest.mock("~/context/AiConsentContext", () => ({
 	useAiConsent: () => ({ requestAiConsent: mockRequestAiConsent }),
 }));
 jest.mock("~/features/learning-plans/creation-progress-shell", () => ({
-	useLearningPlanCreationProgress: () => undefined,
+	useLearningPlanCreationProgress: (configuration: { currentStep: number }) =>
+		mockConfigureProgress(configuration),
 }));
 jest.mock("~/lib/navigation", () => ({
 	useBackIntent: () => undefined,
@@ -155,9 +159,40 @@ describe("learning-plan generation recovery", () => {
 		mockSnapshot.sessions = [];
 		mockSnapshot.plan.contentGeneration.failureReason = "schedulingConstraints";
 		mockSnapshot.plan.contentGeneration.failureMessage = undefined;
+		mockSnapshot.plan.contentGeneration.stage = "failed";
 	});
 	afterEach(() => {
 		jest.useRealTimers();
+	});
+
+	test.each([
+		"failed",
+		"content",
+		"validating",
+	])("keeps the shared creation header below completion during %s generation", async (stage) => {
+		mockSnapshot.plan.contentGeneration.stage = stage;
+		addSufficientAvailability();
+		await render(<LearningPlanGeneratingScreen />);
+		const configuration = mockConfigureProgress.mock.calls.at(-1)?.[0];
+		expect(configuration).toBeDefined();
+		expect(
+			getLearningPlanCreationProgressPercentage(
+				configuration?.currentStep ?? 0,
+			),
+		).toBe(90);
+	});
+
+	test("completes the shared header only when generation is ready", async () => {
+		mockSnapshot.plan.contentGeneration.stage = "ready";
+		addSufficientAvailability();
+		await render(<LearningPlanGeneratingScreen />);
+		const configuration = mockConfigureProgress.mock.calls.at(-1)?.[0];
+		expect(configuration).toBeDefined();
+		expect(
+			getLearningPlanCreationProgressPercentage(
+				configuration?.currentStep ?? 0,
+			),
+		).toBe(100);
 	});
 
 	test("retries a persisted scheduling failure after correcting learning times and reopening", async () => {

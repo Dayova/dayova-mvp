@@ -314,7 +314,13 @@ export default function LearningPlanGeneratingScreen() {
 	useBackIntent(true, goBack);
 	useLearningPlanCreationProgress({
 		active: true,
-		currentStep: LEARNING_PLAN_CREATION_STEPS.planGeneration,
+		// Completing the route transition does not complete generation. Keep the
+		// shared header below 100% until the backend confirms the plan is ready.
+		currentStep:
+			snapshot?.plan.status === "generated" ||
+			snapshot?.plan.contentGeneration?.stage === "ready"
+				? LEARNING_PLAN_CREATION_STEPS.planGeneration
+				: LEARNING_PLAN_CREATION_STEPS.scopeConfirmation,
 		onBack: goBack,
 	});
 
