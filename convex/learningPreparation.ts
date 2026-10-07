@@ -132,7 +132,11 @@ export async function prepareDiagnostic(
 			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
 				q.eq("learningPlanId", plan._id),
 			)
-			.take(500);
+			.take(501);
+		if (legacySessions.length > 500)
+			throwUserFacingError(
+				"Dieser Lernplan enthält zu viele Lerneinheiten. Erstelle einen neuen Lernplan.",
+			);
 		for (const session of legacySessions) {
 			await deleteSessionLearningDataForSession(ctx, session._id);
 			await clearSessionDayEntry(ctx, session);

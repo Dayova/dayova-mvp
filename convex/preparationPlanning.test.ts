@@ -563,15 +563,19 @@ test.each([
 			?.contentGenerationId,
 	).toBeUndefined();
 	// Reanalysis invalidates generation metadata but older drafts can retain derived sessions.
-	await t.run(async (ctx) => {
+	const obsoleteSessionIds = await t.run(async (ctx) => {
 		const legacy = await ctx.db.get("learningPlanSessions", sessionId);
 		if (!legacy) throw new Error("Missing legacy session fixture");
 		const { _id, _creationTime, ...fields } = legacy;
-		for (let i = 0; i < 101; i++)
-			await ctx.db.insert("learningPlanSessions", {
-				...fields,
-				sortOrder: i + 1,
-			});
+		const ids = [];
+		for (let i = 0; i < 500; i++)
+			ids.push(
+				await ctx.db.insert("learningPlanSessions", {
+					...fields,
+					sortOrder: i + 1,
+				}),
+			);
+		return ids;
 	});
 	await t.run((ctx) =>
 		ctx.db.patch("learningPlans", id, {
@@ -580,6 +584,29 @@ test.each([
 			contentGenerationStage: undefined,
 		}),
 	);
+	await expect(
+		t.mutation(api.learningPlans.prepareDiagnostic, { learningPlanId: id }),
+	).rejects.toThrow("Dieser Lernplan enthält zu viele Lerneinheiten.");
+	expect(
+		await t.run((ctx) => ctx.db.get("learningPlanSessions", sessionId)),
+	).not.toBeNull();
+	expect((await t.run((ctx) => ctx.db.get("learningPlans", id)))?.status).toBe(
+		"questionsReady",
+	);
+	expect(
+		await t.run((ctx) =>
+			ctx.db
+				.query("learningPlanSessions")
+				.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+					q.eq("learningPlanId", id),
+				)
+				.take(502),
+		),
+	).toHaveLength(501);
+	await t.run(async (ctx) => {
+		for (const obsoleteId of obsoleteSessionIds.slice(499))
+			await ctx.db.delete("learningPlanSessions", obsoleteId);
+	});
 	const replacementId = await t.mutation(api.learningPlans.prepareDiagnostic, {
 		learningPlanId: id,
 	});
