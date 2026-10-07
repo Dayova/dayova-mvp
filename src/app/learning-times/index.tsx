@@ -124,9 +124,12 @@ export default function LearningTimesOverviewScreen({
 				bottomPadding={80}
 				showsVerticalScrollIndicator={false}
 			>
-				<Text className="mb-5 text-body-3 text-secondary-text">
-					Diese wöchentlichen Zeiten bilden die Grundlage für deine Lernplanung.
-					Du kannst sie hier hinzufügen, bearbeiten oder löschen.
+				<Text
+					selectable
+					className="mb-5 font-poppins text-body-3 text-secondary-text"
+				>
+					Diese Zeiten sind deine bevorzugten Lernzeiten. Für einzelne Prüfungen
+					kannst du weitere Termine einplanen.
 				</Text>
 				{learningTimes === undefined ? (
 					<View
