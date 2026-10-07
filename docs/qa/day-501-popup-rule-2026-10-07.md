@@ -37,3 +37,28 @@ At `accessibility-extra-extra-extra-large`, the description scrolls and actions 
 ### Primary action remains primary
 
 ![Save retains its gradient beside outlined Cancel](assets/day-501/primary-light.png)
+
+
+## #729 compatibility and integration audit — 7 October 2026
+
+Compared the live incremental diff of #729 (base #727) and its two historical
+consumer patches at `ed712854` against current main `1fadb77b` and #841.
+Main has not moved since the #841 implementation. No additional product-code
+change is needed: #841 completes the remaining shared integration.
+
+| Requirement from #729 | Current implementation / destination |
+| --- | --- |
+| Shared bordered card-surface Cancel with normal theme text | Already on main in `button.tsx`; #841 applies it to all `ConfirmationSheet` and embedded confirmation actions. |
+| Light danger `#B01B10` on `#FFF0EE`, unchanged dark palette | Already on main in `design-system.ts` / `global.css`; #841 reuses these tokens. |
+| At least 4.5:1 danger text contrast at rest and 80% opacity over surface/background, both themes | Already covered by main’s `theme-css.test.ts`; rerun with #841. |
+| Shared icon-free outlined destructive text buttons | #841 makes the default destructive variant match the existing outlined subject/time variant. |
+| Deferred personal-subject swipe delete and subject-picker Cancel patch | Already active on main in `personal-subjects.tsx` and `subject-picker.tsx`; uses shared outlined delete / cancel. No old patch replay needed. |
+| Deferred weekly-learning-time swipe patch | Already active on main in `weekly-learning-times.tsx`; shared outlined text delete and current disabled guard retained. |
+| Button appearance regression checks | Covered by #841’s `subject-action-appearance.ui.test.tsx`, including shared confirmation actions, primary preservation and busy/error behavior. |
+
+The 800-series integration point is **#841 for both #727 and #729**. It is based
+on main, not on the historical stack/QA branch. Do not merge the old stack on top
+of #841: compare this coverage before retiring it. Neither old PR is closed by
+this audit. Existing native #841 screenshots remain applicable because this
+follow-up changes documentation only; it does not claim new device evidence.
+Targeted rerun: 26 UI tests across three suites and 8 theme/contrast tests passed.
