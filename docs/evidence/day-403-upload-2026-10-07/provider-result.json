@@ -1,0 +1,45 @@
+{
+  "bytes": 26214400,
+  "modelId": "gemini-3-flash-preview",
+  "elapsedMs": 7697,
+  "text": "Es gibt insgesamt **8 Arbeitsblätter**. Die Formel auf der letzten Seite lautet **y = 2x + 3**.",
+  "peakRssKiB": 309040,
+  "usage": {
+    "inputTokens": 4273,
+    "inputTokenDetails": {
+      "noCacheTokens": 4273,
+      "cacheReadTokens": 0
+    },
+    "outputTokens": 593,
+    "outputTokenDetails": {
+      "textTokens": 27,
+      "reasoningTokens": 566
+    },
+    "totalTokens": 4866,
+    "raw": {
+      "thoughtsTokenCount": 566,
+      "promptTokenCount": 4273,
+      "candidatesTokenCount": 27,
+      "totalTokenCount": 4866,
+      "trafficType": "ON_DEMAND",
+      "promptTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 17
+        },
+        {
+          "modality": "IMAGE",
+          "tokenCount": 4256
+        }
+      ],
+      "candidatesTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 27
+        }
+      ]
+    },
+    "reasoningTokens": 566,
+    "cachedInputTokens": 0
+  }
+}
