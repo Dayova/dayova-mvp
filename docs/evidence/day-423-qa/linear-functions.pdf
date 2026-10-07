@@ -1,0 +1,97 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 1860 >>
+stream
+BT
+/F1 11 Tf
+15 TL
+50 790 Td
+(Lineare Funktionen - Unterrichtsmaterial fuer den Wissenscheck) Tj
+T*
+() Tj
+T*
+(Eine lineare Funktion hat die Form f\(x\) = m*x + b. Ihr Graph ist eine Gerade.) Tj
+T*
+(m heisst Steigung. b ist der Schnittpunkt des Graphen mit der y-Achse.) Tj
+T*
+(Bei m > 0 steigt die Gerade; bei m < 0 faellt sie; bei m = 0 ist sie waagerecht.) Tj
+T*
+(Aus zwei Punkten \(x1,y1\) und \(x2,y2\) berechnet man m = \(y2-y1\)/\(x2-x1\).) Tj
+T*
+(Danach setzt man einen Punkt in y = m*x + b ein und loest nach b auf.) Tj
+T*
+() Tj
+T*
+(Beispiel 1: Die Punkte A\(1,3\) und B\(3,7\) liegen auf einer Geraden.) Tj
+T*
+(Die Steigung ist m = \(7-3\)/\(3-1\) = 2.) Tj
+T*
+(Mit A folgt 3 = 2*1 + b, also b = 1. Die Funktion lautet f\(x\) = 2*x + 1.) Tj
+T*
+(Probe: f\(3\) = 2*3 + 1 = 7, also liegt B auf dem Graphen.) Tj
+T*
+() Tj
+T*
+(Die Nullstelle ist der x-Wert, bei dem f\(x\) = 0 gilt.) Tj
+T*
+(Bei f\(x\) = 2*x + 1 ergibt 0 = 2*x + 1 die Nullstelle x = -0.5.) Tj
+T*
+(Zwei Geraden mit gleicher Steigung und unterschiedlichem b sind parallel.) Tj
+T*
+(Geraden mit verschiedenen Steigungen schneiden sich in einem Punkt.) Tj
+T*
+(Um den Schnittpunkt zu finden, setzt man beide Funktionsgleichungen gleich.) Tj
+T*
+() Tj
+T*
+(Beispiel 2: f\(x\) = 2*x + 1 und g\(x\) = -x + 7.) Tj
+T*
+(2*x + 1 = -x + 7 ergibt 3*x = 6, also x = 2.) Tj
+T*
+(Einsetzen liefert y = f\(2\) = 5. Der Schnittpunkt ist S\(2,5\).) Tj
+T*
+() Tj
+T*
+(Uebung A: Bestimme m und b fuer die Gerade durch P\(0,4\) und Q\(2,8\).) Tj
+T*
+(Loesung A: m = \(8-4\)/\(2-0\) = 2 und b = 4, also y = 2*x + 4.) Tj
+T*
+(Uebung B: Bestimme die Nullstelle von h\(x\) = -3*x + 9.) Tj
+T*
+(Loesung B: 0 = -3*x + 9, also x = 3.) Tj
+T*
+(Uebung C: Erklaere die Wirkung von b auf den Graphen einer linearen Funktion.) Tj
+T*
+(Loesung C: b verschiebt die Gerade entlang der y-Achse; die Steigung bleibt) Tj
+T*
+(gleich.) Tj
+T*
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000247 00000 n 
+0000002158 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+2228
+%%EOF

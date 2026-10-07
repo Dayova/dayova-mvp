@@ -12,9 +12,16 @@ import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
-import { learningPlanMaterialPath } from "~/features/learning-plans/creation-routes";
+import {
+	learningPlanMaterialPath,
+	learningPlanTopicsPath,
+} from "~/features/learning-plans/creation-routes";
+import {
+	getLearningPlanGenerationFailure,
+	type LearningPlanGenerationFailure,
+} from "~/features/learning-plans/generation-recovery";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
-import { getErrorMessage } from "~/features/learning-plans/utils";
+import { logDiagnosticError } from "~/lib/diagnostics";
 import {
 	dismissToOrReplace,
 	goBackOrReplace,
@@ -35,7 +42,9 @@ export default function LearningPlanAnalysisScreen() {
 		api.learningPlanAi.generateKnowledgeQuestions,
 	);
 	const [isBusy, setIsBusy] = useState(false);
-	const [errorMessage, setErrorMessage] = useState<string | null>(null);
+	const [failure, setFailure] = useState<LearningPlanGenerationFailure | null>(
+		null,
+	);
 	const [retryAttempt, setRetryAttempt] = useState(0);
 	const didStartRef = useRef(false);
 
@@ -71,7 +80,7 @@ export default function LearningPlanAnalysisScreen() {
 		didStartRef.current = true;
 		queueMicrotask(() => {
 			setIsBusy(true);
-			setErrorMessage(null);
+			setFailure(null);
 			void requestAiConsent()
 				.then((allowed) => {
 					if (!allowed) {
@@ -82,18 +91,16 @@ export default function LearningPlanAnalysisScreen() {
 					return generateKnowledgeQuestions({ learningPlanId: planId });
 				})
 				.catch((error: unknown) => {
-					const message = getErrorMessage(
-						error,
-						"Deine Unterlagen konnten nicht zuverlässig analysiert werden.",
-					);
-					setErrorMessage(message);
+					const nextFailure = getLearningPlanGenerationFailure(error);
+					logDiagnosticError("Learning plan material analysis failed.", error, {
+						source: "learning-plans.analysis",
+						metadata: {
+							learningPlanId: planId,
+							failureReason: nextFailure.reason,
+						},
+					});
+					setFailure(nextFailure);
 					didStartRef.current = false;
-					dismissToOrReplace(
-						router,
-						learningPlanMaterialPath(planId, {
-							errorMessage: message,
-						}),
-					);
 				})
 				.finally(() => setIsBusy(false));
 		});
@@ -112,6 +119,20 @@ export default function LearningPlanAnalysisScreen() {
 			planId ? learningPlanMaterialPath(planId) : "/learning-plans/new",
 		);
 		return true;
+	};
+	const reviewTopics = () => {
+		if (!planId || !snapshot) return;
+		router.replace(
+			snapshot.plan.topicMap.length > 0
+				? planPath(planId, "scope")
+				: learningPlanTopicsPath(planId, {
+						topicDescription: snapshot.plan.topicDescription,
+					}),
+		);
+	};
+	const editMaterial = () => {
+		if (!planId) return;
+		dismissToOrReplace(router, learningPlanMaterialPath(planId));
 	};
 	useBackIntent(true, goBack);
 	useLearningPlanCreationProgress({
@@ -132,29 +153,58 @@ export default function LearningPlanAnalysisScreen() {
 				}}
 				showsVerticalScrollIndicator={false}
 			>
-				<View className="min-h-[620px] flex-1 items-center justify-center pb-20">
-					<View className="mb-12">
-						<AnimatedFlowerLoader />
-					</View>
-					<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
-						Wir ordnen deine Schulunterlagen.
-					</Text>
-					<Text className="mt-3 max-w-[320px] text-center font-poppins text-body-3 text-secondary-text">
-						Dayova trennt wahrscheinlichen Prüfungsstoff von zusätzlichem
-						Material und bereitet den Wissenscheck für deinen ersten Lerntermin
-						vor.
-					</Text>
-					{errorMessage ? (
+				<View
+					className={
+						failure
+							? "items-center pt-8"
+							: "min-h-[620px] flex-1 items-center justify-center pb-20"
+					}
+				>
+					{failure ? (
+						<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
+							Das hat noch nicht geklappt.
+						</Text>
+					) : (
+						<>
+							<View className="mb-12">
+								<AnimatedFlowerLoader />
+							</View>
+							<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
+								Wir ordnen deine Schulunterlagen.
+							</Text>
+							<Text className="mt-3 max-w-[320px] text-center font-poppins text-body-3 text-secondary-text">
+								Dayova trennt wahrscheinlichen Prüfungsstoff von zusätzlichem
+								Material und bereitet den Wissenscheck für deinen ersten
+								Lerntermin vor.
+							</Text>
+						</>
+					)}
+					{failure ? (
 						<>
 							<ErrorMessage className="mt-6 text-center">
-								{errorMessage}
+								{failure.message}
 							</ErrorMessage>
+							{failure.canReviewTopics ? (
+								<Button className="mt-6" onPress={reviewTopics}>
+									<Text>Prüfungsstoff prüfen</Text>
+								</Button>
+							) : null}
+							{failure.canEditMaterial ? (
+								<Button
+									className={failure.canReviewTopics ? "mt-3" : "mt-6"}
+									variant={failure.canReviewTopics ? "neutral" : "default"}
+									onPress={editMaterial}
+								>
+									<Text>Material ergänzen oder ersetzen</Text>
+								</Button>
+							) : null}
 							<Button
-								className="mt-6"
+								className="mt-3"
 								disabled={isBusy}
+								accessibilityState={{ busy: isBusy }}
 								onPress={() => {
 									didStartRef.current = false;
-									setErrorMessage(null);
+									setFailure(null);
 									setRetryAttempt((value) => value + 1);
 								}}
 							>

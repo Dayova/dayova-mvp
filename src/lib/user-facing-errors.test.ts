@@ -1,9 +1,22 @@
 import { describe, expect, test, vi } from "vitest";
 import { setDiagnosticSink } from "./diagnostics";
 import {
+	extractUserFacingErrorCode,
 	getUserFacingErrorMessage,
 	USER_FACING_ERROR_KIND,
 } from "./user-facing-errors";
+
+test("extracts an optional machine-readable recovery code", () => {
+	expect(
+		extractUserFacingErrorCode({
+			data: {
+				kind: USER_FACING_ERROR_KIND,
+				message: "Passe deine Lernzeiten an.",
+				code: "scheduling_constraints",
+			},
+		}),
+	).toBe("scheduling_constraints");
+});
 
 describe("getUserFacingErrorMessage", () => {
 	test("uses explicit user-facing Convex error data", () => {
