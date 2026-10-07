@@ -79,13 +79,16 @@ Philipp approved narrowing #813 to functional scheduling, retaining the existing
 onboarding layout and sequence. The selector now exposes 15, 30, 45, 60, 90,
 120, 150, 180, 210 and 240 minutes; no custom or above-four-hour entry. Historic
 supported answers remain readable. The three inputs still create explicit
-recurring windows; the separate missing-times fallback uses class-aware planning
-proposals without storing them as personal availability. Plan creation must not
+recurring windows. Without saved personal learning times, no automatic proposals
+are created, including for learners with a saved grade. Learners can add manual
+appointments or choose "Jetzt lernen" without storing invented availability.
+Plan creation must not
 require manual learning-time entry. A voluntary benefit explanation after the
 Wissenscheck replaces proposed intelligent routine/check-in workflows for this
 scope. This overrides the older bounded-duration statement below. See the
-[functional contract and acceptance sheet](https://github.com/Dayova/dayova-mvp/blob/f5633529c492f1bd311846475cc1f317d631a4a7/docs/qa/pr-813-learning-times-functional.md)
-for precedence, fallback limits, sources and verification.
+[canonical onboarding decision, October functional amendment](https://app.notion.com/p/3b92e87228bf817faac0f15bd19ccb29)
+for the duration set and missing-times contract, and [PR #813](https://github.com/Dayova/dayova-mvp/pull/813)
+for implementation and verification.
 
 The launch flow is ordered as follows:
 

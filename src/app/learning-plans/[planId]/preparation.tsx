@@ -1,6 +1,6 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
@@ -58,6 +58,10 @@ export default function PreparationScreen() {
 	);
 	const save = useMutation(api.learningPlans.savePreparationSchedule);
 	const startFlexible = useMutation(api.learningPlans.startFlexiblePreparation);
+	const latestRevision = useRef(schedule?.revision);
+	useEffect(() => {
+		latestRevision.current = schedule?.revision;
+	}, [schedule?.revision]);
 	const [draft, setDraft] = useState<{
 		slots: Slot[];
 		revision: number;
@@ -97,6 +101,9 @@ export default function PreparationScreen() {
 			});
 			router.replace(`/learning-plans/${id}`);
 		} catch (cause) {
+			setDraft((current) =>
+				current && current.revision !== latestRevision.current ? null : current,
+			);
 			setError(
 				getErrorMessage(
 					cause,

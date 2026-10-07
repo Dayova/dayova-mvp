@@ -51,6 +51,45 @@ const slot = {
 	startTime: "17:00",
 	durationMinutes: 30,
 };
+test.each([
+	["2026-10-06", true],
+	["2026-12-28", false],
+])("a crowded calendar on %s keeps preparation reachable", async (dayKey, expectsProposal) => {
+	const { t, id } = await setup();
+	await t.run(async (ctx) => {
+		await ctx.db.insert("userLearningTimes", {
+			ownerTokenIdentifier: identity.tokenIdentifier,
+			dayOfWeek: 1,
+			startTime: "17:00",
+			endTime: "18:00",
+			createdAt: Date.now(),
+			updatedAt: Date.now(),
+		});
+		for (let index = 0; index < 501; index++)
+			await ctx.db.insert("dayEntries", {
+				ownerTokenIdentifier: identity.tokenIdentifier,
+				dayKey,
+				title: `Aufgabe ${index}`,
+				kind: "Hausaufgabe",
+			});
+	});
+	const schedule = await t.query(api.learningPlans.getPreparationSchedule, {
+		learningPlanId: id,
+		now: { dateKey: "2026-10-05", minutes: 840 },
+	});
+	expect(schedule).toMatchObject({ revision: 0, budgetMinutes: 60 });
+	expect(schedule.slots.length > 0).toBe(expectsProposal);
+	if (!expectsProposal) {
+		await t.mutation(api.learningPlans.savePreparationSchedule, {
+			learningPlanId: id,
+			revision: schedule.revision,
+			slots: [slot],
+		});
+		expect(
+			(await t.query(api.learningPlans.getSnapshot, { id }))?.sessions,
+		).toHaveLength(3);
+	}
+});
 test("schedule is atomic, has one calendar event and three small steps", async () => {
 	const { t, id } = await setup();
 	await t.mutation(api.learningPlans.savePreparationSchedule, {

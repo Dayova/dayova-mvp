@@ -261,14 +261,22 @@ export async function getPreparationSchedule(
 			...budget,
 		};
 	const now = args.now;
+	const availabilityDayKeys = getAvailabilityDayKeys(
+		now.dateKey,
+		plan.examDateKey.slice(0, 10),
+	);
+	const horizonDays = preparationBudget(plan.examTypeLabel).horizonDays;
 	const occupied = await getSchedulingOccupiedEntries(ctx, {
 		ownerTokenIdentifier: plan.ownerTokenIdentifier,
-		dayKeys: getAvailabilityDayKeys(now.dateKey, plan.examDateKey.slice(0, 10)),
+		dayKeys: availabilityDayKeys.slice(-horizonDays),
 	});
 	if (occupied.wasTruncated)
-		throwUserFacingError(
-			"Es sind zu viele Kalendereinträge für einen sicheren Vorschlag vorhanden. Bitte füge deine Termine einzeln hinzu.",
-		);
+		return {
+			slots: [],
+			revision: plan.preparationRevision ?? 0,
+			budgetMinutes,
+			...budget,
+		};
 	const saved = await getPlanningLearningTimes(ctx, plan.ownerTokenIdentifier);
 	return {
 		slots: proposePreparationSchedule({
