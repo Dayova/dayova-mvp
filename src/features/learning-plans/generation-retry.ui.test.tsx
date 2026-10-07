@@ -19,6 +19,7 @@ const mockRetryFailedContent = jest.fn(async () => ({ isReady: true }));
 const mockRequestAiConsent = jest.fn(async () => true);
 const mockSetTargetStudyMinutes = jest.fn(async () => undefined);
 const mockCapture = jest.fn();
+const mockBackIntent = jest.fn();
 const mockConfigureProgress =
 	jest.fn<(configuration: { currentStep: number }) => void>();
 let mockRetryPress: (() => void) | undefined;
@@ -82,7 +83,7 @@ jest.mock("~/features/learning-plans/creation-progress-shell", () => ({
 		mockConfigureProgress(configuration),
 }));
 jest.mock("~/lib/navigation", () => ({
-	useBackIntent: () => undefined,
+	useBackIntent: (...args: unknown[]) => mockBackIntent(...args),
 	goBackOrReplace: jest.fn(),
 }));
 jest.mock("~/lib/use-validation-analytics", () => ({
@@ -160,6 +161,7 @@ describe("learning-plan generation recovery", () => {
 		mockSnapshot.plan.contentGeneration.failureReason = "schedulingConstraints";
 		mockSnapshot.plan.contentGeneration.failureMessage = undefined;
 		mockSnapshot.plan.contentGeneration.stage = "failed";
+		mockSnapshot.plan.status = "questionsReady";
 	});
 	afterEach(() => {
 		jest.useRealTimers();
@@ -193,6 +195,31 @@ describe("learning-plan generation recovery", () => {
 				configuration?.currentStep ?? 0,
 			),
 		).toBe(100);
+	});
+
+	test("releases native removal protection before advancing a completed retry to review", async () => {
+		addSufficientAvailability();
+		const screen = await render(<LearningPlanGeneratingScreen />);
+		expect(mockBackIntent).toHaveBeenLastCalledWith(
+			true,
+			expect.any(Function),
+			{ allowRouteRemoval: false },
+		);
+		mockSnapshot.plan.status = "generated";
+		mockSnapshot.plan.contentGeneration.stage = "ready";
+		await screen.rerender(<LearningPlanGeneratingScreen />);
+		expect(mockBackIntent).toHaveBeenLastCalledWith(
+			true,
+			expect.any(Function),
+			{ allowRouteRemoval: true },
+		);
+		expect(mockRouter.replace).not.toHaveBeenCalled();
+		await act(async () => {
+			jest.advanceTimersByTime(20);
+		});
+		expect(mockRouter.replace).toHaveBeenCalledWith(
+			"/learning-plans/plan-1/review",
+		);
 	});
 
 	test("retries a persisted scheduling failure after correcting learning times and reopening", async () => {

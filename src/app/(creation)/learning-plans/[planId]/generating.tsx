@@ -125,6 +125,17 @@ export default function LearningPlanGeneratingScreen() {
 			progressPresentation.canRetryFailedSessions ||
 			canRecoverStalledGeneration,
 	);
+	const isGenerated = snapshot?.plan.status === "generated";
+
+	useEffect(() => {
+		if (!planId || !isGenerated) return;
+		// Let the native back-removal guard release before replacing this route.
+		// Dispatching during the completion render can leave a ready plan here.
+		const frame = requestAnimationFrame(() =>
+			router.replace(planPath(planId, "review")),
+		);
+		return () => cancelAnimationFrame(frame);
+	}, [isGenerated, planId, router]);
 
 	useEffect(() => {
 		const generation = snapshot?.plan.contentGeneration;
@@ -154,7 +165,6 @@ export default function LearningPlanGeneratingScreen() {
 		if (!planId || !snapshot) return;
 
 		if (snapshot.plan.status === "generated") {
-			router.replace(planPath(planId, "review"));
 			return;
 		}
 		if (snapshot.plan.diagnosticPlacement !== "firstSession") {
@@ -311,7 +321,7 @@ export default function LearningPlanGeneratingScreen() {
 		goBackOrReplace(router, "/home");
 		return true;
 	};
-	useBackIntent(true, goBack);
+	useBackIntent(true, goBack, { allowRouteRemoval: isGenerated });
 	useLearningPlanCreationProgress({
 		active: true,
 		// Completing the route transition does not complete generation. Keep the
