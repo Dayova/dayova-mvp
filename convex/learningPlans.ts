@@ -588,6 +588,7 @@ const patchSessionAndSyncedEntry = async (
 			| "startedAt"
 			| "outcomeAt"
 			| "activeStudySeconds"
+			| "activeStudySecondsAtStart"
 			| "missedReason"
 			| "adjustedFromSessionId"
 		>
@@ -2374,6 +2375,7 @@ export const startSession = mutation({
 			{
 				executionStatus: "started",
 				startedAt: now,
+				activeStudySecondsAtStart: session.activeStudySeconds ?? 0,
 				completed: false,
 			},
 		);
@@ -2384,6 +2386,23 @@ export const startSession = mutation({
 		};
 	},
 });
+
+const capCumulativeStudySeconds = (
+	session: Doc<"learningPlanSessions">,
+	submittedSeconds: number,
+) => {
+	const elapsedSeconds =
+		session.startedAt === undefined
+			? 0
+			: Math.max(0, Math.floor((Date.now() - session.startedAt) / 1000));
+	return Math.max(
+		session.activeStudySeconds ?? 0,
+		Math.min(
+			submittedSeconds,
+			(session.activeStudySecondsAtStart ?? 0) + elapsedSeconds,
+		),
+	);
+};
 
 /** Checkpoint foreground study time so reopening a diagnostic preserves prior work. */
 export const checkpointStudyTime = mutation({
@@ -2400,14 +2419,10 @@ export const checkpointStudyTime = mutation({
 		)
 			throwUserFacingError("Die aktive Lernzeit ist ungültig.");
 		if (getSessionExecutionStatus(session) !== "started") return null;
-		const elapsed = Math.max(
-			0,
-			Math.floor((Date.now() - (session.startedAt ?? Date.now())) / 1000),
-		);
 		await ctx.db.patch("learningPlanSessions", session._id, {
-			activeStudySeconds: Math.max(
-				session.activeStudySeconds ?? 0,
-				Math.min(elapsed, args.activeStudySeconds),
+			activeStudySeconds: capCumulativeStudySeconds(
+				session,
+				args.activeStudySeconds,
 			),
 		});
 		return null;
@@ -2442,13 +2457,9 @@ export const recordSessionOutcome = mutation({
 		}
 
 		const now = Date.now();
-		const elapsedSeconds =
-			session.startedAt === undefined
-				? 0
-				: Math.max(0, Math.floor((now - session.startedAt) / 1000));
-		const activeStudySeconds = Math.max(
-			session.activeStudySeconds ?? 0,
-			Math.min(args.activeStudySeconds ?? 0, elapsedSeconds),
+		const activeStudySeconds = capCumulativeStudySeconds(
+			session,
+			args.activeStudySeconds ?? 0,
 		);
 		const updatedSession = await patchSessionAndSyncedEntry(
 			ctx,

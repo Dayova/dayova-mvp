@@ -821,6 +821,76 @@ test("interrupted groups retain their start time while all steps are idle", asyn
 });
 
 test.each([
+	480, 999_999,
+])("resumed preparation accumulates earlier study time and caps submission %s", async (submittedSeconds) => {
+	const { t, id } = await setup();
+	await t.mutation(api.learningPlans.savePreparationSchedule, {
+		learningPlanId: id,
+		revision: 0,
+		slots: [slot],
+	});
+	const first = (await t.query(api.learningPlans.getSnapshot, { id }))
+		?.sessions[0];
+	if (!first) throw Error("Missing first step");
+	await t.mutation(api.learningPlans.startSession, { sessionId: first.id });
+	vi.setSystemTime(Date.now() + 300_000);
+	await t.mutation(api.learningPlans.recordSessionOutcome, {
+		sessionId: first.id,
+		outcome: "partiallyCompleted",
+		activeStudySeconds: 300,
+	});
+	await t.mutation(api.learningPlans.startSession, { sessionId: first.id });
+	vi.setSystemTime(Date.now() + 180_000);
+	const completed = await t.mutation(api.learningPlans.recordSessionOutcome, {
+		sessionId: first.id,
+		outcome: "completed",
+		activeStudySeconds: submittedSeconds,
+	});
+	expect(completed.activeStudySeconds).toBe(480);
+});
+
+test("checkpoints preserve resumed time without repeatedly crediting the same run", async () => {
+	const { t, id } = await setup();
+	const sessionId = await t.mutation(
+		api.learningPlans.startFlexiblePreparation,
+		{ learningPlanId: id },
+	);
+	await t.mutation(api.learningPlans.startSession, { sessionId });
+	vi.setSystemTime(Date.now() + 300_000);
+	await t.mutation(api.learningPlans.recordSessionOutcome, {
+		sessionId,
+		outcome: "partiallyCompleted",
+		activeStudySeconds: 300,
+	});
+	await t.mutation(api.learningPlans.startSession, { sessionId });
+	vi.setSystemTime(Date.now() + 60_000);
+	await t.mutation(api.learningPlans.checkpointStudyTime, {
+		sessionId,
+		activeStudySeconds: 360,
+	});
+	vi.setSystemTime(Date.now() + 60_000);
+	for (let attempt = 0; attempt < 2; attempt++)
+		await t.mutation(api.learningPlans.checkpointStudyTime, {
+			sessionId,
+			activeStudySeconds: 999_999,
+		});
+	const interrupted = await t.mutation(api.learningPlans.recordSessionOutcome, {
+		sessionId,
+		outcome: "partiallyCompleted",
+		activeStudySeconds: 360,
+	});
+	expect(interrupted.activeStudySeconds).toBe(420);
+	await t.mutation(api.learningPlans.startSession, { sessionId });
+	vi.setSystemTime(Date.now() + 60_000);
+	const completed = await t.mutation(api.learningPlans.recordSessionOutcome, {
+		sessionId,
+		outcome: "completed",
+		activeStudySeconds: 480,
+	});
+	expect(completed.activeStudySeconds).toBe(480);
+});
+
+test.each([
 	[undefined, 0, 0],
 	[60_000, 0, 0],
 	[-60_000, 0, 60],
@@ -836,6 +906,7 @@ test.each([
 		ctx.db.patch("learningPlanSessions", sessionId, {
 			startedAt: offset === undefined ? undefined : Date.now() + offset,
 			activeStudySeconds: previous,
+			activeStudySecondsAtStart: undefined,
 		}),
 	);
 	await t.mutation(api.learningPlans.recordSessionOutcome, {

@@ -662,6 +662,8 @@ export default defineSchema({
 		startedAt: v.optional(v.number()),
 		outcomeAt: v.optional(v.number()),
 		activeStudySeconds: v.optional(v.number()),
+		// Fixed baseline for cumulative time across interrupted runs.
+		activeStudySecondsAtStart: v.optional(v.number()),
 		knowledgeValidationStatus: v.optional(knowledgeValidationStatusValidator),
 		knowledgeValidationConfidence: v.optional(
 			knowledgeValidationConfidenceValidator,
