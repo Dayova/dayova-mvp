@@ -332,4 +332,20 @@ describe("learning-plan generation recovery", () => {
 			screen.queryByRole("button", { name: "Erneut versuchen" }),
 		).toBeNull();
 	});
+
+	test("does not postpone recovery for legacy claims without a timestamp when the query refreshes", async () => {
+		mockSnapshot.sessions = [{ id: "failed-session" }];
+		mockSnapshot.plan.contentGeneration.stage = "content";
+		const screen = await render(<LearningPlanGeneratingScreen />);
+		await act(async () => {
+			jest.advanceTimersByTime(10 * 60_000);
+		});
+		await screen.rerender(<LearningPlanGeneratingScreen />);
+		await act(async () => {
+			jest.advanceTimersByTime(60_001);
+		});
+		expect(
+			screen.getByRole("button", { name: "Erneut versuchen" }),
+		).toBeOnTheScreen();
+	});
 });

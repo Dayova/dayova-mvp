@@ -61,6 +61,8 @@ export default function LearningPlanGeneratingScreen() {
 		? snapshot?.plan.contentGeneration
 		: undefined;
 	const progress = getGenerationProgressPresentation(generation);
+	const generationStage = generation?.stage;
+	const generationStartedAt = generation?.startedAt;
 	const displayedFailure =
 		failure ??
 		(generation?.stage === "failed"
@@ -81,11 +83,10 @@ export default function LearningPlanGeneratingScreen() {
 
 	useEffect(() => {
 		const reset = setTimeout(() => setCanRecoverStalledGeneration(false), 0);
-		if (!generation || generation.stage !== "content")
-			return () => clearTimeout(reset);
+		if (generationStage !== "content") return () => clearTimeout(reset);
 		const delay = Math.max(
 			0,
-			(generation.startedAt ?? Date.now()) +
+			(generationStartedAt ?? Date.now()) +
 				STALE_CONTENT_GENERATION_MS -
 				Date.now(),
 		);
@@ -97,7 +98,7 @@ export default function LearningPlanGeneratingScreen() {
 			clearTimeout(reset);
 			clearTimeout(timeout);
 		};
-	}, [generation]);
+	}, [generationStage, generationStartedAt]);
 
 	const runPreparation = useCallback(async () => {
 		if (!id || inFlight.current || isComplete) return;

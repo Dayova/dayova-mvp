@@ -563,6 +563,16 @@ test.each([
 			?.contentGenerationId,
 	).toBeUndefined();
 	// Reanalysis invalidates generation metadata but older drafts can retain derived sessions.
+	await t.run(async (ctx) => {
+		const legacy = await ctx.db.get("learningPlanSessions", sessionId);
+		if (!legacy) throw new Error("Missing legacy session fixture");
+		const { _id, _creationTime, ...fields } = legacy;
+		for (let i = 0; i < 101; i++)
+			await ctx.db.insert("learningPlanSessions", {
+				...fields,
+				sortOrder: i + 1,
+			});
+	});
 	await t.run((ctx) =>
 		ctx.db.patch("learningPlans", id, {
 			status: "questionsReady",
@@ -588,6 +598,16 @@ test.each([
 		),
 	).toHaveLength(0);
 	sessionId = replacementId;
+	expect(
+		await t.run((ctx) =>
+			ctx.db
+				.query("learningPlanSessions")
+				.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+					q.eq("learningPlanId", id),
+				)
+				.take(500),
+		),
+	).toHaveLength(1);
 	const preparedPlan = await t.run((ctx) => ctx.db.get("learningPlans", id));
 	expect(preparedPlan?.contentGenerationFailureReason).toBeUndefined();
 	expect(preparedPlan?.contentGenerationFailureMessage).toBeUndefined();
