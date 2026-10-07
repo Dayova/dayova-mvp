@@ -1803,7 +1803,44 @@ const normalizeSessions = (
 	};
 };
 
+const normalizeDiagnosticResponse = (
+	question: Pick<
+		z.infer<typeof questionsSchema>["questions"][number],
+		"responseKind" | "options" | "correctOptionIndex"
+	>,
+) => {
+	const normalizedOptions = question.options.map((option) =>
+		normalizeAiGeneratedGermanText(option),
+	);
+	const generatedOptions = normalizedOptions.filter(Boolean);
+	const hasUniqueOptions =
+		new Set(generatedOptions.map((option) => option.trim())).size ===
+		generatedOptions.length;
+	const generatedCorrectAnswer =
+		question.correctOptionIndex === null
+			? undefined
+			: normalizedOptions[question.correctOptionIndex] || undefined;
+	const hasValidMultipleChoiceAnswer =
+		question.correctOptionIndex !== null &&
+		Boolean(generatedCorrectAnswer) &&
+		generatedOptions.includes(generatedCorrectAnswer ?? "");
+	const responseKind =
+		question.responseKind === "multipleChoice" &&
+		(generatedOptions.length < 2 ||
+			!hasUniqueOptions ||
+			!hasValidMultipleChoiceAnswer)
+			? "shortText"
+			: question.responseKind;
+	return {
+		responseKind,
+		options: responseKind === "multipleChoice" ? generatedOptions : [],
+		correctAnswer:
+			responseKind === "multipleChoice" ? generatedCorrectAnswer : undefined,
+	};
+};
+
 export const __testOnlyLearningPlanAi = {
+	normalizeDiagnosticResponse,
 	IncompleteGeneratedMaterialError,
 	questionsSchema,
 	withGeneratedTextRetry,
@@ -3264,37 +3301,12 @@ Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzei
 				}
 
 				const questions = result.output.questions.map((question, index) => {
-					const normalizedOptions = question.options.map((option) =>
-						normalizeAiGeneratedGermanText(option),
-					);
-					const generatedOptions = normalizedOptions.filter(Boolean);
-					const generatedCorrectAnswer =
-						question.correctOptionIndex === null
-							? undefined
-							: normalizedOptions[question.correctOptionIndex] || undefined;
-					const hasValidMultipleChoiceAnswer =
-						question.correctOptionIndex !== null &&
-						Boolean(generatedCorrectAnswer) &&
-						generatedOptions.includes(generatedCorrectAnswer ?? "");
-					const responseKind =
-						question.responseKind === "multipleChoice" &&
-						(generatedOptions.length < 2 || !hasValidMultipleChoiceAnswer)
-							? "shortText"
-							: question.responseKind;
-					const options =
-						responseKind === "multipleChoice" ? generatedOptions : [];
-
 					return {
 						id: `q${index + 1}`,
 						topicId: question.topicId,
 						kind: "performance" as const,
 						evidenceDimension: question.evidenceDimension,
-						responseKind,
-						options,
-						correctAnswer:
-							responseKind === "multipleChoice"
-								? generatedCorrectAnswer
-								: undefined,
+						...normalizeDiagnosticResponse(question),
 						prompt: normalizeAiGeneratedGermanText(question.prompt),
 						targetInsight: normalizeAiGeneratedGermanText(
 							question.targetInsight,

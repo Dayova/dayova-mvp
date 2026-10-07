@@ -14,6 +14,7 @@ import type { LearningPlanGenerationFailureReason } from "./generation-recovery"
 const mockRouter = { replace: jest.fn(), push: jest.fn(), back: jest.fn() };
 const mockPrepare = jest.fn<() => Promise<void>>(async () => undefined);
 const mockRetryFailedContent = jest.fn(async () => ({ isReady: true }));
+const mockGeneratePlan = jest.fn(async () => undefined);
 const mockRequestAiConsent = jest.fn(async () => true);
 const mockCapture = jest.fn();
 const mockBackIntent = jest.fn();
@@ -54,7 +55,7 @@ jest.mock("convex/react", () => ({
 	useAction: (reference: unknown) => {
 		const { getFunctionName } = require("convex/server");
 		return getFunctionName(reference).endsWith(":generatePlan")
-			? jest.fn()
+			? mockGeneratePlan
 			: mockRetryFailedContent;
 	},
 	useMutation: () => mockPrepare,
@@ -239,6 +240,43 @@ describe("learning-plan generation recovery", () => {
 			}),
 		);
 		expect(mockPrepare).not.toHaveBeenCalled();
+	});
+
+	test("rebuilds the schedule instead of finalizing old ready sessions after learning-time correction", async () => {
+		mockSnapshot.sessions = [{ id: "old-ready-session" }];
+		const screen = await render(<LearningPlanGeneratingScreen />);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Erneut versuchen" }),
+		);
+		await waitFor(() =>
+			expect(mockGeneratePlan).toHaveBeenCalledWith({
+				learningPlanId: "plan-1",
+				answers: [],
+			}),
+		);
+		expect(mockRetryFailedContent).not.toHaveBeenCalled();
+		expect(mockPrepare).not.toHaveBeenCalled();
+	});
+
+	test("keeps rescheduling a persisted scheduling failure after a transient retry error", async () => {
+		mockSnapshot.sessions = [{ id: "old-ready-session" }];
+		mockGeneratePlan.mockRejectedValueOnce(new Error("Network unavailable"));
+		const screen = await render(<LearningPlanGeneratingScreen />);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Erneut versuchen" }),
+		);
+		await waitFor(() =>
+			expect(
+				screen.getByText(
+					"Die Ursache konnte nicht sicher erkannt werden. Deine Angaben bleiben gespeichert; du kannst es erneut versuchen oder dein Material prüfen.",
+				),
+			).toBeOnTheScreen(),
+		);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Erneut versuchen" }),
+		);
+		await waitFor(() => expect(mockGeneratePlan).toHaveBeenCalledTimes(2));
+		expect(mockRetryFailedContent).not.toHaveBeenCalled();
 	});
 
 	test("shows the affected document when a processing failure is reopened", async () => {

@@ -36,6 +36,7 @@ export default function LearningPlanGeneratingScreen() {
 	const retryFailedContent = useAction(
 		api.learningPlanAi.retryFailedSessionContent,
 	);
+	const generatePlan = useAction(api.learningPlanAi.generatePlan);
 	const started = useRef(false);
 	const inFlight = useRef(false);
 	const [isBusy, setIsBusy] = useState(false);
@@ -72,6 +73,10 @@ export default function LearningPlanGeneratingScreen() {
 					generation.failureMessage,
 				)
 			: null);
+	const needsLegacyRescheduling =
+		hasLegacySessions &&
+		(generation?.failureReason === "schedulingConstraints" ||
+			failure?.reason === "schedulingConstraints");
 
 	useEffect(() => {
 		if (!id || !isComplete) return;
@@ -107,7 +112,11 @@ export default function LearningPlanGeneratingScreen() {
 		try {
 			if (hasLegacySessions) {
 				if (!(await requestAiConsent())) return;
-				await retryFailedContent({ learningPlanId: id });
+				if (needsLegacyRescheduling) {
+					await generatePlan({ learningPlanId: id, answers: [] });
+				} else {
+					await retryFailedContent({ learningPlanId: id });
+				}
 			} else {
 				await prepare({ learningPlanId: id });
 			}
@@ -128,9 +137,11 @@ export default function LearningPlanGeneratingScreen() {
 			setIsBusy(false);
 		}
 	}, [
+		generatePlan,
 		hasLegacySessions,
 		id,
 		isComplete,
+		needsLegacyRescheduling,
 		prepare,
 		requestAiConsent,
 		retryFailedContent,

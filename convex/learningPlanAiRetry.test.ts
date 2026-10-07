@@ -3,6 +3,7 @@ import { expect, test, vi } from "vitest";
 import { z } from "zod";
 import { InvalidGeneratedGermanTextError } from "./generatedGermanText";
 import { __testOnlyLearningPlanAi } from "./learningPlanAi";
+import { validateFirstSessionDiagnosticQuestions } from "./learningPlanDiagnostic";
 
 const { withGeneratedTextRetry, DuplicateGeneratedPromptError } =
 	__testOnlyLearningPlanAi;
@@ -24,6 +25,58 @@ const schemaError = () =>
 		},
 		finishReason: "stop",
 	});
+
+test.each([
+	["2", "2", "3"],
+	["2", " 2 ", "3"],
+])("duplicate generated answer options still produce a valid storable diagnostic: %j", (...options) => {
+	const response = __testOnlyLearningPlanAi.normalizeDiagnosticResponse({
+		responseKind: "multipleChoice",
+		options,
+		correctOptionIndex: 0,
+	});
+	expect(response).toEqual({
+		responseKind: "shortText",
+		options: [],
+		correctAnswer: undefined,
+	});
+	const questions = Array.from({ length: 10 }, (_, index) => ({
+		id: `q${index + 1}`,
+		topicId: "steigung",
+		kind: "performance" as const,
+		evidenceDimension: "understanding" as const,
+		prompt: "Berechne die Steigung.",
+		targetInsight: "Steigung berechnen",
+		idealAnswer: "2",
+		explanation: "Die Steigung beträgt zwei.",
+		...response,
+	}));
+	expect(() =>
+		validateFirstSessionDiagnosticQuestions(questions, [
+			{
+				id: "steigung",
+				title: "Steigung",
+				learningGoal: "Steigung berechnen",
+				keywords: ["Steigung"],
+				priority: "high",
+			},
+		]),
+	).not.toThrow();
+});
+
+test("valid unique generated choices retain their correct answer", () => {
+	expect(
+		__testOnlyLearningPlanAi.normalizeDiagnosticResponse({
+			responseKind: "multipleChoice",
+			options: ["2", "3"],
+			correctOptionIndex: 1,
+		}),
+	).toEqual({
+		responseKind: "multipleChoice",
+		options: ["2", "3"],
+		correctAnswer: "3",
+	});
+});
 test("schema failure is retried before user-facing conversion", async () => {
 	const task = vi
 		.fn()
