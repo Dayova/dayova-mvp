@@ -177,11 +177,9 @@ pill without making it a general-purpose CTA variant. See
 
 Learning-time settings restore the personal-subject management pattern: muted
 weekday badges, bordered cards, a visible pencil, and swipe-to-delete with a
-text-only rounded action. The shared `destructive-outline` Button is a scoped
-management-action exception, not a new primary CTA: `danger-action` foreground
-and border on `danger-subtle` fill in both themes. It matches the independently
-introduced personal-subject variant in PR #816 without changing existing Button
-defaults. Screen readers retain a named delete action on the pencil. See
+text-only rounded action. Its `destructive-outline` appearance introduced in
+PR #816 now follows DAY-501's general destructive-action rule above. Screen
+readers retain a named delete action on the pencil. See
 [the restoration record](../../qa/learning-times-settings-restoration-2026-10-02.md).
 
 The empty timetable uses one full-width gradient import button and a full-width
@@ -239,14 +237,10 @@ without silently migrating existing entries. The settings pencil opens "Fach
 bearbeiten" with save and delete actions. Delete opens the existing confirmation
 only after the editor's native dismissal; swipe deletion remains available.
 
-DAY-187 restores the September device-review treatment in the independent
-personal-subject feature. Shared Button variants `cancel` (bordered card,
-theme text) and `destructive-outline` (danger border/text on subtle fill) are
-opt-in exceptions to the general solid/gradient CTA appearances above.
-They reuse the reviewed #729 palette: light `#B01B10` / `#FFF0EE`, dark
-`hsl(4 100% 75%)` / `hsl(4 55% 16%)`. Existing destructive defaults do not
-change. ConfirmationSheet exposes `actionAppearance="outlined"` for this
-consumer; other callers retain their current appearance.
+DAY-187 restored the September device-review treatment in personal subjects.
+Its cancel and destructive-outline appearances are now the general DAY-501
+rule above, replacing the former opt-in API. The palette remains light
+`#B01B10` / `#FFF0EE`, dark `hsl(4 100% 75%)` / `hsl(4 55% 16%)`.
 See [restoration scope and provenance](../../qa/day-187-design-restoration-2026-10-02.md).
 
 Onboarding artwork or other explanatory UI that depicts a live Dayova product

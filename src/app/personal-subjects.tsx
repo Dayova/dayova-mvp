@@ -274,7 +274,7 @@ export default function PersonalSubjectsScreen() {
 				}
 				description={
 					deletingSubject
-						? undefined
+						? `${deletingSubject.name} wird nicht mehr zur Auswahl angeboten. Bereits gespeicherte Einträge behalten ihren bisherigen Fachnamen.`
 						: "Der neue Name wird auch bei verknüpften Prüfungen, Hausaufgaben, Lernplänen und Stundenplan-Einträgen angezeigt."
 				}
 				onClose={() => {
@@ -291,7 +291,7 @@ export default function PersonalSubjectsScreen() {
 			>
 				{deletingSubject ? (
 					<ConfirmationSheetContent
-						description={`${deletingSubject.name} wird nicht mehr zur Auswahl angeboten. Bereits gespeicherte Einträge behalten ihren bisherigen Fachnamen.`}
+						description={undefined}
 						confirmLabel="Fach löschen"
 						isBusy={isBusy}
 						errorMessage={errorMessage}

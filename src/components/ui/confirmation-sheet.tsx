@@ -119,9 +119,11 @@ function ConfirmationPresentation({
 	if (embedded) {
 		return (
 			<View className="gap-6">
-				<Text className="font-poppins text-body-3 text-secondary-text">
-					{description}
-				</Text>
+				{description ? (
+					<Text className="font-poppins text-body-3 text-secondary-text">
+						{description}
+					</Text>
+				) : null}
 				{error}
 				{actions}
 			</View>
@@ -131,7 +133,7 @@ function ConfirmationPresentation({
 		<DayovaSheetFrame
 			visible={visible}
 			title={title}
-			description={scrollable ? undefined : description}
+			description={description}
 			onClose={safeClose}
 			dismissible={!isBusy}
 			closeAccessibilityLabel={closeAccessibilityLabel}
@@ -140,11 +142,6 @@ function ConfirmationPresentation({
 			maxWidth={maxWidth}
 			scrollable={scrollable}
 		>
-			{scrollable ? (
-				<Text className="font-poppins text-body-3 text-secondary-text">
-					{description}
-				</Text>
-			) : null}
 			{error}
 			{scrollable ? null : actions}
 		</DayovaSheetFrame>
