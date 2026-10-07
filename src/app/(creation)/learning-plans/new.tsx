@@ -58,7 +58,7 @@ import { ROUTES } from "~/lib/routes";
 import { ACCEPTED_FILE_TYPES, validateUploadFile } from "~/lib/upload-policy";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 
-const UPLOAD_TIMEOUT_MS = 45_000;
+const UPLOAD_TIMEOUT_MS = 180_000;
 const UPLOAD_COMPLETION_FAILURE_MESSAGE =
 	"Die Datei wurde übertragen, aber Dayova konnte den Upload nicht abschließen. Bitte versuche es erneut.";
 
@@ -243,10 +243,14 @@ export default function NewLearningPlanScreen() {
 		const fileSizeBytes = asset.size ?? file.info().size ?? 0;
 		const fileType = asset.mimeType || "application/octet-stream";
 
-		const validation = validateUploadFile({
-			name: asset.name,
-			size: fileSizeBytes,
-		});
+		const validation = validateUploadFile(
+			{
+				name: asset.name,
+				size: fileSizeBytes,
+				type: fileType,
+			},
+			"learningMaterial",
+		);
 		if (!validation.valid) throw new Error(validation.message);
 
 		return { asset, file, fileSizeBytes, fileType };

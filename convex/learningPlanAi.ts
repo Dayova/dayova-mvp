@@ -32,6 +32,7 @@ import {
 	type LearningQuestionBlueprint,
 	type LearningTopic,
 } from "./learningContentPlan";
+import { getLearningMaterialLimit } from "./learningMaterialLimits";
 import { estimateGeminiCostUsdMicros } from "./learningPlanAiCost";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 import {
@@ -65,9 +66,9 @@ import {
 	MAX_LEARNING_TOPIC_COUNT,
 	normalizeLearningTopics,
 } from "./learningTopicMap";
+import { extractPdfText } from "./pdfText";
 import { areSemanticallyDuplicateQuestions } from "./questionNovelty";
 
-const MAX_UPLOAD_FILE_BYTES = 7 * 1024 * 1024;
 const MAX_EXTRACTED_TEXT_CHARS = 90_000;
 const MAX_PROMPT_CONTEXT_CHARS = 70_000;
 const MAX_SESSION_TITLE_CHARS = 28;
@@ -889,11 +890,50 @@ const extractTextFromBytes = async (
 		);
 	}
 
+	if (fileType === "application/pdf" || extension === "pdf") {
+		return compactText(
+			await extractPdfText(fileBuffer, MAX_EXTRACTED_TEXT_CHARS),
+			MAX_EXTRACTED_TEXT_CHARS,
+		);
+	}
+
 	const parsed = await parseOffice(fileBuffer, {
 		newlineDelimiter: "\n",
 		ignoreNotes: false,
 	});
 	return compactText(parsed.toText(), MAX_EXTRACTED_TEXT_CHARS);
+};
+
+/** Stop oversized downloads while streaming, even when stored size metadata is wrong. */
+const readMaterialBytes = async (
+	response: Response,
+	limit: number,
+	fileName: string,
+) => {
+	const reader = response.body?.getReader();
+	if (!reader)
+		throwUserFacingError(
+			`Die Datei "${fileName}" konnte nicht gelesen werden.`,
+		);
+	const chunks: Uint8Array[] = [];
+	let size = 0;
+	try {
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			size += value.byteLength;
+			if (size > limit) {
+				await reader.cancel();
+				throwUserFacingError(
+					`Die Datei "${fileName}" ist zu groß für die KI-Verarbeitung (maximal ${limit / 1024 / 1024} MiB).`,
+				);
+			}
+			chunks.push(value);
+		}
+	} finally {
+		reader.releaseLock();
+	}
+	return Buffer.concat(chunks, size);
 };
 
 const buildModelInputFromDocuments = async (
@@ -910,9 +950,13 @@ const buildModelInputFromDocuments = async (
 	const textSections: string[] = [];
 
 	for (const document of documents) {
-		if (document.fileSizeBytes > MAX_UPLOAD_FILE_BYTES) {
+		const maxFileBytes = getLearningMaterialLimit(
+			document.fileName,
+			document.fileType,
+		);
+		if (document.fileSizeBytes > maxFileBytes) {
 			throwUserFacingError(
-				`Die Datei "${document.fileName}" ist zu groß für die KI-Verarbeitung.`,
+				`Die Datei "${document.fileName}" ist zu groß für die KI-Verarbeitung (maximal ${maxFileBytes / 1024 / 1024} MiB).`,
 			);
 		}
 
@@ -945,15 +989,12 @@ const buildModelInputFromDocuments = async (
 			);
 		}
 
-		const arrayBuffer = await response.arrayBuffer();
-		if (arrayBuffer.byteLength > MAX_UPLOAD_FILE_BYTES) {
-			throwUserFacingError(
-				`Die Datei "${document.fileName}" ist zu groß für die KI-Verarbeitung.`,
-			);
-		}
-
+		const buffer = await readMaterialBytes(
+			response,
+			maxFileBytes,
+			document.fileName,
+		);
 		const mediaType = resolveMediaType(document.fileType, document.fileName);
-		const buffer = Buffer.from(arrayBuffer);
 
 		try {
 			const extractedText = await extractTextFromBytes(
@@ -1692,6 +1733,7 @@ const normalizeSessions = (
 };
 
 export const __testOnlyLearningPlanAi = {
+	buildModelInputFromDocuments,
 	normalizeSessions,
 	getEmptyScheduleErrorMessage,
 	generatedTaskChoiceSchema,

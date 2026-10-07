@@ -46,6 +46,18 @@ const mockLaunchImageLibrary =
 			}> | null;
 		}>
 	>();
+const mockPickDocument =
+	jest.fn<
+		() => Promise<{
+			canceled: boolean;
+			assets: Array<{
+				name: string;
+				uri: string;
+				size: number;
+				mimeType: string;
+			}>;
+		}>
+	>();
 const mockAvailability = { status: "available" };
 let mockSnapshot:
 	| { plan: { topicDescription: string }; documents: never[] }
@@ -141,7 +153,9 @@ jest.mock("expo-file-system", () => ({
 	},
 	FileMode: { ReadOnly: "r" },
 }));
-jest.mock("expo-document-picker", () => ({}));
+jest.mock("expo-document-picker", () => ({
+	getDocumentAsync: () => mockPickDocument(),
+}));
 jest.mock("expo-image-picker", () => ({
 	requestMediaLibraryPermissionsAsync: () =>
 		mockRequestMediaLibraryPermissions(),
@@ -254,6 +268,7 @@ jest.mock("~/lib/theme", () => ({
 
 beforeEach(() => {
 	jest.clearAllMocks();
+	mockPickDocument.mockResolvedValue({ canceled: true, assets: [] });
 	mockFiles = {
 		"file:///mitschrift-2.png": { size: 2_048, header: PNG_HEADER },
 	};
@@ -747,5 +762,56 @@ describe("exam creation across the topics boundary", () => {
 		await waitFor(() =>
 			expect(mockRegisterUploadedDocument).toHaveBeenCalledTimes(1),
 		);
+	});
+});
+
+describe("document picker size limits", () => {
+	test.each([
+		40 * 1024 * 1024,
+		40 * 1024 * 1024 + 1,
+	])("validates PDF bytes before requesting upload URLs: %s", async (size) => {
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "material",
+		};
+		mockSnapshot = {
+			plan: { topicDescription: "Zellteilung und Mitose" },
+			documents: [],
+		};
+		mockPickDocument.mockResolvedValue({
+			canceled: false,
+			assets: [
+				{
+					name: "unterricht.pdf",
+					uri: "file:///unterricht.pdf",
+					size,
+					mimeType: "application/pdf",
+				},
+			],
+		});
+		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Schulmaterial hinzufügen" }),
+		);
+		await fireEvent.press(screen.getByRole("button", { name: /Dateien/ }));
+		if (size === 40 * 1024 * 1024) {
+			await waitFor(() =>
+				expect(mockRegisterUploadedDocument).toHaveBeenCalledTimes(1),
+			);
+			expect(mockRegisterUploadedDocument).toHaveBeenCalledWith(
+				expect.objectContaining({
+					fileName: "unterricht.pdf",
+					fileSizeBytes: size,
+				}),
+			);
+			expect(mockFetch).toHaveBeenCalledTimes(1);
+		} else {
+			await waitFor(() =>
+				expect(screen.getByText(/maximal 40 MiB/)).toBeOnTheScreen(),
+			);
+			expect(mockGenerateUploadUrl).not.toHaveBeenCalled();
+			expect(mockFetch).not.toHaveBeenCalled();
+		}
 	});
 });
