@@ -13,7 +13,6 @@ import {
 	type FlatList,
 	Image,
 	Keyboard,
-	KeyboardAvoidingView,
 	type NativeScrollEvent,
 	type NativeSyntheticEvent,
 	Platform,
@@ -24,6 +23,7 @@ import {
 	useWindowDimensions,
 	View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Animated, {
 	Easing,
 	FadeIn,
@@ -736,10 +736,7 @@ export function OnboardingStepScreen({ stepId }: { stepId: OnboardingStepId }) {
 				}}
 			/>
 			<ThemedStatusBar />
-			<KeyboardAvoidingView
-				behavior={Platform.OS === "ios" ? "padding" : undefined}
-				className="flex-1"
-			>
+			<KeyboardAvoidingView behavior="padding" className="flex-1">
 				<View
 					className="flex-1 px-6"
 					// The routed question clears the runtime device safe-area inset.
@@ -1439,13 +1436,12 @@ function QuestionStepView({
 				disabled={busy}
 			/>
 
-			<ScrollView
+			<KeyboardSafeScrollView
+				enabled={step.kind === "text"}
 				key={step.id}
 				testID="onboarding-question-scroll"
 				className="flex-1"
-				keyboardShouldPersistTaps="handled"
 				contentInsetAdjustmentBehavior="never"
-				showsVerticalScrollIndicator={false}
 				// Runtime safe-area and layout mode reserve space for the primary action.
 				contentContainerStyle={{
 					flexGrow: 1,
@@ -1608,7 +1604,7 @@ function QuestionStepView({
 					</View>
 				</Animated.View>
 				{shouldStackInlineContent ? primaryAction : null}
-			</ScrollView>
+			</KeyboardSafeScrollView>
 
 			{shouldStackInlineContent ? null : primaryAction}
 			{isLearningTimeStep ? (
@@ -2368,14 +2364,9 @@ function VerificationScreen({
 		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ title: "E-Mail bestätigen", gestureEnabled }} />
 			<ThemedStatusBar />
-			<KeyboardAvoidingView
-				behavior={Platform.OS === "ios" ? "padding" : undefined}
-				className="flex-1"
-			>
-				<ScrollView
+			<KeyboardAvoidingView behavior="padding" className="flex-1">
+				<KeyboardSafeScrollView
 					testID="onboarding-verification-scroll"
-					keyboardShouldPersistTaps="handled"
-					showsVerticalScrollIndicator={false}
 					contentInsetAdjustmentBehavior="never"
 					contentContainerStyle={{
 						flexGrow: 1,
@@ -2447,7 +2438,7 @@ function VerificationScreen({
 							</Animated.Text>
 						) : null}
 					</View>
-				</ScrollView>
+				</KeyboardSafeScrollView>
 			</KeyboardAvoidingView>
 		</View>
 	);
