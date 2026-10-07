@@ -1,0 +1,116 @@
+[
+  {
+    "file": "before-accessibility.mp4",
+    "sha256": "d20e899613f67f44320f147105c8df965030e63d17521c5d87ac3e674e8cbb8e",
+    "probe": {
+      "audio_codec": null,
+      "audio_present": false,
+      "duration_seconds": 30.281744,
+      "frame_rate": 12.91206513052597,
+      "height": 1600,
+      "video_codec": "h264",
+      "width": 720
+    },
+    "coverage": "Coverage: 30.28-second video; 30 full-timeline frames sampled at 1 fps (1-second interval); 2 contact sheet(s); 16 additional frames from 00:00:27.000 to 00:00:30.280 at 5 fps; no audio stream.",
+    "transcription": {
+      "reason": "No audio stream detected.",
+      "status": "not_applicable"
+    },
+    "allContactSheetsInspected": true
+  },
+  {
+    "file": "baseline-control.mp4",
+    "sha256": "4b8957ed2f057cf4ea3ecce66e210c6e45e96aae7a0667e8a88b03e656b95b5c",
+    "probe": {
+      "audio_codec": null,
+      "audio_present": false,
+      "duration_seconds": 33.299833,
+      "frame_rate": 25.015140215916997,
+      "height": 1600,
+      "video_codec": "h264",
+      "width": 720
+    },
+    "coverage": "Coverage: 33.30-second video; 33 full-timeline frames sampled at 1 fps (1-second interval); 3 contact sheet(s); no audio stream.",
+    "transcription": {
+      "reason": "No audio stream detected.",
+      "status": "not_applicable"
+    },
+    "allContactSheetsInspected": true
+  },
+  {
+    "file": "android-touch.mp4",
+    "sha256": "4f1174f635972d5d38b1661b436af4a3b81f88c7e2d0d7e575cdde67028e8d9f",
+    "probe": {
+      "audio_codec": null,
+      "audio_present": false,
+      "duration_seconds": 71.980111,
+      "frame_rate": 8.37731410374162,
+      "height": 1600,
+      "video_codec": "h264",
+      "width": 720
+    },
+    "coverage": "Coverage: 71.98-second video; 72 full-timeline frames sampled at 1 fps (1-second interval); 5 contact sheet(s); 72 additional frames from 00:00:48.000 to 00:01:11.900 at 3 fps; no audio stream.",
+    "transcription": {
+      "reason": "No audio stream detected.",
+      "status": "not_applicable"
+    },
+    "allContactSheetsInspected": true
+  },
+  {
+    "file": "android-accessibility.mp4",
+    "sha256": "3a91e0373b196c78c73b24ad86ab0947ca0adaa0ae38e46ee763978be3afb8cc",
+    "probe": {
+      "audio_codec": null,
+      "audio_present": false,
+      "duration_seconds": 34.907044,
+      "frame_rate": 9.453679200059586,
+      "height": 1600,
+      "video_codec": "h264",
+      "width": 720
+    },
+    "coverage": "Coverage: 34.91-second video; 35 full-timeline frames sampled at 1 fps (1-second interval); 3 contact sheet(s); no audio stream.",
+    "transcription": {
+      "reason": "No audio stream detected.",
+      "status": "not_applicable"
+    },
+    "allContactSheetsInspected": true
+  },
+  {
+    "file": "android-actions.mp4",
+    "sha256": "9d1b3df1b8c9a6c7dc76635bf47af23c73377c17f66794ca37d829919b091c93",
+    "probe": {
+      "audio_codec": null,
+      "audio_present": false,
+      "duration_seconds": 26.308544,
+      "frame_rate": 5.967642958413595,
+      "height": 1600,
+      "video_codec": "h264",
+      "width": 720
+    },
+    "coverage": "Coverage: 26.31-second video; 53 full-timeline frames sampled at 2 fps (0.5-second interval); 4 contact sheet(s); no audio stream.",
+    "transcription": {
+      "reason": "No audio stream detected.",
+      "status": "not_applicable"
+    },
+    "allContactSheetsInspected": true
+  },
+  {
+    "file": "android-scroll.mp4",
+    "sha256": "174340b3c0768492cd529d283abe3d16e348852bf391090249b8d78ae8d45c64",
+    "probe": {
+      "audio_codec": null,
+      "audio_present": false,
+      "duration_seconds": 13.1956,
+      "frame_rate": 8.790809057564642,
+      "height": 1600,
+      "video_codec": "h264",
+      "width": 720
+    },
+    "coverage": "Coverage: 13.20-second video; 26 full-timeline frames sampled at 2 fps (0.5-second interval); 2 contact sheet(s); no audio stream.",
+    "transcription": {
+      "reason": "No audio stream detected.",
+      "status": "not_applicable"
+    },
+    "allContactSheetsInspected": true
+  }
+]

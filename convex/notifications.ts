@@ -139,7 +139,11 @@ const formatEntryForBriefing = (entry: Doc<"dayEntries">) =>
 	entry.time ? `${entry.title} um ${entry.time}` : entry.title;
 
 const getDailyBriefingBody = (entries: Doc<"dayEntries">[]) => {
-	const activeEntries = entries.filter((entry) => entry.completed !== true);
+	const activeEntries = entries.filter(
+		(entry) =>
+			entry.completed !== true &&
+			!(isLearningEntry(entry) && entry.executionStatus === "started"),
+	);
 	if (activeEntries.length === 0) {
 		return "Heute stehen keine offenen Einträge an.";
 	}
@@ -713,7 +717,11 @@ export const syncDueNotifications = mutation({
 		}
 
 		for (const entry of entriesForToday) {
-			if (entry.completed === true) continue;
+			if (
+				entry.completed === true ||
+				(isLearningEntry(entry) && entry.executionStatus === "started")
+			)
+				continue;
 
 			const startMinutes =
 				entry.kind === "Leistungskontrolle"

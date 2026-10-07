@@ -32,6 +32,7 @@ import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
+import { ExtraPracticeCard } from "~/features/learning-plans/extra-practice-card";
 import {
 	LEARNING_PATH_PHASE_ICON,
 	type LearningPathNodeIcon,
@@ -136,10 +137,10 @@ export function SessionPreviewCard({
 	const description = formatGermanUiText(session.goal);
 	const hasRecordedOutcome = isLearningPlanSessionHistory(session);
 	const actionLabel = hasRecordedOutcome
-		? "Lernsession ansehen"
+		? "Ansehen"
 		: session.executionStatus === "started"
 			? "Weiterlernen"
-			: "Lernsession starten";
+			: "Starten";
 	const content = (
 		<View className="gap-2">
 			<View className="flex-row items-start justify-between gap-3">
@@ -175,7 +176,9 @@ export function SessionPreviewCard({
 			<View className="flex-row items-center gap-1.5">
 				<Time04 size={13} color={colors.secondaryText} strokeWidth={2} />
 				<Text className="font-poppins text-body-4 text-secondary-text">
-					{session.dateLabel} · {session.startTime}
+					{session.unscheduled
+						? "Jederzeit starten"
+						: `${session.dateLabel} · ${session.startTime}`}
 				</Text>
 			</View>
 
@@ -378,6 +381,10 @@ export default function LearningPlanSessionsScreen() {
 		prepareSession(defaultSession.id);
 	}, [defaultSession, prepareSession]);
 
+	useEffect(() => {
+		if (snapshot?.plan.preparationState === "review" && planId)
+			router.replace(`/learning-plans/${planId}/preparation`);
+	}, [snapshot?.plan.preparationState, planId, router]);
 	const goBack = () => {
 		dismissToOrReplace(
 			router,
@@ -436,6 +443,16 @@ export default function LearningPlanSessionsScreen() {
 				)}
 			</View>
 
+			{snapshot?.plan.preparationState === "ready" ? (
+				<View className="px-4 pb-3">
+					<Button
+						variant="outline"
+						onPress={() => router.push(`/learning-plans/${planId}/preparation`)}
+					>
+						<Text>Termine</Text>
+					</Button>
+				</View>
+			) : null}
 			<ScrollView
 				className="flex-1 bg-background"
 				contentContainerStyle={[
@@ -461,7 +478,8 @@ export default function LearningPlanSessionsScreen() {
 						selectedSessionId={selectedSession.id}
 						sessions={snapshot.sessions}
 						showsAdaptiveContinuation={
-							snapshot.plan.rollingPlanEnabled === true
+							snapshot.plan.rollingPlanEnabled === true &&
+							!snapshot.plan.preparationState
 						}
 						onOpenSession={(session) => {
 							if (
@@ -477,6 +495,12 @@ export default function LearningPlanSessionsScreen() {
 				) : (
 					<View />
 				)}
+				{snapshot?.plan.preparationState === "completed" ? (
+					<ExtraPracticeCard
+						planId={snapshot.plan.id}
+						topics={snapshot.plan.topicMap}
+					/>
+				) : null}
 			</ScrollView>
 		</Screen>
 	);

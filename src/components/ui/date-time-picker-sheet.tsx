@@ -22,6 +22,7 @@ const normalizeIosDisplay = (display?: DateTimePickerDisplay) => {
 };
 
 function DateTimePickerSheet({
+	embedded = false,
 	visible,
 	value,
 	mode,
@@ -54,6 +55,34 @@ function DateTimePickerSheet({
 		onClose();
 	};
 
+	const content = (
+		<View className="items-center overflow-hidden">
+			<DateTimePicker
+				accentColor={DAYOVA_PRIMARY}
+				value={value}
+				mode={mode}
+				display={normalizedDisplay}
+				maximumDate={maximumDate}
+				minimumDate={minimumDate}
+				locale="de-DE"
+				onValueChange={handleValueChange}
+				// Expo's native picker needs explicit measured dimensions.
+				style={{
+					width: Math.min(width, 560) - 48,
+					height: pickerHeight,
+				}}
+			/>
+		</View>
+	);
+	if (embedded)
+		return visible ? (
+			<>
+				{content}
+				<Button onPress={handleConfirm}>
+					<Text>{doneLabel}</Text>
+				</Button>
+			</>
+		) : null;
 	return (
 		<DayovaSheetFrame
 			scrollable={false}
@@ -73,23 +102,7 @@ function DateTimePickerSheet({
 				</Button>
 			}
 		>
-			<View className="items-center overflow-hidden">
-				<DateTimePicker
-					accentColor={DAYOVA_PRIMARY}
-					value={value}
-					mode={mode}
-					display={normalizedDisplay}
-					maximumDate={maximumDate}
-					minimumDate={minimumDate}
-					locale="de-DE"
-					onValueChange={handleValueChange}
-					// Expo's native picker needs explicit measured dimensions.
-					style={{
-						width: Math.min(width, 560) - 48,
-						height: pickerHeight,
-					}}
-				/>
-			</View>
+			{content}
 		</DayovaSheetFrame>
 	);
 }

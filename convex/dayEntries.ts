@@ -5,14 +5,14 @@ import { mutation, query } from "./_generated/server";
 import { getBerlinDayKey, getDayKeyQueryVariants } from "./dayKeyVariants";
 import { throwUserFacingError } from "./errors";
 import {
-	renameSubjectPrefix,
-	resolveSubjectSelection,
-} from "./personalSubjects";
-import {
 	addPersonalSubjectReference,
 	deleteDayEntryWithPersonalSubjectReference,
 	replacePersonalSubjectReference,
 } from "./personalSubjectReferences";
+import {
+	renameSubjectPrefix,
+	resolveSubjectSelection,
+} from "./personalSubjects";
 import { assertNoScheduleConflict, isExamEntry } from "./scheduleConflicts";
 import {
 	getActiveTimetableLessons,
@@ -314,7 +314,13 @@ export const listByDayKeys = query({
 			Doc<"learningPlans"> | null
 		>();
 		for (const session of learningSessions) {
-			if (session.planningStatus === "provisional") continue;
+			if (
+				session.planningStatus === "provisional" ||
+				session.preparationSlotId ||
+				session.unscheduled ||
+				session.additionalPractice
+			)
+				continue;
 			const requestedDayKey = getRequestedDayKey(
 				session.dateKey,
 				queryKeyToRequestedDayKey,
