@@ -2,6 +2,15 @@ import { describe, expect, it } from "vitest";
 import { getLearningPlanGenerationFailure } from "./generation-recovery";
 
 describe("getLearningPlanGenerationFailure", () => {
+	it("identifies the file that must be replaced after a processing failure", () => {
+		const message =
+			'Die Datei "arbeitsblatt.docx" konnte nicht verarbeitet werden. Ersetze sie oder lade sie erneut hoch.';
+		expect(
+			getLearningPlanGenerationFailure({
+				data: { kind: "userFacing", code: "material_processing", message },
+			}),
+		).toMatchObject({ reason: "materialProcessing", message });
+	});
 	it("uses explicit backend failure codes", () => {
 		expect(
 			getLearningPlanGenerationFailure({

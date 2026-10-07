@@ -120,7 +120,7 @@ export function MaterialCard({
 
 	return (
 		<Surface
-			className="mb-3 flex-row items-center rounded-[24px] px-4 py-4"
+			className="mb-3 flex-row items-center rounded-[24px] border border-border px-4 py-4"
 			variant="soft"
 		>
 			<View className="h-11 w-11 items-center justify-center rounded-full bg-primary/12">

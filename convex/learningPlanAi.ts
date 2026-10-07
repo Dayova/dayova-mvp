@@ -34,11 +34,7 @@ import {
 	type LearningTopic,
 } from "./learningContentPlan";
 import { estimateGeminiCostUsdMicros } from "./learningPlanAiCost";
-import {
-	decideMaterialReadiness,
-	MIN_MATERIAL_QUESTION_COUNT,
-	MIN_MATERIAL_TOPIC_COUNT,
-} from "./materialAssessment";
+import { getLearningPlanGenerationFailureReason } from "./learningPlanGenerationFailure";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 import {
 	getDefaultPreparationDepth,
@@ -71,9 +67,15 @@ import {
 	MAX_LEARNING_TOPIC_COUNT,
 	normalizeLearningTopics,
 } from "./learningTopicMap";
+import {
+	decideMaterialReadiness,
+	MIN_MATERIAL_QUESTION_COUNT,
+	MIN_MATERIAL_TOPIC_COUNT,
+} from "./materialAssessment";
 import { areSemanticallyDuplicateQuestions } from "./questionNovelty";
 
 const MAX_UPLOAD_FILE_BYTES = 7 * 1024 * 1024;
+const DOCUMENT_DOWNLOAD_TIMEOUT_MS = 30_000;
 const MAX_EXTRACTED_TEXT_CHARS = 90_000;
 const MAX_PROMPT_CONTEXT_CHARS = 70_000;
 const MAX_SESSION_TITLE_CHARS = 28;
@@ -101,21 +103,8 @@ const KNOWLEDGE_QUESTIONS_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Assess wh
 const GENERATED_PLAN_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Return a realistic, calendar-ready German learning plan with concrete study sessions.`;
 const BERLIN_TIME_ZONE = "Europe/Berlin";
 
-const getContentGenerationFailureReason = (error: unknown) => {
-	const code = getUserFacingBackendErrorCode(error);
-	switch (code) {
-		case "insufficient_material":
-			return "insufficientMaterial";
-		case "material_processing":
-			return "materialProcessing";
-		case "scheduling_constraints":
-			return "schedulingConstraints";
-		case "generation_processing":
-			return "generationProcessing";
-		default:
-			return "unknown";
-	}
-};
+const getContentGenerationFailureReason = (error: unknown) =>
+	getLearningPlanGenerationFailureReason(getUserFacingBackendErrorCode(error));
 
 const vertexProviderOptions = {
 	google: {
@@ -976,7 +965,9 @@ const buildModelInputFromDocuments = async (
 				"material_processing",
 			);
 		}
-		const response = await fetch(downloadUrl).catch((error: unknown) => {
+		const response = await fetch(downloadUrl, {
+			signal: AbortSignal.timeout(DOCUMENT_DOWNLOAD_TIMEOUT_MS),
+		}).catch((error: unknown) => {
 			logDiagnosticError("learningPlanAi.documentDownload", error, {
 				fileName: document.fileName,
 				storageProvider: document.storageProvider,
@@ -3081,7 +3072,13 @@ export const retryFailedSessionContent = action({
 			try {
 				await ctx.runMutation(
 					internal.learningPlans.markContentGenerationClaimFailed,
-					{ learningPlanId: args.learningPlanId, generationId, failureReason },
+					{
+						learningPlanId: args.learningPlanId,
+						generationId,
+						failureReason,
+						failureMessage:
+							getUserFacingBackendErrorMessage(error) ?? undefined,
+					},
 				);
 			} catch (releaseError) {
 				logDiagnosticError(
@@ -3683,7 +3680,12 @@ MVP-Vorgabe:
 			});
 			await ctx.runMutation(
 				internal.learningPlans.clearEmptyContentGeneration,
-				{ learningPlanId: args.learningPlanId, generationId, failureReason },
+				{
+					learningPlanId: args.learningPlanId,
+					generationId,
+					failureReason,
+					failureMessage: getUserFacingBackendErrorMessage(error) ?? undefined,
+				},
 			);
 			throw error;
 		}

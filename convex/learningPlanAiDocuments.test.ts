@@ -21,11 +21,7 @@ const ctx = { runMutation: vi.fn() } as unknown as Parameters<
 	typeof __testOnlyLearningPlanAi.buildModelInputFromDocuments
 >[0];
 
-const document = (
-	storageId: string,
-	fileName: string,
-	fileType: string,
-) => ({
+const document = (storageId: string, fileName: string, fileType: string) => ({
 	storageId,
 	storageProvider: "convex" as const,
 	fileName,
@@ -40,14 +36,40 @@ const stubDownloads = () => {
 		vi.fn(async (url: string) => ({
 			ok: true,
 			arrayBuffer: async () =>
-				new TextEncoder()
-					.encode(url.endsWith("broken") ? "broken" : "Lesbarer Stoff")
-					.buffer,
+				new TextEncoder().encode(
+					url.endsWith("broken") ? "broken" : "Lesbarer Stoff",
+				).buffer,
 		})),
 	);
 };
 
 describe("learning-plan document input", () => {
+	it("bounds downloads and classifies a timeout with the affected filename", async () => {
+		const signal = new AbortController().signal;
+		const timeout = vi.spyOn(AbortSignal, "timeout").mockReturnValue(signal);
+		const download = vi.fn(async () => {
+			throw new DOMException("Download timed out", "TimeoutError");
+		});
+		vi.stubGlobal("fetch", download);
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		await expect(
+			__testOnlyLearningPlanAi.buildModelInputFromDocuments(
+				ctx,
+				[document("readable", "themen.txt", "text/plain")],
+				"test-access-key",
+			),
+		).rejects.toMatchObject({
+			data: {
+				code: "material_processing",
+				message: expect.stringContaining("themen.txt"),
+			},
+		});
+		expect(timeout).toHaveBeenCalledWith(30_000);
+		expect(download).toHaveBeenCalledWith(
+			"https://files.example.test/readable",
+			{ signal },
+		);
+	});
 	afterEach(() => {
 		vi.unstubAllGlobals();
 		vi.restoreAllMocks();

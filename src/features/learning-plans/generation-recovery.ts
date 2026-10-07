@@ -1,14 +1,13 @@
 import {
+	getLearningPlanGenerationFailureReason,
+	type LearningPlanGenerationFailureReason,
+} from "#convex/learningPlanGenerationFailure";
+import {
 	extractUserFacingErrorCode,
 	extractUserFacingErrorMessage,
 } from "~/lib/user-facing-errors";
 
-export type LearningPlanGenerationFailureReason =
-	| "insufficientMaterial"
-	| "materialProcessing"
-	| "schedulingConstraints"
-	| "generationProcessing"
-	| "unknown";
+export type { LearningPlanGenerationFailureReason } from "#convex/learningPlanGenerationFailure";
 
 export type LearningPlanGenerationFailure = {
 	reason: LearningPlanGenerationFailureReason;
@@ -16,14 +15,6 @@ export type LearningPlanGenerationFailure = {
 	canReviewTopics: boolean;
 	canEditMaterial: boolean;
 	canEditLearningTimes: boolean;
-};
-
-const errorCodeToReason: Record<string, LearningPlanGenerationFailureReason> = {
-	insufficient_material: "insufficientMaterial",
-	material_processing: "materialProcessing",
-	scheduling_constraints: "schedulingConstraints",
-	generation_processing: "generationProcessing",
-	unknown: "unknown",
 };
 
 const messageByReason: Record<LearningPlanGenerationFailureReason, string> = {
@@ -42,18 +33,21 @@ const messageByReason: Record<LearningPlanGenerationFailureReason, string> = {
 export const getLearningPlanGenerationFailure = (
 	error: unknown,
 	persistedReason?: LearningPlanGenerationFailureReason,
+	persistedMessage?: string,
 ): LearningPlanGenerationFailure => {
 	const code = extractUserFacingErrorCode(error);
-	const sourceMessage = extractUserFacingErrorMessage(error);
+	const sourceMessage =
+		extractUserFacingErrorMessage(error) ?? persistedMessage;
 	const reason =
-		persistedReason ??
-		(code ? errorCodeToReason[code] : undefined) ??
-		"unknown";
+		persistedReason ?? getLearningPlanGenerationFailureReason(code);
 
 	return {
 		reason,
 		message:
-			reason === "insufficientMaterial" && sourceMessage
+			(reason === "insufficientMaterial" ||
+				reason === "materialProcessing" ||
+				reason === "schedulingConstraints") &&
+			sourceMessage?.trim()
 				? sourceMessage
 				: messageByReason[reason],
 		canReviewTopics: reason === "insufficientMaterial",

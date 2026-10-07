@@ -1,3 +1,4 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { useEffect } from "react";
 import { Pressable, View } from "react-native";
 import Animated, {
@@ -9,13 +10,14 @@ import Animated, {
 	withSpring,
 	withTiming,
 } from "react-native-reanimated";
-import { Check } from "~/components/ui/icon";
+import { SelectionIndicator } from "~/components/ui/selection-indicator";
 import { Text } from "~/components/ui/text";
 import type { SessionContentItem } from "~/features/learning-plans/types";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
+import { cn } from "~/lib/utils";
 
 const SETTLE = { duration: 240, dampingRatio: 0.8 };
-const AnimatedText = Animated.createAnimatedComponent(Text);
 
 export function ChoiceList({
 	item,
@@ -29,7 +31,7 @@ export function ChoiceList({
 	disabled: boolean;
 }) {
 	return (
-		<View className="mt-5 gap-2" accessibilityRole="radiogroup">
+		<View className="mt-5 gap-3" accessibilityRole="radiogroup">
 			{item.choices.map((choice, index) => (
 				<ChoiceCard
 					key={`${item.id}:${choice.id}`}
@@ -60,7 +62,6 @@ function ChoiceCard({
 	const { colors } = useDayovaTheme();
 	const reduceMotion = useReducedMotion();
 	const selection = useSharedValue(selected ? 1 : 0);
-	const checkScale = useSharedValue(selected ? 1 : 0.6);
 	const pressScale = useSharedValue(1);
 
 	useEffect(() => {
@@ -72,8 +73,7 @@ function ChoiceCard({
 						easing: Easing.out(Easing.cubic),
 					}),
 		);
-		checkScale.set(reduceMotion ? 1 : withSpring(selected ? 1 : 0.6, SETTLE));
-	}, [checkScale, reduceMotion, selected, selection]);
+	}, [reduceMotion, selected, selection]);
 
 	useEffect(() => {
 		if (disabled || reduceMotion) pressScale.set(1);
@@ -81,36 +81,12 @@ function ChoiceCard({
 
 	const cardStyle = useAnimatedStyle(() => ({
 		transform: [{ scale: pressScale.get() }],
-		backgroundColor: interpolateColor(
-			selection.get(),
-			[0, 1],
-			[colors.surface, colors.systemSubtle],
-		),
 		borderColor: interpolateColor(
 			selection.get(),
 			[0, 1],
-			[colors.border, colors.primary],
+			[colors.border, `${colors.primary}66`],
 		),
 	}));
-	const badgeStyle = useAnimatedStyle(() => ({
-		backgroundColor: interpolateColor(
-			selection.get(),
-			[0, 1],
-			[colors.light2, colors.primary],
-		),
-	}));
-	const badgeTextStyle = useAnimatedStyle(() => ({
-		color: interpolateColor(
-			selection.get(),
-			[0, 1],
-			[colors.secondaryText, colors.onPrimary],
-		),
-	}));
-	const checkStyle = useAnimatedStyle(() => ({
-		opacity: selection.get(),
-		transform: [{ scale: checkScale.get() }],
-	}));
-
 	return (
 		<Pressable
 			accessibilityRole="radio"
@@ -128,31 +104,44 @@ function ChoiceCard({
 		>
 			{/* Reanimated owns motion and interpolated theme colors; the hit area stays fixed. */}
 			<Animated.View
-				className="min-h-14 flex-row items-center gap-3 rounded-[24px] border-hairline px-4 py-3 shadow-black/5 shadow-sm"
+				className={cn(
+					"min-h-16 flex-row items-center gap-4 rounded-3xl border px-5 py-3",
+					selected ? "bg-accent" : "bg-card",
+				)}
 				style={cardStyle}
 			>
-				<Animated.View
-					className="h-8 w-8 shrink-0 items-center justify-center rounded-xl"
-					style={badgeStyle}
-				>
-					<AnimatedText
-						className="font-poppins font-semibold text-body-4"
-						style={badgeTextStyle}
+				<View className="h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-system-subtle">
+					{selected ? (
+						<LinearGradient
+							{...DAYOVA_DESIGN_SYSTEM.gradients.selection}
+							// Native gradient geometry fills the letter badge.
+							style={{
+								position: "absolute",
+								top: 0,
+								right: 0,
+								bottom: 0,
+								left: 0,
+							}}
+						/>
+					) : null}
+					<Text
+						className={cn(
+							"font-poppins font-semibold text-body-4",
+							selected ? "text-white" : "text-secondary-text",
+						)}
 					>
 						{label}
-					</AnimatedText>
-				</Animated.View>
-				<Text className="flex-1 font-poppins text-body-3 text-text">
+					</Text>
+				</View>
+				<Text
+					className={cn(
+						"flex-1 font-poppins text-body-2",
+						selected ? "font-semibold text-primary" : "text-text",
+					)}
+				>
 					{text}
 				</Text>
-				<View className="h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-secondary-text/50">
-					<Animated.View
-						className="absolute h-6 w-6 items-center justify-center rounded-full bg-primary"
-						style={checkStyle}
-					>
-						<Check size={14} color={colors.onPrimary} strokeWidth={2.8} />
-					</Animated.View>
-				</View>
+				<SelectionIndicator selected={selected} />
 			</Animated.View>
 		</Pressable>
 	);

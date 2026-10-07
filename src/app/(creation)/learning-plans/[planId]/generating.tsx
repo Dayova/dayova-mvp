@@ -66,6 +66,7 @@ export default function LearningPlanGeneratingScreen() {
 	const [canRecoverStalledGeneration, setCanRecoverStalledGeneration] =
 		useState(false);
 	const didStartRef = useRef(false);
+	const retryInFlightRef = useRef(false);
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
@@ -116,6 +117,7 @@ export default function LearningPlanGeneratingScreen() {
 			? getLearningPlanGenerationFailure(
 					null,
 					snapshot.plan.contentGeneration.failureReason,
+					snapshot.plan.contentGeneration.failureMessage,
 				)
 			: null);
 	const hasRecovery = Boolean(
@@ -232,8 +234,9 @@ export default function LearningPlanGeneratingScreen() {
 	]);
 
 	const retryGeneration = async () => {
-		if (!planId || isBusy) return;
+		if (!planId || isBusy || retryInFlightRef.current) return;
 
+		retryInFlightRef.current = true;
 		setIsBusy(true);
 		setFailure(null);
 		try {
@@ -276,6 +279,7 @@ export default function LearningPlanGeneratingScreen() {
 			});
 			setFailure(nextFailure);
 		} finally {
+			retryInFlightRef.current = false;
 			setIsBusy(false);
 		}
 	};
@@ -363,6 +367,7 @@ export default function LearningPlanGeneratingScreen() {
 							) : null}
 							<Button
 								className="mt-6"
+								accessibilityState={{ busy: isBusy }}
 								disabled={isBusy}
 								onPress={() => {
 									if (
@@ -408,14 +413,15 @@ export default function LearningPlanGeneratingScreen() {
 								</Button>
 							) : null}
 							{displayedFailure &&
-							!displayedFailure.canEditLearningTimes &&
-							(displayedFailure.canReviewTopics ||
+							(displayedFailure.canEditLearningTimes ||
+								displayedFailure.canReviewTopics ||
 								displayedFailure.canEditMaterial) ? (
 								<Button
 									className="mt-3"
 									disabled={isBusy}
 									variant="neutral"
 									onPress={() => void retryGeneration()}
+									accessibilityState={{ busy: isBusy }}
 								>
 									<Text>Erneut versuchen</Text>
 								</Button>

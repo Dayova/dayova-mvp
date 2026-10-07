@@ -201,6 +201,7 @@ export default function LearningPlanAnalysisScreen() {
 							<Button
 								className="mt-3"
 								disabled={isBusy}
+								accessibilityState={{ busy: isBusy }}
 								onPress={() => {
 									didStartRef.current = false;
 									setFailure(null);
