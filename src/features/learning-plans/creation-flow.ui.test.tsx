@@ -60,7 +60,14 @@ const mockPickDocument =
 	>();
 const mockAvailability = { status: "available" };
 let mockSnapshot:
-	| { plan: { topicDescription: string }; documents: never[] }
+	| {
+			plan: { topicDescription: string };
+			documents: Array<{
+				fileSizeBytes: number;
+				fileName: string;
+				_id: string;
+			}>;
+	  }
 	| undefined;
 let mockPauseVisible = false;
 jest.mock("convex/react", () => ({
@@ -157,6 +164,8 @@ jest.mock("expo-document-picker", () => ({
 	getDocumentAsync: () => mockPickDocument(),
 }));
 jest.mock("expo-image-picker", () => ({
+	requestCameraPermissionsAsync: async () => ({ granted: true }),
+	launchCameraAsync: (options: unknown) => mockLaunchImageLibrary(options),
 	requestMediaLibraryPermissionsAsync: () =>
 		mockRequestMediaLibraryPermissions(),
 	launchImageLibraryAsync: (options: unknown) =>
@@ -840,6 +849,49 @@ test("rejects an oversized selection before uploading any document", async () =>
 		screen.getByRole("button", { name: "Schulmaterial hinzufügen" }),
 	);
 	await fireEvent.press(screen.getByRole("button", { name: /Dateien/ }));
+	await waitFor(() =>
+		expect(screen.getByText(/zusammen maximal 40 MiB/)).toBeOnTheScreen(),
+	);
+	expect(mockGenerateUploadUrl).not.toHaveBeenCalled();
+	expect(mockFetch).not.toHaveBeenCalled();
+});
+
+test("rejects a camera photo that exceeds the existing material total before upload", async () => {
+	mockParams = {
+		learningPlanId: "plan-1",
+		examDayEntryId: "exam-1",
+		step: "material",
+	};
+	mockSnapshot = {
+		plan: { topicDescription: "Lineare Funktionen" },
+		documents: [
+			{
+				_id: "doc-1",
+				fileName: "worksheet.pdf",
+				fileSizeBytes: 39 * 1024 * 1024,
+			},
+		],
+	};
+	mockFiles["file:///camera.jpg"] = {
+		size: 2 * 1024 * 1024,
+		header: JPEG_HEADER,
+	};
+	mockLaunchImageLibrary.mockResolvedValue({
+		canceled: false,
+		assets: [
+			{
+				uri: "file:///camera.jpg",
+				fileName: "camera.jpg",
+				mimeType: "image/jpeg",
+				fileSize: 2 * 1024 * 1024,
+			},
+		],
+	});
+	const screen = await render(<NewLearningPlanScreen />);
+	await fireEvent.press(
+		screen.getByRole("button", { name: "Schulmaterial hinzufügen" }),
+	);
+	await fireEvent.press(screen.getByRole("button", { name: "Scannen" }));
 	await waitFor(() =>
 		expect(screen.getByText(/zusammen maximal 40 MiB/)).toBeOnTheScreen(),
 	);

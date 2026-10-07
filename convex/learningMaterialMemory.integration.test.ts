@@ -46,6 +46,8 @@ test.each([
 			);
 			const result = JSON.parse(output.trim());
 			expect(result.documents).toBe(count);
+			expect(result.completedRequests).toBe(3);
+			expect(result.peakActiveRequests).toBe(1);
 			expect(result.rawBytes).toBe(40 * 1024 * 1024);
 			expect(result.requestBytes).toBeGreaterThan(result.rawBytes);
 			expect(result.requestBytes).toBeLessThan(60 * 1024 * 1024);

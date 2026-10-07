@@ -30,10 +30,18 @@ const { __testOnlyLearningPlanAi } = load(bundle);
 			"test",
 		);
 	let requestBytes = 0;
+	let activeRequests = 0;
+	let peakActiveRequests = 0;
+	let completedRequests = 0;
 	const model = createVertex({
 		apiKey: "local-test",
 		fetch: async (_url, init) => {
 			requestBytes = Buffer.byteLength(init.body);
+			activeRequests += 1;
+			peakActiveRequests = Math.max(peakActiveRequests, activeRequests);
+			await new Promise((resolve) => setTimeout(resolve, 100));
+			activeRequests -= 1;
+			completedRequests += 1;
 			return new Response(
 				JSON.stringify({
 					candidates: [
@@ -52,7 +60,7 @@ const { __testOnlyLearningPlanAi } = load(bundle);
 			);
 		},
 	})("gemini-3-flash-preview");
-	await generateText({
+	await __testOnlyLearningPlanAi.mapMaterialBatches([1, 2, 3], fileParts, () => generateText({
 		model,
 		messages: [
 			{
@@ -65,7 +73,7 @@ const { __testOnlyLearningPlanAi } = load(bundle);
 		],
 		maxOutputTokens: 512,
 		maxRetries: 0,
-	});
+	}));
 	console.log(
 		JSON.stringify({
 			documents: fileParts.length,
@@ -74,6 +82,8 @@ const { __testOnlyLearningPlanAi } = load(bundle);
 				0,
 			),
 			requestBytes,
+			peakActiveRequests,
+			completedRequests,
 			peakRssKiB: process.resourceUsage().maxRSS,
 		}),
 	);

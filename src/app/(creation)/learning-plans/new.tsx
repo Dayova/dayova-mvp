@@ -469,16 +469,15 @@ export default function NewLearningPlanScreen() {
 			await runWithErrorHandling(
 				"Das Foto konnte nicht hochgeladen werden.",
 				async () => {
+					const preparedAsset = prepareUploadAsset({
+						uri: asset.uri,
+						name: asset.fileName ?? `mitschrift-${Date.now()}.jpg`,
+						mimeType: asset.mimeType ?? "image/jpeg",
+						size: asset.fileSize,
+					});
+					validateMaterialBatch([preparedAsset]);
 					const id = await ensurePlan(topics);
-					await uploadLearningPlanAsset(
-						prepareUploadAsset({
-							uri: asset.uri,
-							name: asset.fileName ?? `mitschrift-${Date.now()}.jpg`,
-							mimeType: asset.mimeType ?? "image/jpeg",
-							size: asset.fileSize,
-						}),
-						id,
-					);
+					await uploadLearningPlanAsset(preparedAsset, id);
 				},
 			);
 		} catch (error) {

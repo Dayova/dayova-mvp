@@ -1776,6 +1776,7 @@ const normalizeSessions = (
 
 export const __testOnlyLearningPlanAi = {
 	buildModelInputFromDocuments,
+	mapMaterialBatches,
 	normalizeSessions,
 	getEmptyScheduleErrorMessage,
 	generatedTaskChoiceSchema,
@@ -2798,6 +2799,24 @@ const generateTrackedSessionContent = async (
 	}
 };
 
+// Each simultaneous model call serializes its own base64 JSON request. Keep
+// larger inputs sequential so three copies cannot exhaust the Node action heap.
+async function mapMaterialBatches<TItem, TResult>(
+	items: TItem[],
+	fileParts: Array<{ data: string }>,
+	task: (item: TItem) => Promise<TResult>,
+) {
+	const materialBytes = fileParts.reduce(
+		(sum, part) => sum + Buffer.byteLength(part.data, "base64"),
+		0,
+	);
+	return mapWithConcurrency(
+		items,
+		materialBytes > 7 * 1024 * 1024 ? 1 : CONTENT_GENERATION_CONCURRENCY,
+		task,
+	);
+}
+
 const mapWithConcurrency = async <TItem, TResult>(
 	items: TItem[],
 	limit: number,
@@ -3036,9 +3055,9 @@ export const retryFailedSessionContent = action({
 					? ECONOMY_CONTENT_GENERATION_BATCH_SIZE
 					: CONTENT_GENERATION_BATCH_SIZE,
 			);
-			const batchResults = await mapWithConcurrency(
+			const batchResults = await mapMaterialBatches(
 				batches,
-				CONTENT_GENERATION_CONCURRENCY,
+				preparedDocuments.fileParts,
 				(contexts) =>
 					generateTrackedSessionContentBatch(
 						ctx,
@@ -3560,9 +3579,9 @@ MVP-Vorgabe:
 					? ECONOMY_CONTENT_GENERATION_BATCH_SIZE
 					: CONTENT_GENERATION_BATCH_SIZE,
 			);
-			const batchedContentResults = await mapWithConcurrency(
+			const batchedContentResults = await mapMaterialBatches(
 				contentBatches,
-				CONTENT_GENERATION_CONCURRENCY,
+				fileParts,
 				(contexts) =>
 					generateTrackedSessionContentBatch(
 						ctx,
