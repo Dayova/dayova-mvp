@@ -136,6 +136,7 @@ export async function prepareDiagnostic(
 		if (legacySessions.length > 500)
 			throwUserFacingError(
 				"Dieser Lernplan enthält zu viele Lerneinheiten. Erstelle einen neuen Lernplan.",
+				"legacy_plan_too_large",
 			);
 		for (const session of legacySessions) {
 			await deleteSessionLearningDataForSession(ctx, session._id);

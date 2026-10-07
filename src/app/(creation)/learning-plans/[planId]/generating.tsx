@@ -227,13 +227,22 @@ export default function LearningPlanGeneratingScreen() {
 									<Text>Lernzeit eintragen</Text>
 								</Button>
 							) : null}
-							<Button
-								disabled={isBusy}
-								accessibilityState={{ busy: isBusy }}
-								onPress={() => void runPreparation()}
-							>
-								<Text>Erneut versuchen</Text>
-							</Button>
+							{displayedFailure?.canStartNewPlan ? (
+								<Button
+									disabled={isBusy}
+									onPress={() => router.push("/learning-plans/new")}
+								>
+									<Text>Neuen Lernplan erstellen</Text>
+								</Button>
+							) : (
+								<Button
+									disabled={isBusy}
+									accessibilityState={{ busy: isBusy }}
+									onPress={() => void runPreparation()}
+								>
+									<Text>Erneut versuchen</Text>
+								</Button>
+							)}
 						</>
 					) : (
 						<ActivityIndicator

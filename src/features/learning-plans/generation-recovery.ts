@@ -15,6 +15,7 @@ export type LearningPlanGenerationFailure = {
 	canReviewTopics: boolean;
 	canEditMaterial: boolean;
 	canEditLearningTimes: boolean;
+	canStartNewPlan?: boolean;
 };
 
 const messageByReason: Record<LearningPlanGenerationFailureReason, string> = {
@@ -38,6 +39,16 @@ export const getLearningPlanGenerationFailure = (
 	const code = extractUserFacingErrorCode(error);
 	const sourceMessage =
 		extractUserFacingErrorMessage(error) ?? persistedMessage;
+	if (code === "legacy_plan_too_large")
+		return {
+			reason: "generationProcessing",
+			message:
+				"Dieser Lernplan enthält zu viele Lerneinheiten. Erstelle einen neuen Lernplan.",
+			canReviewTopics: false,
+			canEditMaterial: false,
+			canEditLearningTimes: false,
+			canStartNewPlan: true,
+		};
 	const reason =
 		persistedReason ?? getLearningPlanGenerationFailureReason(code);
 

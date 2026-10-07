@@ -333,6 +333,35 @@ describe("learning-plan generation recovery", () => {
 		).toBeNull();
 	});
 
+	test("offers a new plan instead of retrying an oversized legacy draft", async () => {
+		mockHasGeneration = false;
+		mockPrepare.mockRejectedValueOnce({
+			data: {
+				kind: "userFacing",
+				code: "legacy_plan_too_large",
+				message:
+					"Dieser Lernplan enthält zu viele Lerneinheiten. Erstelle einen neuen Lernplan.",
+			},
+		});
+		const screen = await render(<LearningPlanGeneratingScreen />);
+		const action = await screen.findByRole("button", {
+			name: "Neuen Lernplan erstellen",
+		});
+		expect(
+			screen.getByText(
+				"Dieser Lernplan enthält zu viele Lerneinheiten. Erstelle einen neuen Lernplan.",
+			),
+		).toBeOnTheScreen();
+		expect(
+			screen.queryByRole("button", { name: "Erneut versuchen" }),
+		).toBeNull();
+		expect(
+			screen.queryByRole("button", { name: "Material ergänzen oder ersetzen" }),
+		).toBeNull();
+		await fireEvent.press(action);
+		expect(mockRouter.push).toHaveBeenCalledWith("/learning-plans/new");
+	});
+
 	test("does not postpone recovery for legacy claims without a timestamp when the query refreshes", async () => {
 		mockSnapshot.sessions = [{ id: "failed-session" }];
 		mockSnapshot.plan.contentGeneration.stage = "content";
