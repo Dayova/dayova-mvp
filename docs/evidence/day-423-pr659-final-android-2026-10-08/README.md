@@ -1,5 +1,7 @@
 # DAY-423 / PR #659 — final integrated Android verification, 8 October 2026
 
+**Later source follow-up:** two late GitHub review findings were confirmed and fixed in `9dd2f89d`: duplicate normalized multiple-choice options fall back to short text before diagnostic storage; legacy scheduling failures invoke full generation instead of content-only retry, including after a transient retry error. Regressions failed before the fixes and passed afterward. Full validation passed 1,090 Vitest tests, 503 UI tests, lint and TypeScript; the development deployment succeeded. The CodeRabbit CLI review of the core four-file fix found zero findings, and independent Standards/Spec reviews found no actionable issues. The original six screenshots below still document `2972612b`.
+
 Application source tested: `2972612b5c5e21a63885040f62c6cca2fc4ea34e`, integrated with `main` at `dc59a02bdb481b306a0f42854b5b27531d893b25`. The subsequent evidence commit changes documentation and screenshots only. This run closes the fresh-native coverage gap recorded in the [7 October report](../day-423-pr659-review-2026-10-07/README.md); that report's screenshots retain their original provenance.
 
 ## Environment and method
@@ -24,6 +26,17 @@ Host observation window: approximately 00:29–00:34 Europe/Berlin on 8 October 
 No app restart was used between the two failure recoveries and the successful diagnostic acceptance. Returning to the material step retained the existing upload until its explicit native removal. The initial fixture navigation opened the material step only; subsequent recovery and successful navigation used the app's own controls and route transitions.
 
 After capture, the synthetic plan, its managed documents/session data and synthetic exam were removed through authenticated public mutations. The plan snapshot returned null. The test account's original Monday 17:00–17:30 learning time was restored and checked for the same values. Cleanup needed an authenticated token refresh after deletion; the completed user journey preceded this cleanup step. No credentials or tokens are included in this evidence.
+
+## Repeat Android run after the late fixes
+
+Application source `9dd2f89de498ad28921b399b10d5008c73a6766b`, same development client and development backend. Around 00:50–00:52 Europe/Berlin, a fresh synthetic draft with zero saved learning times used native PDF upload and live analysis, yielding six topics and exactly ten questions. Native scope confirmation prepared one ready diagnostic session with zero failed sessions and automatically navigated to review. Native “Jetzt starten” accepted the plan and opened question 1 of 10 with the keyboard and both action buttons visible. No review navigation was forced.
+
+- [Automatic review on the late-fix source](late-fix-automatic-review.png)
+- [Accepted diagnostic on the late-fix source](late-fix-accepted-diagnostic.png)
+
+The emulator displayed a System UI stall during startup; reconnecting the app after boot resolved it before the fixture journey. The later source fixes are also covered by the duplicate-choice/storage-validator and actual-screen legacy-rescheduling regressions. This repeat establishes the integrated success path after those fixes; it does not claim a native reproduction of duplicate model choices or legacy rescheduling.
+
+The repeat fixture's plan, managed documents/session data and exam were removed. After waiting for the test client's refreshed authentication to settle, the plan snapshot returned null and the original learning-time values were confirmed restored.
 
 ## Merge evidence and limits
 
