@@ -69,6 +69,42 @@ export default function SettingsScreen() {
 	const isStoreSubscriber =
 		access?.state === "paid" || access?.state === "billingGrace";
 
+	const subscriptionCard = (
+		<View className="gap-3" testID="settings-subscription">
+			<SettingsCard>
+				{access?.state === "trial" ? (
+					<SettingsRow
+						icon={CreditCard}
+						label="Dayova abonnieren"
+						onPress={() => {
+							trackFeature("settings.subscription_opened");
+							router.push("/subscription");
+						}}
+					/>
+				) : (
+					<SettingsRow
+						icon={CreditCard}
+						label="Dayova"
+						accessibilityLabel={`Dayova, ${nativeManagementUrl ? "Abo im Store verwalten" : "Hilfe zum Abo"}`}
+						description={
+							nativeManagementUrl ? "Abo im Store verwalten" : "Hilfe zum Abo"
+						}
+						onPress={() =>
+							openLink(
+								"subscription",
+								nativeManagementUrl ?? env.EXPO_PUBLIC_SUPPORT_URL,
+							)
+						}
+						disabled={!isStoreSubscriber}
+					/>
+				)}
+			</SettingsCard>
+			{linkErrors.subscription ? (
+				<ErrorMessage>{linkErrors.subscription}</ErrorMessage>
+			) : null}
+		</View>
+	);
+
 	return (
 		<>
 			<Screen>
@@ -115,6 +151,8 @@ export default function SettingsScreen() {
 								</SupportContact>
 							</SettingsCard>
 						</View>
+
+						{!isStoreSubscriber ? subscriptionCard : null}
 
 						<SettingsSection title="Lernen">
 							<SettingsRow
@@ -167,41 +205,7 @@ export default function SettingsScreen() {
 							/>
 						</SettingsSection>
 
-						<View className="gap-3" testID="settings-subscription">
-							<SettingsCard>
-								{access?.state === "trial" ? (
-									<SettingsRow
-										icon={CreditCard}
-										label="Dayova abonnieren"
-										onPress={() => {
-											trackFeature("settings.subscription_opened");
-											router.push("/subscription");
-										}}
-									/>
-								) : (
-									<SettingsRow
-										icon={CreditCard}
-										label="Dayova"
-										accessibilityLabel={`Dayova, ${nativeManagementUrl ? "Abo im Store verwalten" : "Hilfe zum Abo"}`}
-										description={
-											nativeManagementUrl
-												? "Abo im Store verwalten"
-												: "Hilfe zum Abo"
-										}
-										onPress={() =>
-											openLink(
-												"subscription",
-												nativeManagementUrl ?? env.EXPO_PUBLIC_SUPPORT_URL,
-											)
-										}
-										disabled={!isStoreSubscriber}
-									/>
-								)}
-							</SettingsCard>
-							{linkErrors.subscription ? (
-								<ErrorMessage>{linkErrors.subscription}</ErrorMessage>
-							) : null}
-						</View>
+						{isStoreSubscriber ? subscriptionCard : null}
 
 						<View className="gap-3" testID="settings-legal">
 							<SettingsSection title="Datenschutz & Rechtliches">

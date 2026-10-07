@@ -459,13 +459,15 @@ function LearningPlanCard({
 		: needsSchoolMaterial
 			? "Lernmaterial hochladen"
 			: plan.currentSession?.sessionPurpose === "diagnostic"
-				? "Wissenscheck · 5–10 Fragen"
+				? "Wissenscheck"
 				: plan.currentSession?.goal ||
 					plan.currentSession?.title ||
 					plan.examTypeLabel;
 	const [isActionRailVisible, setIsActionRailVisible] = useState(false);
 	const translateX = useSharedValue(0);
 	const gestureStartX = useSharedValue(0);
+	const didDrag = useSharedValue(false);
+	const isActionRailOpen = useSharedValue(false);
 	const cardAnimatedStyle = useAnimatedStyle(() => ({
 		transform: [{ translateX: translateX.get() }],
 	}));
@@ -483,6 +485,11 @@ function LearningPlanCard({
 		.onBegin(() => {
 			"worklet";
 			gestureStartX.set(translateX.get());
+			didDrag.set(false);
+		})
+		.onStart(() => {
+			"worklet";
+			didDrag.set(true);
 			scheduleOnRN(setIsActionRailVisible, true);
 		})
 		.onUpdate((event) => {
@@ -497,6 +504,7 @@ function LearningPlanCard({
 		.onEnd(() => {
 			"worklet";
 			const shouldOpen = -translateX.get() >= PLAN_SWIPE_OPEN_THRESHOLD;
+			isActionRailOpen.set(shouldOpen);
 			translateX.set(
 				shouldOpen
 					? withTiming(-PLAN_ACTION_RAIL_WIDTH, {
@@ -517,13 +525,39 @@ function LearningPlanCard({
 							},
 						),
 			);
+		})
+		.onFinalize((event) => {
+			"worklet";
+			// A vertical drag can fail this pan without ever reaching onStart.
+			if (
+				Math.abs(event.translationX) > 10 ||
+				Math.abs(event.translationY) > 10
+			) {
+				didDrag.set(true);
+			}
 		});
+	const activateCard = () => {
+		const shouldCloseActions = isActionRailOpen.get();
+		isActionRailOpen.set(false);
+		translateX.set(0);
+		setIsActionRailVisible(false);
+		if (shouldCloseActions) return;
+		onPress();
+	};
+	const pressCard = () => {
+		// Suppress the trailing touch press, including failed vertical pans.
+		// Accessibility activation has no touch gesture and uses activateCard.
+		if (didDrag.get()) return;
+		activateCard();
+	};
 	const editPlan = () => {
+		isActionRailOpen.set(false);
 		translateX.set(0);
 		setIsActionRailVisible(false);
 		router.push(`/learning-plans/new?learningPlanId=${plan.id}` as const);
 	};
 	const deletePlan = () => {
+		isActionRailOpen.set(false);
 		translateX.set(0);
 		setIsActionRailVisible(false);
 		onDelete();
@@ -576,7 +610,8 @@ function LearningPlanCard({
 											rollingWindowLabel,
 										},
 						}}
-						onPress={onPress}
+						onPress={pressCard}
+						onAccessibilityActivate={activateCard}
 					/>
 				</Animated.View>
 			</GestureDetector>

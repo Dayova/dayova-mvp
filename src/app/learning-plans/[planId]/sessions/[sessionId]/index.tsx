@@ -1,5 +1,10 @@
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import {
+	Stack,
+	useFocusEffect,
+	useLocalSearchParams,
+	useRouter,
+} from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	ActivityIndicator,
@@ -169,6 +174,17 @@ export default function LearningSessionContentScreen() {
 	const didStartTrackingRef = useRef(false);
 	const didRecordOutcomeRef = useRef(false);
 	const advancedPreTheoryQuestionItemIdRef = useRef<string | null>(null);
+	const [isFocused, setIsFocused] = useState(true);
+	useFocusEffect(
+		useCallback(() => {
+			setIsFocused(true);
+			return () => setIsFocused(false);
+		}, []),
+	);
+	const checkpointStudyTime = useMutation(
+		api.learningPlans.checkpointStudyTime,
+	);
+	const restoredStudyTime = useRef(false);
 	const activeStudySecondsRef = useRef(0);
 	const activeStudyStartedAtRef = useRef<number | null>(null);
 	const isStudyInteractionActiveRef = useRef(false);
@@ -206,7 +222,9 @@ export default function LearningSessionContentScreen() {
 		sessionItems,
 		currentIndex,
 	);
-	const shouldTrackActiveStudy = Boolean(currentItem && !completionPhase);
+	const shouldTrackActiveStudy = Boolean(
+		currentItem && !completionPhase && isFocused,
+	);
 	const isPraxisSession = content?.session.phase === "rehearsal";
 	const isDiagnosticSession = content?.session.sessionPurpose === "diagnostic";
 	const isPairedTheoryQuestion = isPairedTheoryQuestionItem(currentItem);
@@ -328,6 +346,36 @@ export default function LearningSessionContentScreen() {
 			activeStudyStartedAtRef.current = null;
 		}
 	}, [shouldTrackActiveStudy]);
+
+	useEffect(() => {
+		if (!restoredStudyTime.current && content) {
+			activeStudySecondsRef.current += content.session.activeStudySeconds ?? 0;
+			restoredStudyTime.current = true;
+		}
+	}, [content]);
+	useEffect(() => {
+		if (!sessionId || !isDiagnosticSession) return;
+		const checkpoint = () => {
+			void checkpointStudyTime({
+				sessionId,
+				activeStudySeconds: getActiveStudySeconds(),
+			}).catch(() => {});
+		};
+		const timer = setInterval(checkpoint, 15000);
+		const subscription = AppState.addEventListener("change", (state) => {
+			if (state !== "active") checkpoint();
+		});
+		return () => {
+			clearInterval(timer);
+			subscription.remove();
+			checkpoint();
+		};
+	}, [
+		sessionId,
+		isDiagnosticSession,
+		checkpointStudyTime,
+		getActiveStudySeconds,
+	]);
 
 	usePrepareSessionContent({
 		enabled: Boolean(user && isConvexAuthenticated),
@@ -570,7 +618,16 @@ export default function LearningSessionContentScreen() {
 					},
 				);
 			}
-			router.dismissTo(getLearningSessionCompletionDestination(planId));
+			const destination =
+				content?.session.sessionPurpose === "diagnostic" &&
+				content.plan.preparationState &&
+				planId
+					? {
+							pathname: "/learning-plans/[planId]/preparation" as const,
+							params: { planId },
+						}
+					: getLearningSessionCompletionDestination(planId);
+			router.dismissTo(destination);
 		} catch (error) {
 			setErrorMessage(
 				getErrorMessage(error, "Der Lernplan konnte nicht geöffnet werden."),
@@ -961,7 +1018,7 @@ export default function LearningSessionContentScreen() {
 						onPrimary={
 							completionPhase === "theory"
 								? completeAndLeave
-								: completeAndOpenLearningPlan
+								: () => void completeAndOpenLearningPlan()
 						}
 						isBusy={isBusy}
 					/>

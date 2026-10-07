@@ -2,7 +2,23 @@ import { v } from "convex/values";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { throwUserFacingError } from "./errors";
+import { getPlanningLearningTimes } from "./learningTimePlanning";
 import { markLearningTimesBackfillHandledForOwner } from "./learningTimesBackfill";
+
+export const listForPlanning = query({
+	args: {},
+	returns: v.array(
+		v.object({
+			dayOfWeek: v.number(),
+			startTime: v.string(),
+			endTime: v.string(),
+		}),
+	),
+	handler: async (ctx) => {
+		const identity = await requireIdentity(ctx);
+		return getPlanningLearningTimes(ctx, identity.tokenIdentifier);
+	},
+});
 
 const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const MAX_LEARNING_TIMES = 50;
