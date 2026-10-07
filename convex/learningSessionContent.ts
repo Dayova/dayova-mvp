@@ -1118,6 +1118,13 @@ export const getSessionGenerationContext = internalQuery({
 			)
 			.take(50);
 		const existingItems = await listItems(ctx, args.sessionId);
+		const snapshotItems = await ctx.db
+			.query("learningSessionContentItems")
+			.withIndex("by_sessionId_and_sortOrder", (q) =>
+				q.eq("sessionId", args.sessionId),
+			)
+			.order("asc")
+			.take(1001);
 		const currentSessionAttempts = await ctx.db
 			.query("learningSessionAnswerAttempts")
 			.withIndex("by_sessionId_and_createdAt", (q) =>
@@ -1259,7 +1266,7 @@ export const getSessionGenerationContext = internalQuery({
 			priorSessionItems,
 			priorSessionEvidence,
 			priorCoverageKeys,
-			expectedContent: JSON.stringify(existingItems),
+			expectedContent: JSON.stringify(snapshotItems),
 			existingItemCount: existingItems.length,
 			hasTheoryKnowledgeCheck: existingItems.some(isTheoryKnowledgeCheckItem),
 			hasCompleteTheoryPracticePairs:

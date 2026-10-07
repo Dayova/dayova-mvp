@@ -173,6 +173,7 @@ export const finish = internalMutation({
 				.withIndex("by_sessionId_and_sortOrder", (q) =>
 					q.eq("sessionId", session._id),
 				)
+				.order("asc")
 				.take(1001);
 			if (
 				JSON.stringify(session) !== generated.expectedSession ||
@@ -183,6 +184,11 @@ export const finish = internalMutation({
 				throwUserFacingError(
 					"Ein Lernblock wurde zwischenzeitlich geändert. Versuche es erneut.",
 				);
+			}
+			// Remove the entire validated snapshot. The general content helper
+			// reads only 100 items and would leave larger sessions partly intact.
+			for (const item of items) {
+				await ctx.db.delete("learningSessionContentItems", item._id);
 			}
 			await ctx.runMutation(
 				internal.learningSessionContent.storeGeneratedSessionContent,

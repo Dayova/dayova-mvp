@@ -25,7 +25,7 @@ const newItem = {
 	evaluationKeywords: ["4"],
 };
 
-async function setup() {
+async function setup(firstSessionItemCount = 1) {
 	const root = convexTest(schema, modules);
 	register(root);
 	const t = root.withIdentity(identity);
@@ -79,6 +79,24 @@ async function setup() {
 				updatedAt: 1,
 			});
 			sessions.push(id);
+			if (index === 0) {
+				for (
+					let sortOrder = 1;
+					sortOrder < firstSessionItemCount;
+					sortOrder++
+				) {
+					await ctx.db.insert("learningSessionContentItems", {
+						...newItem,
+						title: "Alte Aufgabe",
+						ownerTokenIdentifier: identity.tokenIdentifier,
+						learningPlanId: planId,
+						sessionId: id,
+						sortOrder,
+						createdAt: 1,
+						updatedAt: 1,
+					});
+				}
+			}
 		}
 		return { planId, sessions };
 	});
@@ -115,11 +133,61 @@ async function setup() {
 			sessions: await Promise.all(
 				ids.sessions.map((id) => ctx.db.get("learningPlanSessions", id)),
 			),
-			items: await ctx.db.query("learningSessionContentItems").take(100),
+			items: await ctx.db.query("learningSessionContentItems").take(1100),
 			attempts: await ctx.db.query("learningSessionAnswerAttempts").take(100),
 		}));
 	return { root, t, ...ids, claim, finish, read };
 }
+
+test.each([
+	101, 1000,
+])("replaces all %i unchanged content items when applying material", async (itemCount) => {
+	const { t, finish, read, sessions } = await setup(itemCount);
+	expect(
+		await t.mutation(internal.learningPlanMaterialUpdates.finish, finish),
+	).toMatchObject({ updatedSessionCount: 2 });
+	const after = await read();
+	expect(after.plan?.appliedMaterialRevision).toBe(1);
+	expect(
+		after.items.filter((item) => item.sessionId === sessions[0]),
+	).toHaveLength(1);
+	expect(
+		after.items.some(
+			(item) => item.title === "Alte Aufgabe" && item.sessionId === sessions[0],
+		),
+	).toBe(false);
+});
+
+test("an edit beyond the first 100 items rolls back the entire material update", async () => {
+	const { t, finish, read, sessions } = await setup(101);
+	await t.run(async (ctx) => {
+		const lastItem = await ctx.db
+			.query("learningSessionContentItems")
+			.withIndex("by_sessionId_and_sortOrder", (q) =>
+				q.eq("sessionId", sessions[0]),
+			)
+			.order("desc")
+			.first();
+		if (!lastItem) throw new Error("Expected original item");
+		await ctx.db.patch("learningSessionContentItems", lastItem._id, {
+			prompt: "Zwischenzeitlich bearbeitete Aufgabe",
+		});
+	});
+	const before = await read();
+	await expect(
+		t.mutation(internal.learningPlanMaterialUpdates.finish, finish),
+	).rejects.toThrow(/zwischenzeitlich geändert/);
+	expect(await read()).toEqual(before);
+});
+
+test("content above the replacement limit is rejected without any writes", async () => {
+	const { t, finish, read } = await setup(1001);
+	const before = await read();
+	await expect(
+		t.mutation(internal.learningPlanMaterialUpdates.finish, finish),
+	).rejects.toThrow(/zwischenzeitlich geändert/);
+	expect(await read()).toEqual(before);
+});
 
 test("updates only untouched blocks and preserves completed content, readiness and schedules", async () => {
 	const { t, finish, read, sessions } = await setup();
