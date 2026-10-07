@@ -815,3 +815,34 @@ describe("document picker size limits", () => {
 		}
 	});
 });
+
+test("rejects an oversized selection before uploading any document", async () => {
+	mockParams = {
+		learningPlanId: "plan-1",
+		examDayEntryId: "exam-1",
+		step: "material",
+	};
+	mockSnapshot = {
+		plan: { topicDescription: "Lineare Funktionen" },
+		documents: [],
+	};
+	mockPickDocument.mockResolvedValue({
+		canceled: false,
+		assets: [1, 2].map((i) => ({
+			name: `worksheet-${i}.pdf`,
+			uri: `file:///worksheet-${i}.pdf`,
+			size: 21 * 1024 * 1024,
+			mimeType: "application/pdf",
+		})),
+	});
+	const screen = await render(<NewLearningPlanScreen />);
+	await fireEvent.press(
+		screen.getByRole("button", { name: "Schulmaterial hinzufügen" }),
+	);
+	await fireEvent.press(screen.getByRole("button", { name: /Dateien/ }));
+	await waitFor(() =>
+		expect(screen.getByText(/zusammen maximal 40 MiB/)).toBeOnTheScreen(),
+	);
+	expect(mockGenerateUploadUrl).not.toHaveBeenCalled();
+	expect(mockFetch).not.toHaveBeenCalled();
+});

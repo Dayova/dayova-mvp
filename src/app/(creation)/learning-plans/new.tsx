@@ -8,6 +8,10 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import {
+	MATERIAL_TOTAL_LIMIT_MESSAGE,
+	MAX_LEARNING_MATERIAL_TOTAL_BYTES,
+} from "#convex/learningMaterialLimits";
 import { isMeaningfulTopicDescription } from "#convex/topicDescriptionValidation";
 import {
 	ActionSheet,
@@ -256,6 +260,20 @@ export default function NewLearningPlanScreen() {
 		return { asset, file, fileSizeBytes, fileType };
 	};
 
+	const validateMaterialBatch = (assets: PreparedUploadAsset[]) => {
+		const existingBytes =
+			snapshot?.documents.reduce(
+				(sum, document) => sum + document.fileSizeBytes,
+				0,
+			) ?? 0;
+		if (
+			existingBytes +
+				assets.reduce((sum, asset) => sum + asset.fileSizeBytes, 0) >
+			MAX_LEARNING_MATERIAL_TOTAL_BYTES
+		)
+			throw new Error(MATERIAL_TOTAL_LIMIT_MESSAGE);
+	};
+
 	const uploadLearningPlanAsset = async (
 		preparedAsset: PreparedUploadAsset,
 		existingLearningPlanId?: Id<"learningPlans">,
@@ -403,6 +421,7 @@ export default function NewLearningPlanScreen() {
 							size: asset.size,
 						}),
 					);
+					validateMaterialBatch(preparedAssets);
 					const id = await ensurePlan(topics);
 					for (const asset of preparedAssets) {
 						await uploadLearningPlanAsset(asset, id);
@@ -506,6 +525,7 @@ export default function NewLearningPlanScreen() {
 							),
 						);
 					});
+					validateMaterialBatch(preparedAssets);
 					const id = await ensurePlan(topics);
 					for (const asset of preparedAssets) {
 						await uploadLearningPlanAsset(asset, id);

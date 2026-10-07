@@ -37,9 +37,11 @@ describe("actual downloaded material bytes", () => {
 			vi.fn(async () => new Response(bytes)),
 		);
 		const result = await build(ctx, [document(bytes.length)], "test-access");
-		expect(result.fileParts[0].data.byteLength).toBe(bytes.length);
+		expect(Buffer.byteLength(result.fileParts[0].data, "base64")).toBe(
+			bytes.length,
+		);
 		expect(result.fileParts[0].mediaType).toBe("application/pdf");
-		expect(result.sourceContext).toContain("Lineare Funktionen");
+		expect(result.sourceContext).toBe("");
 	});
 	test("rejects oversized declared files before downloading", async () => {
 		const fetcher = vi.fn();
@@ -83,4 +85,43 @@ describe("actual downloaded material bytes", () => {
 			),
 		).rejects.toThrow("maximal 25 MiB");
 	});
+});
+
+test("rejects two 40 MiB PDFs before downloading either", async () => {
+	const fetcher = vi.fn();
+	vi.stubGlobal("fetch", fetcher);
+	await expect(
+		build(
+			ctx,
+			[document(40 * 1024 * 1024), document(40 * 1024 * 1024)],
+			"test-access",
+		),
+	).rejects.toThrow("zusammen maximal 40 MiB");
+	expect(fetcher).not.toHaveBeenCalled();
+});
+test("enforces aggregate size on actual bytes despite understated metadata", async () => {
+	vi.stubGlobal(
+		"fetch",
+		vi.fn(async () => new Response(Buffer.alloc(21 * 1024 * 1024))),
+	);
+	await expect(
+		build(ctx, [document(100), document(100)], "test-access"),
+	).rejects.toThrow("zusammen maximal 40 MiB");
+});
+test("accepts two PDFs totaling exactly 40 MiB", async () => {
+	vi.stubGlobal(
+		"fetch",
+		vi.fn(async () => new Response(Buffer.alloc(20 * 1024 * 1024))),
+	);
+	const result = await build(
+		ctx,
+		[document(20 * 1024 * 1024), document(20 * 1024 * 1024)],
+		"test-access",
+	);
+	expect(
+		result.fileParts.reduce(
+			(sum, part) => sum + Buffer.byteLength(part.data, "base64"),
+			0,
+		),
+	).toBe(40 * 1024 * 1024);
 });

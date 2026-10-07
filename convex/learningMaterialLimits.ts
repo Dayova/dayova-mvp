@@ -19,3 +19,8 @@ export function getLearningMaterialLimit(name: string, type?: string | null) {
 		return LEARNING_MATERIAL_LIMITS.pdf;
 	return LEARNING_MATERIAL_LIMITS.document;
 }
+
+// Leave headroom for PDF parsing and inline base64/JSON request serialization.
+export const MAX_LEARNING_MATERIAL_TOTAL_BYTES = 40 * 1024 * 1024;
+export const MATERIAL_TOTAL_LIMIT_MESSAGE =
+	"Deine Unterlagen dürfen zusammen maximal 40 MiB groß sein. Entferne nicht benötigte Dateien oder verkleinere die PDFs.";

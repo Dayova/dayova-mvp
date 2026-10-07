@@ -32,7 +32,11 @@ import {
 	type LearningQuestionBlueprint,
 	type LearningTopic,
 } from "./learningContentPlan";
-import { getLearningMaterialLimit } from "./learningMaterialLimits";
+import {
+	getLearningMaterialLimit,
+	MATERIAL_TOTAL_LIMIT_MESSAGE,
+	MAX_LEARNING_MATERIAL_TOTAL_BYTES,
+} from "./learningMaterialLimits";
 import { estimateGeminiCostUsdMicros } from "./learningPlanAiCost";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 import {
@@ -909,13 +913,21 @@ const readMaterialBytes = async (
 	response: Response,
 	limit: number,
 	fileName: string,
+	remainingBytes = MAX_LEARNING_MATERIAL_TOTAL_BYTES,
+	expectedBytes = 0,
 ) => {
 	const reader = response.body?.getReader();
 	if (!reader)
 		throwUserFacingError(
 			`Die Datei "${fileName}" konnte nicht gelesen werden.`,
 		);
-	const chunks: Uint8Array[] = [];
+	const capacity = Math.min(limit, remainingBytes);
+	let bytes = Buffer.allocUnsafe(
+		Math.min(
+			capacity,
+			Math.max(65_536, Number.isFinite(expectedBytes) ? expectedBytes : 0),
+		),
+	);
 	let size = 0;
 	try {
 		while (true) {
@@ -928,12 +940,23 @@ const readMaterialBytes = async (
 					`Die Datei "${fileName}" ist zu groß für die KI-Verarbeitung (maximal ${limit / 1024 / 1024} MiB).`,
 				);
 			}
-			chunks.push(value);
+			if (size > remainingBytes) {
+				await reader.cancel();
+				throwUserFacingError(MATERIAL_TOTAL_LIMIT_MESSAGE);
+			}
+			if (size > bytes.length) {
+				const grown = Buffer.allocUnsafe(
+					Math.min(capacity, Math.max(size, bytes.length * 2)),
+				);
+				bytes.copy(grown, 0, 0, size - value.byteLength);
+				bytes = grown;
+			}
+			bytes.set(value, size - value.byteLength);
 		}
 	} finally {
 		reader.releaseLock();
 	}
-	return Buffer.concat(chunks, size);
+	return bytes.subarray(0, size);
 };
 
 const buildModelInputFromDocuments = async (
@@ -943,22 +966,33 @@ const buildModelInputFromDocuments = async (
 ) => {
 	const fileParts: Array<{
 		type: "file";
-		data: Buffer;
+		data: string;
 		mediaType: string;
 		filename: string;
 	}> = [];
 	const textSections: string[] = [];
+	for (const document of documents) {
+		const limit = getLearningMaterialLimit(
+			document.fileName,
+			document.fileType,
+		);
+		if (document.fileSizeBytes > limit)
+			throwUserFacingError(
+				`Die Datei "${document.fileName}" ist zu groß für die KI-Verarbeitung (maximal ${limit / 1024 / 1024} MiB).`,
+			);
+	}
+	if (
+		documents.reduce((total, document) => total + document.fileSizeBytes, 0) >
+		MAX_LEARNING_MATERIAL_TOTAL_BYTES
+	)
+		throwUserFacingError(MATERIAL_TOTAL_LIMIT_MESSAGE);
+	let downloadedBytes = 0;
 
 	for (const document of documents) {
 		const maxFileBytes = getLearningMaterialLimit(
 			document.fileName,
 			document.fileType,
 		);
-		if (document.fileSizeBytes > maxFileBytes) {
-			throwUserFacingError(
-				`Die Datei "${document.fileName}" ist zu groß für die KI-Verarbeitung (maximal ${maxFileBytes / 1024 / 1024} MiB).`,
-			);
-		}
 
 		const downloadUrl = await createManagedReadUrl(
 			ctx,
@@ -993,15 +1027,22 @@ const buildModelInputFromDocuments = async (
 			response,
 			maxFileBytes,
 			document.fileName,
+			MAX_LEARNING_MATERIAL_TOTAL_BYTES - downloadedBytes,
+			document.fileSizeBytes,
 		);
+		downloadedBytes += buffer.byteLength;
 		const mediaType = resolveMediaType(document.fileType, document.fileName);
 
 		try {
-			const extractedText = await extractTextFromBytes(
-				document.fileName,
-				mediaType,
-				buffer,
-			);
+			// Large PDFs are already sent intact to the multimodal model. Avoid a
+			// second local PDF.js copy merely to duplicate their text in the prompt.
+			const useNativePdfOnly =
+				(mediaType === "application/pdf" ||
+					fileExtension(document.fileName) === "pdf") &&
+				buffer.length > 7 * 1024 * 1024;
+			const extractedText = useNativePdfOnly
+				? ""
+				: await extractTextFromBytes(document.fileName, mediaType, buffer);
 			if (extractedText) {
 				const sourceLabel =
 					(document.sourceKind ?? "school") === "school"
@@ -1018,7 +1059,8 @@ const buildModelInputFromDocuments = async (
 		if (isVertexNativeCandidate(mediaType, document.fileName)) {
 			fileParts.push({
 				type: "file",
-				data: buffer,
+				// Encode with Node: the SDK Uint8Array fallback builds a byte-by-byte JS string.
+				data: buffer.toString("base64"),
 				mediaType,
 				filename: `${(document.sourceKind ?? "school") === "school" ? "INTERN" : "EXTERN"} - ${document.fileName}`,
 			});
@@ -2206,7 +2248,7 @@ const generateSessionContent = async (
 		const priorTheoryCards = formatPriorTheoryCards(context.priorTheoryCards);
 		const userContent: Array<
 			| { type: "text"; text: string }
-			| { type: "file"; data: Buffer; mediaType: string; filename: string }
+			| { type: "file"; data: string; mediaType: string; filename: string }
 		> = [
 			{
 				type: "text",
@@ -2512,7 +2554,7 @@ ${formatQuestionBlueprints(block)}`,
 		.join("\n\n");
 	const userContent: Array<
 		| { type: "text"; text: string }
-		| { type: "file"; data: Buffer; mediaType: string; filename: string }
+		| { type: "file"; data: string; mediaType: string; filename: string }
 	> = [
 		{
 			type: "text",
@@ -3094,7 +3136,7 @@ export const generateKnowledgeQuestions = action({
 		const model = createVertexModel();
 		const userContent: Array<
 			| { type: "text"; text: string }
-			| { type: "file"; data: Buffer; mediaType: string; filename: string }
+			| { type: "file"; data: string; mediaType: string; filename: string }
 		> = [
 			{
 				type: "text",
@@ -3328,7 +3370,7 @@ export const generatePlan = action({
 			const model = createVertexModel();
 			const userContent: Array<
 				| { type: "text"; text: string }
-				| { type: "file"; data: Buffer; mediaType: string; filename: string }
+				| { type: "file"; data: string; mediaType: string; filename: string }
 			> = [
 				{
 					type: "text",
