@@ -2,7 +2,6 @@ export const LEARNING_PLAN_CREATION_STEPS = {
 	examType: 1,
 	examSubject: 1.5,
 	examDate: 2,
-	learningAvailability: 2.5,
 	examTopics: 3,
 	materialUpload: 3.5,
 	materialAnalysis: 4,
@@ -33,16 +32,9 @@ export const getSafeLearningPlanCreationProgress = ({
 };
 
 export const getExamEntryCreationProgress = (
-	step:
-		| "basics"
-		| "planning"
-		| "learningAvailability"
-		| "examType"
-		| "examDetails",
+	step: "basics" | "planning" | "examType" | "examDetails",
 ) => {
 	switch (step) {
-		case "learningAvailability":
-			return LEARNING_PLAN_CREATION_STEPS.learningAvailability;
 		case "examType":
 			return LEARNING_PLAN_CREATION_STEPS.examType;
 		case "examDetails":

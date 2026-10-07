@@ -55,6 +55,7 @@ import {
 } from "~/components/onboarding/onboarding-flow";
 import {
 	dateForOnboardingTime,
+	formatOnboardingDuration,
 	formatOnboardingTime,
 	getDefaultOnboardingLearningStartTime,
 	getOnboardingLearningTimeSummary,
@@ -2536,7 +2537,7 @@ export function OnboardingRecoveryScreen({
 										selected ? "text-on-primary" : "text-text",
 									)}
 								>
-									{duration} Minuten
+									{formatOnboardingDuration(duration)}
 								</Text>
 							</Pressable>
 						);
@@ -3062,8 +3063,8 @@ function RangeAnswer({
 				accessibilityLabel="Tägliche Lernzeit"
 				accessibilityValue={
 					hasExplicitSelection
-						? `${displayedStudyTime} Minuten`
-						: `${displayedStudyTime} Minuten Vorschau, noch nicht ausgewählt`
+						? formatOnboardingDuration(displayedStudyTime)
+						: `${formatOnboardingDuration(displayedStudyTime)} Vorschau, noch nicht ausgewählt`
 				}
 				decrementLabel="Weniger Lernzeit"
 				incrementLabel="Mehr Lernzeit"
