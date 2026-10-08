@@ -116,6 +116,21 @@ optional values, drops events with invalid required values, and records only the
 event/property name in diagnostics. `before_send` repeats the custom-key guard
 as defense in depth without filtering PostHog SDK/system properties.
 
+## TypeScript Toolchain
+
+Use stable TypeScript 7 through `@typescript/native` (an npm alias of
+`typescript`) for `tsc`, local watch mode, the app and Convex CI typechecks, and
+Convex CLI typechecking. Convex 1.43.0 is the minimum version that resolves this
+native alias. Keep its development and deployment typechecks enabled.
+
+Keep the root `typescript` dependency aliased to Microsoft's
+`@typescript/typescript6` compatibility package while ESLint and Expo still
+need the TypeScript 6 JavaScript API. It exports that API and `tsc6`; the native
+alias owns `tsc`, avoiding executable conflicts. Preserve both aliases when
+upgrading dependencies, and verify lint, both tsconfigs, Expo config loading,
+and a frozen install. See [README](../../../README.md#typescript-tooling) for
+commands, editor setup, and timing comparisons.
+
 ## Package Manager Toolchain
 
 Dayova uses pnpm 11.15.1 on Node 24.18.0. The pnpm version is repeated because

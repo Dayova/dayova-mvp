@@ -103,11 +103,45 @@ the implementation rules and native validation matrix.
 ## Project checks
 
 ```sh
-pnpm check          # lint and TypeScript
-pnpm test           # Vitest suite
+pnpm check          # lint and TypeScript 7 (app and Convex configs)
+pnpm typecheck:watch # watch the workspace with TypeScript 7
+pnpm test           # unit and UI suites
 pnpm format:check   # formatting and Tailwind class order
 pnpm check:unused   # unused files, dependencies, and exports
 ```
+
+### TypeScript tooling
+
+Dayova uses stable TypeScript 7.0.2 for CLI typechecking. `pnpm typecheck`
+checks both the root Expo config and `convex/tsconfig.json`; the existing EAS
+quality gate runs the same command. `pnpm typecheck:watch` checks the root
+workspace continuously, while `pnpm convex:dev` checks the backend as it changes.
+
+The two compiler packages intentionally coexist:
+
+- `@typescript/native` aliases `typescript@7.0.2` and provides `tsc`.
+- `typescript` aliases Microsoft's `@typescript/typescript6` compatibility
+  package, which keeps the TypeScript 6 API available to ESLint and Expo and
+  provides `tsc6` for comparison or troubleshooting.
+
+Convex 1.43.0 or newer resolves the native alias for its built-in typechecks.
+Keep typechecking enabled on development and deployment commands. Do not
+replace the compatibility alias with TypeScript 7 until tools importing the
+compiler API support it. See Microsoft's
+[side-by-side setup](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/#running-side-by-side-with-typescript-60).
+
+For VS Code, install the recommended
+[TypeScript 7 extension](https://marketplace.visualstudio.com/items?itemName=TypeScriptTeam.native-preview)
+to use the native language server. The extension ID retains `native-preview`,
+but the CLI dependency is pinned to a stable release. Installing the package
+alone does not switch an editor's language server; other editors should use
+their documented TypeScript 7/LSP integration.
+In VS Code, open a `.ts` or `.js` file and run
+`TypeScript: Enable TypeScript 7` from the Command Palette.
+
+To inspect compiler timings, run `pnpm typecheck:app --extendedDiagnostics`
+and `pnpm typecheck:convex --extendedDiagnostics`. Compare against
+`pnpm exec tsc6 --noEmit --extendedDiagnostics` with the same config and machine.
 
 ## Repository guidance
 
