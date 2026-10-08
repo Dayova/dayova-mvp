@@ -452,3 +452,7 @@ describe("learning times settings", () => {
 		expect(mockRemove).toHaveBeenCalledTimes(2);
 	});
 });
+
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+);

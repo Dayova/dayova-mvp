@@ -104,11 +104,14 @@ Use `onPrimary` for solid selected pills, tabs, their checkmarks, and equivalent
 compact controls. Do not reuse `surface` or theme-dependent primary text as an
 implicit foreground token.
 
-Exam/subject and learning-session answer selection instead use the shared
-`selection` gradient (`#006699` → `#0077AA`) with white indicators and answer
-letters (minimum 4.97:1 contrast); answer rows match the
-exam/subject accent fill, primary selected label, border, and shadow-free treatment. See the [code-facing decision](adr/answer-selection-colors.md)
-and its linked native comparison and canonical Notion rationale.
+Exam/subject, answer and other branded selections use the same vertical
+`primaryInteractive` gradient (`#00A0E6` → `#4FD8FF`) as primary buttons.
+The `selection` token aliases that gradient. Selected letters, checkmarks and
+pill labels use fixed `onPrimary` for readable contrast in both themes.
+Card text remains theme text, with an accent fill and cyan border. Shared
+`SelectionControl` owns press feedback, interruptible transitions, radio/checkbox
+semantics and reduced motion; screens own immediate selected state. See the
+[selection decision](adr/answer-selection-colors.md).
 
 Typography uses Poppins only. Body text is Regular; headings, buttons, selected
 tabs, labels that need emphasis, and other highlighted text use SemiBold.
@@ -193,7 +196,7 @@ acknowledges a real transition without becoming recurring friction.
 
 Exam-type and subject selection share `SelectionOptionRow`: identical card
 geometry, icon treatment, radio checked semantics and a selection-gradient check
-indicator with a white check, as specified in the
+indicator with an `onPrimary` check, as specified in the
 [selection color decision](adr/answer-selection-colors.md). The subject catalog
 is one continuous list, without a
 separate personal-subject heading. Adding a subject always saves it for reuse;
@@ -278,15 +281,11 @@ and their compatibility rules belong to PR #813. The ring uses compact min/h
 labels, independently of the allowed values. Continue confirms the displayed
 initial value; merely opening the page does not save it.
 
-Per the 3 October 2026 user direction and MVP Login 18 reference, selected
-weekday pills use the shared `selection` gradient with white text, following the
-[selection-color ADR](adr/answer-selection-colors.md). The
-[canonical color decision](https://app.notion.com/p/3da2e87228bf8173b2adddaab6e3f5e6)
-records darker blue as the viable alternative when white foregrounds are an
-explicit product requirement. The October direction applies that alternative
-here; the earlier preference for dark foregrounds on solid cyan is historical
-rationale, not approval of white on the brighter action-button gradient.
-This remains scoped to selected weekday pills. Their accessible checkbox state
+The 5 October 2026 user correction supersedes the darker selected weekday
+palette: weekday pills now use the primary-action gradient and `onPrimary`
+text through `SelectionControl`, following the
+[selection-color ADR](adr/answer-selection-colors.md).
+Their accessible checkbox state
 is retained; the visual checkmark is omitted. Weekday pills retain the original
 48-point minimum height and semibold body-3
 type, arranged 2/2/2/1 with wrapping for larger content sizes. Initial answers
