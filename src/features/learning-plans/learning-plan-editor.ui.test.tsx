@@ -1,6 +1,6 @@
 import { afterEach, expect, jest, test } from "@jest/globals";
 import { fireEvent, render } from "@testing-library/react-native";
-import * as ReactNative from "react-native";
+import { Text } from "react-native";
 import { LearningPlanEditor } from "./learning-plan-editor";
 
 jest.mock("react-native-safe-area-context", () => ({
@@ -11,22 +11,29 @@ jest.mock("~/components/ui/screen", () => ({
 		jest.requireActual<typeof import("react-native")>("react-native")
 			.ScrollView,
 }));
-afterEach(() => jest.restoreAllMocks());
+afterEach(() => {
+	jest.restoreAllMocks();
+});
 
 test("keeps both editor actions operable at large system text size", async () => {
-	jest.spyOn(ReactNative, "useWindowDimensions").mockReturnValue({
-		width: 390,
-		height: 844,
-		scale: 3,
-		fontScale: 3,
-	});
+	jest
+		.spyOn(
+			jest.requireActual<typeof import("react-native")>("react-native"),
+			"useWindowDimensions",
+		)
+		.mockReturnValue({
+			width: 390,
+			height: 844,
+			scale: 3,
+			fontScale: 3,
+		});
 	const save = jest.fn();
 	const cancel = jest.fn();
 	const screen = await render(
 		<LearningPlanEditor
 			topics="Brüche"
 			onChangeTopics={jest.fn()}
-			canEditTopics
+			canEditTopics={false}
 			isLoading={false}
 			isMissing={false}
 			isBusy={false}
@@ -35,7 +42,7 @@ test("keeps both editor actions operable at large system text size", async () =>
 			onCancel={cancel}
 			onSave={save}
 		>
-			<ReactNative.Text>Schulmaterial</ReactNative.Text>
+			<Text>Schulmaterial</Text>
 		</LearningPlanEditor>,
 	);
 	const actions = screen.getByTestId("learning-plan-editor-actions");
