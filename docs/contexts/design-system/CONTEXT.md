@@ -123,16 +123,52 @@ variant or `accessibilityRole="header"`; the primitive owns the documented
 large-title scaling curve. Do not reproduce `maxFontSizeMultiplier` values in
 individual screens. Non-heading text keeps unrestricted system scaling.
 
-Light-mode pill buttons have exactly two visual appearances: the light-mode
-gradient button and the black button using the primary text color `#1A1A1A`.
-There are no white pill buttons in the current light-mode design system. Both
-appearances are 56px tall with a 44px radius and a 0.3px inside stroke: gradient
-buttons use the vertical light-mode gradient `#00A0E6` top to `#4FD8FF` bottom
-with a white stroke, and black buttons use the light border token `#DCE6EE`.
-Production screens use the shared `Button` and `BackButton` components for
-these actions. A screen-local clone is not an allowed visual variant; add a
-shared variant and update this context if a new interaction contract is truly
-needed.
+Primary and neutral pill actions use the shared gradient and neutral Button
+appearances. Ordinary buttons have a 56pt minimum height and a 44pt radius;
+content may grow with system text size. Primary actions keep their existing
+vertical gradient and white label. Cancel and destructive actions follow the
+shared popup rule below; screen-local copies are not permitted.
+
+### General popup and destructive-action rule
+
+[DAY-501](https://linear.app/dayova/issue/DAY-501) generalizes the approved #727
+popup header, #729’s shared cancel/danger refinement, and the existing
+personal-subject/learning-time action treatment.
+This supersedes the earlier neutral destructive alias and the earlier full-red
+confirmation/white-label direction for app-owned popup actions.
+
+- **Job and hierarchy:** let the learner understand one decision, its consequence,
+  and the available action. Title first in the reading/focus order, explanation
+  second, actions last; retain the independent close control.
+- **Structure:** every app-owned popup uses `DayovaSheetFrame`, directly or via
+  `ActionSheet`, `SelectSheet`, `ConfirmationSheet`. Keep the grey drag handle.
+  The close control occupies its own right-aligned row at all text sizes, 20pt
+  before the full-width title. Supporting copy follows at 12pt; content at 24pt.
+  Hidden/non-dismissible close controls do not reserve an empty row. Existing
+  content sizing, scrolling, focus, keyboard, and safe-area behavior remain.
+- **Delete/remove actions:** use shared `Button variant="destructive"`: 1pt
+  `danger-action` outline, `danger-subtle` fill, and `danger-action` label/spinner
+  in both themes. The existing `destructive-outline` name is a compatible alias
+  for the same subject-list appearance. Omit decorative icons from text delete
+  buttons. Preserve explicit verbs and all confirmation/reverification guards.
+- **Cancel:** use `variant="cancel"`, a card-colored fill, border token outline,
+  and primary text. Confirmation dialogs always use it; callers cannot opt back
+  into a black cancel action. Primary save/continue actions remain primary.
+- **Sizing:** normal confirmation pairs place Cancel left and Confirm right,
+  equally wide and stretched to the same height, with 12pt between them. Compact
+  horizontal padding leaves room for German labels without reducing font size.
+  Large text and narrow widths may stack/grow/scroll; never clip action labels.
+- **States:** preserve busy/disabled/error behavior, accessible action names,
+  screen-reader focus and safe dismissal. Error/status colors stay separate.
+- **Scope exceptions:** native OS pickers/permission alerts retain platform
+  chrome. Compact swipe-trash controls (including the approved #737 learning-plan
+  rail) and inline remove icons remain compact controls, not popup text CTAs.
+  Ordinary logout/navigation is not automatically destructive. The dashboard
+  Today exception below remains scoped.
+
+**Decision:** centralize this rule in the existing sheet/button primitives. This
+removes per-screen visual exceptions and the former `actionAppearance` opt-in;
+no new dependency or parallel popup component is needed.
 
 DAY-490's approved Today calendar navigation is a scoped exception: the
 `DashboardCalendarHeader` reset-to-today control uses the shared ghost Button
@@ -142,11 +178,9 @@ pill without making it a general-purpose CTA variant. See
 
 Learning-time settings restore the personal-subject management pattern: muted
 weekday badges, bordered cards, a visible pencil, and swipe-to-delete with a
-text-only rounded action. The shared `destructive-outline` Button is a scoped
-management-action exception, not a new primary CTA: `danger-action` foreground
-and border on `danger-subtle` fill in both themes. It matches the independently
-introduced personal-subject variant in PR #816 without changing existing Button
-defaults. Screen readers retain a named delete action on the pencil. See
+text-only rounded action. Its `destructive-outline` appearance introduced in
+PR #816 now follows DAY-501's general destructive-action rule above. Screen
+readers retain a named delete action on the pencil. See
 [the restoration record](../../qa/learning-times-settings-restoration-2026-10-02.md).
 
 The empty timetable uses one full-width gradient import button and a full-width
@@ -204,14 +238,10 @@ without silently migrating existing entries. The settings pencil opens "Fach
 bearbeiten" with save and delete actions. Delete opens the existing confirmation
 only after the editor's native dismissal; swipe deletion remains available.
 
-DAY-187 restores the September device-review treatment in the independent
-personal-subject feature. Shared Button variants `cancel` (bordered card,
-theme text) and `destructive-outline` (danger border/text on subtle fill) are
-opt-in exceptions to the general solid/gradient CTA appearances above.
-They reuse the reviewed #729 palette: light `#B01B10` / `#FFF0EE`, dark
-`hsl(4 100% 75%)` / `hsl(4 55% 16%)`. Existing destructive defaults do not
-change. ConfirmationSheet exposes `actionAppearance="outlined"` for this
-consumer; other callers retain their current appearance.
+DAY-187 restored the September device-review treatment in personal subjects.
+Its cancel and destructive-outline appearances are now the general DAY-501
+rule above, replacing the former opt-in API. The palette remains light
+`#B01B10` / `#FFF0EE`, dark `hsl(4 100% 75%)` / `hsl(4 55% 16%)`.
 See [restoration scope and provenance](../../qa/day-187-design-restoration-2026-10-02.md).
 
 Onboarding artwork or other explanatory UI that depicts a live Dayova product

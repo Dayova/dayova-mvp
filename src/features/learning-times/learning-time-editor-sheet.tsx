@@ -238,7 +238,7 @@ export function LearningTimeEditorSheet({
 				}
 				description={
 					isRemoveConfirmationVisible
-						? undefined
+						? removeDescription
 						: "Wähle den Wochentag und das Zeitfenster, in dem du regelmäßig lernen kannst."
 				}
 				closeAccessibilityLabel="Lernzeit schließen"
@@ -258,8 +258,7 @@ export function LearningTimeEditorSheet({
 			>
 				{isRemoveConfirmationVisible ? (
 					<ConfirmationSheetContent
-						actionAppearance="outlined"
-						description={removeDescription}
+						description={undefined}
 						confirmLabel="Löschen"
 						isBusy={isSaving}
 						errorMessage={errorMessage}

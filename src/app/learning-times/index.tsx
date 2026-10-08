@@ -154,7 +154,6 @@ export default function LearningTimesOverviewScreen({
 				)}
 			</ScreenScroll>
 			<ConfirmationSheet
-				actionAppearance="outlined"
 				visible={Boolean(deletingEntry)}
 				title="Lernzeit löschen?"
 				description={`${deletingDay ?? "Die Lernzeit"}, ${deletingEntry?.startTime ?? ""}–${deletingEntry?.endTime ?? ""} Uhr wird aus deinen wöchentlichen Lernzeiten entfernt.`}

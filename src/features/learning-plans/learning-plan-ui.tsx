@@ -445,7 +445,7 @@ export function SessionEditForm({
 				)}
 			>
 				<Button
-					variant="neutral"
+					variant="destructive"
 					className={
 						shouldStackInlineContent
 							? "w-full shadow-none"

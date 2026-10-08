@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { type RefObject, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
 import {
@@ -323,6 +324,18 @@ function ManagementAction({
 	label: string;
 	onPress: () => void;
 }) {
+	if (destructive) {
+		return (
+			<Button
+				variant="destructive"
+				className="m-3"
+				accessibilityLabel={accessibilityLabel ?? label}
+				onPress={onPress}
+			>
+				<Text className="shrink text-center">{label}</Text>
+			</Button>
+		);
+	}
 	return (
 		<Pressable
 			accessibilityLabel={accessibilityLabel}
@@ -333,20 +346,12 @@ function ManagementAction({
 			<View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-system-subtle">
 				{icon}
 			</View>
-			<Text
-				className={
-					destructive
-						? "flex-1 font-semibold text-body-3 text-destructive"
-						: "flex-1 font-semibold text-body-3 text-text"
-				}
-			>
+			<Text className="flex-1 font-semibold text-body-3 text-text">
 				{label}
 			</Text>
 			<ArrowRight
 				size={18}
-				color={
-					destructive ? BRAND_COLORS.destructive : BRAND_COLORS.secondaryText
-				}
+				color={BRAND_COLORS.secondaryText}
 				strokeWidth={2}
 			/>
 		</Pressable>
