@@ -93,6 +93,26 @@ describe("getMissingPublicRuntimeConfig", () => {
 		expect(env.EXPO_PUBLIC_POSTHOG_HOST).toBeUndefined();
 	});
 
+	it("uses canonical legal destinations in the app when overrides are absent or blank", () => {
+		const env = createPublicEnv(
+			{
+				EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_example",
+				EXPO_PUBLIC_CONVEX_URL: "https://example.convex.cloud",
+				EXPO_PUBLIC_PRIVACY_URL: "   ",
+			},
+			{ context: "app-runtime" },
+		);
+
+		expect(env.EXPO_PUBLIC_PRIVACY_URL).toBe("https://dayova.com/privacy");
+		expect(env.EXPO_PUBLIC_TERMS_URL).toBe(
+			"https://www.apple.com/legal/internet-services/itunes/dev/stdeula/",
+		);
+		expect(env.EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL).toBe(
+			"https://www.apple.com/legal/internet-services/itunes/dev/stdeula/",
+		);
+		expect(env.EXPO_PUBLIC_SUPPORT_URL).toBe("https://dayova.com/support");
+	});
+
 	it("does not require optional PostHog analytics envs", () => {
 		expect(
 			getMissingPublicRuntimeConfig({
