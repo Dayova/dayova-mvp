@@ -4,6 +4,7 @@ import type { MutationCtx } from "./_generated/server";
 import { mutation } from "./_generated/server";
 import { throwUserFacingError } from "./errors";
 import { deleteManagedFile } from "./fileStorage";
+import { deleteLoopsStudent } from "./loopsQueue";
 
 const DELETE_BATCH_SIZE = 25;
 
@@ -38,6 +39,7 @@ export const deleteCurrentUserDataBatch = mutation({
 			)
 			.unique();
 		let deletedRecords = 0;
+		if (user) await deleteLoopsStudent(ctx, user);
 
 		const learningPlanDocuments = await ctx.db
 			.query("learningPlanDocuments")
