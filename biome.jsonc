@@ -17,7 +17,7 @@
 			"biome.jsonc",
 			"components.json",
 			"index.ts",
-			"knip.json",
+			"knip.jsonc",
 			"metro.config.js",
 			"package.json",
 			"tailwind.config.ts",

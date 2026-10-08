@@ -80,9 +80,7 @@ describe("session content preparation", () => {
 
 		await render(<PreparationProbe enabled onError={onError} />);
 
-		await waitFor(() =>
-			expect(mockRequestAiConsent).toHaveBeenCalledTimes(1),
-		);
+		await waitFor(() => expect(mockRequestAiConsent).toHaveBeenCalledTimes(1));
 		expect(mockEnsureSessionContent).not.toHaveBeenCalled();
 		expect(onError).not.toHaveBeenCalled();
 	});

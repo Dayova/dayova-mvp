@@ -382,5 +382,4 @@ function TimetableWeekEditor({
 	);
 }
 
-export type { TimetableWeekEditorProps };
 export { TimetableWeekEditor };

@@ -10,7 +10,7 @@ export const ONBOARDING_DURATION_OPTIONS = [
 	15, 30, 45, 60, 90, 120, 150, 180, 210, 240,
 ] as const;
 
-export const getOnboardingDurationDisplay = (minutes: number) => ({
+const getOnboardingDurationDisplay = (minutes: number) => ({
 	value: String(minutes < 60 ? minutes : minutes / 60).replace(".", ","),
 	unit: minutes < 60 ? "Minuten" : minutes === 60 ? "Stunde" : "Stunden",
 });

@@ -11,30 +11,19 @@ import {
 	CalendarDays,
 	ChevronDown,
 	Clock3,
-	PropertyEdit,
 	X,
 } from "~/components/ui/icon";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
-import { ActionSurface, Surface } from "~/components/ui/surface";
+import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
-import { WarningBanner } from "~/components/ui/warning-banner";
 import type {
 	PlanSession,
 	SessionPhase,
 } from "~/features/learning-plans/types";
-import {
-	formatDate,
-	formatDayOfMonth,
-	formatShortWeekday,
-	minutesFromTime,
-	parseDateKey,
-	timeFromMinutes,
-} from "~/features/learning-plans/utils";
-import { formatGermanUiText } from "~/lib/german-ui-text";
+import { formatDate } from "~/features/learning-plans/utils";
 import { useDayovaTheme } from "~/lib/theme";
 import { formatFileSize } from "~/lib/upload-policy";
 import { cn } from "~/lib/utils";
-import { MISSING_LEARNING_TIMES_HINT } from "../../../convex/learningPlanPlanningHints";
 
 const phaseEditCopy: Record<
 	SessionPhase,
@@ -52,59 +41,6 @@ const getSessionPhaseLabel = (phase: SessionPhase) =>
 	phaseEditCopy[phase].fieldLabel;
 
 const sessionPhaseOptions: SessionPhase[] = ["theory", "practice", "rehearsal"];
-
-export function SectionTitle({
-	title,
-	description,
-}: {
-	title: string;
-	description: string;
-}) {
-	return (
-		<View className="mb-7">
-			<Text className="font-poppins font-semibold text-body-1 text-text">
-				{title}
-			</Text>
-			<Text className="mt-2 font-poppins text-body-3 text-text/55">
-				{description}
-			</Text>
-		</View>
-	);
-}
-
-const getPlanningHintCtaLabel = (hint: string) => {
-	if (hint.includes(MISSING_LEARNING_TIMES_HINT)) return "Lernzeiten eintragen";
-	if (hint.includes("Lernzeiten")) return "Lernzeiten anpassen";
-	return undefined;
-};
-
-const getPlanningHintTitle = (hint: string) => {
-	if (hint.includes(MISSING_LEARNING_TIMES_HINT)) return "Lernzeiten fehlen";
-	if (hint.includes("Lernzeiten")) return "Lernzeiten prüfen";
-	return "Planung prüfen";
-};
-
-export function PlanningHintBanner({
-	className,
-	hint,
-	onPressLearningTimes,
-}: {
-	className?: string;
-	hint: string;
-	onPressLearningTimes: () => void;
-}) {
-	const ctaLabel = getPlanningHintCtaLabel(hint);
-
-	return (
-		<WarningBanner
-			className={className}
-			title={getPlanningHintTitle(hint)}
-			description={hint}
-			ctaLabel={ctaLabel}
-			onPressCta={ctaLabel ? onPressLearningTimes : undefined}
-		/>
-	);
-}
 
 export function MaterialCard({
 	name,
@@ -149,148 +85,6 @@ export function MaterialCard({
 				<X size={16} color={colors.text} strokeWidth={2.3} />
 			</TouchableOpacity>
 		</Surface>
-	);
-}
-
-type SessionCardProps =
-	| {
-			session: PlanSession;
-			mode?: "screen";
-			onEdit: () => void;
-	  }
-	| {
-			session: PlanSession;
-			testID?: string;
-			mode: "artwork";
-			onEdit?: never;
-	  };
-
-const sessionCardVisualByMode = {
-	screen: {
-		card: "rounded-[28px] px-5 py-5",
-		date: "h-14 w-14",
-		dateText: "text-body-2",
-		edit: "h-11 w-11",
-		editIconSize: 19,
-		fixedTextScale: false,
-		time: "text-body-4",
-		title: "text-body-3",
-		titleNumberOfLines: undefined,
-	},
-	artwork: {
-		card: "h-[72px] rounded-[24px] px-4 py-2",
-		date: "h-12 w-12",
-		dateText: "text-body-3",
-		edit: "h-9 w-9",
-		editIconSize: 16,
-		fixedTextScale: true,
-		time: "text-body-5",
-		title: "text-body-4",
-		titleNumberOfLines: 2,
-	},
-} as const;
-
-export function SessionCard(props: SessionCardProps) {
-	const { session } = props;
-	const mode = props.mode ?? "screen";
-	const { colors } = useDayovaTheme();
-	const { shouldStackInlineContent } = useContentSizeLayout();
-	const visual = sessionCardVisualByMode[mode];
-	const shouldStack = mode === "screen" && shouldStackInlineContent;
-	const endTime = timeFromMinutes(
-		minutesFromTime(session.startTime) + session.durationMinutes,
-	);
-	const sessionDate = parseDateKey(session.dateKey);
-	const title = formatGermanUiText(session.title);
-
-	const content = (
-		<>
-			<View
-				className={cn(
-					"items-center justify-center rounded-full bg-button-neutral",
-					visual.date,
-				)}
-			>
-				<Text
-					allowFontScaling={!visual.fixedTextScale}
-					className={cn(
-						"font-poppins font-semibold text-background",
-						visual.dateText,
-					)}
-				>
-					{formatDayOfMonth(sessionDate)}
-				</Text>
-				<Text
-					allowFontScaling={!visual.fixedTextScale}
-					className="-mt-1 font-poppins font-semibold text-background text-body-5"
-				>
-					{formatShortWeekday(sessionDate)}
-				</Text>
-			</View>
-			<View className={shouldStack ? "flex-1" : "flex-1 px-3"}>
-				<Text
-					allowFontScaling={!visual.fixedTextScale}
-					numberOfLines={visual.titleNumberOfLines}
-					className={cn("font-poppins font-semibold text-text", visual.title)}
-				>
-					{title}
-				</Text>
-				<Text
-					allowFontScaling={!visual.fixedTextScale}
-					className={cn("mt-1 font-poppins text-text/55", visual.time)}
-				>
-					{session.startTime} - {endTime}
-				</Text>
-			</View>
-			<View
-				className={cn(
-					"items-center justify-center rounded-full border border-black/10",
-					visual.edit,
-					shouldStack && "self-end",
-				)}
-			>
-				<PropertyEdit
-					size={visual.editIconSize}
-					color={colors.text}
-					strokeWidth={1.5}
-				/>
-			</View>
-		</>
-	);
-	const className = cn(
-		visual.card,
-		shouldStack ? "items-stretch gap-3" : "flex-row items-center",
-	);
-
-	if (props.mode === "artwork") {
-		return (
-			<Surface
-				accessible={false}
-				accessibilityElementsHidden
-				importantForAccessibility="no-hide-descendants"
-				className={className}
-				testID={props.testID}
-				variant="soft"
-				// Rounded artwork geometry uses the native continuous-corner treatment.
-				style={{ borderCurve: "continuous" }}
-			>
-				{content}
-			</Surface>
-		);
-	}
-
-	return (
-		<ActionSurface
-			accessibilityHint="Öffnet die Bearbeitung für diesen Lerntag."
-			accessibilityLabel={`${title}, ${session.dateLabel}, ${session.startTime} bis ${endTime} bearbeiten`}
-			accessibilityRole="button"
-			activeOpacity={0.88}
-			onPress={props.onEdit}
-			className={className}
-			variant="soft"
-		>
-			{content}
-		</ActionSurface>
 	);
 }
 

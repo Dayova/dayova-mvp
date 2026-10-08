@@ -176,9 +176,4 @@ function ExamDateSelector({
 	);
 }
 
-export {
-	ExamDateSelector,
-	ExamSubjectPicker,
-	ExamTypePicker,
-	SingleSelectOption,
-};
+export { ExamDateSelector, ExamSubjectPicker, ExamTypePicker };
