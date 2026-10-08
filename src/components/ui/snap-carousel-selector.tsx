@@ -1,5 +1,11 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import {
 	type FlatList,
 	StyleSheet,
@@ -11,6 +17,7 @@ import Animated, {
 	type SharedValue,
 	useAnimatedScrollHandler,
 	useAnimatedStyle,
+	useReducedMotion,
 	useSharedValue,
 } from "react-native-reanimated";
 import Svg, { Circle } from "react-native-svg";
@@ -22,6 +29,7 @@ import {
 	getRangeValueContentLayout,
 } from "~/features/auth/auth-content-size-layout";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { getAlignedSnapIndex } from "~/lib/snap-scroll";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
@@ -33,6 +41,7 @@ const PROGRESS_RING_RADIUS = 40;
 const PROGRESS_RING_STROKE_WIDTH = 4;
 const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * PROGRESS_RING_RADIUS;
 const MINIMUM_PROGRESS = 0.16;
+const NATIVE_SCROLL_QUIET_MS = 120;
 
 export const getSnapCarouselPreviewIndex = ({
 	offsetX,
@@ -133,6 +142,19 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 	const valueContentLayout = getRangeValueContentLayout(fontScale);
 	const lastIndex = Math.max(items.length - 1, 0);
 	const safeSelectedIndex = Math.min(Math.max(selectedIndex, 0), lastIndex);
+	const reducedMotion = useReducedMotion();
+	const acknowledgedIndex = useRef(safeSelectedIndex);
+	const positionedItemWidth = useRef(0);
+	const nativeSettlement = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const cancelNativeSettlement = useCallback(() => {
+		if (nativeSettlement.current !== null)
+			clearTimeout(nativeSettlement.current);
+		nativeSettlement.current = null;
+	}, []);
+	useEffect(() => {
+		if (itemWidth <= 0 || items.length === 0) cancelNativeSettlement();
+		return cancelNativeSettlement;
+	}, [cancelNativeSettlement, items, itemWidth]);
 	const safeProgress =
 		valueBubbleConfig === null
 			? 0
@@ -186,28 +208,49 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 	);
 
 	const selectIndex = useCallback(
-		(nextIndex: number, animated = true) => {
+		(nextIndex: number) => {
+			cancelNativeSettlement();
 			const clampedIndex = Math.min(Math.max(nextIndex, 0), lastIndex);
+			if (clampedIndex === acknowledgedIndex.current) return;
 			const nextItem = items[clampedIndex];
 			if (nextItem === undefined) return;
 
+			acknowledgedIndex.current = clampedIndex;
 			onSelect(nextItem);
 			listRef.current?.scrollToOffset({
 				offset: clampedIndex * itemWidth,
-				animated,
+				animated: !reducedMotion,
 			});
 		},
-		[itemWidth, items, lastIndex, onSelect],
+		[
+			cancelNativeSettlement,
+			itemWidth,
+			items,
+			lastIndex,
+			onSelect,
+			reducedMotion,
+		],
 	);
 
 	useEffect(() => {
+		const resized = positionedItemWidth.current !== itemWidth;
+		positionedItemWidth.current = itemWidth;
+		if (!resized && acknowledgedIndex.current === safeSelectedIndex) return;
+		cancelNativeSettlement();
+		acknowledgedIndex.current = safeSelectedIndex;
 		scrollX.set(safeSelectedIndex * itemWidth);
 		previewIndexOnUI.set(safeSelectedIndex);
 		listRef.current?.scrollToOffset({
 			offset: safeSelectedIndex * itemWidth,
 			animated: false,
 		});
-	}, [itemWidth, previewIndexOnUI, safeSelectedIndex, scrollX]);
+	}, [
+		cancelNativeSettlement,
+		itemWidth,
+		previewIndexOnUI,
+		safeSelectedIndex,
+		scrollX,
+	]);
 
 	const scrollHandler = useAnimatedScrollHandler({
 		onScroll: (event) => {
@@ -227,16 +270,25 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 
 	const handleScrollEnd = useCallback(
 		(offsetX: number) => {
+			cancelNativeSettlement();
 			const nextIndex = Math.min(
 				Math.max(Math.round(offsetX / itemWidth), 0),
 				lastIndex,
 			);
-			if (nextIndex === safeSelectedIndex) return;
+			if (nextIndex === acknowledgedIndex.current) return;
 			const nextItem = items[nextIndex];
-			if (nextItem !== undefined) onSelect(nextItem);
+			if (nextItem !== undefined) {
+				// Parent acknowledgement must not snap an already settled native list.
+				acknowledgedIndex.current = nextIndex;
+				onSelect(nextItem);
+			}
 		},
-		[itemWidth, items, lastIndex, onSelect, safeSelectedIndex],
+		[cancelNativeSettlement, itemWidth, items, lastIndex, onSelect],
 	);
+	const settleCurrentOffset = useRef(handleScrollEnd);
+	useLayoutEffect(() => {
+		settleCurrentOffset.current = handleScrollEnd;
+	}, [handleScrollEnd]);
 
 	const handleAccessibilityAction = ({
 		nativeEvent,
@@ -244,10 +296,10 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 		nativeEvent: { actionName: string };
 	}) => {
 		if (nativeEvent.actionName === "increment") {
-			selectIndex(safeSelectedIndex + 1);
+			selectIndex(acknowledgedIndex.current + 1);
 		}
 		if (nativeEvent.actionName === "decrement") {
-			selectIndex(safeSelectedIndex - 1);
+			selectIndex(acknowledgedIndex.current - 1);
 		}
 	};
 
@@ -376,12 +428,28 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 					showsHorizontalScrollIndicator={false}
 					scrollEventThrottle={16}
 					onScroll={scrollHandler}
+					onScrollBeginDrag={cancelNativeSettlement}
+					onMomentumScrollBegin={cancelNativeSettlement}
 					onMomentumScrollEnd={(event) =>
 						handleScrollEnd(event.nativeEvent.contentOffset.x)
 					}
-					onScrollEndDrag={(event) =>
-						handleScrollEnd(event.nativeEvent.contentOffset.x)
-					}
+					onScrollEndDrag={(event) => {
+						cancelNativeSettlement();
+						const offset = event.nativeEvent.contentOffset.x;
+						if (getAlignedSnapIndex(offset, itemWidth, items.length) === null)
+							return;
+						if (Math.abs(event.nativeEvent.velocity?.x ?? 0) < 0.01) {
+							handleScrollEnd(offset);
+						} else {
+							// Some aligned releases report velocity but never start momentum.
+							nativeSettlement.current = setTimeout(() => {
+								nativeSettlement.current = null;
+								// Read UI position once at settlement, never on each RN frame.
+								if (Math.abs(scrollX.get() - offset) < 1)
+									settleCurrentOffset.current(offset);
+							}, NATIVE_SCROLL_QUIET_MS);
+						}
+					}}
 					getItemLayout={(_, index) => ({
 						length: itemWidth,
 						offset: itemWidth * index,
@@ -397,6 +465,7 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 						<SnapCarouselTick
 							appearance={appearance}
 							index={index}
+							reducedMotion={reducedMotion}
 							itemWidth={itemWidth}
 							scrollX={scrollX}
 							activeColor={colors.primary}
@@ -417,6 +486,7 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 }
 
 function SnapCarouselTick({
+	reducedMotion,
 	appearance,
 	activeColor,
 	inactiveColor,
@@ -427,6 +497,7 @@ function SnapCarouselTick({
 	scrollX,
 	selected,
 }: {
+	reducedMotion: boolean;
 	appearance: "default" | "onboarding";
 	activeColor: string;
 	inactiveColor: string;
@@ -440,10 +511,14 @@ function SnapCarouselTick({
 	const animatedStyle = useAnimatedStyle(() => {
 		const distance = Math.abs(scrollX.get() / itemWidth - index);
 		return {
-			opacity: interpolate(distance, [0, 1, 2], [1, 0.82, 0.58], "clamp"),
+			opacity: reducedMotion
+				? 1
+				: interpolate(distance, [0, 1, 2], [1, 0.82, 0.58], "clamp"),
 			transform: [
 				{
-					scale: interpolate(distance, [0, 1, 2], [1, 0.82, 0.72], "clamp"),
+					scale: reducedMotion
+						? 1
+						: interpolate(distance, [0, 1, 2], [1, 0.82, 0.72], "clamp"),
 				},
 			],
 		};
@@ -452,13 +527,25 @@ function SnapCarouselTick({
 	const barStyle = useAnimatedStyle(() => {
 		const distance = Math.abs(scrollX.get() / itemWidth - index);
 		return {
-			width: interpolate(distance, [0, 1, 2], [7, 4, 3], "clamp"),
-			height: interpolate(
-				distance,
-				[0, 1, 2],
-				appearance === "onboarding" ? [96, 48, 56] : [72, 36, 28],
-				"clamp",
-			),
+			transform: [
+				{
+					scaleX: reducedMotion
+						? 1
+						: interpolate(distance, [0, 1, 2], [1, 4 / 7, 3 / 7], "clamp"),
+				},
+				{
+					scaleY: reducedMotion
+						? 1
+						: interpolate(
+								distance,
+								[0, 1, 2],
+								appearance === "onboarding"
+									? [1, 48 / 96, 56 / 96]
+									: [1, 36 / 72, 28 / 72],
+								"clamp",
+							),
+				},
+			],
 			backgroundColor: distance < 0.5 ? activeColor : inactiveColor,
 		};
 	});
@@ -469,6 +556,7 @@ function SnapCarouselTick({
 
 	return (
 		<Animated.View
+			testID={`snap-carousel-tick-${index}`}
 			className={cn(
 				"items-center justify-center",
 				label
@@ -488,8 +576,18 @@ function SnapCarouselTick({
 			>
 				<Animated.View
 					className="overflow-hidden rounded-full"
-					// Reanimated computes the tick dimensions and active color while scrolling.
-					style={barStyle}
+					// Scale fixed geometry instead of changing layout on every scroll frame.
+					style={[
+						{
+							width: reducedMotion ? 4 : 7,
+							height: reducedMotion
+								? 36
+								: appearance === "onboarding"
+									? 96
+									: 72,
+						},
+						barStyle,
+					]}
 				>
 					{appearance === "onboarding" ? (
 						<Animated.View style={[StyleSheet.absoluteFill, gradientStyle]}>

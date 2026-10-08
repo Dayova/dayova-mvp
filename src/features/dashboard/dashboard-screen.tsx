@@ -1,7 +1,7 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SafeAreaView } from "react-native-screens/experimental";
@@ -90,7 +90,12 @@ export function DashboardScreen() {
 			anchorDayKey: initialDayKey,
 		}),
 	);
-	const [selectedDayKey, setSelectedDayKey] = useState(initialDayKey);
+	const [calendarSelection, setCalendarSelection] = useState({
+		selectedDayKey: initialDayKey,
+		settledDayKey: initialDayKey,
+	});
+	const selection = useRef(calendarSelection);
+	const { selectedDayKey, settledDayKey } = calendarSelection;
 	const selectedDate = parseDayKey(selectedDayKey) ?? today;
 
 	const weekPageKeys = useMemo(
@@ -110,7 +115,7 @@ export function DashboardScreen() {
 		0,
 	);
 	const queriedDayKeys = getDashboardRelevantDayKeys({
-		selectedDayKey,
+		selectedDayKey: settledDayKey,
 		todayKey,
 	});
 	const queriedEntriesByDay = useQuery(
@@ -144,31 +149,53 @@ export function DashboardScreen() {
 			? user.name.trim().split(/\s+/)[0]
 			: null;
 
-	const commitSelectedDay = useCallback((dayKey: string) => {
-		if (!parseDayKey(dayKey)) return;
-		// Queue even a return to the rendered day: another selection may be pending.
-		setSelectedDayKey(dayKey);
+	const selectDay = useCallback((dayKey: string, settled: boolean) => {
+		if (!parseDayKey(dayKey)) return false;
+		const current = selection.current;
+		const next = {
+			selectedDayKey: dayKey,
+			settledDayKey: settled ? dayKey : current.settledDayKey,
+		};
+		// Acknowledge before React commits so same-batch reversals use current state.
+		selection.current = next;
+		if (
+			next.selectedDayKey !== current.selectedDayKey ||
+			next.settledDayKey !== current.settledDayKey
+		) {
+			setCalendarSelection(next);
+		}
+		return next.settledDayKey !== current.settledDayKey;
 	}, []);
+	const commitSelectedDay = useCallback(
+		(dayKey: string) => {
+			selectDay(dayKey, true);
+		},
+		[selectDay],
+	);
+	const settleSelectedDay = useCallback(
+		(dayKey: string) => {
+			if (selectDay(dayKey, true)) triggerDaySelectionHaptic();
+		},
+		[selectDay],
+	);
 
 	const selectWeekPage = useCallback(
-		(weekKey: string) => {
+		(weekKey: string, settled = false) => {
 			const nextPageIndex = weekPageKeys.indexOf(weekKey);
 			if (nextPageIndex < 0) return;
-			setSelectedDayKey((currentDayKey) => {
-				const currentWeekKey = getDashboardWeekDayKeys(currentDayKey)[0];
-				const currentPageIndex = weekPageKeys.indexOf(currentWeekKey);
-				if (currentPageIndex < 0) return currentDayKey;
-				return (
-					getDashboardWeekSelection({
-						selectedDayKey: currentDayKey,
-						weekDelta: nextPageIndex - currentPageIndex,
-						dayPagerKeys,
-					}) ?? currentDayKey
-				);
+			const currentDayKey = selection.current.selectedDayKey;
+			const currentWeekKey = getDashboardWeekDayKeys(currentDayKey)[0];
+			const currentPageIndex = weekPageKeys.indexOf(currentWeekKey);
+			if (currentPageIndex < 0) return;
+			const nextDayKey = getDashboardWeekSelection({
+				selectedDayKey: currentDayKey,
+				weekDelta: nextPageIndex - currentPageIndex,
+				dayPagerKeys,
 			});
-			triggerDaySelectionHaptic();
+			if (nextDayKey && selectDay(nextDayKey, settled))
+				triggerDaySelectionHaptic();
 		},
-		[dayPagerKeys, weekPageKeys],
+		[dayPagerKeys, weekPageKeys, selectDay],
 	);
 
 	const openItem = useCallback(
@@ -263,6 +290,7 @@ export function DashboardScreen() {
 							selectedKey={weekPageKeys[selectedWeekPageIndex]}
 							minimumHeight={68}
 							onSelect={selectWeekPage}
+							onSettled={(key) => selectWeekPage(key, true)}
 							renderPage={(weekKey) => (
 								<WeekCalendar
 									weekKey={weekKey}
@@ -283,10 +311,8 @@ export function DashboardScreen() {
 					keys={dayPagerKeys}
 					selectedKey={selectedDayKey}
 					minimumHeight={180}
-					onSelect={(key) => {
-						commitSelectedDay(key);
-						triggerDaySelectionHaptic();
-					}}
+					onSelect={(key) => selectDay(key, false)}
+					onSettled={settleSelectedDay}
 					renderPage={(dayKey) => (
 						<View className="px-6 pt-4">
 							<CompactDayAgenda
