@@ -1,9 +1,13 @@
 import { beforeEach, expect, jest, test } from "@jest/globals";
-import { fireEvent, render, within } from "@testing-library/react-native";
+import { act, fireEvent, render, within } from "@testing-library/react-native";
 import { DashboardScreen } from "./dashboard-screen";
 
 const mockPush = jest.fn();
 const mockNextStep = jest.fn();
+const mockScroll = jest.fn();
+jest.mock("react-native-reanimated", () => ({
+	useReducedMotion: () => false,
+}));
 const mockEntry = {
 	id: "entry",
 	title: "Wissenscheck",
@@ -99,38 +103,42 @@ jest.mock("./week-calendar", () => ({
 	CalendarWeekdays: () => null,
 	WeekCalendar: () => null,
 }));
-jest.mock("./calendar-pager", () => ({
-	CalendarPager: ({
-		testID,
-		selectedKey,
-		onSelect,
-		renderPage,
-	}: {
-		testID: string;
-		selectedKey: string;
-		onSelect: (key: string) => void;
-		renderPage: (key: string) => import("react").ReactNode;
-	}) => {
-		const ActualReact = jest.requireActual<typeof import("react")>("react");
-		const { View, Button, Text } = require("react-native");
-		return ActualReact.createElement(
-			View,
-			null,
-			ActualReact.createElement(
-				Text,
-				{ testID: `${testID}-selected` },
-				selectedKey,
-			),
-			testID === "calendar-day-pager"
-				? ActualReact.createElement(Button, {
-						title: "Morgen auswählen",
-						onPress: () => onSelect("2026-09-30"),
-					})
-				: null,
-			renderPage(selectedKey),
-		);
-	},
-}));
+jest.mock("react-native/Libraries/Lists/FlatList", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	const RN = jest.requireActual<typeof import("react-native")>("react-native");
+	return {
+		__esModule: true,
+		default: React.forwardRef(
+			(
+				props: import("react-native").ViewProps & {
+					data: string[];
+					extraData: { selectedKey: string };
+					renderItem: (info: { item: string }) => import("react").ReactNode;
+				},
+				ref,
+			) => {
+				React.useImperativeHandle(ref, () => ({
+					scrollToOffset: (options: unknown) =>
+						mockScroll(props.testID, options),
+				}));
+				const index = props.data.indexOf(props.extraData.selectedKey);
+				return React.createElement(
+					RN.View,
+					props,
+					props.data
+						.slice(Math.max(0, index - 1), index + 2)
+						.map((item) =>
+							React.createElement(
+								React.Fragment,
+								{ key: item },
+								props.renderItem({ item }),
+							),
+						),
+				);
+			},
+		),
+	};
+});
 jest.mock("./compact-day-agenda", () => ({
 	CompactDayAgenda: ({
 		items,
@@ -165,8 +173,28 @@ test("renders the only plus action inside the calendar rather than the greeting"
 	).toBeTruthy();
 });
 
-test("hero opens its session and agenda opens its plan, both returning to Today", async () => {
+async function renderWithPagers() {
 	const screen = await render(<DashboardScreen />);
+	for (const testID of ["calendar-day-pager", "calendar-week-pager"]) {
+		await fireEvent(screen.getByTestId(`${testID}-viewport`), "layout", {
+			nativeEvent: { layout: { width: 400 } },
+		});
+		const pager = screen.getByTestId(testID);
+		await fireEvent(
+			pager,
+			"scroll",
+			pageEvent(pager.props.data, pager.props.extraData.selectedKey),
+		);
+	}
+	return screen;
+}
+
+function pageEvent(keys: string[], key: string) {
+	return { nativeEvent: { contentOffset: { x: keys.indexOf(key) * 400 } } };
+}
+
+test("hero opens its session and agenda opens its plan, both returning to Today", async () => {
+	const screen = await renderWithPagers();
 	await fireEvent.press(screen.getByText("Hero"));
 	expect(mockPush).toHaveBeenLastCalledWith(
 		"/learning-plans/plan/sessions/session?returnTo=%2Fhome",
@@ -178,16 +206,80 @@ test("hero opens its session and agenda opens its plan, both returning to Today"
 });
 
 test("calendar day changes do not move the hero search away from today", async () => {
-	const screen = await render(<DashboardScreen />);
-	await fireEvent.press(screen.getByText("Morgen auswählen"));
-	expect(screen.getByTestId("calendar-day-pager-selected")).toHaveTextContent(
-		"2026-09-30",
-	);
+	const screen = await renderWithPagers();
+	const pager = screen.getByTestId("calendar-day-pager");
+	await fireEvent(pager, "scroll", pageEvent(pager.props.data, "2026-09-30"));
+	expect(
+		screen.getByTestId("calendar-day-pager").props.extraData.selectedKey,
+	).toBe("2026-09-30");
 	expect(mockNextStep).toHaveBeenLastCalledWith("2026-09-29", true);
 	await fireEvent.press(screen.getByText("Hero"));
 	expect(mockPush).toHaveBeenLastCalledWith(
 		"/learning-plans/plan/sessions/session?returnTo=%2Fhome",
 	);
+});
+
+test("native week paging without a touch drag synchronizes the day pager", async () => {
+	const screen = await renderWithPagers();
+	const pager = screen.getByTestId("calendar-week-pager");
+	await fireEvent(pager, "scroll", pageEvent(pager.props.data, "2026-10-05"));
+	expect(
+		screen.getByTestId("calendar-day-pager").props.extraData.selectedKey,
+	).toBe("2026-10-06");
+	expect(mockScroll).toHaveBeenCalledWith(
+		"calendar-day-pager",
+		expect.objectContaining({ animated: true }),
+	);
+	expect(
+		mockScroll.mock.calls.some(([id]) => id === "calendar-week-pager"),
+	).toBe(false);
+});
+
+test.each([
+	["calendar-day-pager", "2026-09-30", "2026-09-29"],
+	["calendar-week-pager", "2026-10-05", "2026-09-28"],
+])("%s retains a forward/reverse selection in one batch", async (testID, next, original) => {
+	const screen = await renderWithPagers();
+	const handlers = screen.getByTestId(testID).props;
+	await act(async () => {
+		handlers.onScrollBeginDrag();
+		handlers.onScroll(pageEvent(handlers.data, next));
+		handlers.onScroll(pageEvent(handlers.data, original));
+	});
+	expect(
+		screen.getByTestId("calendar-day-pager").props.extraData.selectedKey,
+	).toBe("2026-09-29");
+	expect(
+		screen.getByTestId("calendar-week-pager").props.extraData.selectedKey,
+	).toBe("2026-09-28");
+	expect(mockScroll).not.toHaveBeenCalled();
+});
+
+test("a settled reversal in the same batch wins over the last scroll midpoint", async () => {
+	const screen = await renderWithPagers();
+	const handlers = screen.getByTestId("calendar-day-pager").props;
+	await act(async () => {
+		handlers.onScrollBeginDrag();
+		handlers.onScroll(pageEvent(handlers.data, "2026-09-30"));
+		handlers.onMomentumScrollEnd(pageEvent(handlers.data, "2026-09-29"));
+	});
+	expect(
+		screen.getByTestId("calendar-day-pager").props.extraData.selectedKey,
+	).toBe("2026-09-29");
+	expect(mockScroll).not.toHaveBeenCalled();
+});
+
+test("a week move uses the weekday selected earlier in the same batch", async () => {
+	const screen = await renderWithPagers();
+	const day = screen.getByTestId("calendar-day-pager").props;
+	const week = screen.getByTestId("calendar-week-pager").props;
+	await act(async () => {
+		day.onScroll(pageEvent(day.data, "2026-09-30"));
+		week.onScroll(pageEvent(week.data, "2026-10-05"));
+	});
+	expect(
+		screen.getByTestId("calendar-day-pager").props.extraData.selectedKey,
+	).toBe("2026-10-07");
 });
 
 test("new learner fallback preserves the existing main creation route and return destination", async () => {
