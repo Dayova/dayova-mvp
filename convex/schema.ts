@@ -193,8 +193,6 @@ export default defineSchema({
 		// At most the three supported native platforms, accumulated on sign-in.
 		operatingSystems: v.optional(v.array(operatingSystem)),
 		avatarUrl: v.optional(v.string()),
-		// Preserves existing device-platform metadata in production profiles.
-		operatingSystems: v.optional(v.array(v.string())),
 		validationStudentCode: v.optional(v.string()),
 		validationRole: v.optional(v.union(v.literal("founder"))),
 		aiConsentStatus: v.optional(
