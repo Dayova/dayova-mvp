@@ -4,8 +4,10 @@ import { TouchableOpacity } from "react-native";
 import { CreateTypePickerModal } from "~/components/create-type-picker-modal";
 import { CreateEntryIcon } from "~/components/ui/create-entry-icon";
 import { ROUTES, withReturnTo } from "~/lib/routes";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 export function CreateEntryButton({ returnTo }: { returnTo: string }) {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const [showPicker, setShowPicker] = useState(false);
 	return (
@@ -15,7 +17,10 @@ export function CreateEntryButton({ returnTo }: { returnTo: string }) {
 				accessibilityLabel="Eintrag hinzufügen"
 				accessibilityHint="Wähle zwischen Prüfung und Hausaufgabe."
 				activeOpacity={0.88}
-				onPress={() => setShowPicker(true)}
+				onPress={() => {
+					trackFeature("home.create_opened");
+					setShowPicker(true);
+				}}
 				className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
 			>
 				<CreateEntryIcon />
@@ -24,6 +29,11 @@ export function CreateEntryButton({ returnTo }: { returnTo: string }) {
 				visible={showPicker}
 				onRequestClose={() => setShowPicker(false)}
 				onSelect={(type) => {
+					trackFeature(
+						type === "exam"
+							? "home.create_exam_selected"
+							: "home.create_homework_selected",
+					);
 					setShowPicker(false);
 					router.push(
 						withReturnTo(

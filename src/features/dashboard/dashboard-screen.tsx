@@ -15,6 +15,7 @@ import { formatGermanUiText } from "~/lib/german-ui-text";
 import { ROUTES, withReturnTo } from "~/lib/routes";
 import { triggerSelectionHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import type { DayEntry } from "~/types/dayEntries";
 import { getAgendaPlanRoute } from "./agenda-plan-route";
 import { CalendarPager } from "./calendar-pager";
@@ -77,6 +78,7 @@ const getEntryUrl = (entry: DayEntry, selectedDayLabel: string) => {
 export function DashboardScreen() {
 	const { colors } = useDayovaTheme();
 	const router = useRouter();
+	const trackFeature = useFeatureAnalytics();
 	const params = useLocalSearchParams<{ dayKey?: string }>();
 	const insets = useSafeAreaInsets();
 	const { user } = useAuthSession();
@@ -148,9 +150,10 @@ export function DashboardScreen() {
 		(dayKey: string) => {
 			const date = parseDayKey(dayKey);
 			if (!date || dayKey === selectedDayKey) return;
+			trackFeature("home.day_selected");
 			setSelectedDayKey(dayKey);
 		},
-		[selectedDayKey],
+		[selectedDayKey, trackFeature],
 	);
 
 	const selectWeekPage = useCallback(
@@ -172,6 +175,7 @@ export function DashboardScreen() {
 	const openItem = useCallback(
 		(item: DashboardAgendaItem, returnTo = ROUTES.home) => {
 			if (item.kind === "schoolLesson") return;
+			trackFeature("home.entry_opened", "performed", item.entry.id);
 			const itemDate = parseDayKey(item.dayKey) ?? parseDayKey(selectedDayKey);
 			if (!itemDate) return;
 			const itemDayLabel = new Intl.DateTimeFormat("de-DE", {
@@ -183,7 +187,7 @@ export function DashboardScreen() {
 				withReturnTo(getEntryUrl(item.entry, itemDayLabel), returnTo),
 			);
 		},
-		[router, selectedDayKey],
+		[router, selectedDayKey, trackFeature],
 	);
 
 	const openNextStepFallback = useCallback(

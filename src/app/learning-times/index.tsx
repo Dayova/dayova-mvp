@@ -24,6 +24,7 @@ import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { goBackToReturnOrReplace } from "~/lib/navigation";
 import { getSafeReturnTo, ROUTES } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { getUserFacingErrorMessage } from "~/lib/user-facing-errors";
 
 export default function LearningTimesOverviewScreen({
@@ -33,6 +34,7 @@ export default function LearningTimesOverviewScreen({
 	initialEditor?: { day: number; id?: string };
 	onEditorClose?: () => void;
 } = {}) {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const params = useLocalSearchParams<{ returnTo?: string }>();
 	const insets = useSafeAreaInsets();
@@ -70,11 +72,14 @@ export default function LearningTimesOverviewScreen({
 			setIsRemoving(true);
 			setRemoveError(null);
 			try {
+				trackFeature("learning_times.remove", "attempted");
 				await removeLearningTime({
 					id: deletingEntry.id as Id<"userLearningTimes">,
 				});
+				trackFeature("learning_times.remove", "succeeded");
 				setDeletingEntry(null);
 			} catch (error) {
+				trackFeature("learning_times.remove", "failed");
 				setRemoveError(
 					getUserFacingErrorMessage(
 						error,

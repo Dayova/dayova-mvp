@@ -28,10 +28,12 @@ mobile client initializes PostHog only from optional public env values:
 - `EXPO_PUBLIC_POSTHOG_API_KEY`
 - `EXPO_PUBLIC_POSTHOG_HOST`
 
-The Validation Phase contract exists to answer only four questions: whether a
-learner activated, started and finished a real learning block, recovered from a
-missed block, and returned on a later day. Events are emitted only after the
-corresponding backend action succeeds.
+The validation outcome contract answers whether a learner activated, started and
+finished a real learning block, recovered from a missed block, and returned on a
+later day. Those outcome events follow successful backend actions. DAY-435 adds
+explicit feature interactions and screen observations for the
+[Notion hypothesis measurement map](https://app.notion.com/p/3de2e87228bf81f5a853fd9605a9c7bc).
+Those observational events have distinct semantics; see [feature analytics](./feature-analytics.md).
 
 The Clerk user ID is the PostHog `distinctId` and is not duplicated as a
 `clerk_id` property. The exact custom person-property set is:
@@ -55,6 +57,8 @@ The exact event-specific property contract is:
 
 | Event | Properties |
 | --- | --- |
+| `feature_interaction` | `interaction`, `outcome`, optional `entity_id`, `value`, `screen`; bounded catalogs in `src/lib/feature-analytics.ts` |
+| `app_screen_viewed` | `screen`; known route-template catalog only |
 | `onboarding_completed` | `local_day_key`, `onboarding_version` |
 | `homework_created` | `day_entry_id`, `planned_day_key`, `due_day_key`, `duration_minutes` |
 | `exam_created` | `day_entry_id`, `planned_day_key`, `duration_minutes`, `exam_type` |
@@ -85,8 +89,9 @@ contract version.
 Generalprobe completion is derived from `study_slot_completed` with
 `phase === "rehearsal"`. Missed reason is carried by `study_slot_missed`; there
 are no `generalprobe_completed` or `missed_reason_selected` events. Dashboard
-usability is learned qualitatively during this phase, so there are no
-`dashboard_*` events.
+usability still needs qualitative evidence. DAY-435 adds bounded `home.*`
+interactions within `feature_interaction`; legacy `dashboard_*` events remain
+excluded.
 
 ## Validation Student Profile
 
