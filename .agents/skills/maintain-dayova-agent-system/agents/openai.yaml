@@ -1,0 +1,6 @@
+interface:
+  display_name: "Maintain Dayova Agent System"
+  short_description: "Govern Dayova skills, routing, and agent docs"
+  default_prompt: "Use $maintain-dayova-agent-system to update Dayova agent workflows safely and validate their governance contract."
+policy:
+  allow_implicit_invocation: true
