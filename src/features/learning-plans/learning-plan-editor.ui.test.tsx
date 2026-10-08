@@ -3,6 +3,14 @@ import { fireEvent, render } from "@testing-library/react-native";
 import * as ReactNative from "react-native";
 import { LearningPlanEditor } from "./learning-plan-editor";
 
+jest.mock("react-native-safe-area-context", () => ({
+	useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+jest.mock("~/components/ui/screen", () => ({
+	ScreenScroll:
+		jest.requireActual<typeof import("react-native")>("react-native")
+			.ScrollView,
+}));
 afterEach(() => jest.restoreAllMocks());
 
 test("keeps both editor actions operable at large system text size", async () => {

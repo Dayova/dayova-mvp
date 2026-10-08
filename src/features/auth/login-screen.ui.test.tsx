@@ -335,6 +335,11 @@ jest.mock("~/components/ui/animated-flower-loader", () => {
 	};
 });
 
+jest.mock("react-native-keyboard-controller", () => ({
+	KeyboardAvoidingView:
+		jest.requireActual<typeof import("react-native")>("react-native").View,
+}));
+
 jest.mock("~/components/ui/keyboard-safe-scroll-view", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
 	const ReactNative =
@@ -1417,6 +1422,36 @@ describe("OnboardingScreen", () => {
 
 		expect(screen.getByText("30")).toBeOnTheScreen();
 		expect(mockSetOnboardingAnswer).toHaveBeenCalledWith("studyTime", "30");
+	});
+
+	test("caps the existing duration control at four hours without a custom input", async () => {
+		mockOnboarding.answers.studyTime = "240";
+		const screen = await render(<OnboardingStepScreen stepId="studyTime" />);
+		expect(
+			screen.getByRole("adjustable", { name: "Tägliche Lernzeit" }),
+		).toHaveAccessibilityValue({ text: "4 Stunden" });
+		expect(screen.queryByText(/Mehr als 4 Stunden/)).toBeNull();
+		expect(screen.queryByTestId("study-duration-hours")).toBeNull();
+	});
+
+	test.each([
+		[45, "45", "Minuten"],
+		[60, "1", "Stunde"],
+		[90, "1,5", "Stunden"],
+		[120, "2", "Stunden"],
+		[150, "2,5", "Stunden"],
+		[180, "3", "Stunden"],
+		[210, "3,5", "Stunden"],
+		[240, "4", "Stunden"],
+	])("formats %s minutes as hours from 60 onward", async (minutes, value, unit) => {
+		mockOnboarding.answers.studyTime = String(minutes);
+		const screen = await render(<OnboardingStepScreen stepId="studyTime" />);
+		expect(screen.getByText(value)).toBeOnTheScreen();
+		expect(screen.getByText(minutes < 60 ? "min" : "h")).toBeOnTheScreen();
+		expect(
+			screen.getByRole("adjustable", { name: "Tägliche Lernzeit" }),
+		).toHaveAccessibilityValue({ text: `${value} ${unit}` });
+		expect(mockSetOnboardingAnswer).not.toHaveBeenCalled();
 	});
 
 	test("confirms the initial 30 minutes with the main Continue action", async () => {

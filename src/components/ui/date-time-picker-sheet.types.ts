@@ -20,6 +20,8 @@ type DateTimePickerSheetEvent =
 	| { type: "dismissed" };
 
 type DateTimePickerSheetProps = {
+	/** Render within an existing sheet on iOS; Android retains its native dialog. */
+	embedded?: boolean;
 	visible: boolean;
 	value: Date;
 	mode: "date" | "time" | "datetime";
@@ -50,14 +52,14 @@ const shouldCloseDateTimePickerAfterChange = (platform: string) =>
 const getDateTimePickerConfirmAccessibilityLabel = (doneLabel: ReactNode) =>
 	typeof doneLabel === "string" ? doneLabel : "Auswahl bestätigen";
 
-export {
-	buildDateTimePickerChangeEvent,
-	getDateTimePickerConfirmAccessibilityLabel,
-	shouldCloseDateTimePickerAfterChange,
-};
 export type {
 	DateTimePickerChangeEvent,
 	DateTimePickerDisplay,
 	DateTimePickerSheetEvent,
 	DateTimePickerSheetProps,
+};
+export {
+	buildDateTimePickerChangeEvent,
+	getDateTimePickerConfirmAccessibilityLabel,
+	shouldCloseDateTimePickerAfterChange,
 };

@@ -464,7 +464,7 @@ function LearningPlanCard({
 		: needsSchoolMaterial
 			? "Lernmaterial hochladen"
 			: plan.currentSession?.sessionPurpose === "diagnostic"
-				? "Wissenscheck · 5–10 Fragen"
+				? "Wissenscheck"
 				: plan.currentSession?.goal ||
 					plan.currentSession?.title ||
 					plan.examTypeLabel;

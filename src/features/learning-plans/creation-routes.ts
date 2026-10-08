@@ -18,7 +18,7 @@ export const examEntryResumePath = (params: {
 	topicDescription: string;
 }) =>
 	`${ROUTES.createExam}&${buildRouteQuery([
-		["step", "learningAvailability"],
+		["step", "basics"],
 		["examDayEntryId", params.examDayEntryId],
 		["subject", params.subject],
 		["personalSubjectId", params.personalSubjectId],
