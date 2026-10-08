@@ -136,6 +136,8 @@ to use the native language server. The extension ID retains `native-preview`,
 but the CLI dependency is pinned to a stable release. Installing the package
 alone does not switch an editor's language server; other editors should use
 their documented TypeScript 7/LSP integration.
+In VS Code, open a `.ts` or `.js` file and run
+`TypeScript: Enable TypeScript 7` from the Command Palette.
 
 To inspect compiler timings, run `pnpm typecheck:app --extendedDiagnostics`
 and `pnpm typecheck:convex --extendedDiagnostics`. Compare against
