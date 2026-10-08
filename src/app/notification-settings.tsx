@@ -70,7 +70,7 @@ function SettingsCard({ children }: { children: React.ReactNode }) {
 	return (
 		<View
 			className={cn(
-				"rounded-[24px] bg-card shadow-black/10 shadow-lg",
+				"rounded-[24px] border border-border bg-card",
 				Platform.OS === "ios" ? "px-6 py-5" : "px-5 py-4",
 			)}
 		>

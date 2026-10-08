@@ -1,19 +1,17 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import { ReleaseInformationSheet } from "~/components/release-information-sheet";
 import { ErrorMessage } from "~/components/ui/error-message";
 import {
 	Bell,
-	CalendarDays,
+	BookOpen,
 	Computer,
 	CreditCard,
 	Globe,
 	Mail,
-	Moon,
 	Palette,
 	Sparkles,
-	Sun,
 	Timer,
 	UserRound,
 } from "~/components/ui/icon";
@@ -30,68 +28,12 @@ import {
 	SettingsRow,
 	SettingsSection,
 } from "~/features/settings/settings-list";
+import { ThemePreferenceToggle } from "~/features/settings/theme-preference-toggle";
 import { openExternalUrl } from "~/lib/open-external-url";
+import { ROUTES } from "~/lib/routes";
 import { env } from "~/lib/runtime-config";
 import { getNativeSubscriptionManagementUrl } from "~/lib/store-subscription";
 import { useDayovaTheme } from "~/lib/theme";
-import { THEME_OPTIONS, type ThemePreference } from "~/lib/theme-preference";
-import { cn } from "~/lib/utils";
-
-const themeIconByPreference = {
-	light: Sun,
-	system: Computer,
-	dark: Moon,
-} satisfies Record<
-	ThemePreference,
-	(props: {
-		size?: number;
-		color?: string;
-		strokeWidth?: number;
-	}) => React.JSX.Element
->;
-
-function ThemePreferenceToggle({
-	preference,
-	setPreference,
-}: {
-	preference: ThemePreference;
-	setPreference: (preference: ThemePreference) => Promise<void>;
-}) {
-	const { colors } = useDayovaTheme();
-
-	return (
-		<View className="flex-row rounded-full border border-border/70 bg-muted p-1">
-			{THEME_OPTIONS.map((option) => {
-				const Icon = themeIconByPreference[option.value];
-				const isActive = preference === option.value;
-
-				return (
-					<Pressable
-						key={option.value}
-						accessibilityLabel={option.accessibilityLabel}
-						accessibilityRole="radio"
-						accessibilityState={{ checked: isActive }}
-						className={cn(
-							"h-11 w-11 items-center justify-center rounded-full",
-							isActive ? "bg-primary" : "bg-transparent",
-						)}
-						onPress={() => {
-							void setPreference(option.value).catch((error: unknown) => {
-								console.warn("Unable to save Dayova theme preference", error);
-							});
-						}}
-					>
-						<Icon
-							size={20}
-							color={isActive ? "#FFFFFF" : colors.secondaryText}
-							strokeWidth={2}
-						/>
-					</Pressable>
-				);
-			})}
-		</View>
-	);
-}
 
 export default function SettingsScreen() {
 	const router = useRouter();
@@ -124,6 +66,39 @@ export default function SettingsScreen() {
 	});
 	const isStoreSubscriber =
 		access?.state === "paid" || access?.state === "billingGrace";
+
+	const subscriptionCard = (
+		<View className="gap-3" testID="settings-subscription">
+			<SettingsCard>
+				{access?.state === "trial" ? (
+					<SettingsRow
+						icon={CreditCard}
+						label="Dayova abonnieren"
+						onPress={() => router.push("/subscription")}
+					/>
+				) : (
+					<SettingsRow
+						icon={CreditCard}
+						label="Dayova"
+						accessibilityLabel={`Dayova, ${nativeManagementUrl ? "Abo im Store verwalten" : "Hilfe zum Abo"}`}
+						description={
+							nativeManagementUrl ? "Abo im Store verwalten" : "Hilfe zum Abo"
+						}
+						onPress={() =>
+							openLink(
+								"subscription",
+								nativeManagementUrl ?? env.EXPO_PUBLIC_SUPPORT_URL,
+							)
+						}
+						disabled={!isStoreSubscriber}
+					/>
+				)}
+			</SettingsCard>
+			{linkErrors.subscription ? (
+				<ErrorMessage>{linkErrors.subscription}</ErrorMessage>
+			) : null}
+		</View>
+	);
 
 	return (
 		<>
@@ -166,6 +141,8 @@ export default function SettingsScreen() {
 							</SettingsCard>
 						</View>
 
+						{!isStoreSubscriber ? subscriptionCard : null}
+
 						<SettingsSection title="Lernen">
 							<SettingsRow
 								icon={Timer}
@@ -174,9 +151,9 @@ export default function SettingsScreen() {
 							/>
 							<SettingsDivider />
 							<SettingsRow
-								icon={CalendarDays}
-								label="Stundenplan"
-								onPress={() => router.push("/timetable")}
+								icon={BookOpen}
+								label="Persönliche Fächer"
+								onPress={() => router.push(ROUTES.personalSubjects)}
 							/>
 						</SettingsSection>
 
@@ -205,38 +182,7 @@ export default function SettingsScreen() {
 							/>
 						</SettingsSection>
 
-						<View className="gap-3" testID="settings-subscription">
-							<SettingsCard>
-								{access?.state === "trial" ? (
-									<SettingsRow
-										icon={CreditCard}
-										label="Dayova abonnieren"
-										onPress={() => router.push("/subscription")}
-									/>
-								) : (
-									<SettingsRow
-										icon={CreditCard}
-										label="Dayova"
-										accessibilityLabel={`Dayova, ${nativeManagementUrl ? "Abo im Store verwalten" : "Hilfe zum Abo"}`}
-										description={
-											nativeManagementUrl
-												? "Abo im Store verwalten"
-												: "Hilfe zum Abo"
-										}
-										onPress={() =>
-											openLink(
-												"subscription",
-												nativeManagementUrl ?? env.EXPO_PUBLIC_SUPPORT_URL,
-											)
-										}
-										disabled={!isStoreSubscriber}
-									/>
-								)}
-							</SettingsCard>
-							{linkErrors.subscription ? (
-								<ErrorMessage>{linkErrors.subscription}</ErrorMessage>
-							) : null}
-						</View>
+						{isStoreSubscriber ? subscriptionCard : null}
 
 						<View className="gap-3" testID="settings-legal">
 							<SettingsSection title="Datenschutz & Rechtliches">

@@ -21,7 +21,7 @@ function CloseButton({
 			accessibilityRole="button"
 			activeOpacity={activeOpacity}
 			hitSlop={hitSlop}
-			className="h-10 w-10 items-center justify-center rounded-full bg-path-2 shadow-black/10 shadow-sm"
+			className="h-10 w-10 items-center justify-center rounded-full border border-border bg-path-2"
 			{...props}
 		>
 			<X size={24} color={colors.path3} strokeWidth={2} />

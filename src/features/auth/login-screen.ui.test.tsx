@@ -335,6 +335,11 @@ jest.mock("~/components/ui/animated-flower-loader", () => {
 	};
 });
 
+jest.mock("react-native-keyboard-controller", () => ({
+	KeyboardAvoidingView:
+		jest.requireActual<typeof import("react-native")>("react-native").View,
+}));
+
 jest.mock("~/components/ui/keyboard-safe-scroll-view", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
 	const ReactNative =
@@ -433,6 +438,7 @@ jest.mock("~/lib/theme", () => {
 				systemSubtle: "#F1F7FB",
 				text: "#1A1A1A",
 			},
+			isDark: false,
 		}),
 	};
 });
@@ -492,6 +498,65 @@ describe("LoginScreen", () => {
 		expect(
 			screen.getByTestId("auth-choice-logo-card").props.entering,
 		).toBeUndefined();
+	});
+
+	test("fills the iPad width with large Hugeicons background tiles", async () => {
+		mockWindowDimensions = {
+			fontScale: 1,
+			height: 1194,
+			scale: 2,
+			width: 834,
+		};
+		const screen = await render(<AuthChoiceScreen />);
+
+		expect(screen.getByTestId("auth-choice-background-pattern")).toHaveStyle({
+			width: 834,
+		});
+		const backgroundTiles = screen.getAllByTestId(
+			"auth-choice-background-tile",
+		);
+		expect(backgroundTiles).toHaveLength(7);
+		expect(backgroundTiles[0]?.props.style.width).toBeGreaterThan(300);
+		expect(screen.getAllByTestId("auth-choice-background-icon")[0]).toHaveStyle(
+			{
+				opacity: 0.2,
+			},
+		);
+	});
+
+	test.each([
+		{ width: 834, height: 1194 },
+		{ width: 1194, height: 834 },
+		{ width: 1024, height: 1366 },
+	])("keeps iPad artwork tiles separated at $width × $height", async ({
+		width,
+		height,
+	}) => {
+		mockWindowDimensions = { fontScale: 1, scale: 2, width, height };
+		const screen = await render(<AuthChoiceScreen />);
+		const tiles = screen.getAllByTestId("auth-choice-background-tile");
+		const centers = [
+			...new Set<number>(
+				tiles.map((tile) => tile.props.style.left + tile.props.style.width / 2),
+			),
+		].sort((a, b) => a - b);
+		expect(centers).toHaveLength(3);
+		expect(centers[1]).toBeCloseTo(width / 2);
+		expect((centers[0] ?? 0) + (centers[2] ?? 0)).toBeCloseTo(width);
+		for (const [index, tile] of tiles.entries()) {
+			const a = tile.props.style;
+			expect(a.top).toBeGreaterThanOrEqual(0);
+			expect(a.top + a.height).toBeLessThanOrEqual(height + 0.001);
+			for (const other of tiles.slice(index + 1)) {
+				const b = other.props.style;
+				const separated =
+					a.left + a.width <= b.left ||
+					b.left + b.width <= a.left ||
+					a.top + a.height <= b.top ||
+					b.top + b.height <= a.top;
+				expect(separated).toBe(true);
+			}
+		}
 	});
 
 	test("keeps password recovery reachable from sign-in", async () => {
@@ -1058,18 +1123,16 @@ describe("OnboardingScreen", () => {
 		});
 	});
 
-	test("teaches the product in three pages before personalized questions", async () => {
+	test("teaches the product in four pages before personalized questions", async () => {
 		const screen = await render(<OnboardingScreen />);
 
 		expect(
 			screen.getByRole("header", {
-				name: "Du weißt, was heute wirklich zählt.",
+				name: "Schluss mit Aufschieben.",
 			}),
 		).toBeOnTheScreen();
-		expect(
-			screen.getByText("Danach 11 kurze, bewusste Schritte · etwa 2 Minuten"),
-		).toBeOnTheScreen();
 
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		await fireEvent.press(
@@ -1093,7 +1156,7 @@ describe("OnboardingScreen", () => {
 		expect(screen.queryByTestId("intro-pager")).toBeNull();
 		expect(
 			screen.getByRole("header", {
-				name: "Du weißt, was heute wirklich zählt.",
+				name: "Schluss mit Aufschieben.",
 			}),
 		).toBeOnTheScreen();
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeOnTheScreen();
@@ -1121,12 +1184,53 @@ describe("OnboardingScreen", () => {
 		const screen = await render(<OnboardingStepScreen stepId="name" />);
 
 		expect(screen.getByTestId("onboarding-name-input")).toBeOnTheScreen();
-		expect(screen.getByText("1 von 11")).toBeOnTheScreen();
+		expect(screen.getByText("1 von 12")).toBeOnTheScreen();
 		expect(screen.getByRole("progressbar")).toBeOnTheScreen();
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 
 		expect(mockVisitOnboardingStep).toHaveBeenCalledWith("studyTime");
 		expect(mockRouter.push).toHaveBeenCalledWith("/onboarding/studyTime");
+	});
+
+	test("continues through every profile step to verification without looping", async () => {
+		const steps = [
+			"name",
+			"studyTime",
+			"study-time-fact",
+			"studyDays",
+			"learning-routine-fact",
+			"learningTime",
+			"learning-time-payoff",
+			"grade",
+			"state",
+			"schoolType",
+			"email",
+			"password",
+		] as const;
+		const screen = await render(<OnboardingStepScreen stepId={steps[0]} />);
+		for (const [index, stepId] of steps.entries()) {
+			await screen.rerender(
+				<OnboardingStepScreen key={stepId} stepId={stepId} />,
+			);
+			mockRouter.push.mockClear();
+			await fireEvent.press(
+				screen.getByRole("button", {
+					name: stepId === "password" ? "Konto erstellen" : "Weiter",
+				}),
+			);
+			await waitFor(() =>
+				expect(mockRouter.push).toHaveBeenCalledWith(
+					stepId === "password"
+						? "/onboarding/verification"
+						: `/onboarding/${steps[index + 1]}`,
+				),
+			);
+			expect(mockRouter.push).toHaveBeenCalledTimes(1);
+		}
+		expect(mockStartRegistrationWithEmail).toHaveBeenCalledWith(
+			"test@example.com",
+		);
+		expect(mockRegister).toHaveBeenCalledTimes(1);
 	});
 
 	test("keeps intro indicators coupled to live pager scroll progress", async () => {
@@ -1146,9 +1250,9 @@ describe("OnboardingScreen", () => {
 		});
 		expect(screen.getByRole("progressbar")).toHaveProp("accessibilityValue", {
 			min: 1,
-			max: 3,
+			max: 4,
 			now: 1,
-			text: "Seite 1 von 3",
+			text: "Seite 1 von 4",
 		});
 	});
 
@@ -1217,14 +1321,15 @@ describe("OnboardingScreen", () => {
 		const screen = await render(<OnboardingScreen />);
 		const pager = screen.getByTestId("intro-pager");
 
-		expect(pager).toHaveProp("initialNumToRender", 3);
-		expect(pager).toHaveProp("maxToRenderPerBatch", 3);
+		expect(pager).toHaveProp("initialNumToRender", 4);
+		expect(pager).toHaveProp("maxToRenderPerBatch", 4);
 		expect(pager).toHaveProp("removeClippedSubviews", false);
 	});
 
 	test("renders the maintained learning-path preview on the final intro page", async () => {
 		const screen = await render(<OnboardingScreen />);
 
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 
@@ -1270,13 +1375,17 @@ describe("OnboardingScreen", () => {
 		});
 	});
 
-	test("uses a semantic high-contrast foreground on selected weekdays", async () => {
+	test("uses the contrast-tested selection gradient with white weekday text", async () => {
 		mockOnboarding.answers.studyDays = "Montag";
 		const screen = await render(<OnboardingStepScreen stepId="studyDays" />);
 
 		expect(screen.getByText("Montag")).toHaveStyle({
-			color: DAYOVA_DESIGN_SYSTEM.colors.onPrimary,
+			color: "#FFFFFF",
 		});
+		const monday = screen.getByRole("checkbox", { name: "Montag" });
+		expect(
+			within(monday).getByTestId("weekday-gradient-Montag").props.colors,
+		).toEqual(DAYOVA_DESIGN_SYSTEM.gradients.selection.colors);
 	});
 
 	test("renders school type through the shared bottom-sheet select trigger", async () => {
@@ -1315,20 +1424,50 @@ describe("OnboardingScreen", () => {
 		expect(mockSetOnboardingAnswer).toHaveBeenCalledWith("studyTime", "30");
 	});
 
-	test("requires an explicit duration confirmation before continuing", async () => {
+	test("caps the existing duration control at four hours without a custom input", async () => {
+		mockOnboarding.answers.studyTime = "240";
+		const screen = await render(<OnboardingStepScreen stepId="studyTime" />);
+		expect(
+			screen.getByRole("adjustable", { name: "Tägliche Lernzeit" }),
+		).toHaveAccessibilityValue({ text: "4 Stunden" });
+		expect(screen.queryByText(/Mehr als 4 Stunden/)).toBeNull();
+		expect(screen.queryByTestId("study-duration-hours")).toBeNull();
+	});
+
+	test.each([
+		[45, "45", "Minuten"],
+		[60, "1", "Stunde"],
+		[90, "1,5", "Stunden"],
+		[120, "2", "Stunden"],
+		[150, "2,5", "Stunden"],
+		[180, "3", "Stunden"],
+		[210, "3,5", "Stunden"],
+		[240, "4", "Stunden"],
+	])("formats %s minutes as hours from 60 onward", async (minutes, value, unit) => {
+		mockOnboarding.answers.studyTime = String(minutes);
+		const screen = await render(<OnboardingStepScreen stepId="studyTime" />);
+		expect(screen.getByText(value)).toBeOnTheScreen();
+		expect(screen.getByText(minutes < 60 ? "min" : "h")).toBeOnTheScreen();
+		expect(
+			screen.getByRole("adjustable", { name: "Tägliche Lernzeit" }),
+		).toHaveAccessibilityValue({ text: `${value} ${unit}` });
+		expect(mockSetOnboardingAnswer).not.toHaveBeenCalled();
+	});
+
+	test("confirms the initial 30 minutes with the main Continue action", async () => {
 		mockOnboarding.answers.studyTime = "";
 		const screen = await render(<OnboardingStepScreen stepId="studyTime" />);
 
-		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
 		expect(
 			screen.getByRole("adjustable", { name: "Tägliche Lernzeit" }),
 		).toHaveAccessibilityValue({
 			text: "30 Minuten Vorschau, noch nicht ausgewählt",
 		});
-		await fireEvent.press(
-			screen.getByRole("button", { name: "30 Minuten auswählen" }),
-		);
+		expect(mockSetOnboardingAnswer).not.toHaveBeenCalled();
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		expect(mockSetOnboardingAnswer).toHaveBeenCalledWith("studyTime", "30");
+		expect(mockRouter.push).toHaveBeenCalledWith("/onboarding/study-time-fact");
 	});
 
 	test("collects real recurring weekdays with multi-select semantics", async () => {
@@ -1337,20 +1476,30 @@ describe("OnboardingScreen", () => {
 
 		const monday = screen.getByRole("checkbox", { name: "Montag" });
 		expect(monday.props.accessibilityState).toEqual({ checked: false });
-		expect(monday).toHaveStyle({
-			backgroundColor: "#F1F7FB",
-			borderColor: "#D7DCE3",
-		});
-		expect(screen.getByTestId("study-day-pill-check-slot-Montag")).toHaveProp(
-			"className",
-			"h-4 w-4 items-center justify-center",
-		);
-		expect(screen.getByTestId("study-day-pill-balance-slot-Montag")).toHaveProp(
-			"className",
-			"ml-2 h-4 w-4",
-		);
+		for (const day of screen.getAllByRole("checkbox"))
+			expect(day.props.accessibilityState.checked).toBe(false);
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
 		await fireEvent.press(monday);
 		expect(mockSetOnboardingAnswer).toHaveBeenCalledWith("studyDays", "Montag");
+	});
+
+	test("inserts the routine explanation between weekdays and start time", async () => {
+		const screen = await render(<OnboardingStepScreen stepId="studyDays" />);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(mockRouter.push).toHaveBeenCalledWith(
+			"/onboarding/learning-routine-fact",
+		);
+		await screen.rerender(
+			<OnboardingStepScreen stepId="learning-routine-fact" />,
+		);
+		expect(
+			screen.getByRole("header", { name: "Du lernst, wenn es dir passt!" }),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByText(/Verteilst du Wiederholungen auf mehrere Tage/),
+		).toBeOnTheScreen();
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(mockRouter.push).toHaveBeenCalledWith("/onboarding/learningTime");
 	});
 
 	test("collects the native start time instead of a decorative answer", async () => {
@@ -1433,13 +1582,13 @@ describe("OnboardingScreen", () => {
 
 			expect(
 				screen.getByRole("header", {
-					name: "Dein Lernplan braucht echte Zeitfenster.",
+					name: "Du brauchst nicht stundenlang zu lernen.",
 				}),
 			).toBeOnTheScreen();
 			await act(async () => jest.advanceTimersByTime(10_000));
 			expect(
 				screen.getByRole("header", {
-					name: "Dein Lernplan braucht echte Zeitfenster.",
+					name: "Du brauchst nicht stundenlang zu lernen.",
 				}),
 			).toBeOnTheScreen();
 		} finally {

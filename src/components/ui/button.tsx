@@ -15,7 +15,7 @@ const gradientFillStyle = StyleSheet.absoluteFill;
 
 const buttonVariants = cva(
 	cn(
-		"group shrink-0 flex-row items-center justify-center gap-2 overflow-hidden rounded-button px-6 shadow-primary/20 shadow-sm",
+		"group shrink-0 flex-row items-center justify-center gap-2 overflow-hidden rounded-button px-6",
 		Platform.select({
 			web: "whitespace-nowrap outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
 		}),
@@ -23,16 +23,19 @@ const buttonVariants = cva(
 	{
 		variants: {
 			variant: {
+				cancel: "border border-border bg-card active:bg-muted",
+				"destructive-outline":
+					"border border-danger-action bg-danger-subtle active:opacity-80",
 				default: cn(
 					"border-hairline border-white bg-primary active:opacity-90",
 					Platform.select({ web: "hover:opacity-90" }),
 				),
 				neutral: cn(
-					"border-border border-hairline bg-button-neutral shadow-black/5 active:bg-button-neutral/90",
+					"border-border border-hairline bg-button-neutral active:bg-button-neutral/90",
 					Platform.select({ web: "hover:bg-button-neutral/90" }),
 				),
 				destructive: cn(
-					"border-border border-hairline bg-button-neutral shadow-black/5 shadow-sm active:bg-button-neutral/90",
+					"border-border border-hairline bg-button-neutral active:bg-button-neutral/90",
 					Platform.select({
 						web: "hover:bg-button-neutral/90 focus-visible:ring-destructive/20",
 					}),
@@ -47,7 +50,9 @@ const buttonVariants = cva(
 					"active:bg-accent",
 					Platform.select({ web: "hover:bg-accent" }),
 				),
-				link: "shadow-none",
+				// Text links can wrap flush with the content edge at large font sizes.
+				// A pill-shaped clipping mask would cut into their first/last glyphs.
+				link: "overflow-visible rounded-none shadow-none",
 			},
 			size: {
 				default: cn(
@@ -55,11 +60,11 @@ const buttonVariants = cva(
 					Platform.select({ web: "has-[>svg]:px-5" }),
 				),
 				sm: cn(
-					"min-h-12 gap-2 rounded-button px-4 py-2",
+					"min-h-12 gap-2 px-4 py-2",
 					Platform.select({ web: "has-[>svg]:px-3" }),
 				),
 				lg: cn(
-					"min-h-14 rounded-button px-8 py-3",
+					"min-h-14 px-8 py-3",
 					Platform.select({ web: "has-[>svg]:px-6" }),
 				),
 				icon: "h-11 min-h-11 w-11 py-0",
@@ -80,6 +85,8 @@ const buttonTextVariants = cva(
 	{
 		variants: {
 			variant: {
+				cancel: "text-text",
+				"destructive-outline": "text-danger-action",
 				default: "text-white",
 				neutral: "text-background",
 				destructive: "text-background",
@@ -182,7 +189,7 @@ function BackButton({
 			accessibilityLabel="Zurück"
 			hitSlop={8}
 			className={cn(
-				"h-12 min-h-12 w-12 min-w-12 items-center justify-center rounded-full bg-card px-0 shadow-black/10 shadow-sm active:bg-card/80",
+				"h-12 min-h-12 w-12 min-w-12 items-center justify-center rounded-full border border-border bg-card px-0 active:bg-card/80",
 				Platform.select({ web: "hover:bg-card/90" }),
 				className,
 			)}

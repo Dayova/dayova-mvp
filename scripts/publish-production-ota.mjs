@@ -73,14 +73,25 @@ export function publishProductionOta({
 	guard,
 	log,
 }) {
-	const verifySource = () => {
-		if (
-			!/^[0-9a-f]{40}$/.test(sourceSha ?? "") ||
-			run("git", ["rev-parse", "HEAD"]).trim() !== sourceSha ||
-			run("git", ["status", "--porcelain"]).trim()
-		) {
+	const verifySource = (phase) => {
+		const actualSha = run("git", ["rev-parse", "HEAD"]).trim();
+		const gitStatus = run("git", ["status", "--porcelain"]).trimEnd();
+		log(JSON.stringify({
+			status: "source-verification",
+			phase,
+			expectedSha: sourceSha ?? null,
+			actualSha,
+			gitStatus,
+		}));
+		const failures = [];
+		if (!/^[0-9a-f]{40}$/.test(sourceSha ?? "")) {
+			failures.push("OTA_SOURCE_SHA is missing or invalid");
+		}
+		if (actualSha !== sourceSha) failures.push("HEAD does not match OTA_SOURCE_SHA");
+		if (gitStatus.trim()) failures.push("working tree is dirty");
+		if (failures.length) {
 			throw new Error(
-				"Production publication requires the clean, exact reviewed main SHA.",
+				`Production publication requires the clean, exact reviewed main SHA. ${phase}: ${failures.join("; ")}.`,
 			);
 		}
 	};
@@ -88,10 +99,10 @@ export function publishProductionOta({
 		const report = guard();
 		if (!report.safe) throw new Error(report.reason);
 	};
-	verifySource();
+	verifySource("before-export");
 	verifyGuard();
 	run("expo", ["export", "--platform", "all", "--output-dir", "dist"], false);
-	verifySource();
+	verifySource("after-export");
 	verifyGuard();
 	verifyChannel(
 		JSON.parse(run("eas", ["channel:view", "production", "--json"])),

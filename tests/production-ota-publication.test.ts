@@ -35,6 +35,37 @@ function harness(fail?: string, server = { locked: false }) {
 }
 
 describe("production publication boundary", () => {
+	it.each([
+		{ phase: "before-export", head: "b".repeat(40), gitStatus: "", reason: "HEAD does not match OTA_SOURCE_SHA" },
+		{ phase: "before-export", head: sha, gitStatus: "?? generated-file\n", reason: "working tree is dirty" },
+		{ phase: "after-export", head: sha, gitStatus: " M package.json\n", reason: "working tree is dirty" },
+	])("diagnoses $reason $phase without publishing", ({ phase, head, gitStatus, reason }) => {
+		const h = harness();
+		if (phase === "after-export") {
+			h.run.mockImplementationOnce(() => sha)
+				.mockImplementationOnce(() => "")
+				.mockImplementationOnce(() => "");
+		}
+		h.run.mockImplementationOnce(() => head).mockImplementationOnce(() => gitStatus);
+		expect(h.publish).toThrow(reason);
+		expect(h.log).toHaveBeenCalledWith(JSON.stringify({
+			status: "source-verification", phase, expectedSha: sha, actualSha: head,
+			gitStatus: gitStatus.trimEnd(),
+		}));
+		expect(h.guard).toHaveBeenCalledTimes(phase === "after-export" ? 1 : 0);
+		expect(h.run.mock.calls.some(([command]) => command === "eas")).toBe(false);
+	});
+	it.each([undefined, "short-sha"])("diagnoses invalid source SHA %s without publishing", (sourceSha) => {
+		const h = harness();
+		expect(() => publishProductionOta({ sourceSha, runtimeVersion: "1.0.5", ...h }))
+			.toThrow("OTA_SOURCE_SHA is missing or invalid");
+		expect(h.log).toHaveBeenCalledWith(JSON.stringify({
+			status: "source-verification", phase: "before-export", expectedSha: sourceSha ?? null,
+			actualSha: sha, gitStatus: "",
+		}));
+		expect(h.guard).not.toHaveBeenCalled();
+		expect(h.run.mock.calls.some(([command]) => command !== "git")).toBe(false);
+	});
 	it("exports both platforms before a single publication of that bundle and returns provenance", () => {
 		const h = harness();
 		expect(h.publish()).toHaveLength(2);
@@ -81,7 +112,9 @@ describe("production publication boundary", () => {
 	it("blocks a new worker when the old worker disappears without completing its catch", () => {
 		const server = { locked: false };
 		const first = harness("publish", server);
-		first.log.mockImplementation(() => { throw new Error("Worker terminated"); });
+		first.log.mockImplementation((message: string) => {
+			if (message.includes('"status":"publication-locked"')) throw new Error("Worker terminated");
+		});
 		expect(first.publish).toThrow("Worker terminated");
 		const next = harness(undefined, server);
 		expect(next.publish).toThrow("already exists");

@@ -1,14 +1,16 @@
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-	ActivityIndicator,
-	AppState,
+	Stack,
+	useFocusEffect,
+	useLocalSearchParams,
+	useRouter,
+} from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, AppState, View } from "react-native";
+import {
 	KeyboardAvoidingView,
-	Platform,
-	ScrollView,
-	View,
-} from "react-native";
+	type KeyboardAwareScrollViewRef,
+} from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -17,15 +19,15 @@ import { ScreenHeader } from "~/components/screen-header";
 import { BackButton, Button } from "~/components/ui/button";
 import { ErrorMessage } from "~/components/ui/error-message";
 import { Timer } from "~/components/ui/icon";
+import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
 import { Text } from "~/components/ui/text";
-import { Textarea } from "~/components/ui/textarea";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
 import { ChoiceList } from "~/features/learning-plans/choice-list";
 import { LearningSessionCompletion } from "~/features/learning-plans/learning-session-completion";
-import { getLearningSessionAnalysisDestination } from "~/features/learning-plans/session-analysis-navigation";
 import { learningSessionAnalyticsProperties } from "~/features/learning-plans/session-analytics";
+import { getLearningSessionCompletionDestination } from "~/features/learning-plans/session-completion-navigation";
 import { FeedbackView } from "~/features/learning-plans/session-feedback";
 import { getLearningSessionBackTarget } from "~/features/learning-plans/session-navigation";
 import {
@@ -36,6 +38,7 @@ import {
 	getTheoryTopicPosition,
 	isPairedTheoryQuestionItem,
 } from "~/features/learning-plans/session-progress";
+import { TextAnswer } from "~/features/learning-plans/text-answer";
 import { runTheoryTopicPrimaryAction } from "~/features/learning-plans/theory-topic";
 import { TheoryTopicPage } from "~/features/learning-plans/theory-topic-page";
 import type {
@@ -114,37 +117,6 @@ function ActionRow({
 	);
 }
 
-function TextAnswer({
-	value,
-	onChange,
-	placeholder,
-	editable,
-	fillAvailableSpace = false,
-	autoFocus,
-}: {
-	value: string;
-	onChange: (value: string) => void;
-	placeholder: string;
-	editable: boolean;
-	fillAvailableSpace?: boolean;
-	autoFocus?: boolean;
-}) {
-	return (
-		<Textarea
-			autoFocus={(autoFocus ?? fillAvailableSpace) && editable}
-			accessibilityLabel="Antwort"
-			className={cn(
-				"mt-4 px-0 py-2",
-				fillAvailableSpace ? "min-h-[180px] flex-1" : "min-h-40",
-			)}
-			editable={editable}
-			value={value}
-			onChangeText={onChange}
-			placeholder={placeholder}
-		/>
-	);
-}
-
 export default function LearningSessionContentScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
@@ -198,11 +170,22 @@ export default function LearningSessionContentScreen() {
 	const didStartTrackingRef = useRef(false);
 	const didRecordOutcomeRef = useRef(false);
 	const advancedPreTheoryQuestionItemIdRef = useRef<string | null>(null);
+	const [isFocused, setIsFocused] = useState(true);
+	useFocusEffect(
+		useCallback(() => {
+			setIsFocused(true);
+			return () => setIsFocused(false);
+		}, []),
+	);
+	const checkpointStudyTime = useMutation(
+		api.learningPlans.checkpointStudyTime,
+	);
+	const restoredStudyTime = useRef(false);
 	const activeStudySecondsRef = useRef(0);
 	const activeStudyStartedAtRef = useRef<number | null>(null);
 	const isStudyInteractionActiveRef = useRef(false);
 	const appStateRef = useRef(AppState.currentState);
-	const contentScrollRef = useRef<ScrollView>(null);
+	const contentScrollRef = useRef<KeyboardAwareScrollViewRef>(null);
 	const startSessionPromiseRef = useRef<ReturnType<typeof startSession> | null>(
 		null,
 	);
@@ -235,7 +218,9 @@ export default function LearningSessionContentScreen() {
 		sessionItems,
 		currentIndex,
 	);
-	const shouldTrackActiveStudy = Boolean(currentItem && !completionPhase);
+	const shouldTrackActiveStudy = Boolean(
+		currentItem && !completionPhase && isFocused,
+	);
 	const isPraxisSession = content?.session.phase === "rehearsal";
 	const isDiagnosticSession = content?.session.sessionPurpose === "diagnostic";
 	const isPairedTheoryQuestion = isPairedTheoryQuestionItem(currentItem);
@@ -357,6 +342,36 @@ export default function LearningSessionContentScreen() {
 			activeStudyStartedAtRef.current = null;
 		}
 	}, [shouldTrackActiveStudy]);
+
+	useEffect(() => {
+		if (!restoredStudyTime.current && content) {
+			activeStudySecondsRef.current += content.session.activeStudySeconds ?? 0;
+			restoredStudyTime.current = true;
+		}
+	}, [content]);
+	useEffect(() => {
+		if (!sessionId || !isDiagnosticSession) return;
+		const checkpoint = () => {
+			void checkpointStudyTime({
+				sessionId,
+				activeStudySeconds: getActiveStudySeconds(),
+			}).catch(() => {});
+		};
+		const timer = setInterval(checkpoint, 15000);
+		const subscription = AppState.addEventListener("change", (state) => {
+			if (state !== "active") checkpoint();
+		});
+		return () => {
+			clearInterval(timer);
+			subscription.remove();
+			checkpoint();
+		};
+	}, [
+		sessionId,
+		isDiagnosticSession,
+		checkpointStudyTime,
+		getActiveStudySeconds,
+	]);
 
 	usePrepareSessionContent({
 		enabled: Boolean(user && isConvexAuthenticated),
@@ -573,7 +588,7 @@ export default function LearningSessionContentScreen() {
 		}
 	};
 
-	const completeAndOpenAnalysis = async () => {
+	const completeAndOpenLearningPlan = async () => {
 		if (!sessionId || isBusy) return;
 
 		setIsBusy(true);
@@ -595,10 +610,19 @@ export default function LearningSessionContentScreen() {
 					},
 				);
 			}
-			router.dismissTo(getLearningSessionAnalysisDestination(planId));
+			const destination =
+				content?.session.sessionPurpose === "diagnostic" &&
+				content.plan.preparationState &&
+				planId
+					? {
+							pathname: "/learning-plans/[planId]/preparation" as const,
+							params: { planId },
+						}
+					: getLearningSessionCompletionDestination(planId);
+			router.dismissTo(destination);
 		} catch (error) {
 			setErrorMessage(
-				getErrorMessage(error, "Die Analyse konnte nicht geöffnet werden."),
+				getErrorMessage(error, "Der Lernplan konnte nicht geöffnet werden."),
 			);
 		} finally {
 			setIsBusy(false);
@@ -866,7 +890,7 @@ export default function LearningSessionContentScreen() {
 								<View
 									accessible
 									accessibilityLabel={`Verbleibende Zeit: ${formatRemainingTime(displayedRemainingSeconds)}`}
-									className="min-h-12 min-w-[92px] flex-row items-center justify-center gap-2 rounded-full border-hairline border-praxis/20 bg-praxis-subtle px-4 shadow-black/5 shadow-sm"
+									className="min-h-12 min-w-[92px] flex-row items-center justify-center gap-2 rounded-full border-hairline border-praxis/20 bg-praxis-subtle px-4"
 								>
 									<Timer
 										size={18}
@@ -901,7 +925,7 @@ export default function LearningSessionContentScreen() {
 					) : null}
 				</View>
 			) : null}
-			<ScrollView
+			<KeyboardSafeScrollView
 				ref={contentScrollRef}
 				className="flex-1"
 				bounces={
@@ -912,7 +936,7 @@ export default function LearningSessionContentScreen() {
 					Boolean(visibleAttempt) ||
 					Boolean(completionPhase)
 				}
-				automaticallyAdjustKeyboardInsets={currentItem?.kind === "written"}
+				enabled={currentItem?.kind === "written"}
 				contentContainerStyle={{
 					flexGrow: 1,
 					paddingHorizontal: 32,
@@ -921,8 +945,6 @@ export default function LearningSessionContentScreen() {
 							? 24
 							: Math.max(insets.bottom + 28, 60),
 				}}
-				keyboardShouldPersistTaps="handled"
-				showsVerticalScrollIndicator={false}
 			>
 				{!content || content.items.length === 0 || needsTheoryContentUpgrade ? (
 					<View className="flex-1 items-center justify-center px-4 py-24">
@@ -973,7 +995,7 @@ export default function LearningSessionContentScreen() {
 						onPrimary={
 							completionPhase === "theory"
 								? completeAndLeave
-								: completeAndOpenAnalysis
+								: () => void completeAndOpenLearningPlan()
 						}
 						isBusy={isBusy}
 					/>
@@ -1016,11 +1038,9 @@ export default function LearningSessionContentScreen() {
 						{errorMessage}
 					</Text>
 				) : null}
-			</ScrollView>
+			</KeyboardSafeScrollView>
 			{showQuestionActions && content ? (
-				<KeyboardAvoidingView
-					behavior={Platform.OS === "ios" ? "padding" : undefined}
-				>
+				<KeyboardAvoidingView behavior="padding">
 					<View
 						className="border-border border-t-hairline bg-background px-8 pt-4"
 						style={{ paddingBottom: Math.max(insets.bottom, 16) }}

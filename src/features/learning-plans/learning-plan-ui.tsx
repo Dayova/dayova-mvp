@@ -120,7 +120,7 @@ export function MaterialCard({
 
 	return (
 		<Surface
-			className="mb-3 flex-row items-center rounded-[24px] px-4 py-4"
+			className="mb-3 flex-row items-center rounded-[24px] border border-border px-4 py-4"
 			variant="soft"
 		>
 			<View className="h-11 w-11 items-center justify-center rounded-full bg-primary/12">
@@ -316,9 +316,6 @@ function SessionEditPill({
 			activeOpacity={0.86}
 			onPress={onPress}
 			className={cn("min-h-[64px] rounded-[28px] px-5", className)}
-			style={{
-				boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
-			}}
 		>
 			<Text
 				className="flex-1 font-poppins text-body-2 text-text"

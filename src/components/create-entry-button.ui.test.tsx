@@ -25,9 +25,11 @@ jest.mock("~/components/create-type-picker-modal", () => ({
 	CreateTypePickerModal: ({
 		visible,
 		onSelect,
+		onRequestClose,
 	}: {
 		visible: boolean;
 		onSelect: (type: "homework" | "exam") => void;
+		onRequestClose: () => void;
 	}) => {
 		const React = jest.requireActual<typeof import("react")>("react");
 		const { Text, TouchableOpacity } =
@@ -36,6 +38,11 @@ jest.mock("~/components/create-type-picker-modal", () => ({
 			? React.createElement(
 					React.Fragment,
 					null,
+					React.createElement(TouchableOpacity, {
+						accessibilityRole: "button",
+						accessibilityLabel: "Auswahl schließen",
+						onPress: onRequestClose,
+					}),
 					React.createElement(
 						TouchableOpacity,
 						{
@@ -64,37 +71,72 @@ describe("CreateEntryButton", () => {
 		mockPush.mockClear();
 	});
 
-	test("opens the picker and routes to exam creation", async () => {
+	test("closes the picker without creating an entry", async () => {
+		const screen = await render(<CreateEntryButton returnTo={ROUTES.home} />);
+		await act(() =>
+			fireEvent.press(
+				screen.getByRole("button", { name: "Eintrag hinzufügen" }),
+			),
+		);
+		await act(() =>
+			fireEvent.press(
+				screen.getByRole("button", { name: "Auswahl schließen" }),
+			),
+		);
+		expect(
+			screen.queryByRole("button", { name: "Prüfung auswählen" }),
+		).toBeNull();
+		expect(mockPush).not.toHaveBeenCalled();
+	});
+
+	test("opens the picker before navigating to homework creation", async () => {
 		const screen = await render(<CreateEntryButton returnTo={ROUTES.home} />);
 
 		await act(() =>
 			fireEvent.press(
-				screen.getByRole("button", { name: "Neuen Eintrag erstellen." }),
+				screen.getByRole("button", { name: "Eintrag hinzufügen" }),
 			),
 		);
-		fireEvent.press(screen.getByRole("button", { name: "Prüfung auswählen" }));
+		expect(
+			screen.queryByRole("button", { name: "Prüfung auswählen" }),
+		).not.toBeNull();
+		expect(
+			screen.queryByRole("button", { name: "Hausaufgabe auswählen" }),
+		).not.toBeNull();
+		expect(mockPush).not.toHaveBeenCalled();
+		await act(() =>
+			fireEvent.press(
+				screen.getByRole("button", { name: "Hausaufgabe auswählen" }),
+			),
+		);
+		expect(
+			screen.queryByRole("button", { name: "Hausaufgabe auswählen" }),
+		).toBeNull();
+		expect(mockPush).toHaveBeenCalledTimes(1);
 
 		expect(mockPush).toHaveBeenCalledWith(
-			withReturnTo(ROUTES.createExam, ROUTES.home),
+			withReturnTo(ROUTES.createHomework, ROUTES.home),
 		);
 	});
 
-	test("routes homework selection to homework creation", async () => {
+	test("preserves the return destination for learning-plan creation", async () => {
 		const screen = await render(
 			<CreateEntryButton returnTo={ROUTES.learningPlans} />,
 		);
 
 		await act(() =>
 			fireEvent.press(
-				screen.getByRole("button", { name: "Neuen Eintrag erstellen." }),
+				screen.getByRole("button", { name: "Eintrag hinzufügen" }),
 			),
 		);
-		fireEvent.press(
-			screen.getByRole("button", { name: "Hausaufgabe auswählen" }),
-		);
 
+		await act(() =>
+			fireEvent.press(
+				screen.getByRole("button", { name: "Prüfung auswählen" }),
+			),
+		);
 		expect(mockPush).toHaveBeenCalledWith(
-			withReturnTo(ROUTES.createHomework, ROUTES.learningPlans),
+			withReturnTo(ROUTES.createExam, ROUTES.learningPlans),
 		);
 	});
 });

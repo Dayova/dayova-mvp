@@ -337,13 +337,6 @@ export default function ProfileScreen() {
 							disabled: isEmailVerificationPending ? !canVerifyCode : !canSave,
 						}}
 						onPress={isEmailVerificationPending ? verifyEmail : saveProfile}
-						style={{
-							shadowColor: "#00BAFF",
-							shadowOpacity: canSave || canVerifyCode ? 0.22 : 0,
-							shadowRadius: 12,
-							shadowOffset: { width: 0, height: 5 },
-							elevation: canSave || canVerifyCode ? 4 : 0,
-						}}
 					>
 						{isSaving ? (
 							<ActivityIndicator color="#FFFFFF" />
