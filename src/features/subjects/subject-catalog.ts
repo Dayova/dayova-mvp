@@ -92,4 +92,4 @@ const BUILT_IN_SUBJECT_OPTIONS = BUILT_IN_SUBJECT_NAMES.map((name) => ({
 	Icon: subjectIconByBuiltInName[name],
 }));
 
-export { BUILT_IN_SUBJECT_OPTIONS, getSubjectIcon, subjectIconByBuiltInName };
+export { BUILT_IN_SUBJECT_OPTIONS, getSubjectIcon };

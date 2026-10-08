@@ -14,5 +14,5 @@ type AiConsentSnapshot = {
 	hasCurrentConsent: boolean;
 };
 
-export type { AiConsentSnapshot, AiConsentStatus };
+export type { AiConsentSnapshot };
 export { AI_CONSENT_PROVIDER, AI_CONSENT_REQUIRED_MESSAGE, AI_CONSENT_VERSION };

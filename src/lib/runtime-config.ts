@@ -74,7 +74,7 @@ export const getMissingPublicRuntimeConfig = (
 	config: PublicRuntimeConfigValues,
 ) => requiredPublicEnvKeys.filter((key) => !config[key]?.trim());
 
-export const getMissingReleasePublicRuntimeConfig = (
+const getMissingReleasePublicRuntimeConfig = (
 	config: PublicRuntimeConfigValues,
 	platform?: ReleasePlatform,
 ) => {

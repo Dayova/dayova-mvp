@@ -101,4 +101,4 @@ function OnboardingSelect<T extends string>({
 	);
 }
 
-export { OnboardingSelect, PickerInputTrigger };
+export { OnboardingSelect };

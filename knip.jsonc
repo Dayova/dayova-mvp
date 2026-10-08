@@ -1,15 +1,27 @@
 {
 	"$schema": "https://unpkg.com/knip@6/schema.json",
-	"entry": ["plugins/*.js"],
+	"entry": [
+		"plugins/*.js",
+		// Standalone verification and release helpers documented beside their artifacts.
+		"docs/evidence/**/*.mjs",
+		"release/**/scripts/*.cjs",
+		// Loaded dynamically by jest.requireActual in UI tests.
+		"tests/mocks/*.cjs"
+	],
+	// Installed outside npm; required for the optional native smoke suite.
+	"ignoreBinaries": ["maestro"],
 	"ignore": [".agents/**"],
 	// Required by the EAS/Xcode iOS build path even though app source does not
 	// import it directly. Removing it can fail Babel startup with:
 	// [BABEL] /Users/expo/workingdir/build/index.ts: Cannot find module '@babel/plugin-transform-react-jsx'
 	"ignoreDependencies": [
 		"@babel/plugin-transform-react-jsx",
+		// Expo config plugins are resolved by name in app.config.cts.
+		"expo-font",
+		"expo-splash-screen",
 		// Invoked through an explicit node_modules/.bin path so the updater can
 		// keep its isolated fetch workspace as the CLI working directory.
-		"skills",
+		"skills"
 	],
 	"tags": ["-lintignore"]
 }

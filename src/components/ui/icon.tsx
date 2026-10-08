@@ -1,6 +1,5 @@
 import {
 	AlertCircleIcon,
-	Analytics01Icon,
 	ArrowDataTransferHorizontalIcon,
 	ArrowDown01Icon,
 	ArrowLeft01Icon,
@@ -24,11 +23,9 @@ import {
 	Dna01Icon,
 	Dumbbell02Icon,
 	EarthIcon,
-	Fire02Icon,
 	FootballIcon,
 	GlobeIcon,
 	GreekHelmetIcon,
-	Home02Icon,
 	Image01Icon,
 	InformationCircleIcon,
 	LanguageCircleIcon,
@@ -53,7 +50,6 @@ import {
 	RepeatIcon,
 	Route02Icon,
 	ScanImageIcon,
-	Settings01Icon,
 	SparklesIcon,
 	SquareLock02Icon,
 	SquareRootSquareIcon,
@@ -77,7 +73,6 @@ const createIcon = (icon: HugeiconsProps["icon"]) => (props: IconProps) => (
 );
 
 export const Attachment = createIcon(Attachment01Icon);
-export const Analytics = createIcon(Analytics01Icon);
 export const ArrowDataTransferHorizontal = createIcon(
 	ArrowDataTransferHorizontalIcon,
 );
@@ -108,12 +103,10 @@ export const Dumbbell = createIcon(Dumbbell02Icon);
 export const Earth = createIcon(EarthIcon);
 export const Eye = createIcon(ViewIcon);
 export const EyeOff = createIcon(ViewOffIcon);
-export const Fire = createIcon(Fire02Icon);
 export const Football = createIcon(FootballIcon);
 export const GraduationCap = createIcon(Mortarboard01Icon);
 export const GreekHelmet = createIcon(GreekHelmetIcon);
 export const Globe = createIcon(GlobeIcon);
-export const Home = createIcon(Home02Icon);
 export const Photo = createIcon(Image01Icon);
 export const Info = createIcon(InformationCircleIcon);
 export const Language = createIcon(LanguageCircleIcon);
@@ -135,7 +128,6 @@ export const PropertyEdit = createIcon(PropertyEditIcon);
 export const Repeat = createIcon(RepeatIcon);
 export const Route2 = createIcon(Route02Icon);
 export const ScanImage = createIcon(ScanImageIcon);
-export const Settings = createIcon(Settings01Icon);
 export const SquareLock = createIcon(SquareLock02Icon);
 export const SquareRootSquare = createIcon(SquareRootSquareIcon);
 export const Sparkles = createIcon(SparklesIcon);

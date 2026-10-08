@@ -104,9 +104,11 @@ the implementation rules and native validation matrix.
 
 ```sh
 pnpm check          # lint and TypeScript
-pnpm test           # Vitest suite
+pnpm test           # Vitest, Node, and Jest UI suites
 pnpm format:check   # formatting and Tailwind class order
 pnpm check:unused   # unused files, dependencies, and exports
+pnpm skills:validate # repository skill catalog and overlays
+pnpm check:compiler # React Compiler health check
 ```
 
 ## Repository guidance

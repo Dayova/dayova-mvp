@@ -192,7 +192,7 @@ export const getAgendaEntryTitle = (entry: DayEntry) =>
 		? entry.title.trim()
 		: "Aufgabe";
 
-export const parseAgendaTime = (time?: string) => {
+const parseAgendaTime = (time?: string) => {
 	if (!time || time.trim().toLowerCase() === "ganztägig") return null;
 	const match = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
 	if (!match) return null;

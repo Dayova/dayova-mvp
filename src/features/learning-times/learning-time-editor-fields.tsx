@@ -163,5 +163,4 @@ function LearningTimeEditorFields({
 	);
 }
 
-export type { LearningTimeEditorFieldsProps };
 export { LearningTimeEditorFields };
