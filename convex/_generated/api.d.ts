@@ -43,6 +43,7 @@ import type * as learningPlanAiUsage from "../learningPlanAiUsage.js";
 import type * as learningPlanAvailability from "../learningPlanAvailability.js";
 import type * as learningPlanCalendar from "../learningPlanCalendar.js";
 import type * as learningPlanDiagnostic from "../learningPlanDiagnostic.js";
+import type * as learningPlanMaterialUpdates from "../learningPlanMaterialUpdates.js";
 import type * as learningPlanPlanningHints from "../learningPlanPlanningHints.js";
 import type * as learningPlans from "../learningPlans.js";
 import type * as learningPreparation from "../learningPreparation.js";
@@ -117,6 +118,7 @@ declare const fullApi: ApiFromModules<{
   learningPlanAvailability: typeof learningPlanAvailability;
   learningPlanCalendar: typeof learningPlanCalendar;
   learningPlanDiagnostic: typeof learningPlanDiagnostic;
+  learningPlanMaterialUpdates: typeof learningPlanMaterialUpdates;
   learningPlanPlanningHints: typeof learningPlanPlanningHints;
   learningPlans: typeof learningPlans;
   learningPreparation: typeof learningPreparation;

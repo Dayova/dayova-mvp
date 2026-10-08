@@ -2,12 +2,14 @@ import { ActivityIndicator, View } from "react-native";
 import type { Id } from "#convex/_generated/dataModel";
 import { Button } from "~/components/ui/button";
 import { GraduationCap, Plus } from "~/components/ui/icon";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { ActionSurface, Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { MaterialCard } from "~/features/learning-plans/learning-plan-ui";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { useDayovaTheme } from "~/lib/theme";
+import { cn } from "~/lib/utils";
 
 type PendingUploadAction = "camera" | "library" | "files";
 
@@ -30,7 +32,11 @@ function SetupContinueButton({
 			disabled={!canContinue}
 			onPress={onPress}
 		>
-			{isBusy ? <ActivityIndicator color="#FFFFFF" /> : <Text>{label}</Text>}
+			{isBusy ? (
+				<ActivityIndicator color="#FFFFFF" />
+			) : (
+				<Text className="min-w-0 shrink text-center">{label}</Text>
+			)}
 		</Button>
 	);
 }
@@ -118,6 +124,8 @@ export function MaterialUploadActionCard(props: MaterialUploadActionCardProps) {
 	const mode = props.mode ?? "screen";
 	const { colors } = useDayovaTheme();
 	const fixedTextScale = mode === "artwork";
+	const { shouldStackInlineContent } = useContentSizeLayout();
+	const stacked = !fixedTextScale && shouldStackInlineContent;
 	const content = (
 		<>
 			<View className="h-12 w-12 items-center justify-center rounded-[18px] bg-system-subtle">
@@ -127,7 +135,7 @@ export function MaterialUploadActionCard(props: MaterialUploadActionCardProps) {
 					strokeWidth={2.1}
 				/>
 			</View>
-			<View className="min-w-0 flex-1 px-4">
+			<View className={stacked ? "w-full min-w-0" : "min-w-0 flex-1 px-4"}>
 				<Text
 					allowFontScaling={!fixedTextScale}
 					className="font-poppins font-semibold text-body-2 text-text"
@@ -146,8 +154,10 @@ export function MaterialUploadActionCard(props: MaterialUploadActionCardProps) {
 			<Plus size={22} color={colors.primaryStrong} strokeWidth={2.2} />
 		</>
 	);
-	const className =
-		"mt-7 min-h-[112px] flex-row items-center rounded-[32px] border border-border px-5 py-5";
+	const className = cn(
+		"mt-7 min-h-[112px] rounded-[32px] border border-border px-5 py-5",
+		stacked ? "items-start gap-3" : "flex-row items-center",
+	);
 
 	if (props.mode === "artwork") {
 		return (
@@ -193,8 +203,10 @@ export function MaterialUploadStep({
 	onOpenUpload,
 	onRemoveDocument,
 	onSkip,
+	onPause,
 	openingUploadAction,
 	showSkip = true,
+	showActions = true,
 }: {
 	canUpload: boolean;
 	canContinue: boolean;
@@ -206,8 +218,10 @@ export function MaterialUploadStep({
 	onOpenUpload: () => void;
 	onRemoveDocument: (id: Id<"learningPlanDocuments">) => void;
 	onSkip: () => void;
+	onPause?: () => void;
 	openingUploadAction: PendingUploadAction | null;
 	showSkip?: boolean;
+	showActions?: boolean;
 }) {
 	const schoolDocuments = documents.filter(
 		(document) => document.sourceKind === "school",
@@ -215,7 +229,7 @@ export function MaterialUploadStep({
 	const hasSchoolMaterial = schoolDocuments.length > 0;
 
 	return (
-		<View className="flex-1">
+		<View className={showActions ? "flex-1" : "w-full"}>
 			<MaterialUploadStepLead />
 			<MaterialUploadActionCard
 				canUpload={canUpload}
@@ -223,7 +237,7 @@ export function MaterialUploadStep({
 				onPress={onOpenUpload}
 			/>
 
-			{showSkip && !hasSchoolMaterial ? (
+			{(showSkip || onPause) && !hasSchoolMaterial ? (
 				<Text className="mt-3 font-poppins text-body-4 text-secondary-text">
 					Dein Lernplan-Entwurf bleibt gespeichert. Schulmaterial kannst du
 					später ergänzen.
@@ -252,24 +266,39 @@ export function MaterialUploadStep({
 			) : null}
 
 			<SetupError message={errorMessage} />
-			<View className="mt-auto w-full gap-3 pt-8">
-				{hasSchoolMaterial ? (
-					<SetupContinueButton
-						canContinue={canContinue}
-						isBusy={isBusy}
-						onPress={onContinue}
-					/>
-				) : showSkip ? (
-					<Button
-						accessibilityHint="Speichert den Lernplan-Entwurf. Material kann später hochgeladen werden."
-						variant="neutral"
-						disabled={!canUpload}
-						onPress={onSkip}
-					>
-						<Text>Ohne Lernmaterial erstellen</Text>
-					</Button>
-				) : null}
-			</View>
+			{showActions ? (
+				<View className="mt-auto w-full gap-3 pt-8">
+					{hasSchoolMaterial ? (
+						<SetupContinueButton
+							canContinue={canContinue}
+							isBusy={isBusy}
+							onPress={onContinue}
+						/>
+					) : showSkip ? (
+						<Button
+							accessibilityHint="Speichert den Lernplan-Entwurf. Material kann später hochgeladen werden."
+							variant="neutral"
+							disabled={!canUpload}
+							onPress={onSkip}
+						>
+							<Text className="min-w-0 shrink text-center">
+								Ohne Lernmaterial erstellen
+							</Text>
+						</Button>
+					) : null}
+					{onPause ? (
+						<Button
+							variant="cancel"
+							disabled={isBusy || isUploading || openingUploadAction !== null}
+							onPress={onPause}
+						>
+							<Text className="min-w-0 shrink text-center">
+								Später fortsetzen
+							</Text>
+						</Button>
+					) : null}
+				</View>
+			) : null}
 		</View>
 	);
 }

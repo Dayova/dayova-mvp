@@ -305,7 +305,7 @@ describe("learning plan swipe navigation", () => {
 		);
 		expect(mockPush).toHaveBeenCalledTimes(1);
 		expect(mockPush).toHaveBeenCalledWith(
-			"/learning-plans/new?learningPlanId=plan-1",
+			"/learning-plans/new?learningPlanId=plan-1&mode=edit",
 		);
 	});
 

@@ -107,7 +107,12 @@ type DeleteTarget =
 	| { kind: "homework"; item: HomeworkOverview };
 
 const getPlanHref = (plan: LearningPlanOverview) =>
-	learningPlanResumePath(plan.id, plan.status, plan.diagnosticPlacement);
+	learningPlanResumePath(
+		plan.id,
+		plan.status,
+		plan.diagnosticPlacement,
+		plan.scopeConfirmedAt,
+	);
 
 const formatDateFromKey = (dayKey: string) => {
 	const date = parseDayKey(dayKey);
@@ -554,7 +559,9 @@ function LearningPlanCard({
 		isActionRailOpen.set(false);
 		translateX.set(0);
 		setIsActionRailVisible(false);
-		router.push(`/learning-plans/new?learningPlanId=${plan.id}` as const);
+		router.push(
+			`/learning-plans/new?learningPlanId=${plan.id}&mode=edit` as const,
+		);
 	};
 	const deletePlan = () => {
 		isActionRailOpen.set(false);
