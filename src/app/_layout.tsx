@@ -4,7 +4,6 @@ import { tokenCache } from "@clerk/expo/token-cache";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { PortalHost } from "@rn-primitives/portal";
 import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
-import { Stack } from "expo-router";
 import { ThemeProvider } from "expo-router/react-navigation";
 import * as SystemUI from "expo-system-ui";
 import { vars } from "nativewind";
@@ -16,6 +15,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AnalyticsIdentity } from "~/components/analytics-identity";
 import { AuthNavigationGate } from "~/components/auth-navigation-gate";
 import { NotificationSync } from "~/components/notification-sync";
+import { RootNavigationStack } from "~/components/root-navigation-stack";
 import { TrialReminderSync } from "~/components/trial-reminder-sync";
 import {
 	SheetAccessibilityProvider,
@@ -41,7 +41,6 @@ const convexUrl = env.EXPO_PUBLIC_CONVEX_URL?.trim();
 const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
 function AppNavigator() {
 	const sheetAccessibility = useSheetAccessibility();
-	const { colors } = useDayovaTheme();
 
 	return (
 		<>
@@ -55,56 +54,7 @@ function AppNavigator() {
 				}
 			>
 				<AuthNavigationGate>
-					<Stack
-						screenOptions={{
-							headerShown: false,
-							// Keep ordinary pages on the same native transition per platform.
-							animation: "default",
-							contentStyle: { backgroundColor: colors.background },
-						}}
-					>
-						<Stack.Screen name="(auth)" options={{ animation: "none" }} />
-						<Stack.Screen name="(app)" options={{ animation: "none" }} />
-						<Stack.Screen
-							name="subscription"
-							options={{
-								gestureEnabled: true,
-								presentation: "card",
-							}}
-						/>
-						<Stack.Screen
-							name="subscription-success"
-							options={{
-								animation: "none",
-								gestureEnabled: false,
-								presentation: "card",
-							}}
-						/>
-						<Stack.Screen
-							name="learning-times/edit"
-							options={{
-								contentStyle: { backgroundColor: colors.background },
-								gestureEnabled: true,
-								presentation: "card",
-							}}
-						/>
-						<Stack.Screen
-							name="timetable"
-							options={{
-								contentStyle: { backgroundColor: colors.background },
-								gestureEnabled: true,
-								presentation: "card",
-							}}
-						/>
-						<Stack.Screen
-							name="personal-subjects"
-							options={{
-								contentStyle: { backgroundColor: colors.background },
-								gestureEnabled: true,
-								presentation: "card",
-							}}
-						/>
-					</Stack>
+					<RootNavigationStack />
 				</AuthNavigationGate>
 			</View>
 			<PortalHost />
