@@ -8,12 +8,10 @@ test("shows an explicit update action only for pending material", async () => {
 		<MaterialUpdatePanel pending busy={false} result={null} onApply={apply} />,
 	);
 	expect(
-		screen.getByText(
-			"Material geändert – dein Lernplan wurde noch nicht aktualisiert.",
-		),
+		screen.getByText("Material gespeichert. Lernplan noch nicht aktualisiert."),
 	).toBeOnTheScreen();
 	await fireEvent.press(
-		screen.getByRole("button", { name: "Für weiteres Lernen berücksichtigen" }),
+		screen.getByRole("button", { name: "Lernplan aktualisieren" }),
 	);
 	expect(apply).toHaveBeenCalledTimes(1);
 	await screen.rerender(
@@ -27,7 +25,7 @@ test("shows an explicit update action only for pending material", async () => {
 	);
 	expect(
 		screen.queryByRole("button", {
-			name: "Für weiteres Lernen berücksichtigen",
+			name: "Lernplan aktualisieren",
 		}),
 	).toBeNull();
 	expect(screen.getByText("2 Lernblöcke aktualisiert.")).toBeOnTheScreen();
@@ -40,7 +38,7 @@ test("disables repeated requests and keeps errors and retry visible", async () =
 		<MaterialUpdatePanel pending busy result={null} onApply={apply} />,
 	);
 	const button = screen.getByRole("button", {
-		name: "Für weiteres Lernen berücksichtigen",
+		name: "Lernplan aktualisieren",
 	});
 	expect(button).toBeDisabled();
 	await fireEvent.press(button);
@@ -58,6 +56,27 @@ test("disables repeated requests and keeps errors and retry visible", async () =
 		/Inhalte bleiben erhalten/,
 	);
 	expect(
-		screen.getByRole("button", { name: "Für weiteres Lernen berücksichtigen" }),
+		screen.getByRole("button", { name: "Lernplan aktualisieren" }),
 	).toBeEnabled();
+});
+
+test("shows preservation details on demand without applying material", async () => {
+	const apply = jest.fn();
+	const screen = await render(
+		<MaterialUpdatePanel pending busy={false} result={null} onApply={apply} />,
+	);
+	expect(screen.queryByText(/Nur noch nicht begonnene/)).toBeNull();
+	const details = screen.getByRole("button", {
+		name: "Was wird aktualisiert?",
+	});
+	expect(details.props.accessibilityState).toMatchObject({ expanded: false });
+	await fireEvent.press(details);
+	expect(
+		screen.getByText(/Fortschritt und Termine bleiben erhalten/),
+	).toBeOnTheScreen();
+	expect(apply).not.toHaveBeenCalled();
+	await fireEvent.press(
+		screen.getByRole("button", { name: "Details ausblenden" }),
+	);
+	expect(screen.queryByText(/Nur noch nicht begonnene/)).toBeNull();
 });

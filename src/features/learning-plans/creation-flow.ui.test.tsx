@@ -1121,7 +1121,7 @@ describe("accepted-plan material updates", () => {
 		const screen = await render(<NewLearningPlanScreen />);
 		await fireEvent.press(
 			screen.getByRole("button", {
-				name: "Für weiteres Lernen berücksichtigen",
+				name: "Lernplan aktualisieren",
 			}),
 		);
 		expect(mockApplyMaterial).toHaveBeenCalledWith({
@@ -1146,7 +1146,7 @@ describe("accepted-plan material updates", () => {
 			const screen = await render(<NewLearningPlanScreen />);
 			expect(
 				screen.getByRole("button", {
-					name: "Für weiteres Lernen berücksichtigen",
+					name: "Lernplan aktualisieren",
 				}),
 			).toBeDisabled();
 			await act(async () => {
@@ -1154,7 +1154,7 @@ describe("accepted-plan material updates", () => {
 			});
 			expect(
 				screen.getByRole("button", {
-					name: "Für weiteres Lernen berücksichtigen",
+					name: "Lernplan aktualisieren",
 				}),
 			).toBeEnabled();
 		} finally {

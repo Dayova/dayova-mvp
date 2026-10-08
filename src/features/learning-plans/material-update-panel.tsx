@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
@@ -21,13 +22,9 @@ export function MaterialUpdatePanel({
 	onApply: () => void;
 	showAction?: boolean;
 }) {
+	const [showDetails, setShowDetails] = useState(false);
 	return (
 		<View className="gap-3">
-			<Text className="text-body-3 text-secondary-text">
-				Materialänderungen werden sofort gespeichert. Bestehende Aufgaben und
-				Lernkarten ändern sich erst, wenn du die Änderungen für das weitere
-				Lernen berücksichtigst.
-			</Text>
 			{pending || busy ? (
 				<View className="gap-3 rounded-[24px] border border-border bg-card p-4">
 					<Text
@@ -36,25 +33,36 @@ export function MaterialUpdatePanel({
 					>
 						{busy
 							? "Material wird analysiert …"
-							: "Material geändert – dein Lernplan wurde noch nicht aktualisiert."}
+							: "Material gespeichert. Lernplan noch nicht aktualisiert."}
 					</Text>
-					<Text className="text-body-3 text-secondary-text">
-						Wir aktualisieren noch nicht begonnene Lerninhalte. Begonnene und
-						erledigte Inhalte, dein Lernfortschritt und deine Termine bleiben
-						erhalten. Zusätzliche Lernzeit wird nur vorgeschlagen.
-					</Text>
+					<Button
+						variant="ghost"
+						accessibilityState={{ expanded: showDetails }}
+						onPress={() => setShowDetails((value) => !value)}
+					>
+						<Text className="shrink text-center">
+							{showDetails ? "Details ausblenden" : "Was wird aktualisiert?"}
+						</Text>
+					</Button>
+					{showDetails ? (
+						<Text className="text-body-3 text-secondary-text">
+							Nur noch nicht begonnene Lerninhalte. Begonnene Inhalte,
+							Fortschritt und Termine bleiben erhalten. Zusätzliche Lernzeit
+							wird nur vorgeschlagen.
+						</Text>
+					) : null}
 					{showAction ? (
 						<Button
 							onPress={onApply}
 							disabled={busy}
-							accessibilityLabel="Für weiteres Lernen berücksichtigen"
+							accessibilityLabel="Lernplan aktualisieren"
 							accessibilityState={{ busy }}
 						>
 							{busy ? (
 								<ActivityIndicator color="#FFFFFF" />
 							) : (
 								<Text className="shrink text-center">
-									Für weiteres Lernen berücksichtigen
+									Lernplan aktualisieren
 								</Text>
 							)}
 						</Button>
@@ -79,16 +87,14 @@ export function MaterialUpdatePanel({
 			) : null}
 			{!pending && uncoveredTopics.length > 0 ? (
 				<Text className="text-body-3 text-secondary-text">
-					Für diese Themen fehlt noch ein Lernblock:{" "}
-					{uncoveredTopics.join(", ")}. Füge dafür in der Lernplanübersicht
-					einen Lerntermin hinzu.
+					Noch ohne Lernblock: {uncoveredTopics.join(", ")}. Ergänze einen
+					Lerntermin in der Übersicht.
 				</Text>
 			) : null}
 			{!pending && (additionalMinutes ?? 0) > 0 ? (
 				<Text className="text-body-3 text-secondary-text">
-					Vorschlag: Plane etwa {additionalMinutes} zusätzliche Minuten ein. Du
-					kannst dafür in der Lernplanübersicht einen weiteren Lerntermin
-					hinzufügen. Deine Termine wurden nicht verändert.
+					Vorschlag: Plane etwa {additionalMinutes} zusätzliche Minuten ein.
+					Ergänze dafür einen Lerntermin in der Übersicht.
 				</Text>
 			) : null}
 		</View>

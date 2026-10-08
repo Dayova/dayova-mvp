@@ -845,14 +845,14 @@ export default function NewLearningPlanScreen() {
 										<Button
 											onPress={() => void applyMaterial()}
 											disabled={!canWrite || isBusy || materialUpdating}
-											accessibilityLabel="Für weiteres Lernen berücksichtigen"
+											accessibilityLabel="Lernplan aktualisieren"
 											accessibilityState={{ busy: materialUpdating }}
 										>
 											{materialUpdating ? (
 												<ActivityIndicator color="#FFFFFF" />
 											) : (
 												<Text className="shrink text-center">
-													Für weiteres Lernen berücksichtigen
+													Lernplan aktualisieren
 												</Text>
 											)}
 										</Button>

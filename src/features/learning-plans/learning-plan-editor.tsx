@@ -9,6 +9,7 @@ import {
 import { ScreenScroll } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
+import { cn } from "~/lib/utils";
 
 export function LearningPlanEditor({
 	topics,
@@ -38,9 +39,12 @@ export function LearningPlanEditor({
 	footer?: ReactNode;
 }) {
 	const insets = useSafeAreaInsets();
-	const { horizontalPadding, usableWidth } = useContentSizeLayout();
+	const { horizontalPadding, usableWidth, shouldStackInlineContent } =
+		useContentSizeLayout();
 	const actionWidth =
-		isLoading || isMissing ? usableWidth : Math.max(0, (usableWidth - 12) / 2);
+		isLoading || isMissing || shouldStackInlineContent
+			? usableWidth
+			: Math.max(0, (usableWidth - 12) / 2);
 	return (
 		<>
 			<PortraitContent
@@ -82,8 +86,7 @@ export function LearningPlanEditor({
 								<>
 									<Text selectable>{topics}</Text>
 									<Text className="text-body-3 text-secondary-text">
-										Die Themen dieses Lernplans sind bereits festgelegt. Du
-										kannst weiterhin Schulmaterial ergänzen.
+										Themen sind festgelegt. Schulmaterial kannst du ergänzen.
 									</Text>
 								</>
 							)}
@@ -98,7 +101,11 @@ export function LearningPlanEditor({
 				)}
 			</ScreenScroll>
 			<PortraitContent
-				className="flex-row items-stretch gap-3 bg-background pt-6"
+				testID="learning-plan-editor-actions"
+				className={cn(
+					"items-stretch gap-3 bg-background pt-6",
+					!shouldStackInlineContent && "flex-row",
+				)}
 				style={{
 					paddingHorizontal: horizontalPadding,
 					paddingBottom: Math.max(insets.bottom, 20),
@@ -113,13 +120,7 @@ export function LearningPlanEditor({
 							onPress={onCancel}
 							accessibilityLabel="Abbrechen"
 						>
-							<Text
-								className="min-w-0 shrink text-center"
-								numberOfLines={1}
-								adjustsFontSizeToFit
-							>
-								Abbrechen
-							</Text>
+							<Text className="min-w-0 shrink text-center">Abbrechen</Text>
 						</Button>
 						{!isLoading && !isMissing ? (
 							<Button
@@ -135,13 +136,7 @@ export function LearningPlanEditor({
 								{isBusy ? (
 									<ActivityIndicator color="#FFFFFF" />
 								) : (
-									<Text
-										className="min-w-0 shrink text-center"
-										numberOfLines={1}
-										adjustsFontSizeToFit
-									>
-										Speichern
-									</Text>
+									<Text className="min-w-0 shrink text-center">Speichern</Text>
 								)}
 							</Button>
 						) : null}
