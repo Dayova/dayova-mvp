@@ -5,6 +5,7 @@ import { ReleaseInformationSheet } from "~/components/release-information-sheet"
 import { ErrorMessage } from "~/components/ui/error-message";
 import {
 	Bell,
+	BookOpen,
 	Computer,
 	CreditCard,
 	Globe,
@@ -29,6 +30,7 @@ import {
 } from "~/features/settings/settings-list";
 import { ThemePreferenceToggle } from "~/features/settings/theme-preference-toggle";
 import { openExternalUrl } from "~/lib/open-external-url";
+import { ROUTES } from "~/lib/routes";
 import { env } from "~/lib/runtime-config";
 import { getNativeSubscriptionManagementUrl } from "~/lib/store-subscription";
 import { useDayovaTheme } from "~/lib/theme";
@@ -64,6 +66,39 @@ export default function SettingsScreen() {
 	});
 	const isStoreSubscriber =
 		access?.state === "paid" || access?.state === "billingGrace";
+
+	const subscriptionCard = (
+		<View className="gap-3" testID="settings-subscription">
+			<SettingsCard>
+				{access?.state === "trial" ? (
+					<SettingsRow
+						icon={CreditCard}
+						label="Dayova abonnieren"
+						onPress={() => router.push("/subscription")}
+					/>
+				) : (
+					<SettingsRow
+						icon={CreditCard}
+						label="Dayova"
+						accessibilityLabel={`Dayova, ${nativeManagementUrl ? "Abo im Store verwalten" : "Hilfe zum Abo"}`}
+						description={
+							nativeManagementUrl ? "Abo im Store verwalten" : "Hilfe zum Abo"
+						}
+						onPress={() =>
+							openLink(
+								"subscription",
+								nativeManagementUrl ?? env.EXPO_PUBLIC_SUPPORT_URL,
+							)
+						}
+						disabled={!isStoreSubscriber}
+					/>
+				)}
+			</SettingsCard>
+			{linkErrors.subscription ? (
+				<ErrorMessage>{linkErrors.subscription}</ErrorMessage>
+			) : null}
+		</View>
+	);
 
 	return (
 		<>
@@ -106,11 +141,19 @@ export default function SettingsScreen() {
 							</SettingsCard>
 						</View>
 
+						{!isStoreSubscriber ? subscriptionCard : null}
+
 						<SettingsSection title="Lernen">
 							<SettingsRow
 								icon={Timer}
 								label="Lernzeiten"
 								onPress={() => router.push("/learning-times")}
+							/>
+							<SettingsDivider />
+							<SettingsRow
+								icon={BookOpen}
+								label="Persönliche Fächer"
+								onPress={() => router.push(ROUTES.personalSubjects)}
 							/>
 						</SettingsSection>
 
@@ -139,38 +182,7 @@ export default function SettingsScreen() {
 							/>
 						</SettingsSection>
 
-						<View className="gap-3" testID="settings-subscription">
-							<SettingsCard>
-								{access?.state === "trial" ? (
-									<SettingsRow
-										icon={CreditCard}
-										label="Dayova abonnieren"
-										onPress={() => router.push("/subscription")}
-									/>
-								) : (
-									<SettingsRow
-										icon={CreditCard}
-										label="Dayova"
-										accessibilityLabel={`Dayova, ${nativeManagementUrl ? "Abo im Store verwalten" : "Hilfe zum Abo"}`}
-										description={
-											nativeManagementUrl
-												? "Abo im Store verwalten"
-												: "Hilfe zum Abo"
-										}
-										onPress={() =>
-											openLink(
-												"subscription",
-												nativeManagementUrl ?? env.EXPO_PUBLIC_SUPPORT_URL,
-											)
-										}
-										disabled={!isStoreSubscriber}
-									/>
-								)}
-							</SettingsCard>
-							{linkErrors.subscription ? (
-								<ErrorMessage>{linkErrors.subscription}</ErrorMessage>
-							) : null}
-						</View>
+						{isStoreSubscriber ? subscriptionCard : null}
 
 						<View className="gap-3" testID="settings-legal">
 							<SettingsSection title="Datenschutz & Rechtliches">

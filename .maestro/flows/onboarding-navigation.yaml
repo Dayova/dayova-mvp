@@ -6,11 +6,13 @@ tags:
 ---
 - runFlow: ../shared/launch-unauthenticated.yaml
 - tapOn: Registrierung
-- assertVisible: 'Du weißt, was heute wirklich zählt\.'
+- assertVisible: 'Schluss mit Aufschieben\.'
 - tapOn: Weiter
-- assertVisible: 'Deine Prüfung\. Alles an einem Ort\.'
+- assertVisible: 'Lernzeiten festlegen\.'
 - tapOn: Weiter
-- assertVisible: 'Aus Stoff wird ein klarer Weg\.'
+- assertVisible: 'Schulmaterial hochladen\.'
+- tapOn: Weiter
+- assertVisible: 'Lernplan erstellen lassen\.'
 - tapOn: Meinen Start personalisieren
 - assertVisible: 'Wie dürfen wir dich nennen\?'
 - assertVisible:
@@ -19,7 +21,6 @@ tags:
 - tapOn:
     id: onboarding-name-input
 - inputText: A
-- hideKeyboard
 - assertVisible: 'Bitte gib deinen Namen ein\.'
 - assertVisible:
     text: Weiter
@@ -28,18 +29,13 @@ tags:
     id: onboarding-name-input
 - eraseText
 - inputText: Maestro
-- hideKeyboard
 - assertNotVisible: 'Bitte gib deinen Namen ein\.'
 - assertVisible:
     text: Weiter
     enabled: true
 - tapOn: Weiter
 - assertVisible: 'Wie lange möchtest du pro Lerntag einplanen\?'
-# A preview duration is not a selection; the learner must choose explicitly.
-- assertVisible:
-    text: Weiter
-    enabled: false
-- tapOn: 30 Minuten auswählen
+# Continue explicitly confirms the displayed default.
 - assertVisible:
     text: Weiter
     enabled: true
@@ -53,7 +49,7 @@ tags:
     text: Weiter
     enabled: true
 - tapOn: Weiter
-- assertVisible: 'Dein Lernplan braucht echte Zeitfenster\.'
+- assertVisible: 'Du brauchst nicht stundenlang zu lernen\.'
 - tapOn: Weiter
 - assertVisible: 'An welchen Tagen kannst du lernen\?'
 - assertVisible:
@@ -69,8 +65,12 @@ tags:
     enabled: false
 - tapOn: Montag
 - tapOn: Weiter
+- assertVisible: 'Du lernst, wenn es dir passt!'
+- tapOn: Weiter
 - assertVisible: 'Um wie viel Uhr möchtest du starten\?'
 - assertVisible: Startzeit auswählen
+- tapOn: Zurück
+- assertVisible: 'Du lernst, wenn es dir passt!'
 - tapOn: Zurück
 - assertVisible: 'An welchen Tagen kannst du lernen\?'
 - assertVisible:

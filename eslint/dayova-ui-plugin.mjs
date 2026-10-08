@@ -67,7 +67,8 @@ function getNativeControlMessageId(moduleName, controlName, filename) {
 	if (
 		(moduleName === "@expo/ui" ||
 			moduleName === "@expo/ui/jetpack-compose") &&
-		controlName === "Picker"
+		controlName === "Picker" &&
+		!filename.endsWith("/src/components/ui/duration-picker-sheet.tsx")
 	) {
 		return "picker";
 	}

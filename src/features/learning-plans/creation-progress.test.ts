@@ -13,7 +13,6 @@ describe("learning-plan creation progress", () => {
 			examType: 1,
 			examSubject: 1.5,
 			examDate: 2,
-			learningAvailability: 2.5,
 			examTopics: 3,
 			materialUpload: 3.5,
 			materialAnalysis: 4,
@@ -26,7 +25,6 @@ describe("learning-plan creation progress", () => {
 			LEARNING_PLAN_CREATION_STEPS.examType,
 			LEARNING_PLAN_CREATION_STEPS.examSubject,
 			LEARNING_PLAN_CREATION_STEPS.examDate,
-			LEARNING_PLAN_CREATION_STEPS.learningAvailability,
 		];
 		expect(
 			openingProgress.every(
@@ -38,10 +36,10 @@ describe("learning-plan creation progress", () => {
 
 	test("turns intermediate progress into a changing percentage", () => {
 		expect(
-			(["examType", "examDetails", "basics", "learningAvailability"] as const)
+			(["examType", "examDetails", "basics"] as const)
 				.map(getExamEntryCreationProgress)
 				.map(getLearningPlanCreationProgressPercentage),
-		).toEqual([20, 30, 40, 50]);
+		).toEqual([20, 30, 40]);
 	});
 
 	test("normalizes non-finite progress for visual and accessible output", () => {

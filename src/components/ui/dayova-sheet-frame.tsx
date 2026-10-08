@@ -6,8 +6,10 @@ import {
 	type BottomSheetFooterProps,
 	BottomSheetModal,
 	BottomSheetScrollView,
+	BottomSheetTextInput,
 	BottomSheetView,
 } from "@gorhom/bottom-sheet";
+import { cssInterop } from "nativewind";
 import type { ReactNode, RefObject } from "react";
 import {
 	useCallback,
@@ -22,6 +24,7 @@ import {
 	AccessibilityInfo,
 	BackHandler,
 	findNodeHandle,
+	Keyboard,
 	type LayoutChangeEvent,
 	Platform,
 	StyleSheet,
@@ -29,6 +32,7 @@ import {
 	View,
 } from "react-native";
 import { CloseButton } from "~/components/ui/close-button";
+import { InputComponentContext } from "~/components/ui/input";
 import { useSheetAccessibility } from "~/components/ui/sheet-accessibility";
 import { useSheetSafeAreaInsets } from "~/components/ui/sheet-safe-area";
 import { Text } from "~/components/ui/text";
@@ -38,6 +42,7 @@ import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
 const DEFAULT_MAX_SHEET_WIDTH = 560;
+const SheetTextInput = cssInterop(BottomSheetTextInput, { className: "style" });
 
 type DayovaSheetPhase = "closed" | "opening" | "presented" | "closing";
 
@@ -45,6 +50,11 @@ type DayovaSheetFrameProps = {
 	visible: boolean;
 	onClose: () => void;
 	onDismiss?: () => void;
+	// Native content is mounted and its opening animation has started: safe to
+	// focus an input without waiting for a second, serial keyboard animation.
+	onOpening?: () => void;
+	/** Shorten a controlled handoff; native onDismiss remains the completion gate. */
+	dismissDurationMs?: number;
 	title?: ReactNode;
 	description?: ReactNode;
 	children?: ReactNode;
@@ -79,6 +89,8 @@ function DayovaSheetFrame({
 	visible,
 	onClose,
 	onDismiss,
+	onOpening,
+	dismissDurationMs,
 	title,
 	description,
 	children,
@@ -96,6 +108,7 @@ function DayovaSheetFrame({
 	const initialFocusRef = useRef<View>(null);
 	const initialFocusFrameRef = useRef<number | null>(null);
 	const didMoveFocusRef = useRef(false);
+	const didStartOpeningRef = useRef(false);
 	const sheetId = useId();
 	const sheetAccessibility = useSheetAccessibility();
 	const setSheetOpen = sheetAccessibility?.setSheetOpen;
@@ -166,14 +179,19 @@ function DayovaSheetFrame({
 
 		if (phaseRef.current === "opening" || phaseRef.current === "presented") {
 			phaseRef.current = "closing";
-			sheetRef.current?.dismiss();
+			Keyboard.dismiss();
+			if (dismissDurationMs === undefined) {
+				sheetRef.current?.dismiss();
+			} else {
+				sheetRef.current?.dismiss({ duration: dismissDurationMs });
+			}
 			return;
 		}
 
 		if (phaseRef.current === "closed") {
 			setIsNativeSheetActive(false);
 		}
-	}, [presentIfDesired, visible]);
+	}, [dismissDurationMs, presentIfDesired, visible]);
 
 	useEffect(
 		() => () => {
@@ -187,6 +205,7 @@ function DayovaSheetFrame({
 
 	const dismiss = useCallback(() => {
 		if (!dismissible) return;
+		Keyboard.dismiss();
 		if (phaseRef.current === "closed") {
 			desiredVisibleRef.current = false;
 			setIsNativeSheetActive(false);
@@ -216,6 +235,7 @@ function DayovaSheetFrame({
 		phaseRef.current = "closed";
 		setIsNativeSheetActive(shouldReopen);
 		didMoveFocusRef.current = false;
+		didStartOpeningRef.current = false;
 		setSheetOpen?.(sheetId, false);
 		if (initialFocusFrameRef.current !== null) {
 			cancelAnimationFrame(initialFocusFrameRef.current);
@@ -262,6 +282,24 @@ function DayovaSheetFrame({
 			});
 		},
 		[moveAccessibilityFocus, setSheetOpen, sheetId],
+	);
+
+	const handleAnimate = useCallback(
+		(fromIndex: number, toIndex: number) => {
+			if (toIndex === -1) {
+				Keyboard.dismiss();
+				return;
+			}
+			if (
+				fromIndex === -1 &&
+				desiredVisibleRef.current &&
+				!didStartOpeningRef.current
+			) {
+				didStartOpeningRef.current = true;
+				onOpening?.();
+			}
+		},
+		[onOpening],
 	);
 
 	const handleAccessibilityAction = useCallback(
@@ -412,7 +450,9 @@ function DayovaSheetFrame({
 			ref={sheetRef}
 			containerComponent={SheetModalContainer}
 			accessible={false}
-			android_keyboardInputMode="adjustResize"
+			// KeyboardProvider preserves a full-height Android edge-to-edge root.
+			// Gorhom's resize path skips the IME offset; let the sheet calculate it.
+			android_keyboardInputMode="adjustPan"
 			backgroundComponent={renderBackground}
 			backgroundStyle={{ backgroundColor: colors.surface }}
 			backdropComponent={renderBackdrop}
@@ -427,7 +467,9 @@ function DayovaSheetFrame({
 			keyboardBehavior="interactive"
 			keyboardBlurBehavior="restore"
 			maxDynamicContentSize={maximumHeight}
+			topInset={insets.top}
 			onChange={handleChange}
+			onAnimate={handleAnimate}
 			onDismiss={handleDismiss}
 			style={{
 				borderTopLeftRadius: DAYOVA_DESIGN_SYSTEM.radius.rectangle,
@@ -437,27 +479,31 @@ function DayovaSheetFrame({
 				width: sheetWidth,
 			}}
 		>
-			{scrollable ? (
-				<BottomSheetScrollView
-					bounces={false}
-					keyboardShouldPersistTaps="handled"
-					nestedScrollEnabled
-					showsVerticalScrollIndicator
-					enableFooterMarginAdjustment={hasFixedFooter}
-					// Gorhom includes this measured inset in dynamic sizing and scrolling,
-					// so the last content never sits behind the floating action area.
-					contentContainerStyle={{
-						paddingBottom: footer ? (hasFixedFooter ? 8 : 0) : bottomPadding,
-					}}
-					testID="dayova-sheet-scroll-content"
-				>
-					{content}
-				</BottomSheetScrollView>
-			) : (
-				<BottomSheetView style={{ paddingBottom: footer ? 0 : bottomPadding }}>
-					{content}
-				</BottomSheetView>
-			)}
+			<InputComponentContext.Provider value={SheetTextInput}>
+				{scrollable ? (
+					<BottomSheetScrollView
+						bounces={false}
+						keyboardShouldPersistTaps="handled"
+						nestedScrollEnabled
+						showsVerticalScrollIndicator
+						enableFooterMarginAdjustment={hasFixedFooter}
+						// Gorhom includes this measured inset in dynamic sizing and scrolling,
+						// so the last content never sits behind the floating action area.
+						contentContainerStyle={{
+							paddingBottom: footer ? (hasFixedFooter ? 8 : 0) : bottomPadding,
+						}}
+						testID="dayova-sheet-scroll-content"
+					>
+						{content}
+					</BottomSheetScrollView>
+				) : (
+					<BottomSheetView
+						style={{ paddingBottom: footer ? 0 : bottomPadding }}
+					>
+						{content}
+					</BottomSheetView>
+				)}
+			</InputComponentContext.Provider>
 		</BottomSheetModal>
 	);
 }

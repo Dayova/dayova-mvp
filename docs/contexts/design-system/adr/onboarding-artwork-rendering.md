@@ -2,13 +2,13 @@
 
 - Status: Accepted
 - Date: 2026-08-14
-- Amended: 2026-08-31 (first intro restores the layered daily-guidance composition through shared dashboard cards)
+- Amended: 2026-10-03 (four intro pages with editorial start graphic and native phone previews)
 - Supersedes: the 2026-07-13 decision to maintain three onboarding-only
   illustration implementations
 
 ## Context
 
-The three onboarding intro pages explain Dayova through previews of learning
+The onboarding intro pages explain Dayova through previews of learning
 steps, material upload, and a generated learning plan. Those previews had become
 independent illustrations: a bespoke task/streak/reminder composition, a custom
 upload SVG, and a static path SVG. The real product screens changed while the
@@ -25,9 +25,8 @@ would not prevent the next drift.
 Onboarding product previews use the same presentation modules as the current
 product surfaces:
 
-- the first intro and the live dashboard both render the agenda-entry,
-  weekly-progress, and next-learning-step presentations from
-  `dashboard-product-cards.tsx`;
+- the calendar intro renders `CalendarWeekdays`, `WeekCalendar`, and two
+  `AgendaRow` presentations (artwork mode) from `compact-day-agenda.tsx`;
 - the material preview renders `MaterialUploadStepLead` and
   `MaterialUploadActionCard` from `learning-plan-setup-steps.tsx`;
 - the final intro preview and the real plan-detail screen both render
@@ -44,36 +43,41 @@ or exposes a dead control.
 mode. It renders the shared card and action affordance without creating a
 `Pressable`. The screen modes remain unchanged and interactive.
 
-The three small onboarding wrappers own only preview data, available artwork
+The small onboarding wrappers own only preview data, available artwork
 dimensions, and arrangement. They do not duplicate card or path structure,
 typography, semantic colors, upload copy, learning-path geometry, node icons,
 or state rules. The superseded static `intro-path.svg` and copied product-card
 implementations remain removed.
 
-The first intro's learner job is to show how Dayova turns scattered daily work
-into one clear next action. It therefore restores the stronger spatial grammar
-from the earlier Figma composition: an agenda item and weekly progress sit
-behind one dominant next-learning-step card. The onboarding wrapper owns only
-their overlap, rotation, scale, and shadow. The three cards themselves keep a
-typed screen/artwork contract in the shared dashboard module, so live mode
-remains interactive and accessibility-responsive while artwork mode is
-motion-free, bounded, and hidden from the accessibility tree.
+The first intro's learner job is to make starting feel manageable. It uses
+three large editorial pills: starting today, making 30 minutes for one's goal,
+and progressing step by step. These describe the promise; they are not a fake
+streak, metric, or dashboard interface. The user rejected the dashboard-card
+composition as the opening graphic and explicitly requested this direction.
+
+The three feature explanations use a shared decorative `IntroPhoneFrame`
+inspired by the provided light/dark device reference. The frame owns device
+chrome (soft top corners, white/black screen, subtle camera island and a
+diagonal fade into the page, without a bottom bezel) and uniform scaling,
+while the screen content uses real presentation
+modules. The calendar shows a real week with two example events. The upload
+preview shows the actual upload lead and card without the former extra panel.
+The learning path includes the shared adaptive continuation and exam card.
+
+This trades some embedded text size for recognizable product context. Short
+accessible copy outside the device explains each page. Reconsider the frame
+if its scaling prevents recognition of the relevant feature; do not replace
+shared product modules with copied screenshot UIs. Native evidence is in
+`docs/evidence/onboarding-intro/`; the README records the preview scope.
 
 The final intro's learner job is to understand that Dayova turns material into
 an ordered route, not to inspect the metadata of a single plan. Its artwork mode
 therefore composes a bounded excerpt of the real path: one completed node, the
-current selected node, and one adaptive locked node. This uses the same
+current selected node, and one adaptive locked node, the dashed continuation, and the blue exam card. This uses the same
 connector geometry, pucks, icons, colors, and completed/current/locked rules as
 the live screen. Artwork mode is deliberately motion-free and renders Views,
 not dead Pressables; screen mode retains reduced-motion-aware breathing,
 selection, accessibility labels, and open/select behavior.
-
-For the first intro, we rejected both the three-equal-`SessionCard` stack and a
-literal restoration of the old #458 custom task/streak/reminder cards. The
-equal stack was accurate but repetitive and read as a schedule instead of a
-product promise. The copied Figma cards had the stronger hierarchy but would
-again drift from the dashboard. Sharing the current dashboard presentations
-keeps the hierarchy without restoring a parallel UI implementation.
 
 For the final intro, reusing `LearningPlanCardVisual` prevented code drift but
 communicated plan metadata and a next step instead of order and progression.
@@ -114,9 +118,17 @@ is not a second reading path.
 ## Reversal condition
 
 Reconsider the first intro composition if the dashboard no longer expresses
-agenda, weekly progress, and next action as the core daily-guidance model.
+the start promise represented by the editorial pills.
 Reconsider the final intro if the live product no longer uses an ordered
 Learning Path, or if its learner job changes from explaining sequence and
 adaptation. A future replacement must still share its product presentation
 module and must include fresh native evidence; a copied card, Figma export, or
 onboarding-only SVG is not a valid reversal.
+
+The intro device retains the reference's slim 365 × 550 artboard. Its product
+content keeps its original layout width and is uniformly inset to leave 40px
+between the content and the inner screen edge, rather than widening the phone.
+
+The calendar intro uses the current compact AgendaRow in decorative mode, sharing
+subject icons, title, time metadata, and status affordances with the Today page.
+An 80px top inset separates preview content from the camera island.
