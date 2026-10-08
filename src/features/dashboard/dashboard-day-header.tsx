@@ -48,4 +48,3 @@ function DashboardDayHeader({
 }
 
 export { DashboardDayHeader };
-export type { DashboardDayHeaderProps };

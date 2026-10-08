@@ -340,7 +340,7 @@ const runJsonCommand = (command, args) =>
 			stdio: ["ignore", "pipe", "pipe"],
 		}),
 	);
-export const readWorkflowFingerprints = () =>
+const readWorkflowFingerprints = () =>
 	Object.fromEntries(
 		platforms.map((platform) => {
 			const variableName = fingerprintEnvironmentVariables[platform];

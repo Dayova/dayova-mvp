@@ -978,7 +978,7 @@ export function OnboardingCreationScreen() {
 	);
 }
 
-export function IntroStepView({
+function IntroStepView({
 	activeIndex,
 	topInset,
 	bottomInset,

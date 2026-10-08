@@ -25,14 +25,6 @@ export const formatDate = (date: Date) =>
 		year: "numeric",
 	}).format(date);
 
-export const formatDayOfMonth = (date: Date) =>
-	new Intl.DateTimeFormat("de-DE", { day: "numeric" }).format(date);
-
-export const formatShortWeekday = (date: Date) =>
-	new Intl.DateTimeFormat("de-DE", { weekday: "short" })
-		.format(date)
-		.replace(".", "");
-
 export const formatTime = (date: Date) =>
 	new Intl.DateTimeFormat("de-DE", {
 		hour: "2-digit",

@@ -25,7 +25,8 @@ _Avoid_: User-facing message, learner error text
 
 `.eas/workflows/ci.yml` uses one `checks` job, displayed as
 `Lint, typecheck, and test`, for trusted pull requests, manual runs, and pushes
-to `main`. Lint, TypeScript, and tests are separate sequential steps. A merge
+to `main`. Formatting, lint, unused code/dependencies, repository skill validation,
+TypeScript, and tests are separate sequential steps. A merge
 therefore checks the resulting `main` commit again under the same visible job
 name instead of skipping a PR-only job and repeating its commands elsewhere.
 
