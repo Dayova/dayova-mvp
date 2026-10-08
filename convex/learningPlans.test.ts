@@ -1676,6 +1676,7 @@ test("learning plan sessions move from started to completed and sync calendar st
 		completed: false,
 	});
 
+	vi.setSystemTime(Date.now() + 1_440_000);
 	const completed = await t.mutation(api.learningPlans.recordSessionOutcome, {
 		sessionId: session.id,
 		outcome: "completed",

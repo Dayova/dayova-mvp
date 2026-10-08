@@ -15,6 +15,10 @@ jest.mock("expo-router", () => ({
 	useRouter: () => ({ push: jest.fn() }),
 }));
 
+jest.mock("~/components/ui/dayova-sheet-frame", () => ({
+	DayovaSheetFrame: () => null,
+}));
+
 jest.mock("convex/react", () => ({
 	useAction: () => jest.fn(),
 	useConvexAuth: () => ({ isAuthenticated: true }),
@@ -136,9 +140,9 @@ describe("learning-plan path", () => {
 		);
 
 		const startButton = screen.getByRole("button", {
-			name: "Lernsession starten: Lineare Funktionen verstehen",
+			name: "Starten: Lineare Funktionen verstehen",
 		});
-		expect(screen.getByText("Lernsession starten")).toBeOnTheScreen();
+		expect(screen.getByText("Starten")).toBeOnTheScreen();
 		expect(screen.queryByText("Als Nächstes")).toBeNull();
 
 		fireEvent.press(startButton);
@@ -158,7 +162,7 @@ describe("learning-plan path", () => {
 		expect(
 			screen.getByText("Lerninhalte werden vorbereitet"),
 		).toBeOnTheScreen();
-		expect(screen.queryByText("Lernsession starten")).toBeNull();
+		expect(screen.queryByText("Starten")).toBeNull();
 	});
 
 	test("offers a retry when content preparation fails", async () => {
