@@ -1,0 +1,17 @@
+diff --git a/apple/scripts/build-xcframework.sh b/apple/scripts/build-xcframework.sh
+index 605e3fb..fdd498e 100755
+--- a/apple/scripts/build-xcframework.sh
++++ b/apple/scripts/build-xcframework.sh
+@@ -31,7 +31,11 @@ PACKAGE_NAME="ExpoModulesJSI"
+ XCFRAMEWORK_PATH="${PACKAGE_DIR}/Products/${PACKAGE_NAME}.xcframework"
+ 
+ CONFIGURATION="Release"
+-DERIVED_DATA_PATH="${PACKAGE_DIR}/.DerivedData"
++# Keep signed build products in Xcode's Derived Data. File-provider-backed
++# workspaces can attach Finder metadata to products created under node_modules,
++# which makes codesign reject the generated framework. Retain an override for
++# non-Xcode callers and fall back to the package-local path when necessary.
++DERIVED_DATA_PATH="${EXPO_MODULES_JSI_DERIVED_DATA_PATH:-${DERIVED_FILE_DIR:-${PACKAGE_DIR}/.DerivedData}/ExpoModulesJSI-SPM}"
+ SPM_BUILD_PATH="${PACKAGE_DIR}/.build"
+ SPM_WORKSPACE_PATH="${PACKAGE_DIR}/.swiftpm"
+ BUILD_PRODUCTS_PATH="${DERIVED_DATA_PATH}/Build/Products"
