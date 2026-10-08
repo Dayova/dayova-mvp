@@ -267,16 +267,19 @@ describe("SnapCarouselSelector", () => {
 		const screen = await render(
 			<SnapCarouselSelector
 				accessibilityLabel="Tägliche Lernzeit"
-				accessibilityValue="10 Minuten"
+				accessibilityValue="45 Minuten"
 				decrementLabel="Weniger Lernzeit"
 				incrementLabel="Mehr Lernzeit"
-				items={[10, 20, 30]}
+				items={[45, 60, 90]}
 				selectedIndex={0}
 				getItemKey={String}
-				getItemPrimaryLabel={String}
+				getItemPrimaryLabel={(value) =>
+					String(value >= 60 ? value / 60 : value)
+				}
+				getItemSecondaryLabel={(value) => (value >= 60 ? "h" : "min")}
 				getItemProgress={(_, index) => (index + 1) / 3}
-				primaryLabel="10"
-				secondaryLabel="Minuten"
+				primaryLabel="45"
+				secondaryLabel="min"
 				progress={1 / 3}
 				onSelect={onSelect}
 			/>,
@@ -285,10 +288,51 @@ describe("SnapCarouselSelector", () => {
 			mockAnimatedScrollHandler?.({ contentOffset: { x: 68 } });
 		});
 
-		expect(screen.getByText("20")).toBeOnTheScreen();
+		expect(screen.getByText("1")).toBeOnTheScreen();
 		expect(
 			screen.getByTestId("snap-carousel-progress-arc").props.strokeDasharray,
 		).toEqual([String((2 / 3) * 2 * Math.PI * 40), String(2 * Math.PI * 40)]);
+		expect(screen.getByText("h")).toBeOnTheScreen();
+		expect(screen.queryByText("min")).toBeNull();
+		expect(onSelect).not.toHaveBeenCalled();
+	});
+
+	test("updates number and unit together across the hour boundary during drag", async () => {
+		const onSelect = jest.fn();
+		const screen = await render(
+			<SnapCarouselSelector
+				accessibilityLabel="Lernzeit"
+				accessibilityValue="45 Minuten"
+				decrementLabel="Weniger"
+				incrementLabel="Mehr"
+				items={[45, 60, 90]}
+				selectedIndex={0}
+				getItemKey={String}
+				getItemPrimaryLabel={(value) =>
+					String(value < 60 ? value : value / 60).replace(".", ",")
+				}
+				getItemSecondaryLabel={(value) =>
+					value < 60 ? "Minuten" : value === 60 ? "Stunde" : "Stunden"
+				}
+				primaryLabel="45"
+				secondaryLabel="Minuten"
+				progress={1 / 3}
+				onSelect={onSelect}
+			/>,
+		);
+		const itemWidth =
+			screen.getByTestId("snap-carousel-list").props.snapToInterval;
+		for (const [offset, value, unit] of [
+			[itemWidth, "1", "Stunde"],
+			[2 * itemWidth, "1,5", "Stunden"],
+			[0, "45", "Minuten"],
+		] as const) {
+			await fireEvent.scroll(screen.getByTestId("snap-carousel-list"), {
+				nativeEvent: { contentOffset: { x: offset } },
+			});
+			expect(screen.getByText(value)).toBeOnTheScreen();
+			expect(screen.getByText(unit)).toBeOnTheScreen();
+		}
 		expect(onSelect).not.toHaveBeenCalled();
 	});
 

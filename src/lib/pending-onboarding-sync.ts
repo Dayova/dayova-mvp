@@ -1,7 +1,10 @@
+import {
+	parseOnboardingDurationMinutes,
+	parseOnboardingStudyDays,
+} from "~/components/onboarding/onboarding-learning-times";
 import { isGermanFederalState } from "~/lib/federal-states";
 import { isSupportedGrade } from "~/lib/grades";
 import { isSupportedSchoolType } from "~/lib/school-types";
-import { parseOnboardingStudyDays } from "~/components/onboarding/onboarding-learning-times";
 
 const STORAGE_KEY_PREFIX = "dayova.pending-onboarding-sync";
 const SCHEMA_VERSION = 1;
@@ -129,7 +132,7 @@ const parsePersistedDurationMinutes = (value: string) => {
 	return (
 		PERSISTED_ONBOARDING_DURATION_MINUTES.find(
 			(option) => String(option) === normalizedValue,
-		) ?? null
+		) ?? parseOnboardingDurationMinutes(normalizedValue)
 	);
 };
 

@@ -47,6 +47,7 @@ type ScreenLearningPlanCardVisualProps = {
 	mode?: "screen";
 	model: LearningPlanCardVisualModel;
 	onPress: () => void;
+	onAccessibilityActivate?: () => void;
 	accessibilityLabel: string;
 	accessibilityHint: string;
 };
@@ -68,6 +69,7 @@ export function LearningPlanCardVisual(props: LearningPlanCardVisualProps) {
 	const shouldReflowCard = !fixedTextScale && shouldStackInlineContent;
 	const card = (
 		<NotchedActionCard
+			cardContentClassName="justify-between"
 			actionIcon={
 				<ArrowUpRight
 					size={24}
@@ -80,6 +82,16 @@ export function LearningPlanCardVisual(props: LearningPlanCardVisualProps) {
 				: {
 						pressType: "card" as const,
 						onPress: props.onPress,
+						accessibilityActions: props.onAccessibilityActivate
+							? [{ name: "activate" as const }]
+							: undefined,
+						onAccessibilityAction: props.onAccessibilityActivate
+							? (event) => {
+									if (event.nativeEvent.actionName === "activate") {
+										props.onAccessibilityActivate?.();
+									}
+								}
+							: undefined,
 						cardAccessibilityLabel: props.accessibilityLabel,
 						cardAccessibilityHint: props.accessibilityHint,
 					})}

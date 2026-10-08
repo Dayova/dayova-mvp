@@ -1,3 +1,4 @@
+import { LinearGradient } from "expo-linear-gradient";
 import {
 	useCallback,
 	useEffect,
@@ -27,6 +28,7 @@ import {
 	getRangeValueBadgeSize,
 	getRangeValueContentLayout,
 } from "~/features/auth/auth-content-size-layout";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { getAlignedSnapIndex } from "~/lib/snap-scroll";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
@@ -58,6 +60,7 @@ export const getSnapCarouselPreviewIndex = ({
 };
 
 type SnapCarouselSelectorBaseProps<Item> = {
+	appearance?: "default" | "onboarding";
 	accessibilityLabel: string;
 	accessibilityValue: string;
 	decrementLabel: string;
@@ -70,6 +73,7 @@ type SnapCarouselSelectorBaseProps<Item> = {
 
 type SnapCarouselValueBubbleProps<Item> = {
 	getItemPrimaryLabel?: (item: Item, index: number) => string;
+	getItemSecondaryLabel?: (item: Item, index: number) => string;
 	getItemProgress?: (item: Item, index: number) => number;
 	primaryLabel: string;
 	progress: number;
@@ -90,6 +94,7 @@ type SnapCarouselSelectorProps<Item> = SnapCarouselSelectorBaseProps<Item> &
 
 function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 	const {
+		appearance = "default",
 		accessibilityLabel,
 		accessibilityValue,
 		decrementLabel,
@@ -107,6 +112,7 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 					progress: props.progress,
 					secondaryLabel: props.secondaryLabel,
 					getItemPrimaryLabel: props.getItemPrimaryLabel,
+					getItemSecondaryLabel: props.getItemSecondaryLabel,
 					getItemProgress: props.getItemProgress,
 				};
 	const renderItemLabel =
@@ -126,10 +132,13 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 		? Math.min(112, Math.max(CAROUSEL_ITEM_WIDTH, 52 * fontScale))
 		: CAROUSEL_ITEM_WIDTH;
 	const sidePadding = Math.max((carouselWidth - itemWidth) / 2, 0);
-	const valueBadgeSize = getRangeValueBadgeSize({
-		fontScale,
-		shouldStackInlineContent,
-	});
+	const valueBadgeSize = Math.max(
+		appearance === "onboarding" ? 128 : 0,
+		getRangeValueBadgeSize({
+			fontScale,
+			shouldStackInlineContent,
+		}),
+	);
 	const valueContentLayout = getRangeValueContentLayout(fontScale);
 	const lastIndex = Math.max(items.length - 1, 0);
 	const safeSelectedIndex = Math.min(Math.max(selectedIndex, 0), lastIndex);
@@ -171,6 +180,10 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 		valueBubbleConfig.getItemPrimaryLabel
 			? valueBubbleConfig.getItemPrimaryLabel(previewItem, safePreviewIndex)
 			: valueBubbleConfig?.primaryLabel;
+	const previewSecondaryLabel =
+		previewItem !== undefined && valueBubbleConfig?.getItemSecondaryLabel
+			? valueBubbleConfig.getItemSecondaryLabel(previewItem, safePreviewIndex)
+			: valueBubbleConfig?.secondaryLabel;
 	const previewProgress =
 		valueBubbleConfig !== null &&
 		previewItem !== undefined &&
@@ -319,7 +332,9 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 							fill="transparent"
 							stroke={colors.primary}
 							strokeOpacity={0.2}
-							strokeWidth={PROGRESS_RING_STROKE_WIDTH}
+							strokeWidth={
+								appearance === "onboarding" ? 3 : PROGRESS_RING_STROKE_WIDTH
+							}
 						/>
 						<Circle
 							testID="snap-carousel-progress-arc"
@@ -328,7 +343,9 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 							r={PROGRESS_RING_RADIUS}
 							fill="transparent"
 							stroke={colors.primary}
-							strokeWidth={PROGRESS_RING_STROKE_WIDTH}
+							strokeWidth={
+								appearance === "onboarding" ? 3 : PROGRESS_RING_STROKE_WIDTH
+							}
 							strokeLinecap="round"
 							strokeDasharray={`${Math.max(MINIMUM_PROGRESS, safePreviewProgress) * CIRCLE_CIRCUMFERENCE} ${CIRCLE_CIRCUMFERENCE}`}
 							transform={`rotate(-90 ${PROGRESS_RING_CENTER} ${PROGRESS_RING_CENTER})`}
@@ -345,15 +362,27 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 							},
 						]}
 					>
-						<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
+						<Text
+							className={cn(
+								"text-center font-poppins text-text",
+								appearance === "onboarding"
+									? "text-heading-1"
+									: "font-semibold text-heading-2",
+							)}
+						>
 							{previewPrimaryLabel}
 						</Text>
 						<Text
-							className="text-center font-poppins font-semibold text-body-5 text-text"
+							className={cn(
+								"text-center font-poppins text-text",
+								appearance === "onboarding"
+									? "text-body-3"
+									: "font-semibold text-body-5",
+							)}
 							// Runtime font metrics keep the unit optically aligned with the value.
 							style={{ marginTop: valueContentLayout.unitMarginTop }}
 						>
-							{valueBubbleConfig.secondaryLabel}
+							{previewSecondaryLabel}
 						</Text>
 					</View>
 				</View>
@@ -372,9 +401,11 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 				className={cn(
 					"justify-center",
 					showValueBubble
-						? shouldStackInlineContent
-							? "mt-8 min-h-[112px]"
-							: "mt-12 h-[92px]"
+						? appearance === "onboarding"
+							? "mt-8 h-[112px]"
+							: shouldStackInlineContent
+								? "mt-8 min-h-[112px]"
+								: "mt-12 h-[92px]"
 						: hasTickLabels
 							? shouldStackInlineContent
 								? "min-h-[168px]"
@@ -432,6 +463,7 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 					className="grow-0"
 					renderItem={({ item, index }) => (
 						<SnapCarouselTick
+							appearance={appearance}
 							index={index}
 							reducedMotion={reducedMotion}
 							itemWidth={itemWidth}
@@ -455,6 +487,7 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 
 function SnapCarouselTick({
 	reducedMotion,
+	appearance,
 	activeColor,
 	inactiveColor,
 	index,
@@ -465,6 +498,7 @@ function SnapCarouselTick({
 	selected,
 }: {
 	reducedMotion: boolean;
+	appearance: "default" | "onboarding";
 	activeColor: string;
 	inactiveColor: string;
 	index: number;
@@ -502,32 +536,68 @@ function SnapCarouselTick({
 				{
 					scaleY: reducedMotion
 						? 1
-						: interpolate(distance, [0, 1, 2], [1, 36 / 72, 28 / 72], "clamp"),
+						: interpolate(
+								distance,
+								[0, 1, 2],
+								appearance === "onboarding"
+									? [1, 48 / 96, 56 / 96]
+									: [1, 36 / 72, 28 / 72],
+								"clamp",
+							),
 				},
 			],
 			backgroundColor: distance < 0.5 ? activeColor : inactiveColor,
 		};
 	});
 
+	const gradientStyle = useAnimatedStyle(() => ({
+		opacity: Math.abs(scrollX.get() / itemWidth - index) < 0.5 ? 1 : 0,
+	}));
+
 	return (
 		<Animated.View
 			testID={`snap-carousel-tick-${index}`}
 			className={cn(
 				"items-center justify-center",
-				label ? "min-h-[118px]" : "h-[78px]",
+				label
+					? "min-h-[118px]"
+					: appearance === "onboarding"
+						? "h-[104px]"
+						: "h-[78px]",
 			)}
 			// Width and transform depend on the carousel geometry and animated position.
 			style={[{ width: itemWidth }, animatedStyle]}
 		>
-			<View className="h-[78px] items-center justify-center">
+			<View
+				className={cn(
+					"items-center justify-center",
+					appearance === "onboarding" ? "h-[104px]" : "h-[78px]",
+				)}
+			>
 				<Animated.View
-					className="rounded-[3px]"
+					className="overflow-hidden rounded-full"
 					// Scale fixed geometry instead of changing layout on every scroll frame.
 					style={[
-						{ width: reducedMotion ? 4 : 7, height: reducedMotion ? 36 : 72 },
+						{
+							width: reducedMotion ? 4 : 7,
+							height: reducedMotion
+								? 36
+								: appearance === "onboarding"
+									? 96
+									: 72,
+						},
 						barStyle,
 					]}
-				/>
+				>
+					{appearance === "onboarding" ? (
+						<Animated.View style={[StyleSheet.absoluteFill, gradientStyle]}>
+							<LinearGradient
+								{...DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive}
+								style={StyleSheet.absoluteFill}
+							/>
+						</Animated.View>
+					) : null}
+				</Animated.View>
 			</View>
 			{label ? (
 				<Text

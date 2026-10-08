@@ -17,6 +17,7 @@ ruleTester.run(
 	noDirectNativeControls as Rule.RuleModule,
 	{
 		valid: [
+			{code: 'import { Picker } from "@expo/ui";', filename: "/repo/src/components/ui/duration-picker-sheet.tsx"},
 			{
 				code: 'import { Switch } from "@expo/ui";',
 				filename: "/repo/src/components/ui/switch.ios.tsx",
