@@ -95,6 +95,7 @@ function LearningTimeEditorFields({
 				>
 					<View
 						testID="learning-weekday-row"
+						accessibilityRole="radiogroup"
 						className="grow flex-row justify-between gap-1"
 					>
 						{LEARNING_DAYS.map((day) => {

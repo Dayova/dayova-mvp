@@ -278,6 +278,7 @@ function TimetableWeekEditor({
 		<View className="gap-4">
 			<View
 				accessibilityLabel="Wochentag auswählen"
+				accessibilityRole="radiogroup"
 				className="flex-row flex-wrap justify-between gap-1"
 			>
 				{lessonsByDay.map((day) => {
