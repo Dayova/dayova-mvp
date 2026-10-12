@@ -106,7 +106,10 @@ export function SubscriptionPlanCard({
 						)}
 					>
 						<Text
-							className="font-semibold text-body-2"
+							className={cn(
+								"font-semibold text-body-2",
+								shouldStackInlineContent && "flex-1",
+							)}
 							style={primaryTextStyle}
 						>
 							{price}
@@ -115,7 +118,7 @@ export function SubscriptionPlanCard({
 							accessible={false}
 							accessibilityElementsHidden
 							importantForAccessibility="no-hide-descendants"
-							className="h-6 w-6 items-center justify-center rounded-full border"
+							className="h-6 w-6 shrink-0 items-center justify-center rounded-full border"
 							style={indicatorStyle}
 							testID={`${testID}-indicator`}
 						>
