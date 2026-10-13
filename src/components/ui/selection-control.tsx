@@ -192,7 +192,8 @@ export function SelectionIndicator({
 	testID?: string;
 }) {
 	const { progress, checkScale, colors } = useSelection();
-	const resolvedCheckColor = checkColor ?? colors.onIndicator;
+	const resolvedCheckColor =
+		checkColor ?? (plain ? colors.onIndicator : "#FFFFFF");
 	const checkStyle = useAnimatedStyle(() => ({
 		opacity: progress.get(),
 		transform: [{ scale: checkScale.get() }],

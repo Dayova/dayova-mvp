@@ -79,7 +79,7 @@ beforeEach(() => {
 	jest.clearAllMocks();
 });
 
-test("renders a contrasting check on the canonical selected gradient", async () => {
+test("renders a white check inside the selected blue circle", async () => {
 	const screen = await render(
 		<SelectionControl selected accessibilityLabel="Test" onPress={jest.fn()}>
 			<SelectionText>Test</SelectionText>
@@ -89,7 +89,7 @@ test("renders a contrasting check on the canonical selected gradient", async () 
 	expect(
 		screen.getByTestId("selection-check", { includeHiddenElements: true }).props
 			.color,
-	).toBe("#1A1A1A");
+	).toBe("#FFFFFF");
 });
 
 describe.each<Appearance>(["card", "pill"])("%s selection", (appearance) => {
