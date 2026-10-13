@@ -100,27 +100,23 @@ export function NotificationSync() {
 				response.notification,
 				user.clerkId,
 			);
-			if (!input) {
-				const data = response.notification.request.content.data;
-				if (
-					data?.dayovaOwnerId === user.clerkId &&
-					typeof data.dayovaTrialReminderKey === "string"
-				) {
-					router.push("/subscription");
-					await getNotificationsModule()?.clearLastNotificationResponseAsync();
-				}
-				return;
-			}
+			const data = response.notification.request.content.data;
+			const isTrialReminder =
+				data?.dayovaOwnerId === user.clerkId &&
+				typeof data.dayovaTrialReminderKey === "string";
+			if (!input && !isTrialReminder) return;
 			const key = `${response.notification.request.identifier}:${response.actionIdentifier}`;
 			if (handledResponseRef.current === key) return;
 			handledResponseRef.current = key;
 			try {
-				const href = await openNotification({
-					registrationId:
-						input.registrationId as Id<"localNotificationSchedules">,
-				});
-				router.push(href as Href);
+				const href = input
+					? await openNotification({
+							registrationId:
+								input.registrationId as Id<"localNotificationSchedules">,
+						})
+					: "/subscription";
 				await getNotificationsModule()?.clearLastNotificationResponseAsync();
+				router.push(href as Href);
 			} catch (error) {
 				handledResponseRef.current = null;
 				logDiagnosticError("Failed to open notification.", error, {

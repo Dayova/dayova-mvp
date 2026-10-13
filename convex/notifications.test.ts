@@ -747,3 +747,43 @@ test("notification opens resolve owned live sessions, record engagement once and
 		}),
 	).toBe("/learning-plans");
 });
+
+test("non-plan reminders open owned entries and safely fall back for missing or foreign entries", async () => {
+	const t = convexTest(schema, modules);
+	const owned = t.withIdentity(user);
+	const { entryId, notificationId } = await t.run(async (ctx) => {
+		const entryId = await ctx.db.insert("dayEntries", {
+			ownerTokenIdentifier: user.tokenIdentifier,
+			dayKey: "2026-06-16",
+			title: "Hausaufgaben",
+			kind: "Hausaufgabe",
+		});
+		const notificationId = await ctx.db.insert("notificationHistory", {
+			ownerTokenIdentifier: user.tokenIdentifier,
+			eventKey: "homework:test",
+			category: "task",
+			type: "beforeEvent",
+			title: "Hausaufgaben",
+			body: "Zeit für Hausaufgaben",
+			relatedDayEntryId: entryId,
+			triggeredAt: 1,
+			createdAt: 1,
+		});
+		return { entryId, notificationId };
+	});
+	const open = () =>
+		owned.mutation(api.notifications.openNotification, { notificationId });
+	expect(await open()).toBe(`/entry/${entryId}`);
+	await t.run((ctx) =>
+		ctx.db.patch("dayEntries", entryId, { ownerTokenIdentifier: "other:user" }),
+	);
+	expect(await open()).toBe("/home");
+	await t.run((ctx) => ctx.db.delete("dayEntries", entryId));
+	expect(await open()).toBe("/home");
+	await t.run((ctx) =>
+		ctx.db.patch("notificationHistory", notificationId, {
+			relatedDayEntryId: undefined,
+		}),
+	);
+	expect(await open()).toBe("/home");
+});

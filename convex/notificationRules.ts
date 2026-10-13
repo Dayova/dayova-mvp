@@ -27,12 +27,11 @@ export const learningReminderBody = (
 		typeof entry.title === "string" && entry.title.trim()
 			? entry.title.trim()
 			: "Deine Lernsession";
-	const duration = entry.durationMinutes
-		? `${entry.durationMinutes} Minuten`
-		: "Deine Lernsession";
 	if (type === "beforeEvent")
 		return `In ${offset} Minuten: ${title}${entry.durationMinutes ? ` · ${entry.durationMinutes} Minuten` : ""}.`;
 	if (type === "startEvent")
-		return `${title}: ${duration} stehen jetzt an. Starte deine Lernsession.`;
+		return entry.durationMinutes
+			? `${title}: ${entry.durationMinutes} Minuten stehen jetzt an. Starte deine Lernsession.`
+			: `${title} steht jetzt an. Starte deine Lernsession.`;
 	return `Heute nicht geschafft? Finde einen neuen Termin für ${title}.`;
 };

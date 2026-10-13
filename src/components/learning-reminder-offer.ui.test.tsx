@@ -2,6 +2,7 @@ import { beforeEach, expect, jest, test } from "@jest/globals";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import { LearningReminderOffer } from "./learning-reminder-offer";
 
+let mockAuthenticated = true;
 let mockSeen = false;
 let mockEnabled = true;
 const mockSave = jest.fn(async (_args: unknown) => undefined);
@@ -11,10 +12,15 @@ const mockPermissions = jest.fn(async () => ({
 	canAskAgain: true,
 }));
 jest.mock("convex/react", () => ({
-	useQuery: () => ({
-		systemNotificationsEnabled: mockEnabled,
-		learningReminderOfferSeen: mockSeen,
-	}),
+	useConvexAuth: () => ({ isAuthenticated: mockAuthenticated }),
+	useQuery: (_ref: unknown, args: unknown) => {
+		if (args === "skip") return undefined;
+		if (!mockAuthenticated) throw new Error("Nicht authentifiziert.");
+		return {
+			systemNotificationsEnabled: mockEnabled,
+			learningReminderOfferSeen: mockSeen,
+		};
+	},
 	useMutation: () => mockSave,
 }));
 jest.mock("~/lib/notification-permissions", () => ({
@@ -49,6 +55,7 @@ jest.mock("~/components/ui/confirmation-sheet", () => ({
 }));
 beforeEach(() => {
 	jest.clearAllMocks();
+	mockAuthenticated = true;
 	mockSeen = false;
 	mockEnabled = true;
 });
@@ -80,4 +87,14 @@ test.each([
 	const screen = await render(<LearningReminderOffer />);
 	expect(screen.queryByText("Aktivieren")).toBeNull();
 	expect(mockPermissions).not.toHaveBeenCalled();
+});
+
+test("waits for Convex authentication before querying preferences", async () => {
+	mockAuthenticated = false;
+	const screen = await render(<LearningReminderOffer />);
+	expect(screen.queryByText("Aktivieren")).toBeNull();
+	expect(mockPermissions).not.toHaveBeenCalled();
+	mockAuthenticated = true;
+	await screen.rerender(<LearningReminderOffer />);
+	await waitFor(() => expect(screen.getByText("Aktivieren")).toBeOnTheScreen());
 });

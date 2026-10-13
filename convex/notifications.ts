@@ -906,7 +906,14 @@ export const openNotification = mutation({
 		if (notification.type === "dailyBriefing") return "/home";
 		if (notification.type === "trialEnding") return "/subscription";
 		const planId = notification.relatedLearningPlanId;
-		if (!planId) return "/home";
+		if (!planId) {
+			const entry = notification.relatedDayEntryId
+				? await ctx.db.get("dayEntries", notification.relatedDayEntryId)
+				: null;
+			return entry?.ownerTokenIdentifier === owner
+				? `/entry/${entry._id}`
+				: "/home";
+		}
 		const plan = await ctx.db.get("learningPlans", planId);
 		if (!plan || plan.ownerTokenIdentifier !== owner) return "/learning-plans";
 		const planPath = `/learning-plans/${planId}`;

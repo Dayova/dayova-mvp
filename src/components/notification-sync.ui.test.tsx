@@ -131,3 +131,45 @@ test("waits for the auth navigation redirect before consuming the cold-start res
 	await screen.rerender(<NotificationSync />);
 	await waitFor(() => expect(mockOpen).toHaveBeenCalledTimes(1));
 });
+
+test.each([
+	"learning",
+	"trial",
+])("clears a %s response before navigating and deduplicates while clearing", async (kind) => {
+	const notification = response();
+	if (kind === "trial") {
+		Object.assign(notification.notification.request.content, {
+			data: { dayovaOwnerId: "user-1", dayovaTrialReminderKey: "trial" },
+		});
+	}
+	mockResponse = notification;
+	let finishClear: () => void = () => {};
+	mockClear.mockImplementationOnce(
+		() =>
+			new Promise<undefined>((resolve) => {
+				finishClear = () => {
+					mockResponse = null;
+					resolve(undefined);
+				};
+			}),
+	);
+	const screen = await render(<NotificationSync />);
+	await waitFor(() => expect(mockClear).toHaveBeenCalledTimes(1));
+	expect(mockPush).not.toHaveBeenCalled();
+	await act(async () => {
+		mockListener?.(notification);
+	});
+	expect(mockClear).toHaveBeenCalledTimes(1);
+	await act(async () => {
+		finishClear();
+	});
+	expect(mockPush).toHaveBeenCalledTimes(1);
+	expect(mockPush).toHaveBeenCalledWith(
+		kind === "trial"
+			? "/subscription"
+			: "/learning-plans/plan/sessions/session",
+	);
+	await screen.unmount();
+	await render(<NotificationSync />);
+	expect(mockPush).toHaveBeenCalledTimes(1);
+});

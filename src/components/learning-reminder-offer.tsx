@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { Platform } from "react-native";
 import { api } from "#convex/_generated/api";
@@ -11,7 +11,11 @@ import {
 
 /** Mounted only when a learning plan has scheduled, unfinished sessions. */
 export function LearningReminderOffer() {
-	const preferences = useQuery(api.notifications.getPreferences, {});
+	const { isAuthenticated } = useConvexAuth();
+	const preferences = useQuery(
+		api.notifications.getPreferences,
+		isAuthenticated ? {} : "skip",
+	);
 	const updatePreferences = useMutation(api.notifications.updatePreferences);
 	const [canOffer, setCanOffer] = useState(false);
 	const [dismissed, setDismissed] = useState(false);
