@@ -368,3 +368,6 @@ Mounting an already completed entry does not celebrate it again. The route keys
 the action by entry ID to isolate feedback between entries. Processing flowers,
 existing creation-success screens, and navigation remain unchanged. See
 [DAY-512](https://linear.app/dayova/issue/DAY-512).
+
+Theory disclosures also animate their chevron over 180 ms and their section
+layout over 200 ms when expanding/collapsing. Reduced motion leaves both static.
