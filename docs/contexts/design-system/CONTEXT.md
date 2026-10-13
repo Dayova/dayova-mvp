@@ -347,3 +347,15 @@ update immediately, independently of the visual transition. Reduced motion and
 onboarding artwork mode use static updates. Existing FlowProgressBar and
 learning-path breathing animations remain unchanged. See
 [DAY-511](https://linear.app/dayova/issue/DAY-511).
+
+## Entry completion feedback
+
+`EntryCompletionAction` preserves the existing complete/reopen button and waits
+for the mutation to settle. Pending work exposes a busy label and prevents
+duplicate submissions through the shared async action gate. Failure exposes an
+inline retryable error; success copy appears only after both mutation success
+and the matching persisted state. Its 180 ms fade is omitted for reduced motion.
+Mounting an already completed entry does not celebrate it again. The route keys
+the action by entry ID to isolate feedback between entries. Processing flowers,
+existing creation-success screens, and navigation remain unchanged. See
+[DAY-512](https://linear.app/dayova/issue/DAY-512).
