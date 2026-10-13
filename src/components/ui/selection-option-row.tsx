@@ -1,7 +1,10 @@
-import { Pressable, View } from "react-native";
+import * as Haptics from "expo-haptics";
+import { Platform, View } from "react-native";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import type { Check } from "~/components/ui/icon";
 import { SelectionIndicator } from "~/components/ui/selection-indicator";
 import { Text } from "~/components/ui/text";
+import { triggerSelectionHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
@@ -21,7 +24,7 @@ export function SelectionOptionRow({
 	const { colors } = useDayovaTheme();
 
 	return (
-		<Pressable
+		<FeedbackPressable
 			accessibilityLabel={label}
 			accessibilityHint={description}
 			accessibilityRole="radio"
@@ -30,7 +33,15 @@ export function SelectionOptionRow({
 				"min-h-16 flex-row items-center gap-4 rounded-3xl border px-5 py-3 active:opacity-80",
 				selected ? "border-primary/40 bg-accent" : "border-border bg-card",
 			)}
-			onPress={onPress}
+			onPress={() => {
+				if (!selected) {
+					void triggerSelectionHaptic({
+						platform: Platform.OS,
+						selectionAsync: Haptics.selectionAsync,
+					});
+				}
+				onPress();
+			}}
 		>
 			<View
 				accessible={false}
@@ -56,6 +67,6 @@ export function SelectionOptionRow({
 				) : null}
 			</View>
 			<SelectionIndicator selected={selected} />
-		</Pressable>
+		</FeedbackPressable>
 	);
 }
