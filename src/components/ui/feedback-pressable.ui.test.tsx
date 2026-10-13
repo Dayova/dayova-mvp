@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render } from "@testing-library/react-native";
 import { AccessibilityInfo, Animated, Text } from "react-native";
-import { FeedbackPressable } from "./feedback-pressable";
+import {
+	FeedbackPressable,
+	FeedbackTouchableOpacity,
+} from "./feedback-pressable";
 
 let preferenceChanged: (value: boolean) => void;
 const remove = jest.fn();
@@ -113,4 +116,54 @@ test("mounting and opted-out controls do not animate", async () => {
 		</FeedbackPressable>,
 	);
 	expect(spring).not.toHaveBeenCalled();
+});
+
+test.each([
+	FeedbackPressable,
+	FeedbackTouchableOpacity,
+])("a quick touch starts and releases motion without delaying the action", async (Control) => {
+	const timing = jest.spyOn(Animated, "timing");
+	const spring = jest.spyOn(Animated, "spring");
+	const onPress = jest.fn();
+	const screen = await render(
+		<Control accessibilityRole="button" onPress={onPress}>
+			<Text>Weiter</Text>
+		</Control>,
+	);
+	await fireEvent(screen.getByRole("button"), "pressIn", {});
+	expect(timing).toHaveBeenCalledWith(
+		expect.anything(),
+		expect.objectContaining({ toValue: 0.97 }),
+	);
+	await fireEvent.press(screen.getByRole("button"));
+	expect(onPress).toHaveBeenCalledTimes(1);
+	await fireEvent(screen.getByRole("button"), "pressOut", {});
+	expect(spring).toHaveBeenCalledWith(
+		expect.anything(),
+		expect.objectContaining({ toValue: 1 }),
+	);
+});
+
+test("opacity controls also stop motion when disabled during an interaction", async () => {
+	const reset = jest.spyOn(Animated.Value.prototype, "setValue");
+	const onPress = jest.fn();
+	const screen = await render(
+		<FeedbackTouchableOpacity accessibilityRole="button" onPress={onPress}>
+			<Text>Speichern</Text>
+		</FeedbackTouchableOpacity>,
+	);
+	await fireEvent(screen.getByRole("button"), "pressIn", {});
+	reset.mockClear();
+	await screen.rerender(
+		<FeedbackTouchableOpacity
+			accessibilityRole="button"
+			disabled
+			onPress={onPress}
+		>
+			<Text>Speichern</Text>
+		</FeedbackTouchableOpacity>,
+	);
+	expect(reset).toHaveBeenCalledWith(1);
+	await fireEvent.press(screen.getByRole("button"));
+	expect(onPress).not.toHaveBeenCalled();
 });

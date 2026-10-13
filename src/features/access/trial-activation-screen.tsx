@@ -1,16 +1,11 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { useRef, useState } from "react";
-import {
-	ActivityIndicator,
-	Pressable,
-	ScrollView,
-	StyleSheet,
-	View,
-} from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "~/components/ui/button";
 import { ErrorMessage } from "~/components/ui/error-message";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import { Bell, Check, SquareLock } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAccess } from "~/context/AccessContext";
@@ -221,7 +216,7 @@ export function TrialActivationScreen() {
 							Mit „Dayova starten“ akzeptierst du die Bedingungen der Testphase.
 						</Text>
 						<View className="flex-row flex-wrap justify-center gap-x-4 gap-y-1 pt-1">
-							<Pressable
+							<FeedbackPressable
 								accessibilityRole="link"
 								disabled={!env.EXPO_PUBLIC_TERMS_URL}
 								hitSlop={8}
@@ -230,8 +225,8 @@ export function TrialActivationScreen() {
 								<Text className="text-body-4 text-white underline">
 									Nutzungsbedingungen
 								</Text>
-							</Pressable>
-							<Pressable
+							</FeedbackPressable>
+							<FeedbackPressable
 								accessibilityRole="link"
 								disabled={!env.EXPO_PUBLIC_PRIVACY_URL}
 								hitSlop={8}
@@ -240,7 +235,7 @@ export function TrialActivationScreen() {
 								<Text className="text-body-4 text-white underline">
 									Datenschutz
 								</Text>
-							</Pressable>
+							</FeedbackPressable>
 						</View>
 					</View>
 				</View>

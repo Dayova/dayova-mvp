@@ -138,7 +138,6 @@ function Button({
 		>
 			<FeedbackPressable
 				{...props}
-				pressFeedback={resolvedVariant !== "link" && size !== "icon"}
 				accessible
 				accessibilityRole="button"
 				accessibilityState={resolvedAccessibilityState}

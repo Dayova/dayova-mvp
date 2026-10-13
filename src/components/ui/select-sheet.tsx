@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import { Check } from "~/components/ui/icon";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
@@ -46,7 +47,7 @@ function SelectSheet<T extends string | number>({
 					: String(option);
 
 				return (
-					<Pressable
+					<FeedbackPressable
 						key={option}
 						accessibilityLabel={optionLabel}
 						accessibilityRole="radio"
@@ -98,7 +99,7 @@ function SelectSheet<T extends string | number>({
 								/>
 							</View>
 						) : null}
-					</Pressable>
+					</FeedbackPressable>
 				);
 			})}
 		</DayovaSheetFrame>

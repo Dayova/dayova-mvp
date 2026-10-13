@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import {
 	ActivityIndicator,
 	Keyboard,
-	Pressable,
 	type TextInput,
 	View,
 } from "react-native";
@@ -17,6 +16,7 @@ import { Button } from "~/components/ui/button";
 import { ConfirmationSheetContent } from "~/components/ui/confirmation-sheet";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
 import { ErrorMessage } from "~/components/ui/error-message";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import { BookOpen, Pencil, Plus } from "~/components/ui/icon";
 import { Input } from "~/components/ui/input";
 import {
@@ -137,14 +137,14 @@ export default function PersonalSubjectsScreen() {
 						title="Persönliche Fächer"
 						onBack={() => goBackOrReplace(router, ROUTES.settings)}
 						right={
-							<Pressable
+							<FeedbackPressable
 								accessibilityRole="button"
 								accessibilityLabel="Persönliches Fach hinzufügen"
 								onPress={() => setIsAdding(true)}
 								className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
 							>
 								<Plus size={28} color={colors.primary} strokeWidth={1.8} />
-							</Pressable>
+							</FeedbackPressable>
 						}
 					/>
 				</PortraitContent>
@@ -225,7 +225,7 @@ export default function PersonalSubjectsScreen() {
 										<Text className="ml-4 flex-1 font-poppins font-semibold text-body-2 text-text">
 											{subject.name}
 										</Text>
-										<Pressable
+										<FeedbackPressable
 											accessibilityLabel={`${subject.name} umbenennen`}
 											accessibilityHint="Weitere Aktion: Fach löschen."
 											accessibilityActions={[
@@ -249,7 +249,7 @@ export default function PersonalSubjectsScreen() {
 											}
 										>
 											<Pencil size={19} color={colors.text} strokeWidth={2} />
-										</Pressable>
+										</FeedbackPressable>
 									</Surface>
 								</ReanimatedSwipeable>
 							))}

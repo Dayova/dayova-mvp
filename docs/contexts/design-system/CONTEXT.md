@@ -297,10 +297,19 @@ between weekdays and start time brings the profile flow to twelve steps.
 
 ## Press feedback
 
-Shared Buttons and previously static exam/subject SelectionOptionRows use
-`FeedbackPressable`: 90 ms press compression to 98%, followed by a damped
-return. Existing active colors, opacity, labels, handlers, and caller styles
-remain intact. Link and minimum-size icon buttons keep their existing feedback.
+Shared Buttons (including icons and links), selection rows, and custom actions
+use `FeedbackPressable`: 90 ms press compression to 97%, followed by a damped
+return. Animation starts in the touch handler so fast taps are not lost to state
+batching; action dispatch never waits for animation. Opacity-based controls use
+`FeedbackTouchableOpacity`, preserving their existing active opacity.
+Coverage includes shared ActionSurface/FieldTrigger/sheets, dashboard cards,
+learning-plan cards and theory disclosures, settings, learning times, timetable,
+notifications, access screens, and plain authentication/onboarding actions.
+Existing active colors, labels, handlers, and caller styles remain intact.
+Existing choice-row springs, calendar selection transitions, learning-path
+breathing, analytics flips, native controls and animated auth actions are retained
+without a second transform. The notched card's separate invisible hit target
+continues to drive its existing visible action feedback.
 Caller transforms take precedence so existing animations are not replaced.
 The simple transform runs with React Native Animated's native driver on native
 platforms; it adds no dependency and does not migrate existing Reanimated code.
