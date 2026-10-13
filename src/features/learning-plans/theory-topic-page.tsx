@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
 	ActivityIndicator,
 	ScrollView,
@@ -6,8 +6,13 @@ import {
 	View,
 } from "react-native";
 import Animated, {
+	FadeIn,
 	FadeInDown,
+	LinearTransition,
+	useAnimatedStyle,
 	useReducedMotion,
+	useSharedValue,
+	withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "~/components/ui/button";
@@ -108,9 +113,24 @@ function CollapsibleTheorySection({
 	title: string;
 }) {
 	const [isExpanded, setIsExpanded] = useState(false);
+	const reduceMotion = useReducedMotion();
+	const rotation = useSharedValue(0);
+	useEffect(() => {
+		rotation.value = reduceMotion
+			? isExpanded
+				? 180
+				: 0
+			: withTiming(isExpanded ? 180 : 0, { duration: 180 });
+	}, [isExpanded, reduceMotion, rotation]);
+	const chevronStyle = useAnimatedStyle(() => ({
+		transform: [{ rotate: `${rotation.value}deg` }],
+	}));
 
 	return (
-		<View className={cn("gap-4", className)}>
+		<Animated.View
+			layout={reduceMotion ? undefined : LinearTransition.duration(200)}
+			className={cn("gap-4", className)}
+		>
 			<TouchableOpacity
 				accessibilityHint={
 					isExpanded
@@ -130,12 +150,22 @@ function CollapsibleTheorySection({
 				<Text className="flex-1 font-poppins font-semibold text-body-2 text-text">
 					{title}
 				</Text>
-				<View className={cn(isExpanded && "rotate-180")}>
+				<Animated.View
+					// Runtime rotation follows the disclosure state.
+					style={chevronStyle}
+				>
 					<ChevronDown size={20} color={chevronColor} strokeWidth={2.1} />
-				</View>
+				</Animated.View>
 			</TouchableOpacity>
-			{isExpanded ? children : null}
-		</View>
+			{isExpanded ? (
+				<Animated.View
+					entering={reduceMotion ? undefined : FadeIn.duration(180)}
+					className="gap-4"
+				>
+					{children}
+				</Animated.View>
+			) : null}
+		</Animated.View>
 	);
 }
 
