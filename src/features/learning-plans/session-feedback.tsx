@@ -1,4 +1,9 @@
 import { View } from "react-native";
+import Animated, {
+	FadeIn,
+	useReducedMotion,
+	ZoomIn,
+} from "react-native-reanimated";
 import { decodeGeneratedTextHtmlEntities } from "#convex/generatedGermanText";
 import {
 	Check,
@@ -68,22 +73,36 @@ function TagPill({
 }
 
 export function FeedbackView({ attempt }: { attempt: SessionAnswerAttempt }) {
+	const reduceMotion = useReducedMotion();
 	const copy = ratingCopy[attempt.rating];
 	const StatusIcon = attempt.rating === "correct" ? Check : CircleAlert;
 	const feedback = decodeGeneratedTextHtmlEntities(attempt.feedback);
 	const perfectAnswer = decodeGeneratedTextHtmlEntities(attempt.perfectAnswer);
 	return (
-		<View className="flex-1 justify-between">
+		<Animated.View
+			key={attempt.id}
+			entering={reduceMotion ? undefined : FadeIn.duration(220)}
+			className="flex-1 justify-between"
+		>
 			<View className="items-center pt-6">
-				<View
+				<Animated.View
+					entering={
+						!reduceMotion && attempt.rating === "correct"
+							? ZoomIn.duration(220).withInitialValues({
+									transform: [{ scale: 0.94 }],
+								})
+							: undefined
+					}
 					className={cn(
 						"h-20 w-20 items-center justify-center rounded-full",
 						copy.subtleClassName,
 					)}
 				>
 					<StatusIcon size={34} color={copy.color} strokeWidth={2.4} />
-				</View>
+				</Animated.View>
 				<Text
+					accessibilityRole="header"
+					accessibilityLiveRegion="polite"
 					className={cn(
 						"mt-3 font-poppins font-semibold text-body-3",
 						copy.textClassName,
@@ -114,6 +133,6 @@ export function FeedbackView({ attempt }: { attempt: SessionAnswerAttempt }) {
 					</Text>
 				</Surface>
 			</View>
-		</View>
+		</Animated.View>
 	);
 }
