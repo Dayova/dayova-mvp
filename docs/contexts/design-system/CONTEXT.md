@@ -336,3 +336,14 @@ keeps its existing score-dependent presentation. No new haptics or navigation
 delays are introduced. Reduced motion omits the accent entirely; ordinary
 rerenders and color updates do not replay it. See
 [DAY-510](https://linear.app/dayova/issue/DAY-510).
+
+## Learning-plan progress updates
+
+The existing gradient fill in `LearningPlanCardFooter` transitions between
+reactive progress values over 260 ms. Initial rendering shows the saved value
+immediately; unrelated rerenders do not replay progress. Zero remains empty,
+and positive values retain the existing minimum visible fill. Accessible values
+update immediately, independently of the visual transition. Reduced motion and
+onboarding artwork mode use static updates. Existing FlowProgressBar and
+learning-path breathing animations remain unchanged. See
+[DAY-511](https://linear.app/dayova/issue/DAY-511).
