@@ -3,7 +3,7 @@ import { fetch } from "expo/fetch";
 import * as DocumentPicker from "expo-document-picker";
 import { File } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { type Href, Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { api } from "#convex/_generated/api";
@@ -137,6 +137,9 @@ export default function NewLearningPlanScreen() {
 	const [isUploadSheetVisible, setIsUploadSheetVisible] = useState(false);
 	const [isPauseConfirmationVisible, setIsPauseConfirmationVisible] =
 		useState(false);
+	const [exitRequest, setExitRequest] = useState<
+		{ kind: "replace"; href: Href } | { kind: "dismiss"; href: string } | null
+	>(null);
 	const pendingUploadRequestRef = useRef<PendingUploadRequest | null>(null);
 	const topicActionGateRef = useRef(createAsyncActionGate());
 	const [openingUploadAction, setOpeningUploadAction] =
@@ -152,7 +155,7 @@ export default function NewLearningPlanScreen() {
 			? { id: learningPlanId }
 			: "skip",
 	) ?? null) as LearningPlanSnapshot | null;
-	const canWrite = Boolean(user && isConvexAuthenticated);
+	const canWrite = Boolean(user && isConvexAuthenticated && !exitRequest);
 	const topics = topicsInput ?? snapshot?.plan.topicDescription ?? "";
 	const hasSchoolMaterial = Boolean(
 		snapshot?.documents.some((document) => document.sourceKind === "school"),
@@ -599,12 +602,13 @@ export default function NewLearningPlanScreen() {
 				if (!isMeaningfulTopicDescription(topics)) {
 					throw new Error("Prüfungsthemen fehlen.");
 				}
-				router.replace(
-					examEntrySuccessPath({
+				setExitRequest({
+					kind: "replace",
+					href: examEntrySuccessPath({
 						dayKey: examDateKey,
 						examDateLabel,
 					}),
-				);
+				});
 			},
 		);
 	};
@@ -617,8 +621,9 @@ export default function NewLearningPlanScreen() {
 
 	const exitCreation = () => {
 		if (!learningPlanId && examDayEntryId && params.fromExamEntry === "true") {
-			router.replace(
-				examEntryResumePath({
+			setExitRequest({
+				kind: "replace",
+				href: examEntryResumePath({
 					examDayEntryId,
 					subject,
 					personalSubjectId,
@@ -628,15 +633,15 @@ export default function NewLearningPlanScreen() {
 					durationMinutes,
 					topicDescription: topics,
 				}),
-			);
+			});
 			return true;
 		}
 		if (learningPlanId) {
-			dismissToOrReplace(router, ROUTES.learningPlans);
+			setExitRequest({ kind: "dismiss", href: ROUTES.learningPlans });
 			return true;
 		}
 		if (examDayEntryId) {
-			dismissToOrReplace(router, `/entry/${examDayEntryId}`);
+			setExitRequest({ kind: "dismiss", href: `/entry/${examDayEntryId}` });
 			return true;
 		}
 		if (initialLearningPlanId) {
@@ -649,6 +654,7 @@ export default function NewLearningPlanScreen() {
 	};
 
 	const goBack = () => {
+		if (exitRequest) return true;
 		const intent = getLearningPlanCreationBackIntent({
 			step: setupStep,
 			hasSavedDraft: Boolean(learningPlanId),
@@ -668,7 +674,20 @@ export default function NewLearningPlanScreen() {
 		return exitCreation();
 	};
 
-	useBackIntent(hasExamEntry, goBack);
+	useBackIntent(hasExamEntry, goBack, {
+		allowRouteRemoval: exitRequest !== null,
+	});
+
+	useEffect(() => {
+		if (!exitRequest) return;
+		// Commit removal permission before dispatching an intentional exit. A
+		// nested creation stack can otherwise intercept its parent's removal.
+		if (exitRequest.kind === "replace") {
+			router.replace(exitRequest.href);
+		} else {
+			dismissToOrReplace(router, exitRequest.href);
+		}
+	}, [exitRequest, router]);
 	useLearningPlanCreationProgress({
 		active: true,
 		currentStep: currentProgressStep,
@@ -788,7 +807,7 @@ export default function NewLearningPlanScreen() {
 				onClose={() => setIsPauseConfirmationVisible(false)}
 				onConfirm={() => {
 					setIsPauseConfirmationVisible(false);
-					dismissToOrReplace(router, ROUTES.learningPlans);
+					setExitRequest({ kind: "dismiss", href: ROUTES.learningPlans });
 				}}
 			/>
 		</Screen>

@@ -5,6 +5,9 @@ import NewLearningPlanScreen from "~/app/(creation)/learning-plans/new";
 
 let mockParams: Record<string, string> = {};
 let mockProgress: { currentStep: number; onBack: () => void };
+let mockRouteRemovalAllowed = false;
+let mockPermittedExits: unknown[] = [];
+let mockConfirmPause: () => void;
 const mockRouter = {
 	replace: jest.fn(),
 	push: jest.fn(),
@@ -14,6 +17,7 @@ const mockRouter = {
 	canGoBack: () => true,
 };
 const mockCreateEntry = jest.fn<() => Promise<string>>();
+const mockCreateDraftPlan = jest.fn<() => Promise<string>>();
 const mockUpdateEntry = jest.fn<() => Promise<void>>();
 const mockGenerateUploadUrl = jest.fn<() => Promise<Record<string, unknown>>>();
 const mockRegisterUploadedDocument = jest.fn<() => Promise<void>>();
@@ -70,6 +74,8 @@ jest.mock("convex/react", () => ({
 			reference as Parameters<typeof getFunctionName>[0],
 		);
 		if (functionName === "dayEntries:create") return mockCreateEntry;
+		if (functionName === "learningPlans:createDraft")
+			return mockCreateDraftPlan;
 		if (functionName === "learningPlans:generateUploadUrl") {
 			return mockGenerateUploadUrl;
 		}
@@ -99,7 +105,14 @@ jest.mock("~/lib/navigation", () => ({
 	...jest.requireActual<typeof import("~/lib/navigation-actions")>(
 		"~/lib/navigation-actions",
 	),
-	useBackIntent: (_enabled: boolean, onBack: () => boolean) => onBack,
+	useBackIntent: (
+		enabled: boolean,
+		onBack: () => boolean,
+		options?: { allowRouteRemoval?: boolean },
+	) => {
+		mockRouteRemovalAllowed = !enabled || Boolean(options?.allowRouteRemoval);
+		return onBack;
+	},
 }));
 jest.mock("~/context/AuthContext", () => ({
 	useAuthSession: () => ({ user: { id: "user" } }),
@@ -222,7 +235,14 @@ jest.mock("~/components/ui/action-sheet", () => {
 	};
 });
 jest.mock("~/components/ui/confirmation-sheet", () => ({
-	ConfirmationSheet: ({ visible }: { visible: boolean }) => {
+	ConfirmationSheet: ({
+		visible,
+		onConfirm,
+	}: {
+		visible: boolean;
+		onConfirm: () => void;
+	}) => {
+		mockConfirmPause = onConfirm;
 		mockPauseVisible = visible;
 		return null;
 	},
@@ -248,6 +268,15 @@ jest.mock("~/lib/theme", () => ({
 
 beforeEach(() => {
 	jest.clearAllMocks();
+	mockRouteRemovalAllowed = false;
+	mockPermittedExits = [];
+	// Model the native navigator boundary: guarded removals do not complete.
+	const attemptExit = (href: unknown) => {
+		if (mockRouteRemovalAllowed) mockPermittedExits.push(href);
+	};
+	mockRouter.replace.mockImplementation(attemptExit);
+	mockRouter.dismissTo.mockImplementation(attemptExit);
+	mockCreateDraftPlan.mockResolvedValue("plan-1");
 	mockAvailability.status = "available";
 	mockFiles = {
 		"file:///mitschrift-2.png": { size: 2_048, header: PNG_HEADER },
@@ -438,6 +467,51 @@ describe("exam creation across the topics boundary", () => {
 		expect(mockPauseVisible).toBe(true);
 		expect(mockRouter.replace).not.toHaveBeenCalled();
 		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+	});
+
+	test("finishes a new exam without material through the guarded navigator", async () => {
+		mockParams = {
+			examDayEntryId: "exam-1",
+			fromExamEntry: "true",
+			step: "topic",
+			topicDescription: "Fotosynthese und Lichtreaktion",
+			subject: "Biologie",
+			examDateKey: "2026-10-30",
+		};
+		mockSnapshot = {
+			plan: { topicDescription: "Fotosynthese und Lichtreaktion" },
+			documents: [],
+		};
+		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Ohne Lernmaterial erstellen" }),
+		);
+		await waitFor(() =>
+			expect(mockPermittedExits).toEqual([
+				expect.stringContaining("/entry/success"),
+			]),
+		);
+	});
+
+	test("confirmed pause exits a saved draft through the guarded navigator", async () => {
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			fromExamEntry: "true",
+			step: "topic",
+		};
+		mockSnapshot = {
+			plan: { topicDescription: "Fotosynthese und Lichtreaktion" },
+			documents: [],
+		};
+		await render(<NewLearningPlanScreen />);
+		await act(() => mockProgress.onBack());
+		expect(mockPermittedExits).toEqual([]);
+		await act(() => mockConfirmPause());
+		await waitFor(() =>
+			expect(mockPermittedExits).toEqual(["/learning-plans"]),
+		);
 	});
 
 	test("uploads gallery photos without library-wide permission", async () => {
