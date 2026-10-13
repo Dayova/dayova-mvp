@@ -324,3 +324,15 @@ there are no exit delays, timed navigation, or additional haptics.
 Reduced motion suppresses these entrances. Existing theory-card transitions,
 choice feedback, progress animations, and submission success haptics remain
 unchanged. See [DAY-509](https://linear.app/dayova/issue/DAY-509).
+## Learning-session completion accent
+
+`CompletionAccent` adds a decorative one-shot outline over the existing phase
+illustration or Praxis score ring. It expands gently and fades away within
+700 ms, using the illustration's existing semantic color and geometry. It
+occupies no layout space, ignores touches, and is hidden from accessibility.
+Existing icons, score values, headings, actions, and screen entrance animations
+stay intact. Completion does not claim secure knowledge, and the Praxis result
+keeps its existing score-dependent presentation. No new haptics or navigation
+delays are introduced. Reduced motion omits the accent entirely; ordinary
+rerenders and color updates do not replay it. See
+[DAY-510](https://linear.app/dayova/issue/DAY-510).

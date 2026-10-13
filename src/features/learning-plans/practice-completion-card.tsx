@@ -2,6 +2,7 @@ import { ActivityIndicator, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import Svg, { Circle } from "react-native-svg";
 import { Button } from "~/components/ui/button";
+import { CompletionAccent } from "~/components/ui/completion-accent";
 import { Check, Timer } from "~/components/ui/icon";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
@@ -93,6 +94,7 @@ function ScoreRing({
 						transform={`rotate(-90 ${SCORE_RING_SIZE / 2} ${SCORE_RING_SIZE / 2})`}
 					/>
 				</Svg>
+				<CompletionAccent color={presentation.accent} shape="circle" />
 				<View className="items-center">
 					<Text
 						selectable
