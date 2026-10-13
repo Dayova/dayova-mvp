@@ -196,7 +196,7 @@ acknowledges a real transition without becoming recurring friction.
 
 Exam-type and subject selection share `SelectionOptionRow`: identical card
 geometry, icon treatment, radio checked semantics and a selection-gradient check
-indicator with an `onPrimary` check, as specified in the
+indicator with a white (`#FFFFFF`) check, as specified in the
 [selection color decision](adr/answer-selection-colors.md). The subject catalog
 is one continuous list, without a
 separate personal-subject heading. Adding a subject always saves it for reuse;

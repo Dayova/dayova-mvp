@@ -5,11 +5,14 @@ contrast correction: dark blue (`#006699` → `#0077AA`) is not the Dayova selec
 palette. `selection` now aliases the canonical `primaryInteractive` gradient
 (`#00A0E6` → `#4FD8FF`), so buttons and selections cannot drift apart.
 
-Use fixed `onPrimary` (`#1A1A1A`) for selected checkmarks, answer letters and pill
-labels in both themes. The bright gradient with white small text would have
-insufficient contrast; changing the foreground preserves the requested brand
-colors. `src/lib/selection-contrast.test.ts` checks all intermediate samples
-against 4.5:1. This is a scoped contrast check, not app-wide certification.
+Use fixed `onPrimary` (`#1A1A1A`) for selected answer letters, pill labels and
+plain checkmarks in both themes. Following the user's 13 October 2026 visual
+review, `SelectionIndicator` deliberately uses white (`#FFFFFF`) for checks
+inside blue gradient circles in both themes. This is an explicit exception:
+white on the bright gradient has lower contrast and is not covered by
+`src/lib/selection-contrast.test.ts`. That test checks only `onPrimary` against
+all intermediate gradient samples at 4.5:1; it does not certify the white circle
+check or app-wide accessibility conformance.
 
 Decision brief:
 - Job: choose an answer, subject, exam type or schedule value confidently.
