@@ -1,9 +1,0 @@
-
- RUN  v4.1.7 /private/tmp/dayova-day-486
-
-
- Test Files  5 passed (5)
-      Tests  73 passed (73)
-   Start at  23:22:28
-   Duration  6.21s (transform 4.00s, setup 0ms, import 2.99s, tests 5.46s, environment 1.23s)
-

@@ -88,7 +88,7 @@ export function LearningReminderOffer() {
 			visible={eligible && canOffer && !dismissed}
 			title="An deine Lernsession erinnern?"
 			description="Dayova erinnert dich zum Start und hilft dir nach einem verpassten Termin beim Neuplanen. Du kannst das unter Mitteilungen ändern."
-			confirmLabel="Erinnerungen aktivieren"
+			confirmLabel="Aktivieren"
 			cancelLabel="Später"
 			confirmTone="primary"
 			isBusy={busy}

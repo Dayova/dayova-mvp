@@ -299,7 +299,10 @@ function NotificationCard({
 							onPress={onOpen}
 							className="min-h-11 justify-center self-start"
 						>
-							<Text className="font-poppins font-semibold text-body-4 text-primary">
+							<Text
+								numberOfLines={1}
+								className="font-poppins font-semibold text-body-4 text-primary"
+							>
 								{notification.type === "forgottenEvent" &&
 								notification.category === "learningPlan"
 									? "Neu planen"
