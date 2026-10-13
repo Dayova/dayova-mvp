@@ -308,3 +308,6 @@ there are no exit delays, timed navigation, or additional haptics.
 Reduced motion suppresses these entrances. Existing theory-card transitions,
 choice feedback, progress animations, and submission success haptics remain
 unchanged. See [DAY-509](https://linear.app/dayova/issue/DAY-509).
+
+Theory disclosures also animate their chevron over 180 ms and their section
+layout over 200 ms when expanding/collapsing. Reduced motion leaves both static.
