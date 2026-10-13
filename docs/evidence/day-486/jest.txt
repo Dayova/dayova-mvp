@@ -1,0 +1,9 @@
+PASS src/components/notification-sync.ui.test.tsx
+PASS src/features/learning-plans/preparation-screen.ui.test.tsx
+PASS src/components/learning-reminder-offer.ui.test.tsx
+
+Test Suites: 3 passed, 3 total
+Tests:       11 passed, 11 total
+Snapshots:   0 total
+Time:        4.764 s
+Ran all test suites matching /src\/components\/notification-sync.ui.test.tsx|src\/components\/learning-reminder-offer.ui.test.tsx|src\/features\/learning-plans\/preparation-screen.ui.test.tsx/i.
