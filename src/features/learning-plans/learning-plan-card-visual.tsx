@@ -181,6 +181,7 @@ export function LearningPlanCardVisual(props: LearningPlanCardVisualProps) {
 				</Text>
 			) : (
 				<LearningPlanCardFooter
+					animateProgress={!fixedTextScale}
 					fixedTextScale={fixedTextScale}
 					progress={model.state.progress}
 					remainingDays={model.state.remainingDays}
