@@ -11,6 +11,7 @@ import {
 	KeyboardAvoidingView,
 	type KeyboardAwareScrollViewRef,
 } from "react-native-keyboard-controller";
+import Animated, { FadeIn, useReducedMotion } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -118,6 +119,7 @@ function ActionRow({
 }
 
 export default function LearningSessionContentScreen() {
+	const reduceMotion = useReducedMotion();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const params = useLocalSearchParams<{
@@ -1002,7 +1004,11 @@ export default function LearningSessionContentScreen() {
 				) : visibleAttempt ? (
 					<FeedbackView attempt={visibleAttempt} />
 				) : currentItem ? (
-					<View className="flex-1 justify-between">
+					<Animated.View
+						key={currentItem.id}
+						entering={reduceMotion ? undefined : FadeIn.duration(180)}
+						className="flex-1 justify-between"
+					>
 						<View className="flex-1 pt-8">
 							<Text className="font-poppins font-semibold text-[17px] text-text leading-[26px]">
 								{currentItem.prompt}
@@ -1030,7 +1036,7 @@ export default function LearningSessionContentScreen() {
 						{errorMessage ? (
 							<ErrorMessage className="mt-4">{errorMessage}</ErrorMessage>
 						) : null}
-					</View>
+					</Animated.View>
 				) : null}
 
 				{errorMessage && !currentItem ? (

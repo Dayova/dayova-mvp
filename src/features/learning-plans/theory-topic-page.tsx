@@ -6,6 +6,7 @@ import {
 	View,
 } from "react-native";
 import Animated, {
+	FadeIn,
 	FadeInDown,
 	useReducedMotion,
 } from "react-native-reanimated";
@@ -108,6 +109,7 @@ function CollapsibleTheorySection({
 	title: string;
 }) {
 	const [isExpanded, setIsExpanded] = useState(false);
+	const reduceMotion = useReducedMotion();
 
 	return (
 		<View className={cn("gap-4", className)}>
@@ -134,7 +136,14 @@ function CollapsibleTheorySection({
 					<ChevronDown size={20} color={chevronColor} strokeWidth={2.1} />
 				</View>
 			</TouchableOpacity>
-			{isExpanded ? children : null}
+			{isExpanded ? (
+				<Animated.View
+					entering={reduceMotion ? undefined : FadeIn.duration(180)}
+					className="gap-4"
+				>
+					{children}
+				</Animated.View>
+			) : null}
 		</View>
 	);
 }

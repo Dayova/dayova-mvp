@@ -294,3 +294,17 @@ are empty; example selections belong only in historical screenshot evidence.
 
 The duration explanation adapts to the chosen value; an additional explanation
 between weekdays and start time brings the profile flow to twelve steps.
+
+## In-session feedback motion
+
+Answer evaluations fade in over 220 ms. Only a correct answer receives a small
+status-icon scale from 94% to 100%; partial and incorrect answers retain their
+existing wording and colors without a success or punitive motion. The rating
+is a semantic heading with a polite accessibility live region.
+New question content fades in over 180 ms, keyed by item identity so typing or
+selection changes do not restart it. Newly expanded theory explanations use
+the same short fade. All contents and actions remain available immediately;
+there are no exit delays, timed navigation, or additional haptics.
+Reduced motion suppresses these entrances. Existing theory-card transitions,
+choice feedback, progress animations, and submission success haptics remain
+unchanged. See [DAY-509](https://linear.app/dayova/issue/DAY-509).
