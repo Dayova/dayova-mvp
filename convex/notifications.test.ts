@@ -39,7 +39,9 @@ test("local notification registration accepts plans containing timetable lessons
 			dailyBriefingEnabled: true,
 			dailyBriefingTime: "07:30",
 			beforeExamEnabled: true,
-			beforeLearningTimeEnabled: true,
+			beforeLearningTimeEnabled: false,
+			startLearningTimeEnabled: true,
+
 			beforeHomeworkWorkEnabled: true,
 			beforeHomeworkDueEnabled: true,
 			reminderOffsetMinutes: 15,
@@ -63,10 +65,12 @@ test("notification preferences default to the MVP reminder settings", async () =
 
 	expect(preferences).toEqual({
 		systemNotificationsEnabled: true,
-		dailyBriefingEnabled: true,
+		dailyBriefingEnabled: false,
 		dailyBriefingTime: "07:30",
 		beforeExamEnabled: true,
-		beforeLearningTimeEnabled: true,
+		beforeLearningTimeEnabled: false,
+		startLearningTimeEnabled: true,
+		learningReminderOfferSeen: false,
 		beforeHomeworkWorkEnabled: true,
 		beforeHomeworkDueEnabled: true,
 		reminderOffsetMinutes: 15,
@@ -86,10 +90,12 @@ test("notification preferences persist per user", async () => {
 
 	await expect(t.query(api.notifications.getPreferences, {})).resolves.toEqual({
 		systemNotificationsEnabled: false,
-		dailyBriefingEnabled: true,
+		dailyBriefingEnabled: false,
 		dailyBriefingTime: "08:15",
 		beforeExamEnabled: true,
-		beforeLearningTimeEnabled: true,
+		beforeLearningTimeEnabled: false,
+		startLearningTimeEnabled: true,
+		learningReminderOfferSeen: false,
 		beforeHomeworkWorkEnabled: true,
 		beforeHomeworkDueEnabled: false,
 		reminderOffsetMinutes: 30,
@@ -489,6 +495,9 @@ test("local notification authorization reuse is not limited by prior content var
 
 test("daily briefing summarizes today's entries at the configured time", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await t.mutation(api.notifications.updatePreferences, {
+		dailyBriefingEnabled: true,
+	});
 
 	await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-06-16",
@@ -528,6 +537,9 @@ test("daily briefing summarizes today's entries at the configured time", async (
 
 test("daily briefing uses singular wording for one entry", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await t.mutation(api.notifications.updatePreferences, {
+		dailyBriefingEnabled: true,
+	});
 
 	await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-06-16",
@@ -557,4 +569,181 @@ test("daily briefing uses singular wording for one entry", async () => {
 			body: "Heute steht 1 Eintrag an: Deutsch Hausaufgabe um 17:14.",
 		},
 	]);
+});
+
+test("legacy preferences preserve opt-ins and add the new independent start switch", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	await t.run(async (ctx) => {
+		await ctx.db.insert("notificationPreferences", {
+			ownerTokenIdentifier: user.tokenIdentifier,
+			systemNotificationsEnabled: false,
+			dailyBriefingEnabled: true,
+			dailyBriefingTime: "09:00",
+			beforeExamEnabled: false,
+			beforeLearningTimeEnabled: true,
+			beforeHomeworkWorkEnabled: false,
+			beforeHomeworkDueEnabled: false,
+			reminderOffsetMinutes: 30,
+			forgottenEventEnabled: false,
+			createdAt: 1,
+			updatedAt: 1,
+		});
+	});
+	expect(await t.query(api.notifications.getPreferences, {})).toMatchObject({
+		systemNotificationsEnabled: false,
+		dailyBriefingEnabled: true,
+		beforeLearningTimeEnabled: true,
+		startLearningTimeEnabled: true,
+		learningReminderOfferSeen: false,
+	});
+	await t.mutation(api.notifications.updatePreferences, {
+		startLearningTimeEnabled: false,
+	});
+	expect(await t.query(api.notifications.getPreferences, {})).toMatchObject({
+		startLearningTimeEnabled: false,
+		beforeLearningTimeEnabled: true,
+	});
+});
+
+test("start reminders are independent, deduplicated and suppressed after starting", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const id = await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-06-16",
+		title: "Mathe",
+		kind: "Lernen",
+		time: "16:00",
+		durationMinutes: 20,
+	});
+	const args = {
+		now: "2026-06-16T14:00:00Z",
+		localDayKey: "2026-06-16",
+		localMinutes: 960,
+	};
+	expect(
+		await t.mutation(api.notifications.syncDueNotifications, args),
+	).toEqual({ created: 1 });
+	expect(
+		await t.mutation(api.notifications.syncDueNotifications, args),
+	).toEqual({ created: 0 });
+	expect(
+		await t.query(api.notifications.listInbox, { category: "all" }),
+	).toMatchObject([{ type: "startEvent" }]);
+	await t.run((ctx) =>
+		ctx.db.patch("dayEntries", id, { executionStatus: "started" }),
+	);
+	expect(
+		await t.mutation(api.notifications.syncDueNotifications, {
+			...args,
+			localMinutes: 995,
+		}),
+	).toEqual({ created: 0 });
+});
+
+test("empty days produce no in-app briefing", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	await t.mutation(api.notifications.updatePreferences, {
+		dailyBriefingEnabled: true,
+	});
+	expect(
+		await t.mutation(api.notifications.syncDueNotifications, {
+			now: "2026-06-16T05:30:00Z",
+			localDayKey: "2026-06-16",
+			localMinutes: 450,
+		}),
+	).toEqual({ created: 0 });
+});
+
+test("notification opens resolve owned live sessions, record engagement once and fall back after deletion", async () => {
+	const t = convexTest(schema, modules);
+	const owned = t.withIdentity(user);
+	const { planId, sessionId, notificationId, recoveryId } = await t.run(
+		async (ctx) => {
+			const planId = await ctx.db.insert("learningPlans", {
+				ownerTokenIdentifier: user.tokenIdentifier,
+				subject: "Mathe",
+				examTypeLabel: "Test",
+				examDateKey: "2026-06-20",
+				examDateLabel: "20. Juni",
+				durationMinutes: 20,
+				topicDescription: "Brüche",
+				status: "accepted",
+				createdAt: 1,
+				updatedAt: 1,
+			});
+			const sessionId = await ctx.db.insert("learningPlanSessions", {
+				ownerTokenIdentifier: user.tokenIdentifier,
+				learningPlanId: planId,
+				phase: "practice",
+				title: "Brüche",
+				dateKey: "2026-06-16",
+				dateLabel: "16. Juni",
+				startTime: "16:00",
+				durationMinutes: 20,
+				goal: "Üben",
+				tasks: [],
+				expectedOutcome: "Brüche lösen",
+				sortOrder: 0,
+				createdAt: 1,
+				updatedAt: 1,
+			});
+			const data = {
+				ownerTokenIdentifier: user.tokenIdentifier,
+				category: "learningPlan" as const,
+				title: "Mathe",
+				body: "Üben",
+				relatedLearningPlanId: planId,
+				relatedLearningPlanSessionId: sessionId,
+				triggeredAt: 1,
+				createdAt: 1,
+			};
+			const notificationId = await ctx.db.insert("notificationHistory", {
+				...data,
+				type: "startEvent",
+				eventKey: "start:test",
+			});
+			const recoveryId = await ctx.db.insert("notificationHistory", {
+				...data,
+				type: "forgottenEvent",
+				eventKey: "forgotten:test",
+			});
+			return { planId, sessionId, notificationId, recoveryId };
+		},
+	);
+	const sessionPath = `/learning-plans/${planId}/sessions/${sessionId}`;
+	expect(
+		await owned.mutation(api.notifications.openNotification, {
+			notificationId,
+		}),
+	).toBe(sessionPath);
+	const first = await t.run((ctx) =>
+		ctx.db.get("notificationHistory", notificationId),
+	);
+	expect(first?.openedAt).toBeTypeOf("number");
+	await owned.mutation(api.notifications.openNotification, { notificationId });
+	expect(
+		(await t.run((ctx) => ctx.db.get("notificationHistory", notificationId)))
+			?.openedAt,
+	).toBe(first?.openedAt);
+	expect(
+		await owned.mutation(api.notifications.openNotification, {
+			notificationId: recoveryId,
+		}),
+	).toBe(`${sessionPath}/edit`);
+	expect(
+		await t
+			.withIdentity({ tokenIdentifier: "other:user" })
+			.mutation(api.notifications.openNotification, { notificationId }),
+	).toBe("/notifications");
+	await t.run((ctx) => ctx.db.delete("learningPlanSessions", sessionId));
+	expect(
+		await owned.mutation(api.notifications.openNotification, {
+			notificationId,
+		}),
+	).toBe(`/learning-plans/${planId}`);
+	await t.run((ctx) => ctx.db.delete("learningPlans", planId));
+	expect(
+		await owned.mutation(api.notifications.openNotification, {
+			notificationId,
+		}),
+	).toBe("/learning-plans");
 });

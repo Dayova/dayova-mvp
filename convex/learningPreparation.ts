@@ -19,6 +19,7 @@ import {
 } from "./learningPreparationPolicy";
 import { deleteSessionLearningDataForSession } from "./learningSessionContent";
 import { getPlanningLearningTimes } from "./learningTimePlanning";
+import { recordReminderReplanned } from "./notificationEngagement";
 import { deleteDayEntryWithPersonalSubjectReference } from "./personalSubjectReferences";
 import {
 	berlinNow,
@@ -342,6 +343,17 @@ export async function savePreparationSchedule(
 	for (const [id, group] of groups) {
 		const current = preparationGroupSlot(group);
 		const proposed = args.slots.find((slot) => slot.id === id);
+		if (
+			proposed &&
+			(proposed.dateKey !== current.dateKey ||
+				proposed.startTime !== current.startTime)
+		) {
+			await recordReminderReplanned(
+				ctx,
+				plan.ownerTokenIdentifier,
+				group.find((session) => session.dayEntryId)?.dayEntryId,
+			);
+		}
 		const unchanged =
 			proposed &&
 			proposed.dateKey === current.dateKey &&

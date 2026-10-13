@@ -52,6 +52,7 @@ import {
 	learningTopicValidator,
 	normalizeLearningTopics,
 } from "./learningTopicMap";
+import { recordReminderReplanned } from "./notificationEngagement";
 import {
 	addPersonalSubjectReference,
 	deleteDayEntryWithPersonalSubjectReference,
@@ -2156,6 +2157,7 @@ export const updateSession = mutation({
 		startTime: v.string(),
 		durationMinutes: v.number(),
 	},
+	returns: v.object({ contentInvalidated: v.boolean() }),
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier =
 			await requireOwnerTokenIdentifierForMutation(ctx);
@@ -2174,6 +2176,16 @@ export const updateSession = mutation({
 		}
 		if (session.sessionPurpose === "diagnostic" && args.phase !== "practice") {
 			throwUserFacingError("Der Wissenscheck bleibt eine Fragensession.");
+		}
+		if (
+			args.dateKey !== session.dateKey ||
+			args.startTime !== session.startTime
+		) {
+			await recordReminderReplanned(
+				ctx,
+				ownerTokenIdentifier,
+				session.dayEntryId,
+			);
 		}
 		const contentInvalidated =
 			session.sessionPurpose !== "diagnostic" &&

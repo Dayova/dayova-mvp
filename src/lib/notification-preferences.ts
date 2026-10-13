@@ -9,6 +9,7 @@ export type NotificationPreferenceControlState = {
 	dailyBriefingTimeDisabled: boolean;
 	beforeExamDisabled: boolean;
 	beforeLearningTimeDisabled: boolean;
+	startLearningTimeDisabled: boolean;
 	beforeHomeworkWorkDisabled: boolean;
 	beforeHomeworkDueDisabled: boolean;
 	reminderOffsetDisabled: boolean;
@@ -32,6 +33,7 @@ const notificationPreferenceKeys: NotificationPreferenceKey[] = [
 	"dailyBriefingTime",
 	"beforeExamEnabled",
 	"beforeLearningTimeEnabled",
+	"startLearningTimeEnabled",
 	"beforeHomeworkWorkEnabled",
 	"beforeHomeworkDueEnabled",
 	"reminderOffsetMinutes",
@@ -81,6 +83,7 @@ export const getNotificationPreferenceControlState = ({
 		dailyBriefingTimeDisabled: isDisabled("dailyBriefingTime"),
 		beforeExamDisabled: isDisabled("beforeExamEnabled"),
 		beforeLearningTimeDisabled: isDisabled("beforeLearningTimeEnabled"),
+		startLearningTimeDisabled: isDisabled("startLearningTimeEnabled"),
 		beforeHomeworkWorkDisabled: isDisabled("beforeHomeworkWorkEnabled"),
 		beforeHomeworkDueDisabled: isDisabled("beforeHomeworkDueEnabled"),
 		reminderOffsetDisabled: isDisabled("reminderOffsetMinutes"),

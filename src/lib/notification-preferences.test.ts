@@ -76,6 +76,7 @@ describe("notification preference pending state", () => {
 			dailyBriefingTimeDisabled: false,
 			beforeExamDisabled: false,
 			beforeLearningTimeDisabled: false,
+			startLearningTimeDisabled: false,
 			beforeHomeworkWorkDisabled: false,
 			beforeHomeworkDueDisabled: false,
 			reminderOffsetDisabled: false,

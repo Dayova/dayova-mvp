@@ -4,6 +4,7 @@ import PreparationScreen from "~/app/learning-plans/[planId]/preparation";
 
 const mockRouter = { replace: jest.fn() };
 const mockSave = jest.fn<(...args: unknown[]) => Promise<void>>();
+let mockEditSlot: string | undefined;
 let mockSchedule = makeSchedule();
 function makeSchedule(revision = 0, startTime = "17:00") {
 	return {
@@ -26,7 +27,7 @@ function makeSchedule(revision = 0, startTime = "17:00") {
 	};
 }
 jest.mock("expo-router", () => ({
-	useLocalSearchParams: () => ({ planId: "plan-1" }),
+	useLocalSearchParams: () => ({ planId: "plan-1", editSlot: mockEditSlot }),
 	useRouter: () => mockRouter,
 }));
 jest.mock("#convex/_generated/api", () => ({
@@ -125,6 +126,7 @@ jest.mock("~/features/learning-plans/preparation-slot-editor", () => ({
 }));
 beforeEach(() => {
 	mockSchedule = makeSchedule();
+	mockEditSlot = undefined;
 	mockSave.mockReset().mockResolvedValue(undefined);
 	mockRouter.replace.mockClear();
 });
@@ -188,6 +190,19 @@ test("a transient save failure preserves edits on the same revision", async () =
 		expect.objectContaining({
 			revision: 0,
 			slots: [expect.objectContaining({ durationMinutes: 45 })],
+		}),
+	);
+});
+
+test("a recovery notification opens its editable slot directly", async () => {
+	mockEditSlot = "slot-1";
+	const screen = await render(<PreparationScreen />);
+	await fireEvent.press(screen.getByText("Dauer ändern"));
+	expect(screen.queryByText("Dauer ändern")).toBeNull();
+	await fireEvent.press(screen.getByText("Übernehmen"));
+	expect(mockSave).toHaveBeenCalledWith(
+		expect.objectContaining({
+			slots: [expect.objectContaining({ id: "slot-1", durationMinutes: 45 })],
 		}),
 	);
 });
