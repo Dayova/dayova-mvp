@@ -1,6 +1,7 @@
 import { ActivityIndicator, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { Button } from "~/components/ui/button";
+import { CompletionAccent } from "~/components/ui/completion-accent";
 import { BookOpen, Check, ClipboardEdit, Pencil } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { PracticeCompletionCard } from "~/features/learning-plans/practice-completion-card";
@@ -86,6 +87,7 @@ export function LearningSessionCompletion({
 						)}
 					>
 						<Icon size={52} color={iconColor} strokeWidth={2.1} />
+						<CompletionAccent color={iconColor} />
 					</View>
 					<View className="absolute -right-2 -bottom-2 h-10 w-10 items-center justify-center rounded-full border-4 border-background bg-success">
 						<Check
