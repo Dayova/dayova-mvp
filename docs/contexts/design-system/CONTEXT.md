@@ -294,3 +294,16 @@ are empty; example selections belong only in historical screenshot evidence.
 
 The duration explanation adapts to the chosen value; an additional explanation
 between weekdays and start time brings the profile flow to twelve steps.
+
+
+## Entry completion feedback
+
+`EntryCompletionAction` preserves the existing complete/reopen button and waits
+for the mutation to settle. Pending work exposes a busy label and prevents
+duplicate submissions through the shared async action gate. Failure exposes an
+inline retryable error; success copy appears only after both mutation success
+and the matching persisted state. Its 180 ms fade is omitted for reduced motion.
+Mounting an already completed entry does not celebrate it again. The route keys
+the action by entry ID to isolate feedback between entries. Processing flowers,
+existing creation-success screens, and navigation remain unchanged. See
+[DAY-512](https://linear.app/dayova/issue/DAY-512).
