@@ -74,6 +74,7 @@ import {
 	DateTimePickerSheet,
 } from "~/components/ui/date-time-picker-sheet";
 import { ErrorMessage } from "~/components/ui/error-message";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import {
 	ArrowLeft,
@@ -1839,7 +1840,7 @@ export function LoginScreen() {
 						</View>
 
 						<View className="w-full flex-row justify-end">
-							<Pressable
+							<FeedbackPressable
 								accessibilityRole="button"
 								accessibilityLabel="Passwort vergessen"
 								accessibilityHint="Öffnet den Ablauf zum Zurücksetzen deines Passworts"
@@ -1857,7 +1858,7 @@ export function LoginScreen() {
 								<Text className="text-right font-poppins text-body-4 text-primary">
 									Passwort vergessen?
 								</Text>
-							</Pressable>
+							</FeedbackPressable>
 						</View>
 
 						{error ? (
@@ -1895,7 +1896,7 @@ export function LoginScreen() {
 							<Text className="text-center font-poppins text-body-3 text-text">
 								Du hast keinen Account?
 							</Text>
-							<Pressable
+							<FeedbackPressable
 								accessibilityLabel="Jetzt registrieren"
 								accessibilityRole="button"
 								hitSlop={8}
@@ -1904,7 +1905,7 @@ export function LoginScreen() {
 								<Text className="text-center font-poppins text-body-3 text-primary">
 									Jetzt Registrieren
 								</Text>
-							</Pressable>
+							</FeedbackPressable>
 						</View>
 					</View>
 				</KeyboardSafeScrollView>
@@ -2167,7 +2168,7 @@ function PasswordResetScreen({
 			>
 				<View className="flex-1 items-center px-8">
 					<View className="w-full flex-row items-center">
-						<Pressable
+						<FeedbackPressable
 							accessibilityRole="button"
 							accessibilityLabel="Zurück"
 							disabled={isLoading}
@@ -2176,7 +2177,7 @@ function PasswordResetScreen({
 							className="h-12 w-12 items-center justify-center rounded-full border border-border bg-surface"
 						>
 							<ArrowLeft size={20} color={COLORS.text} strokeWidth={2.2} />
-						</Pressable>
+						</FeedbackPressable>
 					</View>
 
 					<Image
@@ -2311,7 +2312,7 @@ function PasswordResetScreen({
 					</View>
 
 					{stage === "reset_code" || stage === "second_factor" ? (
-						<Pressable
+						<FeedbackPressable
 							accessibilityLabel="Code erneut senden"
 							accessibilityRole="button"
 							accessibilityState={{ disabled: isLoading }}
@@ -2323,7 +2324,7 @@ function PasswordResetScreen({
 							<Text className="font-poppins text-body-3 text-primary">
 								Code erneut senden
 							</Text>
-						</Pressable>
+						</FeedbackPressable>
 					) : null}
 				</View>
 			</KeyboardSafeScrollView>
@@ -2406,7 +2407,7 @@ function VerificationScreen({
 						<Text className="mt-5 text-center font-poppins text-body-5 text-text">
 							Kein Code angekommen?
 						</Text>
-						<Pressable
+						<FeedbackPressable
 							accessibilityLabel="Code erneut senden"
 							accessibilityRole="button"
 							accessibilityState={{ disabled }}
@@ -2417,7 +2418,7 @@ function VerificationScreen({
 							<Text className="text-center font-poppins font-semibold text-body-5 text-primary">
 								Erneut senden
 							</Text>
-						</Pressable>
+						</FeedbackPressable>
 
 						{error ? (
 							<Animated.Text
@@ -2509,7 +2510,7 @@ export function OnboardingRecoveryScreen({
 					{ONBOARDING_DURATION_OPTIONS.map((duration) => {
 						const selected = answers.studyTime === String(duration);
 						return (
-							<Pressable
+							<FeedbackPressable
 								key={duration}
 								accessibilityRole="radio"
 								accessibilityState={{ disabled: isSubmitting, selected }}
@@ -2530,7 +2531,7 @@ export function OnboardingRecoveryScreen({
 								>
 									{formatOnboardingDuration(duration)}
 								</Text>
-							</Pressable>
+							</FeedbackPressable>
 						);
 					})}
 				</View>
@@ -2542,7 +2543,7 @@ export function OnboardingRecoveryScreen({
 					{LEARNING_DAYS.map((day) => {
 						const selected = selectedDays.has(day.label);
 						return (
-							<Pressable
+							<FeedbackPressable
 								key={day.label}
 								accessibilityRole="checkbox"
 								accessibilityState={{
@@ -2571,7 +2572,7 @@ export function OnboardingRecoveryScreen({
 								>
 									{day.label}
 								</Text>
-							</Pressable>
+							</FeedbackPressable>
 						);
 					})}
 				</View>
@@ -2579,7 +2580,7 @@ export function OnboardingRecoveryScreen({
 				<Text className="mt-6 font-poppins font-semibold text-body-3 text-text">
 					Startzeit
 				</Text>
-				<Pressable
+				<FeedbackPressable
 					accessibilityRole="button"
 					accessibilityState={{ disabled: isSubmitting }}
 					disabled={isSubmitting}
@@ -2603,7 +2604,7 @@ export function OnboardingRecoveryScreen({
 							? `${answers.learningTime} Uhr`
 							: "Uhrzeit auswählen"}
 					</Text>
-				</Pressable>
+				</FeedbackPressable>
 				{(error ?? validationError) ? (
 					<ErrorMessage className="mt-4 text-center">
 						{error ?? validationError}

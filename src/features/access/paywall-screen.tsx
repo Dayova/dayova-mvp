@@ -2,10 +2,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { type RefObject, useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import {
 	ArrowRight,
 	CreditCard,
@@ -196,7 +197,7 @@ export function PaywallScreen() {
 						<View className="flex-row flex-wrap justify-center gap-x-4 gap-y-2 px-2 pt-6">
 							<SupportContact context="Zugang zur App">
 								{({ onPress, busy, buttonRef }) => (
-									<Pressable
+									<FeedbackPressable
 										ref={buttonRef}
 										accessibilityLabel="Support"
 										accessibilityRole="button"
@@ -208,7 +209,7 @@ export function PaywallScreen() {
 										<Text className="text-body-4 text-white underline">
 											Support
 										</Text>
-									</Pressable>
+									</FeedbackPressable>
 								)}
 							</SupportContact>
 							<LegalLink
@@ -271,7 +272,7 @@ export function PaywallScreen() {
 
 function CheckoutButton({ onPress }: { onPress: () => void }) {
 	return (
-		<Pressable
+		<FeedbackPressable
 			accessibilityLabel="Tarife im Store auswählen"
 			accessibilityHint="Öffnet die Aboseite mit den verfügbaren Store-Tarifen."
 			accessibilityRole="button"
@@ -306,7 +307,7 @@ function CheckoutButton({ onPress }: { onPress: () => void }) {
 			<View className="h-9 w-9 items-center justify-center rounded-full bg-primary-strong">
 				<ArrowRight size={18} color={WHITE} strokeWidth={2.2} />
 			</View>
-		</Pressable>
+		</FeedbackPressable>
 	);
 }
 
@@ -324,7 +325,7 @@ function ManagementAction({
 	onPress: () => void;
 }) {
 	return (
-		<Pressable
+		<FeedbackPressable
 			accessibilityLabel={accessibilityLabel}
 			accessibilityRole="button"
 			className="min-h-14 flex-row items-center px-4 py-3 active:bg-system-subtle"
@@ -349,7 +350,7 @@ function ManagementAction({
 				}
 				strokeWidth={2}
 			/>
-		</Pressable>
+		</FeedbackPressable>
 	);
 }
 
@@ -367,7 +368,7 @@ function LegalLink({
 	url?: string;
 }) {
 	return (
-		<Pressable
+		<FeedbackPressable
 			ref={buttonRef}
 			accessibilityRole="link"
 			disabled={!url && !onPress}
@@ -381,6 +382,6 @@ function LegalLink({
 			}}
 		>
 			<Text className="text-body-4 text-white underline">{label}</Text>
-		</Pressable>
+		</FeedbackPressable>
 	);
 }

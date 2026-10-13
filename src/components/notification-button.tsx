@@ -1,7 +1,8 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import { router } from "expo-router";
-import { TouchableOpacity, View } from "react-native";
+import { View } from "react-native";
 import { api } from "#convex/_generated/api";
+import { FeedbackTouchableOpacity } from "~/components/ui/feedback-pressable";
 import { Bell } from "~/components/ui/icon";
 import { useAuthSession } from "~/context/AuthContext";
 import { useDayovaTheme } from "~/lib/theme";
@@ -17,7 +18,7 @@ export function NotificationButton() {
 	const hasUnread = unreadSummary?.hasUnread === true;
 
 	return (
-		<TouchableOpacity
+		<FeedbackTouchableOpacity
 			activeOpacity={0.86}
 			accessibilityRole="button"
 			accessibilityLabel={
@@ -45,6 +46,6 @@ export function NotificationButton() {
 					}}
 				/>
 			) : null}
-		</TouchableOpacity>
+		</FeedbackTouchableOpacity>
 	);
 }

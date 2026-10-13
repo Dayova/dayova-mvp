@@ -1,4 +1,5 @@
-import { TouchableOpacity, type TouchableOpacityProps } from "react-native";
+import type { TouchableOpacityProps } from "react-native";
+import { FeedbackTouchableOpacity } from "~/components/ui/feedback-pressable";
 import { X } from "~/components/ui/icon";
 import { useDayovaTheme } from "~/lib/theme";
 
@@ -16,7 +17,7 @@ function CloseButton({
 	const { colors } = useDayovaTheme();
 
 	return (
-		<TouchableOpacity
+		<FeedbackTouchableOpacity
 			accessibilityLabel={accessibilityLabel}
 			accessibilityRole="button"
 			activeOpacity={activeOpacity}
@@ -25,7 +26,7 @@ function CloseButton({
 			{...props}
 		>
 			<X size={24} color={colors.path3} strokeWidth={2} />
-		</TouchableOpacity>
+		</FeedbackTouchableOpacity>
 	);
 }
 

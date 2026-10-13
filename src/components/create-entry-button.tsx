@@ -1,8 +1,8 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { TouchableOpacity } from "react-native";
 import { CreateTypePickerModal } from "~/components/create-type-picker-modal";
 import { CreateEntryIcon } from "~/components/ui/create-entry-icon";
+import { FeedbackTouchableOpacity } from "~/components/ui/feedback-pressable";
 import { ROUTES, withReturnTo } from "~/lib/routes";
 
 export function CreateEntryButton({ returnTo }: { returnTo: string }) {
@@ -10,7 +10,7 @@ export function CreateEntryButton({ returnTo }: { returnTo: string }) {
 	const [showPicker, setShowPicker] = useState(false);
 	return (
 		<>
-			<TouchableOpacity
+			<FeedbackTouchableOpacity
 				accessibilityRole="button"
 				accessibilityLabel="Eintrag hinzufügen"
 				accessibilityHint="Wähle zwischen Prüfung und Hausaufgabe."
@@ -19,7 +19,7 @@ export function CreateEntryButton({ returnTo }: { returnTo: string }) {
 				className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
 			>
 				<CreateEntryIcon />
-			</TouchableOpacity>
+			</FeedbackTouchableOpacity>
 			<CreateTypePickerModal
 				visible={showPicker}
 				onRequestClose={() => setShowPicker(false)}

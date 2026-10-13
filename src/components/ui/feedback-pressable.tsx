@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
 	AccessibilityInfo,
 	Animated,
 	Platform,
 	Pressable,
+	TouchableOpacity,
 	useAnimatedValue,
 } from "react-native";
 
@@ -13,18 +14,9 @@ type FeedbackPressableProps = React.ComponentProps<typeof Pressable> & {
 	pressFeedback?: boolean;
 };
 
-/** Adds press motion without changing existing actions, colors, or caller styles. */
-export function FeedbackPressable({
-	pressFeedback = true,
-	disabled,
-	onPressIn,
-	onPressOut,
-	style,
-	...props
-}: FeedbackPressableProps) {
+/** Shared by pressable actions and opacity-based controls. */
+function usePressMotion(enabled: boolean) {
 	const scale = useAnimatedValue(1);
-	const wasPressed = useRef(false);
-	const [pressed, setPressed] = useState(false);
 	// Stay still until the system preference is known, including on first mount.
 	const [reduceMotion, setReduceMotion] = useState(true);
 	useEffect(() => {
@@ -48,43 +40,65 @@ export function FeedbackPressable({
 		};
 	}, []);
 
-	const animate = pressFeedback && !disabled && !reduceMotion;
+	const animate = enabled && !reduceMotion;
 	useEffect(() => {
 		if (!animate) {
-			wasPressed.current = false;
 			scale.stopAnimation();
 			scale.setValue(1);
-			return;
 		}
-		if (!pressed && !wasPressed.current) return;
-		wasPressed.current = pressed;
-		const animation = pressed
-			? Animated.timing(scale, {
-					toValue: 0.98,
-					duration: 90,
-					useNativeDriver: Platform.OS !== "web",
-				})
-			: Animated.spring(scale, {
-					toValue: 1,
-					stiffness: 350,
-					damping: 28,
-					mass: 0.6,
-					useNativeDriver: Platform.OS !== "web",
-				});
-		animation.start();
-		return () => animation.stop();
-	}, [animate, pressed, scale]);
+		return () => scale.stopAnimation();
+	}, [animate, scale]);
+
+	// Start at the touch event, so even a fast tap gets feedback before rerender.
+	const pressIn = () => {
+		if (!animate) return;
+		Animated.timing(scale, {
+			toValue: 0.97,
+			duration: 90,
+			useNativeDriver: Platform.OS !== "web",
+		}).start();
+	};
+	const pressOut = () => {
+		if (!animate) return;
+		Animated.spring(scale, {
+			toValue: 1,
+			stiffness: 350,
+			damping: 28,
+			mass: 0.6,
+			useNativeDriver: Platform.OS !== "web",
+		}).start();
+	};
+	return { scale, pressIn, pressOut };
+}
+
+/** Adds press motion without changing existing actions, colors, or caller styles. */
+export function FeedbackPressable({
+	pressFeedback = true,
+	disabled,
+	onPressIn,
+	onPressOut,
+	style,
+	...props
+}: FeedbackPressableProps) {
+	const [pressed, setPressed] = useState(false);
+	const { scale, pressIn, pressOut } = usePressMotion(
+		pressFeedback && !disabled,
+	);
 
 	return (
 		<AnimatedPressable
 			{...props}
 			disabled={disabled}
 			onPressIn={(event) => {
-				if (!disabled) setPressed(true);
+				if (!disabled) {
+					setPressed(true);
+					pressIn();
+				}
 				onPressIn?.(event);
 			}}
 			onPressOut={(event) => {
 				setPressed(false);
+				pressOut();
 				onPressOut?.(event);
 			}}
 			// Caller transforms take precedence, preserving any existing motion.
@@ -94,6 +108,36 @@ export function FeedbackPressable({
 					? style({ pressed: pressed && !disabled })
 					: style,
 			]}
+		/>
+	);
+}
+
+const AnimatedTouchableOpacity =
+	Animated.createAnimatedComponent(TouchableOpacity);
+
+/** Retains the existing opacity feedback, touch handling, and ref contract. */
+export function FeedbackTouchableOpacity({
+	disabled,
+	onPressIn,
+	onPressOut,
+	style,
+	...props
+}: React.ComponentProps<typeof TouchableOpacity>) {
+	const { scale, pressIn, pressOut } = usePressMotion(!disabled);
+	return (
+		<AnimatedTouchableOpacity
+			{...props}
+			disabled={disabled}
+			onPressIn={(event) => {
+				pressIn();
+				onPressIn?.(event);
+			}}
+			onPressOut={(event) => {
+				pressOut();
+				onPressOut?.(event);
+			}}
+			// Runtime press transform; caller transforms still take precedence.
+			style={[{ transform: [{ scale }] }, style]}
 		/>
 	);
 }

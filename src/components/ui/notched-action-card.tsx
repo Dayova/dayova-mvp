@@ -10,6 +10,7 @@ import {
 	type ViewStyle,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
@@ -430,7 +431,7 @@ export function NotchedActionCard({
 		} = props;
 
 		return (
-			<Pressable
+			<FeedbackPressable
 				{...viewProps}
 				accessible
 				accessibilityRole={cardAccessibilityRole}
@@ -457,7 +458,7 @@ export function NotchedActionCard({
 					actionOffsetRight={actionOffsetRight}
 					actionSize={actionSize}
 				/>
-			</Pressable>
+			</FeedbackPressable>
 		);
 	}
 

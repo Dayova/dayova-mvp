@@ -2,7 +2,7 @@ import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ScrollView, TouchableOpacity, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
 	Easing,
@@ -21,6 +21,7 @@ import { CreateTypePickerModal } from "~/components/create-type-picker-modal";
 import { BackButton, Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import { CreateEntryIcon } from "~/components/ui/create-entry-icon";
+import { FeedbackTouchableOpacity } from "~/components/ui/feedback-pressable";
 import {
 	ArrowUpRight,
 	ClipboardEdit,
@@ -320,7 +321,7 @@ function PlansTabSwitch({
 			{tabs.map((tab) => {
 				const isActive = tab.key === activeTab;
 				return (
-					<TouchableOpacity
+					<FeedbackTouchableOpacity
 						key={tab.key}
 						accessibilityRole="tab"
 						accessibilityState={{ selected: isActive }}
@@ -350,7 +351,7 @@ function PlansTabSwitch({
 								{tab.label}
 							</Text>
 						</View>
-					</TouchableOpacity>
+					</FeedbackTouchableOpacity>
 				);
 			})}
 		</View>
@@ -381,7 +382,7 @@ function LearningPlanActionRail({
 			]}
 		>
 			<View className="items-center gap-4">
-				<TouchableOpacity
+				<FeedbackTouchableOpacity
 					accessibilityLabel="Lernplan bearbeiten"
 					accessibilityRole="button"
 					activeOpacity={0.78}
@@ -393,9 +394,9 @@ function LearningPlanActionRail({
 						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
 						strokeWidth={2.1}
 					/>
-				</TouchableOpacity>
+				</FeedbackTouchableOpacity>
 				<View className="h-0.5 w-8 rounded-full bg-light-1" />
-				<TouchableOpacity
+				<FeedbackTouchableOpacity
 					accessibilityLabel="Lernplan löschen"
 					accessibilityRole="button"
 					activeOpacity={0.78}
@@ -407,7 +408,7 @@ function LearningPlanActionRail({
 						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
 						strokeWidth={2.1}
 					/>
-				</TouchableOpacity>
+				</FeedbackTouchableOpacity>
 			</View>
 		</Animated.View>
 	);
@@ -900,7 +901,7 @@ export default function LearningPlansScreen() {
 						Deine Pläne
 					</Text>
 
-					<TouchableOpacity
+					<FeedbackTouchableOpacity
 						accessibilityRole="button"
 						accessibilityLabel="Neuen Eintrag erstellen."
 						accessibilityHint="Öffnet den Eintragserstellungsdialog, um entweder eine Prüfung oder Hausaufgabe zu erstellen."
@@ -909,7 +910,7 @@ export default function LearningPlansScreen() {
 						className="h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border bg-card"
 					>
 						<CreateEntryIcon />
-					</TouchableOpacity>
+					</FeedbackTouchableOpacity>
 				</View>
 
 				<PlansTabSwitch activeTab={activeTab} onChange={setActiveTab} />
