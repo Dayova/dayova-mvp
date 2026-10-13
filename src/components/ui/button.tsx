@@ -1,6 +1,7 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import { LinearGradient } from "expo-linear-gradient";
-import { Platform, Pressable, StyleSheet } from "react-native";
+import { Platform, type Pressable, StyleSheet } from "react-native";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import { ArrowLeft } from "~/components/ui/icon";
 import { TextClassContext } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
@@ -135,8 +136,9 @@ function Button({
 		<TextClassContext.Provider
 			value={buttonTextVariants({ variant: resolvedVariant, size })}
 		>
-			<Pressable
+			<FeedbackPressable
 				{...props}
+				pressFeedback={resolvedVariant !== "link" && size !== "icon"}
 				accessible
 				accessibilityRole="button"
 				accessibilityState={resolvedAccessibilityState}
@@ -164,7 +166,7 @@ function Button({
 						{typeof children === "function" ? children(state) : children}
 					</>
 				)}
-			</Pressable>
+			</FeedbackPressable>
 		</TextClassContext.Provider>
 	);
 }

@@ -294,3 +294,20 @@ are empty; example selections belong only in historical screenshot evidence.
 
 The duration explanation adapts to the chosen value; an additional explanation
 between weekdays and start time brings the profile flow to twelve steps.
+
+## Press feedback
+
+Shared Buttons and previously static exam/subject SelectionOptionRows use
+`FeedbackPressable`: 90 ms press compression to 98%, followed by a damped
+return. Existing active colors, opacity, labels, handlers, and caller styles
+remain intact. Link and minimum-size icon buttons keep their existing feedback.
+Caller transforms take precedence so existing animations are not replaced.
+The simple transform runs with React Native Animated's native driver on native
+platforms; it adds no dependency and does not migrate existing Reanimated code.
+Reduced motion disables scaling, including when the preference changes during
+an interaction. Until the preference is available, controls remain static.
+Selection rows invoke the existing safe iOS selection haptic only when choosing
+an unselected option. Buttons do not add automatic haptics: existing success and
+native-control feedback must not be duplicated.
+
+Tracked in [DAY-508](https://linear.app/dayova/issue/DAY-508).
