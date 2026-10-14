@@ -62,6 +62,7 @@ function FieldTrigger({
 }) {
 	return (
 		<FeedbackTouchableOpacity
+			pressBorder={!invalid}
 			activeOpacity={activeOpacity}
 			className={cn(
 				"min-h-16 flex-row items-center rounded-input border border-border bg-card px-5",
