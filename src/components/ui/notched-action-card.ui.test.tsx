@@ -92,14 +92,16 @@ test("the separate action hit target animates its visible circle and dispatches 
 	const preference = jest
 		.spyOn(AccessibilityInfo, "isReduceMotionEnabled")
 		.mockResolvedValue(false);
-	const timing = jest.spyOn(Animated, "timing").mockImplementation((value) => {
-		(value as Animated.Value).setValue(0.97);
-		return {
-			start: (callback) => callback?.({ finished: true }),
-			stop: jest.fn(),
-			reset: jest.fn(),
-		};
-	});
+	const timing = jest
+		.spyOn(Animated, "timing")
+		.mockImplementation((value, config) => {
+			(value as Animated.Value).setValue(config.toValue as number);
+			return {
+				start: (callback) => callback?.({ finished: true }),
+				stop: jest.fn(),
+				reset: jest.fn(),
+			};
+		});
 	const spring = jest.spyOn(Animated, "spring");
 	try {
 		const onPress = jest.fn();
@@ -117,12 +119,12 @@ test("the separate action hit target animates its visible circle and dispatches 
 		await fireEvent(action, "pressIn", {});
 		expect(timing).toHaveBeenCalledWith(
 			expect.anything(),
-			expect.objectContaining({ toValue: 0.97 }),
+			expect.objectContaining({ toValue: 0.92 }),
 		);
 		const animatedScale = timing.mock.calls[0][0];
 		// The visible circle uses the animated value; the independent hit target does not.
 		const tree = JSON.stringify(screen.toJSON());
-		expect(tree).toContain('"scale":0.97');
+		expect(tree).toContain('"scale":0.92');
 		expect(StyleSheet.flatten(action.props.style).transform).toBeUndefined();
 		await fireEvent.press(action);
 		expect(onPress).toHaveBeenCalledTimes(1);

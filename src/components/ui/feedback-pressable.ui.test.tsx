@@ -229,3 +229,34 @@ test("pending compression cannot restart motion after reduced motion is enabled"
 	await act(() => finishCompression?.({ finished: true }));
 	expect(spring).not.toHaveBeenCalled();
 });
+
+test.each([
+	FeedbackPressable,
+	FeedbackTouchableOpacity,
+])("compact controls adapt press depth to their layout and preserve caller layout handling", async (Control) => {
+	const timing = jest.spyOn(Animated, "timing");
+	const onLayout = jest.fn();
+	const screen = await render(
+		<Control accessibilityRole="button" onLayout={onLayout}>
+			<Text>Bearbeiten</Text>
+		</Control>,
+	);
+	const compact = {
+		nativeEvent: { layout: { width: 44, height: 44, x: 0, y: 0 } },
+	};
+	await fireEvent(screen.getByRole("button"), "layout", compact);
+	await fireEvent(screen.getByRole("button"), "pressIn", {});
+	expect(onLayout).toHaveBeenCalledWith(compact);
+	expect(timing).toHaveBeenLastCalledWith(
+		expect.anything(),
+		expect.objectContaining({ toValue: 0.92 }),
+	);
+	await fireEvent(screen.getByRole("button"), "layout", {
+		nativeEvent: { layout: { width: 320, height: 56, x: 0, y: 0 } },
+	});
+	await fireEvent(screen.getByRole("button"), "pressIn", {});
+	expect(timing).toHaveBeenLastCalledWith(
+		expect.anything(),
+		expect.objectContaining({ toValue: 0.97 }),
+	);
+});

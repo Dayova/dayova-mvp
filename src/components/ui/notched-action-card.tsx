@@ -13,6 +13,7 @@ import {
 import Svg, { Path } from "react-native-svg";
 import {
 	FeedbackPressable,
+	getPressScaleForSize,
 	usePressMotion,
 } from "~/components/ui/feedback-pressable";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
@@ -253,7 +254,10 @@ function ActionPressableFrame({
 	onPress: NonNullable<PressableProps["onPress"]>;
 }) {
 	const [pressed, setPressed] = useState(false);
-	const { scale, pressIn, pressOut } = usePressMotion(!actionDisabled);
+	const { scale, pressIn, pressOut } = usePressMotion(
+		!actionDisabled,
+		getPressScaleForSize(actionSize, actionSize),
+	);
 	const touchTargetExpansion = Math.max(
 		0,
 		(MINIMUM_TOUCH_TARGET_SIZE - actionSize) / 2,
