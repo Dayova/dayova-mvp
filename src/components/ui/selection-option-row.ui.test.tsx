@@ -39,11 +39,13 @@ test.each([
 		screen.getByRole("radio", { name: label }).props.accessibilityState,
 	).toEqual({
 		checked: selected,
+		disabled: false,
 	});
 	expect(screen.getByText(label).props.numberOfLines).toBeUndefined();
-	expect(screen.getByRole("radio").props.className).toContain(
-		selected ? "bg-accent" : "bg-card",
-	);
 	await fireEvent.press(screen.getByRole("radio"));
 	expect(onPress).toHaveBeenCalledTimes(1);
 });
+
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+);

@@ -9,6 +9,10 @@ let mockDuration: {
 	onConfirm: (minutes: number) => void;
 	onDismiss: () => void;
 };
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+);
+
 jest.mock("~/components/ui/duration-picker-sheet", () => ({
 	DurationPickerSheet: (props: typeof mockDuration) => {
 		mockDuration = props;

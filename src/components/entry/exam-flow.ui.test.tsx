@@ -118,20 +118,9 @@ describe("ExamTypePicker custom entry", () => {
 	});
 });
 
-jest.mock("react-native-reanimated", () => {
-	const ReactNative =
-		jest.requireActual<typeof import("react-native")>("react-native");
-	const animationBuilder = {
-		duration: () => animationBuilder,
-	};
-
-	return {
-		__esModule: true,
-		default: { View: ReactNative.View },
-		FadeInDown: animationBuilder,
-		LinearTransition: animationBuilder,
-	};
-});
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+);
 
 jest.mock("~/components/ui/icon", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
