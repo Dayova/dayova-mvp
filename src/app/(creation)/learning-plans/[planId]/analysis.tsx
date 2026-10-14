@@ -61,7 +61,7 @@ export default function LearningPlanAnalysisScreen() {
 				snapshot.plan.diagnosticPlacement === "firstSession") ||
 			snapshot.plan.status === "accepted"
 		) {
-			// A running pipeline owns navigation so a live snapshot cannot skip visible stages.
+			// A running pipeline owns navigation so a live snapshot cannot bypass pending requests.
 			if (!didStartRef.current) router.replace(planPath(planId, "review"));
 			return;
 		}

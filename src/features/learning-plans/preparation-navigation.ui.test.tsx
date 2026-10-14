@@ -64,6 +64,8 @@ jest.mock("~/features/learning-plans/plan-preparation-progress", () => ({
 beforeEach(() => {
 	jest.useFakeTimers();
 	jest.clearAllMocks();
+	mockWork.mockReset();
+	mockWork.mockImplementation(async () => {});
 	mockSnapshot = {
 		plan: {
 			status: "draft",
@@ -80,29 +82,31 @@ afterEach(() => {
 test.each([
 	false,
 	true,
-])("live completion waits for the visible sequence; leaving=%s", async (leave) => {
+])("navigates immediately after actual work completes; leaving=%s", async (leave) => {
+	let finish = () => {};
+	mockWork.mockImplementationOnce(
+		() =>
+			new Promise<void>((resolve) => {
+				finish = resolve;
+			}),
+	);
 	const screen = await render(<LearningPlanAnalysisScreen />);
 	await act(async () => {
 		jest.runAllTicks();
 	});
 	await act(async () => {
-		await jest.advanceTimersByTimeAsync(3000);
+		await jest.advanceTimersByTimeAsync(8000);
 	});
-	expect(screen.getByText("Stage 2")).toBeOnTheScreen();
 	mockSnapshot = { plan: { ...mockSnapshot.plan, status: "generated" } };
 	await screen.rerender(<LearningPlanAnalysisScreen />);
-	expect(mockRouter.replace).not.toHaveBeenCalled();
-	await act(async () => {
-		await jest.advanceTimersByTimeAsync(1500);
-	});
-	expect(screen.getByText("Stage 3")).toBeOnTheScreen();
 	expect(mockRouter.replace).not.toHaveBeenCalled();
 	if (leave)
 		await act(async () => {
 			mockProgress.onClose();
 		});
+	// Resolving work is sufficient; no timer advance should be needed to navigate.
 	await act(async () => {
-		await jest.advanceTimersByTimeAsync(600);
+		finish();
 	});
 	if (leave) expect(mockRouter.replace).not.toHaveBeenCalled();
 	else

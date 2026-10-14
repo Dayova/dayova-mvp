@@ -315,15 +315,20 @@ manual confirmation, restore its route and the analysis-to-scope transition
 together; the backend confirmation requirement remains in place.
 
 The screen places a compact Dayova flower above a heading, animated shared
-`FlowProgressBar`, and a three-step checklist. The checklist is an estimated
-presentation sequence, not a report of individual request completion. For a fresh
-run, it advances at 5 and 10 seconds to distribute the typical wait across all
-three items. The third item remains active until the entire backend pipeline
-finishes. Requests still run sequentially and are never completed by a timer.
-Fast results use the 1.5-second minimum per visible item instead of waiting for
-the full estimate. The completed checklist stays visible for 600ms before
-navigation. Resumed work skips completed stages. Cancellation and errors stop
-estimated transitions; errors stay on the screen with a retry action.
-Pending work remains numbered; active work shows an indicator; completed visual
-stages use the shared Hugeicons check on cyan with `onPrimary`. Reduced motion
-retains static stage indicators.
+`FlowProgressBar`, and a three-step checklist. Visual stages use an estimated
+completion time, divided into thirds. The estimate starts at 15 seconds and
+adapts to the median of the last five successful full runs in the current app
+session (samples bounded to 1–60 seconds). Failed, cancelled, and resumed runs do
+not train the estimate. This is a presentation estimate, not measured backend
+phase completion or a guaranteed ETA.
+
+Actual readiness always wins: there are no minimum stage durations or completion
+holds. If work finishes in eight seconds, navigation starts at eight seconds,
+even when a remaining visual stage must be skipped. The final item stays active
+if processing exceeds the estimate. Backend requests remain sequential; errors
+and cancellation stop visual advancement and subsequent requests. Resumed work
+skips completed stages. Errors remain on the screen with a retry action.
+
+Pending items are numbered, the active item shows an indicator, and completed
+visual stages use the shared Hugeicons check on cyan with `onPrimary`. Reduced
+motion retains static stage indicators.

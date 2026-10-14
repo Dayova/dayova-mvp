@@ -1,6 +1,13 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { runPlanPreparation } from "./run-plan-preparation";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { createPlanPreparationRunner } from "./run-plan-preparation";
 
+function deferred() {
+	let resolve = () => {};
+	const promise = new Promise<void>((done) => {
+		resolve = done;
+	});
+	return { promise, resolve };
+}
 function setup() {
 	return {
 		questionsReady: false,
@@ -12,154 +19,124 @@ function setup() {
 		prepare: vi.fn(async () => {}),
 	};
 }
-
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
-describe("unified plan preparation", () => {
-	test("waits for analysis and scope before preparing the plan", async () => {
-		const options = setup();
-		let finishAnalysis = () => {};
-		options.analyze.mockImplementation(
-			() =>
-				new Promise<void>((resolve) => {
-					finishAnalysis = resolve;
-				}),
-		);
-		const pending = runPlanPreparation(options);
-		expect(options.confirm).not.toHaveBeenCalled();
-		expect(options.prepare).not.toHaveBeenCalled();
-		finishAnalysis();
-		await vi.runAllTimersAsync();
-		await pending;
-		expect(options.confirm).toHaveBeenCalledOnce();
-		expect(options.prepare).toHaveBeenCalledOnce();
-		expect(options.onStage.mock.calls.flat()).toEqual([0, 1, 2, 3]);
-	});
-	test("resumes after analysis and confirmation without repeating either", async () => {
-		const options = { ...setup(), questionsReady: true, scopeConfirmed: true };
-		const pending = runPlanPreparation(options);
-		await vi.runAllTimersAsync();
-		await pending;
-		expect(options.analyze).not.toHaveBeenCalled();
-		expect(options.confirm).not.toHaveBeenCalled();
-		expect(options.prepare).toHaveBeenCalledOnce();
-	});
-	test("does not start later stages when the user leaves during analysis", async () => {
-		const options = setup();
-		options.analyze.mockImplementation(async () => {
-			options.isCancelled.mockReturnValue(true);
-		});
-		const pending = runPlanPreparation(options);
-		await vi.runAllTimersAsync();
-		await pending;
-		expect(options.confirm).not.toHaveBeenCalled();
-		expect(options.prepare).not.toHaveBeenCalled();
-	});
-	test("surfaces preparation errors without marking the plan complete", async () => {
-		const options = setup();
-		options.prepare.mockRejectedValue(new Error("Try again"));
-		const assertion = expect(runPlanPreparation(options)).rejects.toThrow(
-			"Try again",
-		);
-		await vi.runAllTimersAsync();
-		await assertion;
-		expect(options.onStage).not.toHaveBeenCalledWith(3);
-	});
-});
-
-describe("readable preparation sequence", () => {
-	test("keeps each fast stage visible before moving to the next", async () => {
-		vi.useFakeTimers();
-		const options = setup();
-		const pending = runPlanPreparation(options);
-		await vi.advanceTimersByTimeAsync(1000);
-		expect(options.onStage.mock.calls.flat()).toEqual([0]);
-		await vi.advanceTimersByTimeAsync(500);
-		expect(options.onStage.mock.calls.flat()).toEqual([0, 1]);
-		await vi.advanceTimersByTimeAsync(1500);
-		expect(options.onStage.mock.calls.flat()).toEqual([0, 1, 2]);
-		await vi.advanceTimersByTimeAsync(1500);
-		expect(options.onStage.mock.calls.flat()).toEqual([0, 1, 2, 3]);
-		await vi.runAllTimersAsync();
-		await pending;
-	});
-});
-
-test("spreads a slow request across estimated stages without completing early", async () => {
+test("an eight-second result finishes at eight seconds, without animation delays", async () => {
+	const run = createPlanPreparationRunner();
 	const options = setup();
-	let finish = () => {};
-	options.analyze.mockImplementation(
-		() =>
-			new Promise<void>((resolve) => {
-				finish = resolve;
-			}),
-	);
-	const pending = runPlanPreparation(options);
-	await vi.advanceTimersByTimeAsync(5000);
+	const analysis = deferred();
+	options.analyze.mockReturnValue(analysis.promise);
+	const completed = vi.fn();
+	const pending = run(options).then(completed);
+	await vi.advanceTimersByTimeAsync(8000);
+	expect(completed).not.toHaveBeenCalled();
 	expect(options.onStage.mock.calls.flat()).toEqual([0, 1]);
-	await vi.advanceTimersByTimeAsync(5000);
-	expect(options.onStage.mock.calls.flat()).toEqual([0, 1, 2]);
-	await vi.advanceTimersByTimeAsync(20000);
-	expect(options.onStage).not.toHaveBeenCalledWith(3);
-	expect(options.confirm).not.toHaveBeenCalled();
-	finish();
-	await vi.runAllTimersAsync();
-	expect(await pending).toBe(true);
+	analysis.resolve();
+	await pending;
+	expect(completed).toHaveBeenCalledWith(true);
+	expect(options.onStage.mock.calls.flat()).toEqual([0, 1, 3]);
+	expect(vi.getTimerCount()).toBe(0);
 });
 
-test("leaving during a visual hold stops later visual stages", async () => {
+test("uses previous successful duration to pace the next run in thirds", async () => {
+	const run = createPlanPreparationRunner();
+	const first = setup();
+	const analysis = deferred();
+	first.analyze.mockReturnValue(analysis.promise);
+	const pending = run(first);
+	await vi.advanceTimersByTimeAsync(9000);
+	analysis.resolve();
+	await pending;
+	const second = setup();
+	const nextAnalysis = deferred();
+	second.analyze.mockReturnValue(nextAnalysis.promise);
+	const next = run(second);
+	await vi.advanceTimersByTimeAsync(2999);
+	expect(second.onStage.mock.calls.flat()).toEqual([0]);
+	await vi.advanceTimersByTimeAsync(1);
+	expect(second.onStage.mock.calls.flat()).toEqual([0, 1]);
+	await vi.advanceTimersByTimeAsync(3000);
+	expect(second.onStage.mock.calls.flat()).toEqual([0, 1, 2]);
+	expect(second.confirm).not.toHaveBeenCalled();
+	await vi.advanceTimersByTimeAsync(30000);
+	expect(second.onStage).not.toHaveBeenCalledWith(3);
+	nextAnalysis.resolve();
+	expect(await next).toBe(true);
+});
+
+test("instant results never wait for presentation timers", async () => {
 	const options = setup();
-	const pending = runPlanPreparation(options);
-	await vi.advanceTimersByTimeAsync(500);
+	expect(await createPlanPreparationRunner()(options)).toBe(true);
+	expect(options.onStage.mock.calls.flat()).toEqual([0, 3]);
+	expect(vi.getTimerCount()).toBe(0);
+});
+
+test("backend dependencies remain sequential", async () => {
+	const options = setup();
+	const analysis = deferred();
+	const confirmation = deferred();
+	options.analyze.mockReturnValue(analysis.promise);
+	options.confirm.mockReturnValue(confirmation.promise);
+	const pending = createPlanPreparationRunner()(options);
+	await vi.advanceTimersByTimeAsync(10000);
+	expect(options.confirm).not.toHaveBeenCalled();
+	analysis.resolve();
+	await vi.advanceTimersByTimeAsync(0);
+	expect(options.confirm).toHaveBeenCalledOnce();
+	expect(options.prepare).not.toHaveBeenCalled();
+	confirmation.resolve();
+	await pending;
+	expect(options.prepare).toHaveBeenCalledOnce();
+});
+
+test("last item waits for final preparation even after the estimate elapses", async () => {
+	const options = setup();
+	const preparation = deferred();
+	options.prepare.mockReturnValue(preparation.promise);
+	const completed = vi.fn();
+	const pending = createPlanPreparationRunner()(options).then(completed);
+	await vi.advanceTimersByTimeAsync(60000);
+	expect(options.onStage).toHaveBeenLastCalledWith(2);
+	expect(completed).not.toHaveBeenCalled();
+	preparation.resolve();
+	await pending;
+	expect(completed).toHaveBeenCalledWith(true);
+});
+
+test("resume skips completed backend and visual stages", async () => {
+	const options = { ...setup(), questionsReady: true, scopeConfirmed: true };
+	expect(await createPlanPreparationRunner()(options)).toBe(true);
+	expect(options.analyze).not.toHaveBeenCalled();
+	expect(options.confirm).not.toHaveBeenCalled();
+	expect(options.onStage.mock.calls.flat()).toEqual([2, 3]);
+});
+
+test("leaving stops estimated progress and subsequent requests", async () => {
+	const options = setup();
+	const analysis = deferred();
+	options.analyze.mockReturnValue(analysis.promise);
+	const pending = createPlanPreparationRunner()(options);
 	options.isCancelled.mockReturnValue(true);
-	await vi.runAllTimersAsync();
+	await vi.advanceTimersByTimeAsync(30000);
+	analysis.resolve();
 	expect(await pending).toBe(false);
 	expect(options.onStage.mock.calls.flat()).toEqual([0]);
+	expect(options.confirm).not.toHaveBeenCalled();
+	expect(vi.getTimerCount()).toBe(0);
 });
 
-test("waits for the completed checklist before allowing navigation", async () => {
+test.each([
+	"analyze",
+	"confirm",
+	"prepare",
+] as const)("%s failure stops timers without completion", async (step) => {
 	const options = setup();
-	const completed = vi.fn();
-	const pending = runPlanPreparation(options).then(completed);
-	await vi.advanceTimersByTimeAsync(4500);
-	expect(options.onStage).toHaveBeenLastCalledWith(3);
-	expect(completed).not.toHaveBeenCalled();
-	await vi.advanceTimersByTimeAsync(600);
-	await pending;
-	expect(completed).toHaveBeenCalledWith(true);
-});
-
-test("keeps the last item loading until all preparation work finishes", async () => {
-	const options = setup();
-	let finishPreparation = () => {};
-	options.prepare.mockImplementation(
-		() =>
-			new Promise<void>((resolve) => {
-				finishPreparation = resolve;
-			}),
+	options[step].mockRejectedValue(new Error("Failed"));
+	await expect(createPlanPreparationRunner()(options)).rejects.toThrow(
+		"Failed",
 	);
-	const completed = vi.fn();
-	const pending = runPlanPreparation(options).then(completed);
-	await vi.advanceTimersByTimeAsync(10000);
-	expect(options.onStage).toHaveBeenLastCalledWith(2);
-	await vi.advanceTimersByTimeAsync(30000);
-	expect(options.onStage).toHaveBeenLastCalledWith(2);
-	expect(completed).not.toHaveBeenCalled();
-	finishPreparation();
-	await vi.advanceTimersByTimeAsync(0);
-	expect(options.onStage).toHaveBeenLastCalledWith(3);
-	expect(completed).not.toHaveBeenCalled();
-	await vi.advanceTimersByTimeAsync(600);
-	await pending;
-	expect(completed).toHaveBeenCalledWith(true);
-});
-
-test("stops estimated transitions after an early error", async () => {
-	const options = setup();
-	options.analyze.mockRejectedValue(new Error("Failed"));
-	await expect(runPlanPreparation(options)).rejects.toThrow("Failed");
 	await vi.advanceTimersByTimeAsync(30000);
 	expect(options.onStage.mock.calls.flat()).toEqual([0]);
-	expect(options.confirm).not.toHaveBeenCalled();
+	expect(vi.getTimerCount()).toBe(0);
 });
