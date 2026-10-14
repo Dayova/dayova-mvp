@@ -140,6 +140,7 @@ export default function PersonalSubjectsScreen() {
 							<FeedbackPressable
 								accessibilityRole="button"
 								accessibilityLabel="Persönliches Fach hinzufügen"
+								pressScale={0.92}
 								onPress={() => setIsAdding(true)}
 								className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
 							>
