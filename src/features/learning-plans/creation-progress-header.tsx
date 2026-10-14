@@ -31,7 +31,7 @@ export function LearningPlanCreationProgressHeader({
 			<CreationHeaderButton kind="back" onPress={onBack} />
 			<FlowProgressBar
 				accessible
-				className="flex-1"
+				className="h-10 flex-1"
 				progress={safeProgress / safeTotalSteps}
 				accessibilityRole="progressbar"
 				accessibilityValue={{

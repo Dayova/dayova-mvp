@@ -249,7 +249,9 @@ Expo UI, with Apple's `glass` button style on iOS 26+ and `bordered` on older
 iOS versions. The native control owns interaction and accessibility, while
 Dayova's Hugeicons remain the button content. Android and web retain the shared
 BackButton/CloseButton controls. Keep this treatment in the creation header;
-it does not change other buttons or modal close controls.
+it does not change other buttons or modal close controls. The creation progress
+bar is 40pt tall, centered beside the 48pt button hosts, so the three elements
+have similar visual height without reducing the button tap areas.
 
 ## Notes
 
