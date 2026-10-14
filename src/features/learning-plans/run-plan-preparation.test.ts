@@ -86,7 +86,7 @@ describe("readable preparation sequence", () => {
 	});
 });
 
-test("does not mark a slow request complete when the minimum time elapses", async () => {
+test("spreads a slow request across estimated stages without completing early", async () => {
 	const options = setup();
 	let finish = () => {};
 	options.analyze.mockImplementation(
@@ -96,22 +96,26 @@ test("does not mark a slow request complete when the minimum time elapses", asyn
 			}),
 	);
 	const pending = runPlanPreparation(options);
-	await vi.advanceTimersByTimeAsync(10000);
-	expect(options.onStage.mock.calls.flat()).toEqual([0]);
+	await vi.advanceTimersByTimeAsync(5000);
+	expect(options.onStage.mock.calls.flat()).toEqual([0, 1]);
+	await vi.advanceTimersByTimeAsync(5000);
+	expect(options.onStage.mock.calls.flat()).toEqual([0, 1, 2]);
+	await vi.advanceTimersByTimeAsync(20000);
+	expect(options.onStage).not.toHaveBeenCalledWith(3);
 	expect(options.confirm).not.toHaveBeenCalled();
 	finish();
 	await vi.runAllTimersAsync();
 	expect(await pending).toBe(true);
 });
 
-test("leaving during a stage's visible hold stops the next request", async () => {
+test("leaving during a visual hold stops later visual stages", async () => {
 	const options = setup();
 	const pending = runPlanPreparation(options);
 	await vi.advanceTimersByTimeAsync(500);
 	options.isCancelled.mockReturnValue(true);
 	await vi.runAllTimersAsync();
 	expect(await pending).toBe(false);
-	expect(options.confirm).not.toHaveBeenCalled();
+	expect(options.onStage.mock.calls.flat()).toEqual([0]);
 });
 
 test("waits for the completed checklist before allowing navigation", async () => {
@@ -137,7 +141,7 @@ test("keeps the last item loading until all preparation work finishes", async ()
 	);
 	const completed = vi.fn();
 	const pending = runPlanPreparation(options).then(completed);
-	await vi.advanceTimersByTimeAsync(3000);
+	await vi.advanceTimersByTimeAsync(10000);
 	expect(options.onStage).toHaveBeenLastCalledWith(2);
 	await vi.advanceTimersByTimeAsync(30000);
 	expect(options.onStage).toHaveBeenLastCalledWith(2);
@@ -149,4 +153,13 @@ test("keeps the last item loading until all preparation work finishes", async ()
 	await vi.advanceTimersByTimeAsync(600);
 	await pending;
 	expect(completed).toHaveBeenCalledWith(true);
+});
+
+test("stops estimated transitions after an early error", async () => {
+	const options = setup();
+	options.analyze.mockRejectedValue(new Error("Failed"));
+	await expect(runPlanPreparation(options)).rejects.toThrow("Failed");
+	await vi.advanceTimersByTimeAsync(30000);
+	expect(options.onStage.mock.calls.flat()).toEqual([0]);
+	expect(options.confirm).not.toHaveBeenCalled();
 });

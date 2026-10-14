@@ -315,11 +315,15 @@ manual confirmation, restore its route and the analysis-to-scope transition
 together; the backend confirmation requirement remains in place.
 
 The screen places a compact Dayova flower above a heading, animated shared
-`FlowProgressBar`, and a three-step checklist. Completion states require actual
-request completion; each active stage stays visible for at least 1.5 seconds so
-fast requests remain readable. The completed checklist stays visible for 600ms
-before navigation. Slow requests are never marked complete by a timer, and
-resuming prepared work does not replay already completed stages. Pending work remains
-numbered; active work shows an indicator; completed work uses the shared
-Hugeicons check on cyan with `onPrimary`. Reduced motion retains static stage
-indicators. Errors stay on the screen with a retry action.
+`FlowProgressBar`, and a three-step checklist. The checklist is an estimated
+presentation sequence, not a report of individual request completion. For a fresh
+run, it advances at 5 and 10 seconds to distribute the typical wait across all
+three items. The third item remains active until the entire backend pipeline
+finishes. Requests still run sequentially and are never completed by a timer.
+Fast results use the 1.5-second minimum per visible item instead of waiting for
+the full estimate. The completed checklist stays visible for 600ms before
+navigation. Resumed work skips completed stages. Cancellation and errors stop
+estimated transitions; errors stay on the screen with a retry action.
+Pending work remains numbered; active work shows an indicator; completed visual
+stages use the shared Hugeicons check on cyan with `onPrimary`. Reduced motion
+retains static stage indicators.
