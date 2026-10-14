@@ -165,9 +165,6 @@ export function TopicSearch({
 						</Text>
 					) : (
 						<>
-							<Text className="font-poppins text-body-4 text-secondary-text">
-								Vorschläge von WirLernenOnline
-							</Text>
 							{current.result.topics.map((topic) => {
 								const isSelected = selected.some(
 									(value) => keyOf(value) === keyOf(topic.title),
