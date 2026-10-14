@@ -57,3 +57,15 @@ test("ignores legacy notifications without a server registration", () => {
 		}),
 	).toBeNull();
 });
+
+test("normalizes iOS Expo notification timestamps expressed in seconds", () => {
+	expect(
+		getDeliveredNotificationInput(
+			{ ...notification, date: notification.date / 1000 },
+			"user-1",
+		),
+	).toEqual({
+		registrationId: "registration-1",
+		triggeredAt: "2026-06-09T18:06:21.750Z",
+	});
+});
