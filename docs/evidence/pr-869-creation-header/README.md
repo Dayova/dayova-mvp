@@ -44,7 +44,7 @@ simulator control service did not reliably target the active window.
 ![Progress bar close in height to the native glass buttons](after-matched-height-exam-type.png)
 
 Captured at 23:42 CEST on 14 October 2026 on the same iPhone 17 Pro / iOS 26.5
-simulator. This is the current header appearance: the progress bar is 40pt tall
+simulator. This superseded iteration used a progress bar 40pt tall
 beside 48pt button hosts. The three elements share a vertical center, with a
 small height difference. Button tap areas and native glass styling are retained.
 The override applies only to the learning-plan creation header.
@@ -52,3 +52,16 @@ The override applies only to the learning-plan creation header.
 This spacing-only adjustment passed targeted Biome/ESLint and diff checks, and
 was visually verified in the simulator. The earlier 38-test behavior validation
 is unchanged; no behavior or test assertions changed in this adjustment.
+
+## Compact progress bar (current)
+
+![Compact 16pt progress bar with native glass controls](after-compact-progress-exam-type.png)
+
+The 40pt iteration above was rejected as too large. The current creation header
+uses a 16pt bar, centered beside the existing native glass buttons. Button sizes
+and tap areas are unchanged. This screenshot is an unmodified iPhone 17 Pro /
+iOS 26.5 dark-appearance capture from 14 October 2026.
+
+The size-only change passed targeted Biome/ESLint and diff checks. The screenshot
+confirms the compact proportions; previous behavior test results remain
+applicable because this change only changes the bar's height utility.
