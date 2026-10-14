@@ -25,7 +25,6 @@ export function SelectionOptionRow({
 
 	return (
 		<FeedbackPressable
-			pressBorder={!selected}
 			accessibilityLabel={label}
 			accessibilityHint={description}
 			accessibilityRole="radio"

@@ -8,13 +8,10 @@ import {
 	useAnimatedValue,
 } from "react-native";
 
-import { cn } from "~/lib/utils";
-
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 type FeedbackPressableProps = React.ComponentProps<typeof Pressable> & {
 	pressFeedback?: boolean;
-	pressBorder?: boolean;
 };
 
 /** Shared by pressable actions and opacity-based controls. */
@@ -77,8 +74,6 @@ export function usePressMotion(enabled: boolean) {
 /** Adds press motion without changing existing actions, colors, or caller styles. */
 export function FeedbackPressable({
 	pressFeedback = true,
-	pressBorder = false,
-	className,
 	disabled,
 	onPressIn,
 	onPressOut,
@@ -93,10 +88,6 @@ export function FeedbackPressable({
 	return (
 		<AnimatedPressable
 			{...props}
-			className={cn(
-				className,
-				pressBorder && pressed && !disabled && "border-primary",
-			)}
 			disabled={disabled}
 			onPressIn={(event) => {
 				if (!disabled) {
@@ -126,31 +117,22 @@ const AnimatedTouchableOpacity =
 
 /** Retains the existing opacity feedback, touch handling, and ref contract. */
 export function FeedbackTouchableOpacity({
-	pressBorder = false,
-	className,
 	disabled,
 	onPressIn,
 	onPressOut,
 	style,
 	...props
-}: React.ComponentProps<typeof TouchableOpacity> & { pressBorder?: boolean }) {
-	const [pressed, setPressed] = useState(false);
+}: React.ComponentProps<typeof TouchableOpacity>) {
 	const { scale, pressIn, pressOut } = usePressMotion(!disabled);
 	return (
 		<AnimatedTouchableOpacity
 			{...props}
-			className={cn(
-				className,
-				pressBorder && pressed && !disabled && "border-primary",
-			)}
 			disabled={disabled}
 			onPressIn={(event) => {
-				if (!disabled) setPressed(true);
 				pressIn();
 				onPressIn?.(event);
 			}}
 			onPressOut={(event) => {
-				setPressed(false);
 				pressOut();
 				onPressOut?.(event);
 			}}

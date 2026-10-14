@@ -19,7 +19,6 @@ export function NotificationButton() {
 
 	return (
 		<FeedbackTouchableOpacity
-			pressBorder
 			activeOpacity={0.86}
 			accessibilityRole="button"
 			accessibilityLabel={

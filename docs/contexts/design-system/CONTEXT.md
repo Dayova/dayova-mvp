@@ -322,13 +322,3 @@ an unselected option. Buttons do not add automatic haptics: existing success and
 native-control feedback must not be duplicated.
 
 Tracked in [DAY-508](https://linear.app/dayova/issue/DAY-508).
-
-### Pressed border
-
-Neutral bordered actions may opt into `pressBorder` on the shared feedback
-controls. While held, their existing border uses `primary`; release or disabled
-state restores the original border without changing its width or layout. This
-includes creation-sheet options, add/notification/close controls, neutral
-buttons, valid field triggers and unselected selection rows. Selected and
-invalid states retain their semantic colors. The color feedback remains
-available with reduced motion; it does not add movement.

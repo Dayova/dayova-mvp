@@ -11,7 +11,6 @@ export function CreateEntryButton({ returnTo }: { returnTo: string }) {
 	return (
 		<>
 			<FeedbackTouchableOpacity
-				pressBorder
 				accessibilityRole="button"
 				accessibilityLabel="Eintrag hinzufügen"
 				accessibilityHint="Wähle zwischen Prüfung und Hausaufgabe."
