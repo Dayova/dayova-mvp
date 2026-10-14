@@ -17,6 +17,8 @@ jest.mock("~/components/ui/icon", () => {
 		Clock3: Icon,
 		GraduationCap: Icon,
 		Plus: Icon,
+		Search: Icon,
+		Check: Icon,
 		PropertyEdit: Icon,
 		X: Icon,
 	};

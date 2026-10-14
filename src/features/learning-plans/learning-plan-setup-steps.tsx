@@ -295,11 +295,11 @@ export function RequiredTopicsStep({
 }) {
 	return (
 		<View className="flex-1">
-			<Text className="font-poppins font-semibold text-body-1 text-text">
+			<Text
+				accessibilityRole="header"
+				className="font-poppins font-semibold text-body-1 text-text"
+			>
 				Welche Themen kommen in der Prüfung dran?
-			</Text>
-			<Text className="mt-3 font-poppins text-body-3 text-secondary-text">
-				Suche und wähle die Themen aus, die in deiner Prüfung vorkommen.
 			</Text>
 			<TopicSearch
 				topics={topics}

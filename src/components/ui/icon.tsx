@@ -53,6 +53,7 @@ import {
 	RepeatIcon,
 	Route02Icon,
 	ScanImageIcon,
+	Search01Icon,
 	Settings01Icon,
 	SparklesIcon,
 	SquareLock02Icon,
@@ -147,3 +148,5 @@ export const Timer = createIcon(Clock03Icon);
 export const Trash2 = createIcon(Delete02Icon);
 export const UserRound = createIcon(UserCircleIcon);
 export const X = createIcon(Cancel01Icon);
+
+export const Search = createIcon(Search01Icon);

@@ -10,6 +10,12 @@ import {
 jest.mock("~/components/ui/icon", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
 	return {
+		Search: (props: Record<string, unknown>) =>
+			React.createElement("Icon", props),
+		Plus: (props: Record<string, unknown>) =>
+			React.createElement("Icon", props),
+		Check: (props: Record<string, unknown>) =>
+			React.createElement("Icon", props),
 		X: (props: Record<string, unknown>) => React.createElement("Icon", props),
 	};
 });

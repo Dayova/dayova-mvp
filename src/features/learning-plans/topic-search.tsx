@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import { isMeaningfulTopicDescription } from "#convex/topicDescriptionValidation";
-import { X } from "~/components/ui/icon";
-import { Input } from "~/components/ui/input";
+import { Check, Plus, X } from "~/components/ui/icon";
+import { SearchField } from "~/components/ui/search-field";
 import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { useDayovaTheme } from "~/lib/theme";
@@ -88,23 +88,18 @@ export function TopicSearch({
 	};
 	return (
 		<View className="mt-6 gap-4">
-			<View className="min-h-14 rounded-2xl border border-border bg-card px-4 py-3">
-				<Input
-					accessibilityLabel="Thema suchen"
-					placeholder={`Thema in ${subject} suchen`}
-					value={query}
-					onChangeText={setQuery}
-					editable={!disabled}
-					maxLength={100}
-					autoCorrect={false}
-					returnKeyType="search"
-				/>
-			</View>
+			<SearchField
+				accessibilityLabel="Thema suchen"
+				placeholder={`Thema in ${subject} suchen`}
+				value={query}
+				onChangeText={setQuery}
+				editable={!disabled}
+				maxLength={100}
+				autoCorrect={false}
+				returnKeyType="search"
+			/>
 			{selected.length > 0 ? (
 				<View className="gap-2">
-					<Text className="font-poppins font-semibold text-body-3 text-text">
-						Ausgewählte Themen
-					</Text>
 					<View className="flex-row flex-wrap gap-2">
 						{selected.map((title, index) => (
 							<ActionSurface
@@ -117,7 +112,7 @@ export function TopicSearch({
 										selected.filter((_, i) => i !== index).join("\n"),
 									)
 								}
-								className="min-h-12 max-w-full flex-row items-center gap-2 rounded-2xl border border-border px-3 py-3"
+								className="min-h-12 max-w-full flex-row items-center gap-2 rounded-full border border-border px-4 py-3"
 							>
 								<Text className="shrink font-poppins text-body-3 text-text">
 									{title}
@@ -128,11 +123,7 @@ export function TopicSearch({
 					</View>
 				</View>
 			) : null}
-			{term.length < 3 ? (
-				<Text className="font-poppins text-body-3 text-secondary-text">
-					Gib mindestens 3 Zeichen ein und wähle passende Themen aus.
-				</Text>
-			) : current?.error ? (
+			{term.length < 3 ? null : current?.error ? (
 				<View className="gap-2">
 					<Text
 						accessibilityRole="alert"
@@ -185,15 +176,32 @@ export function TopicSearch({
 									<ActionSurface
 										key={topic.id}
 										accessibilityRole="button"
-										accessibilityLabel={`${topic.title} hinzufügen`}
+										accessibilityLabel={
+											isSelected
+												? `${topic.title}, hinzugefügt`
+												: `${topic.title} hinzufügen`
+										}
+										accessibilityState={{
+											disabled: disabled || isSelected,
+											selected: isSelected,
+										}}
 										disabled={disabled || isSelected}
 										onPress={() => add(topic.title)}
-										className="min-h-12 justify-center rounded-2xl border border-border px-4 py-3"
+										className="min-h-16 flex-row items-center gap-4 rounded-none bg-transparent px-1 py-4"
 									>
-										<Text className="font-poppins text-body-2 text-text">
+										<Text className="flex-1 font-poppins font-semibold text-body-2 text-text">
 											{topic.title}
-											{isSelected ? " · Hinzugefügt" : ""}
 										</Text>
+										<View
+											accessible={false}
+											className="h-8 w-8 items-center justify-center rounded-full border border-secondary-text"
+										>
+											{isSelected ? (
+												<Check size={20} color={colors.secondaryText} />
+											) : (
+												<Plus size={20} color={colors.secondaryText} />
+											)}
+										</View>
 									</ActionSurface>
 								);
 							})}
