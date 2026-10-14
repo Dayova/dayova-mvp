@@ -4,7 +4,11 @@ import NewEntryScreen from "~/app/(creation)/entry/new";
 import NewLearningPlanScreen from "~/app/(creation)/learning-plans/new";
 
 let mockParams: Record<string, string> = {};
-let mockProgress: { currentStep: number; onBack: () => void };
+let mockProgress: {
+	currentStep: number;
+	onBack: () => void;
+	onClose: () => void;
+};
 const mockRouter = {
 	replace: jest.fn(),
 	push: jest.fn(),
@@ -437,6 +441,43 @@ describe("exam creation across the topics boundary", () => {
 		await act(() => mockProgress.onBack());
 		expect(mockPauseVisible).toBe(true);
 		expect(mockRouter.replace).not.toHaveBeenCalled();
+		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+	});
+
+	test("closes exam setup from a later step without stepping backward", async () => {
+		await render(<NewEntryScreen />);
+		expect(mockProgress.currentStep).toBe(2);
+		await act(() => mockProgress.onClose());
+		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/home");
+		expect(mockProgress.currentStep).toBe(2);
+	});
+
+	test("closes unsaved topics to the saved exam instead of reopening the date step", async () => {
+		mockParams = {
+			examDayEntryId: "exam-1",
+			fromExamEntry: "true",
+			step: "topic",
+		};
+		await render(<NewLearningPlanScreen />);
+		await act(() => mockProgress.onClose());
+		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/entry/exam-1");
+		expect(mockRouter.replace).not.toHaveBeenCalled();
+	});
+
+	test("confirms pausing when closing directly from material upload", async () => {
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "material",
+		};
+		mockSnapshot = {
+			plan: { topicDescription: "Zellteilung und Mitose" },
+			documents: [],
+		};
+		await render(<NewLearningPlanScreen />);
+		await act(() => mockProgress.onClose());
+		expect(mockPauseVisible).toBe(true);
+		expect(mockRouter.setParams).not.toHaveBeenCalled();
 		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
 	});
 

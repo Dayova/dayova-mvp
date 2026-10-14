@@ -59,7 +59,11 @@ import {
 	shiftEndTimeForStartChange,
 } from "~/lib/entry-time";
 import { getExamDatePickerRange } from "~/lib/exam-date";
-import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
+import {
+	dismissToOrReplace,
+	goBackOrReplace,
+	useBackIntent,
+} from "~/lib/navigation";
 import { ROUTES } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
@@ -651,7 +655,8 @@ export default function NewEntryScreen() {
 		active: !isHomework,
 		currentStep: getExamEntryCreationProgress(step),
 		onBack: runBackIntent,
-		title: "Prüfung eintragen",
+		onClose: () => dismissToOrReplace(router, ROUTES.home),
+		closeDisabled: isStartingLearningPlan || isCreating,
 	});
 
 	const scrollToFocusedField = useCallback((offsetY: number) => {

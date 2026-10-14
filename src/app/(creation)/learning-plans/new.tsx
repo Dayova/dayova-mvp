@@ -673,6 +673,17 @@ export default function NewLearningPlanScreen() {
 		active: true,
 		currentStep: currentProgressStep,
 		onBack: goBack,
+		onClose: () => {
+			if (learningPlanId) {
+				setIsPauseConfirmationVisible(true);
+				return;
+			}
+			dismissToOrReplace(
+				router,
+				examDayEntryId ? `/entry/${examDayEntryId}` : ROUTES.learningPlans,
+			);
+		},
+		closeDisabled: isBusy,
 	});
 
 	const continueToAnalysis = () => {

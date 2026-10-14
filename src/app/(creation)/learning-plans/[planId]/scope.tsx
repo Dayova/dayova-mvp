@@ -16,7 +16,11 @@ import { useLearningPlanCreationProgress } from "~/features/learning-plans/creat
 import { learningPlanMaterialPath } from "~/features/learning-plans/creation-routes";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
-import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
+import {
+	dismissToOrReplace,
+	goBackOrReplace,
+	useBackIntent,
+} from "~/lib/navigation";
 import { ROUTES } from "~/lib/routes";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
@@ -71,6 +75,8 @@ export default function LearningPlanScopeScreen() {
 		active: true,
 		currentStep: LEARNING_PLAN_CREATION_STEPS.scopeConfirmation,
 		onBack: goBack,
+		onClose: () => dismissToOrReplace(router, ROUTES.learningPlans),
+		closeDisabled: isBusy,
 	});
 
 	const continueToPlan = async () => {
