@@ -15,10 +15,11 @@ The sample plan was left unaccepted.
 
 ## Observations and limits
 
-Clip 0.0–2.0s: material-upload screen. Around 2.2s the native transition begins;
-by 2.4s the unified loader is visible. The flower repeatedly folds and expands.
-At 17.2s the first checklist row is complete; at 17.4s the first two are complete;
-by 17.8s all three are complete and the bar finishes filling.
+Clip 0.0–2.0s: material-upload screen. At 2.5s the native transition is
+visible; by 3.0s the unified loader is visible. The flower repeatedly folds and
+expands. At 17.0s the first checklist row is complete; at 17.5s the first two
+are complete; by 18.0s all three are complete and the bar is full. A brief
+native development refresh banner is visible around 5.5–6.0s; the clip retains it.
 
 The original recording continues beyond the shared clip: a development reload
 appears at source 25.8s, followed by a connection error for a preview server on
@@ -33,3 +34,7 @@ and focused contact sheets were inspected. Original recording SHA-256:
 `26aede9f2c8bf41e0954a5a8ee0a305e86e09d59c098d3341076aab4a7ffd53f`.
 
 Coverage: 30.92-second video; 31 full-timeline frames sampled at 1 fps (1-second interval); 2 contact sheet(s); 5 additional frames from 00:00:09.000 to 00:00:10.500 at 5 fps; 25 additional frames from 00:00:23.000 to 00:00:28.000 at 5 fps; no audio stream.
+
+Final exported clip inspected separately, including all three contact sheets:
+
+Coverage: 18.50-second video; 37 full-timeline frames sampled at 2 fps (0.5-second interval); 3 contact sheet(s); no audio stream.
