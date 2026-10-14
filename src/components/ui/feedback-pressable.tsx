@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
 	AccessibilityInfo,
 	Animated,
+	type LayoutChangeEvent,
 	Platform,
 	Pressable,
 	TouchableOpacity,
@@ -14,6 +15,26 @@ type FeedbackPressableProps = React.ComponentProps<typeof Pressable> & {
 	pressFeedback?: boolean;
 	pressScale?: number;
 };
+
+// Compact actions need more compression to make the same feedback perceptible.
+export function getPressScaleForSize(width: number, height: number) {
+	return width > 0 && width <= 96 && height > 0 && height <= 64 ? 0.92 : 0.97;
+}
+
+function useMeasuredPressScale(
+	explicitScale: number | undefined,
+	onLayout: ((event: LayoutChangeEvent) => void) | undefined,
+) {
+	const [measuredScale, setMeasuredScale] = useState(0.97);
+	return {
+		pressScale: explicitScale ?? measuredScale,
+		onLayout: (event: LayoutChangeEvent) => {
+			const { width, height } = event.nativeEvent.layout;
+			setMeasuredScale(getPressScaleForSize(width, height));
+			onLayout?.(event);
+		},
+	};
+}
 
 /** Shared by pressable actions and opacity-based controls. */
 export function usePressMotion(enabled: boolean, pressScale = 0.97) {
@@ -95,7 +116,8 @@ export function usePressMotion(enabled: boolean, pressScale = 0.97) {
 /** Adds press motion without changing existing actions, colors, or caller styles. */
 export function FeedbackPressable({
 	pressFeedback = true,
-	pressScale = 0.97,
+	pressScale,
+	onLayout,
 	disabled,
 	onPressIn,
 	onPressOut,
@@ -103,15 +125,17 @@ export function FeedbackPressable({
 	...props
 }: FeedbackPressableProps) {
 	const [pressed, setPressed] = useState(false);
+	const measured = useMeasuredPressScale(pressScale, onLayout);
 	const { scale, pressIn, pressOut } = usePressMotion(
 		pressFeedback && !disabled,
-		pressScale,
+		measured.pressScale,
 	);
 
 	return (
 		<AnimatedPressable
 			{...props}
 			disabled={disabled}
+			onLayout={measured.onLayout}
 			onPressIn={(event) => {
 				if (!disabled) {
 					setPressed(true);
@@ -146,18 +170,24 @@ type FeedbackTouchableOpacityProps = React.ComponentProps<
 };
 
 export function FeedbackTouchableOpacity({
-	pressScale = 0.97,
+	pressScale,
+	onLayout,
 	disabled,
 	onPressIn,
 	onPressOut,
 	style,
 	...props
 }: FeedbackTouchableOpacityProps) {
-	const { scale, pressIn, pressOut } = usePressMotion(!disabled, pressScale);
+	const measured = useMeasuredPressScale(pressScale, onLayout);
+	const { scale, pressIn, pressOut } = usePressMotion(
+		!disabled,
+		measured.pressScale,
+	);
 	return (
 		<AnimatedTouchableOpacity
 			{...props}
 			disabled={disabled}
+			onLayout={measured.onLayout}
 			onPressIn={(event) => {
 				pressIn();
 				onPressIn?.(event);

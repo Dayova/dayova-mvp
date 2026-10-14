@@ -300,7 +300,11 @@ between weekdays and start time brings the profile flow to twelve steps.
 Shared Buttons (including icons and links), selection rows, and custom actions
 use `FeedbackPressable`: 90 ms press compression to 97%, followed by a damped
 return. Small/icon Buttons and compact add, close and notification controls use
-92% so their compression remains visible on small surfaces. Short taps complete
+92% so their compression remains visible on small surfaces. Shared feedback
+controls also select 92% automatically for measured surfaces up to 96 × 64 dp;
+larger surfaces use 97%, and explicit press scales remain authoritative. Layout
+callbacks are forwarded unchanged. The detached notched-card action uses its
+visible circle size for the same rule. Short taps complete
 the 90 ms compression before springing back; release never cancels the inward
 motion prematurely. Disabling, unmounting or reduced motion invalidates pending
 animation callbacks. Animation starts in the touch handler so fast taps are not lost to state
@@ -326,3 +330,10 @@ an unselected option. Buttons do not add automatic haptics: existing success and
 native-control feedback must not be duplicated.
 
 Tracked in [DAY-508](https://linear.app/dayova/issue/DAY-508).
+
+The October 2026 source audit traced interactive call sites across 80 TSX files,
+including shared wrappers and dynamic calendar controls. Remaining raw press
+controls are the shared implementation, the notched-card hit target, existing
+learning-choice motion and existing onboarding weekday motion. Native tabs,
+switches and pickers retain platform feedback; static onboarding artwork is not
+interactive. This is source coverage, not a claim of visual QA on every screen.

@@ -137,7 +137,7 @@ function Button({
 			value={buttonTextVariants({ variant: resolvedVariant, size })}
 		>
 			<FeedbackPressable
-				pressScale={size === "icon" || size === "sm" ? 0.92 : 0.97}
+				pressScale={size === "icon" || size === "sm" ? 0.92 : undefined}
 				{...props}
 				accessible
 				accessibilityRole="button"
