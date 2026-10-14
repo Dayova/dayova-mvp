@@ -48,6 +48,7 @@ function SelectSheet<T extends string | number>({
 
 				return (
 					<FeedbackPressable
+						pressBorder={!isSelected}
 						key={option}
 						accessibilityLabel={optionLabel}
 						accessibilityRole="radio"

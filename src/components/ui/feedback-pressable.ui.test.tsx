@@ -167,3 +167,34 @@ test("opacity controls also stop motion when disabled during an interaction", as
 	await fireEvent.press(screen.getByRole("button"));
 	expect(onPress).not.toHaveBeenCalled();
 });
+
+test("pressed border restores on release and is suppressed when disabled", async () => {
+	const Control = FeedbackPressable;
+	const screen = await render(
+		<Control
+			accessibilityRole="button"
+			pressBorder
+			className="border border-border"
+		>
+			<Text>Erstellen</Text>
+		</Control>,
+	);
+	const button = () => screen.getByRole("button");
+	await fireEvent(button(), "pressIn", {});
+	expect(button().props.className).toContain("border-primary");
+	expect(button().props.className).not.toContain("border-border");
+	await fireEvent(button(), "pressOut", {});
+	expect(button().props.className).toContain("border-border");
+	await fireEvent(button(), "pressIn", {});
+	await screen.rerender(
+		<Control
+			accessibilityRole="button"
+			disabled
+			pressBorder
+			className="border border-border"
+		>
+			<Text>Erstellen</Text>
+		</Control>,
+	);
+	expect(button().props.className).not.toContain("border-primary");
+});
