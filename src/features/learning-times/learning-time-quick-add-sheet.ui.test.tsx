@@ -3,6 +3,10 @@ import { act, fireEvent, render } from "@testing-library/react-native";
 import { LearningTimeQuickAddSheet } from "./learning-time-quick-add-sheet";
 
 const mockSave = jest.fn<(...args: unknown[]) => Promise<void>>();
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+);
+
 jest.mock("~/lib/theme", () => ({
 	useDayovaTheme: () => ({
 		colors: {

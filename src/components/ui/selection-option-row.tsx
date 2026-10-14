@@ -1,8 +1,11 @@
 import * as Haptics from "expo-haptics";
 import { Platform, View } from "react-native";
-import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import type { Check } from "~/components/ui/icon";
-import { SelectionIndicator } from "~/components/ui/selection-indicator";
+import {
+	SelectionControl,
+	SelectionIndicator,
+	SelectionText,
+} from "~/components/ui/selection-control";
 import { Text } from "~/components/ui/text";
 import { triggerSelectionHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
@@ -24,15 +27,13 @@ export function SelectionOptionRow({
 	const { colors } = useDayovaTheme();
 
 	return (
-		<FeedbackPressable
+		<SelectionControl
+			selected={selected}
 			accessibilityLabel={label}
 			accessibilityHint={description}
 			accessibilityRole="radio"
 			accessibilityState={{ checked: selected }}
-			className={cn(
-				"min-h-16 flex-row items-center gap-4 rounded-3xl border px-5 py-3 active:opacity-80",
-				selected ? "border-primary/40 bg-accent" : "border-border bg-card",
-			)}
+			contentClassName="min-h-16 flex-row items-center gap-4 rounded-3xl px-5 py-3"
 			onPress={() => {
 				if (!selected) {
 					void triggerSelectionHaptic({
@@ -54,19 +55,19 @@ export function SelectionOptionRow({
 				/>
 			</View>
 			<View className="flex-1">
-				<Text
+				<SelectionText
 					className={cn(
 						"font-poppins text-body-2",
-						selected ? "font-semibold text-primary" : "text-text",
+						selected && "font-semibold",
 					)}
 				>
 					{label}
-				</Text>
+				</SelectionText>
 				{description ? (
 					<Text className="text-body-4 text-secondary-text">{description}</Text>
 				) : null}
 			</View>
-			<SelectionIndicator selected={selected} />
-		</FeedbackPressable>
+			<SelectionIndicator />
+		</SelectionControl>
 	);
 }
