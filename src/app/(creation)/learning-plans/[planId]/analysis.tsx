@@ -132,7 +132,9 @@ export default function LearningPlanAnalysisScreen() {
 		);
 		return true;
 	};
-	useBackIntent(true, goBack);
+	// Gestures are disabled below; keep the explicit review replacement free of
+	// native removal prevention while retaining the Android back intent.
+	useBackIntent(true, goBack, { allowRouteRemoval: true });
 	useLearningPlanCreationProgress({
 		active: true,
 		currentStep: LEARNING_PLAN_CREATION_STEPS.materialAnalysis,

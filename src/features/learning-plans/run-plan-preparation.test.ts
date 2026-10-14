@@ -125,3 +125,28 @@ test("waits for the completed checklist before allowing navigation", async () =>
 	await pending;
 	expect(completed).toHaveBeenCalledWith(true);
 });
+
+test("keeps the last item loading until all preparation work finishes", async () => {
+	const options = setup();
+	let finishPreparation = () => {};
+	options.prepare.mockImplementation(
+		() =>
+			new Promise<void>((resolve) => {
+				finishPreparation = resolve;
+			}),
+	);
+	const completed = vi.fn();
+	const pending = runPlanPreparation(options).then(completed);
+	await vi.advanceTimersByTimeAsync(3000);
+	expect(options.onStage).toHaveBeenLastCalledWith(2);
+	await vi.advanceTimersByTimeAsync(30000);
+	expect(options.onStage).toHaveBeenLastCalledWith(2);
+	expect(completed).not.toHaveBeenCalled();
+	finishPreparation();
+	await vi.advanceTimersByTimeAsync(0);
+	expect(options.onStage).toHaveBeenLastCalledWith(3);
+	expect(completed).not.toHaveBeenCalled();
+	await vi.advanceTimersByTimeAsync(600);
+	await pending;
+	expect(completed).toHaveBeenCalledWith(true);
+});
