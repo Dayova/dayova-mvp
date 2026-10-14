@@ -1,6 +1,6 @@
 import { beforeEach, expect, jest, test } from "@jest/globals";
-import { fireEvent, render } from "@testing-library/react-native";
-import { Text } from "react-native";
+import { act, fireEvent, render } from "@testing-library/react-native";
+import { Text, View } from "react-native";
 import { CalendarPager } from "./calendar-pager";
 
 const mockScroll = jest.fn();
@@ -50,6 +50,278 @@ const props = {
 	minimumHeight: 180,
 	testID: "pager",
 };
+
+test("preview remains immediate while drag and deceleration wait to commit", async () => {
+	const onSelect = jest.fn();
+	const onSettled = jest.fn();
+	const screen = await render(
+		<CalendarPager {...props} onSelect={onSelect} onSettled={onSettled} />,
+	);
+	await fireEvent(screen.getByTestId("pager-viewport"), "layout", {
+		nativeEvent: { layout: { width: 400 } },
+	});
+	await fireEvent(screen.getByTestId("pager"), "scrollBeginDrag");
+	await fireEvent(screen.getByTestId("pager"), "scroll", {
+		nativeEvent: { contentOffset: { x: 240 } },
+	});
+	expect(onSelect).toHaveBeenLastCalledWith(keys[1]);
+	expect(onSettled).not.toHaveBeenCalled();
+	await fireEvent(screen.getByTestId("pager"), "scrollEndDrag", {
+		nativeEvent: { contentOffset: { x: 240 }, velocity: { x: 1 } },
+	});
+	await fireEvent(screen.getByTestId("pager"), "scroll", {
+		nativeEvent: { contentOffset: { x: 400 } },
+	});
+	expect(onSettled).not.toHaveBeenCalled();
+	await fireEvent(screen.getByTestId("pager"), "momentumScrollEnd", {
+		nativeEvent: { contentOffset: { x: 400 } },
+	});
+	expect(onSettled).toHaveBeenLastCalledWith(keys[1]);
+});
+
+test("aligned no-momentum and non-touch navigation both commit", async () => {
+	const onSettled = jest.fn();
+	const screen = await render(
+		<CalendarPager {...props} onSettled={onSettled} />,
+	);
+	await fireEvent(screen.getByTestId("pager-viewport"), "layout", {
+		nativeEvent: { layout: { width: 400 } },
+	});
+	await fireEvent(screen.getByTestId("pager"), "scrollBeginDrag");
+	await fireEvent(screen.getByTestId("pager"), "scrollEndDrag", {
+		nativeEvent: { contentOffset: { x: 400 }, velocity: { x: 0 } },
+	});
+	expect(onSettled).toHaveBeenLastCalledWith(keys[1]);
+	await fireEvent(screen.getByTestId("pager"), "scroll", {
+		nativeEvent: { contentOffset: { x: 800 } },
+	});
+	await fireEvent(screen.getByTestId("pager"), "momentumScrollEnd", {
+		nativeEvent: { contentOffset: { x: 800 } },
+	});
+	expect(onSettled).toHaveBeenLastCalledWith(keys[2]);
+});
+
+test.each([
+	false,
+	true,
+])("an aligned release with velocity waits for quiet; continued scrolling=%s", async (continued) => {
+	jest.useFakeTimers();
+	try {
+		const onSettled = jest.fn();
+		const screen = await render(
+			<CalendarPager {...props} onSettled={onSettled} />,
+		);
+		await fireEvent(screen.getByTestId("pager-viewport"), "layout", {
+			nativeEvent: { layout: { width: 400 } },
+		});
+		await fireEvent(screen.getByTestId("pager"), "scrollBeginDrag");
+		await fireEvent(screen.getByTestId("pager"), "scrollEndDrag", {
+			nativeEvent: { contentOffset: { x: 400 }, velocity: { x: 1 } },
+		});
+		expect(onSettled).not.toHaveBeenCalled();
+		if (continued)
+			await fireEvent(screen.getByTestId("pager"), "scroll", {
+				nativeEvent: { contentOffset: { x: 440 } },
+			});
+		await act(() => jest.advanceTimersByTime(120));
+		if (continued) expect(onSettled).not.toHaveBeenCalled();
+		else expect(onSettled).toHaveBeenCalledWith(keys[1]);
+	} finally {
+		jest.useRealTimers();
+	}
+});
+
+test("non-touch boundary crossings commit only after quiet, and pending commits cancel on unmount", async () => {
+	jest.useFakeTimers();
+	try {
+		const onSettled = jest.fn();
+		const screen = await render(
+			<CalendarPager {...props} onSettled={onSettled} />,
+		);
+		await fireEvent(screen.getByTestId("pager-viewport"), "layout", {
+			nativeEvent: { layout: { width: 400 } },
+		});
+		await fireEvent(screen.getByTestId("pager"), "scroll", {
+			nativeEvent: { contentOffset: { x: 400 } },
+		});
+		await act(() => jest.advanceTimersByTime(80));
+		await fireEvent(screen.getByTestId("pager"), "scroll", {
+			nativeEvent: { contentOffset: { x: 600 } },
+		});
+		await act(() => jest.advanceTimersByTime(200));
+		expect(onSettled).not.toHaveBeenCalled();
+		await fireEvent(screen.getByTestId("pager"), "scroll", {
+			nativeEvent: { contentOffset: { x: 800 } },
+		});
+		await act(() => jest.advanceTimersByTime(120));
+		expect(onSettled.mock.calls).toEqual([[keys[2]]]);
+		await fireEvent(screen.getByTestId("pager"), "scroll", {
+			nativeEvent: { contentOffset: { x: 400 } },
+		});
+		await screen.unmount();
+		await act(() => jest.advanceTimersByTime(120));
+		expect(onSettled).toHaveBeenCalledTimes(1);
+	} finally {
+		jest.useRealTimers();
+	}
+});
+
+test("programmatic acknowledgements do not commit another pager's preview", async () => {
+	const onSettled = jest.fn();
+	const screen = await render(
+		<CalendarPager {...props} onSettled={onSettled} />,
+	);
+	await fireEvent(screen.getByTestId("pager-viewport"), "layout", {
+		nativeEvent: { layout: { width: 400 } },
+	});
+	await screen.rerender(
+		<CalendarPager {...props} selectedKey={keys[2]} onSettled={onSettled} />,
+	);
+	await fireEvent(screen.getByTestId("pager"), "scroll", {
+		nativeEvent: { contentOffset: { x: 800 } },
+	});
+	await fireEvent(screen.getByTestId("pager"), "momentumScrollEnd", {
+		nativeEvent: { contentOffset: { x: 800 } },
+	});
+	expect(onSettled).not.toHaveBeenCalled();
+	await fireEvent(screen.getByTestId("pager"), "scrollBeginDrag");
+	await fireEvent(screen.getByTestId("pager"), "momentumScrollEnd", {
+		nativeEvent: { contentOffset: { x: 400 } },
+	});
+	expect(onSettled).toHaveBeenLastCalledWith(keys[1]);
+});
+
+test("quiet settlement survives recreated equal keys and calls the latest callback after preview acknowledgement", async () => {
+	jest.useFakeTimers();
+	try {
+		const React = jest.requireActual<typeof import("react")>("react");
+		function ControlledPager({
+			onSettled,
+		}: {
+			onSettled: (key: string) => void;
+		}) {
+			const [selected, setSelected] = React.useState(keys[0]);
+			return (
+				<CalendarPager
+					{...props}
+					keys={[...keys]}
+					selectedKey={selected}
+					onSelect={setSelected}
+					onSettled={onSettled}
+				/>
+			);
+		}
+		const previous = jest.fn();
+		const current = jest.fn();
+		const screen = await render(<ControlledPager onSettled={previous} />);
+		await fireEvent(screen.getByTestId("pager-viewport"), "layout", {
+			nativeEvent: { layout: { width: 400 } },
+		});
+		await fireEvent(screen.getByTestId("pager"), "scroll", {
+			nativeEvent: { contentOffset: { x: 400 } },
+		});
+		await screen.rerender(<ControlledPager onSettled={current} />);
+		await act(() => jest.advanceTimersByTime(120));
+		expect(previous).not.toHaveBeenCalled();
+		expect(current).toHaveBeenCalledWith(keys[1]);
+	} finally {
+		jest.useRealTimers();
+	}
+});
+
+test("native settlement acknowledges duplicate ends once and resets for new navigation", async () => {
+	jest.useFakeTimers();
+	try {
+		const onSettled = jest.fn();
+		const screen = await render(
+			<CalendarPager {...props} onSettled={onSettled} />,
+		);
+		await fireEvent(screen.getByTestId("pager-viewport"), "layout", {
+			nativeEvent: { layout: { width: 400 } },
+		});
+		const pager = screen.getByTestId("pager");
+		const event = { nativeEvent: { contentOffset: { x: 400 } } };
+		await fireEvent(pager, "scroll", event);
+		await act(() => jest.advanceTimersByTime(120));
+		await fireEvent(pager, "momentumScrollEnd", event);
+		await fireEvent(pager, "momentumScrollEnd", event);
+		expect(onSettled.mock.calls).toEqual([[keys[1]]]);
+		await fireEvent(pager, "scrollBeginDrag");
+		await fireEvent(pager, "momentumScrollEnd", event);
+		expect(onSettled.mock.calls).toEqual([[keys[1]], [keys[1]]]);
+		await fireEvent(pager, "scroll", {
+			nativeEvent: { contentOffset: { x: 600 } },
+		});
+		await fireEvent(pager, "momentumScrollEnd", event);
+		expect(onSettled).toHaveBeenCalledTimes(3);
+	} finally {
+		jest.useRealTimers();
+	}
+});
+
+test.each([
+	"keys",
+	"width",
+])("pending quiet settlement cancels when %s change", async (change) => {
+	jest.useFakeTimers();
+	try {
+		const onSettled = jest.fn();
+		const screen = await render(
+			<CalendarPager {...props} onSettled={onSettled} />,
+		);
+		await fireEvent(screen.getByTestId("pager-viewport"), "layout", {
+			nativeEvent: { layout: { width: 400 } },
+		});
+		await fireEvent(screen.getByTestId("pager"), "scroll", {
+			nativeEvent: { contentOffset: { x: 400 } },
+		});
+		if (change === "keys")
+			await screen.rerender(
+				<CalendarPager
+					{...props}
+					keys={[keys[0], keys[2]]}
+					onSettled={onSettled}
+				/>,
+			);
+		else
+			await fireEvent(screen.getByTestId("pager-viewport"), "layout", {
+				nativeEvent: { layout: { width: 360 } },
+			});
+		await act(() => jest.advanceTimersByTime(120));
+		expect(onSettled).not.toHaveBeenCalled();
+	} finally {
+		jest.useRealTimers();
+	}
+});
+
+test("neighbor heights reserve transition space only while moving", async () => {
+	const screen = await render(
+		<CalendarPager
+			{...props}
+			renderPage={(key) => <View testID={`page-${key}`} />}
+		/>,
+	);
+	await fireEvent(screen.getByTestId("pager-viewport"), "layout", {
+		nativeEvent: { layout: { width: 400 } },
+	});
+	for (const [key, height] of [
+		[keys[0], 200],
+		[keys[1], 600],
+	] as const) {
+		const page = screen.getByTestId(`page-${key}`, {
+			includeHiddenElements: true,
+		}).parent;
+		if (!page) throw new Error("Missing measured page wrapper");
+		await fireEvent(page, "layout", { nativeEvent: { layout: { height } } });
+	}
+	expect(screen.getByTestId("pager")).toHaveStyle({ height: 200 });
+	await fireEvent(screen.getByTestId("pager"), "scrollBeginDrag");
+	expect(screen.getByTestId("pager")).toHaveStyle({ height: 600 });
+	await fireEvent(screen.getByTestId("pager"), "momentumScrollEnd", {
+		nativeEvent: { contentOffset: { x: 0 } },
+	});
+	expect(screen.getByTestId("pager")).toHaveStyle({ height: 200 });
+});
 
 test("selection follows the visible page before momentum ends without interrupting the swipe", async () => {
 	const onSelect = jest.fn();
