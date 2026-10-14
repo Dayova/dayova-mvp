@@ -53,7 +53,6 @@ function ActionSheet<T extends string>({
 		>
 			{options.map((option) => (
 				<FeedbackTouchableOpacity
-					pressBorder
 					key={option.value}
 					accessibilityLabel={
 						option.description

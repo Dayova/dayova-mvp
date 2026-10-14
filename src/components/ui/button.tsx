@@ -114,9 +114,7 @@ const buttonTextVariants = cva(
 	},
 );
 
-type ButtonProps = { pressBorder?: boolean } & React.ComponentProps<
-	typeof Pressable
-> &
+type ButtonProps = React.ComponentProps<typeof Pressable> &
 	VariantProps<typeof buttonVariants>;
 
 function Button({
@@ -125,7 +123,6 @@ function Button({
 	className,
 	variant,
 	size,
-	pressBorder,
 	style,
 	...props
 }: ButtonProps) {
@@ -141,10 +138,6 @@ function Button({
 		>
 			<FeedbackPressable
 				{...props}
-				pressBorder={
-					pressBorder ??
-					["cancel", "neutral", "outline"].includes(resolvedVariant)
-				}
 				accessible
 				accessibilityRole="button"
 				accessibilityState={resolvedAccessibilityState}
@@ -201,7 +194,6 @@ function BackButton({
 				Platform.select({ web: "hover:bg-card/90" }),
 				className,
 			)}
-			pressBorder
 			variant="ghost"
 			size="icon"
 			style={style}

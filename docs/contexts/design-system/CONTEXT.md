@@ -373,13 +373,3 @@ existing creation-success screens, and navigation remain unchanged. See
 
 Theory disclosures also animate their chevron over 180 ms and their section
 layout over 200 ms when expanding/collapsing. Reduced motion leaves both static.
-
-### Pressed border
-
-Neutral bordered actions may opt into `pressBorder` on the shared feedback
-controls. While held, their existing border uses `primary`; release or disabled
-state restores the original border without changing its width or layout. This
-includes creation-sheet options, add/notification/close controls, neutral
-buttons, valid field triggers and unselected selection rows. Selected and
-invalid states retain their semantic colors. The color feedback remains
-available with reduced motion; it does not add movement.
