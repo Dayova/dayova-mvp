@@ -24,7 +24,8 @@ export function CalendarPager({
 	const [heights, setHeights] = useState<Record<string, number>>({});
 	const index = Math.max(0, keys.indexOf(selectedKey));
 	const visibleIndex = useRef(index);
-	const dragging = useRef(false);
+	const programmaticTarget = useRef<number | null>(null);
+	const listWidth = useRef(0);
 	const height = Math.max(
 		minimumHeight,
 		...keys
@@ -32,14 +33,32 @@ export function CalendarPager({
 			.map((key) => heights[key] ?? 0),
 	);
 	useEffect(() => {
-		if (!width || visibleIndex.current === index) return;
-		dragging.current = false;
+		if (!width) return;
+		if (listWidth.current !== width) {
+			// A new list mounts at initialScrollIndex. Ignore its setup offsets.
+			listWidth.current = width;
+			visibleIndex.current = index;
+			programmaticTarget.current = index === 0 ? null : index;
+			return;
+		}
+		if (visibleIndex.current === index) return;
+		programmaticTarget.current = index;
 		visibleIndex.current = index;
 		list.current?.scrollToOffset({
 			offset: index * width,
 			animated: !reducedMotion,
 		});
 	}, [index, width, reducedMotion]);
+	const selectOffset = (offset: number) => {
+		const next = Math.max(
+			0,
+			Math.min(keys.length - 1, Math.round(offset / width)),
+		);
+		if (next === visibleIndex.current || !keys[next]) return;
+		// Acknowledge before notifying the parent, including batched reversals.
+		visibleIndex.current = next;
+		onSelect(keys[next]);
+	};
 	return (
 		<View
 			onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
@@ -73,35 +92,24 @@ export function CalendarPager({
 					// Measured viewport/page height, not a fixed content-size cap.
 					style={{ height }}
 					onScrollBeginDrag={() => {
-						dragging.current = true;
+						programmaticTarget.current = null;
 					}}
 					onScroll={(event) => {
-						if (!dragging.current) return;
-						const next = Math.max(
-							0,
-							Math.min(
-								keys.length - 1,
-								Math.round(event.nativeEvent.contentOffset.x / width),
-							),
-						);
-						if (next === visibleIndex.current || !keys[next]) return;
-						// Acknowledge the visible page before notifying the parent so its
-						// controlled update cannot restart this in-flight native swipe.
-						visibleIndex.current = next;
-						onSelect(keys[next]);
+						const offset = event.nativeEvent.contentOffset.x;
+						const target = programmaticTarget.current;
+						if (target !== null) {
+							if (Math.abs(offset - target * width) < 1) {
+								programmaticTarget.current = null;
+							}
+							return;
+						}
+						// Accessibility, keyboard and pointer scrolls need no touch drag.
+						selectOffset(offset);
 					}}
 					onMomentumScrollEnd={(event) => {
-						const next = Math.max(
-							0,
-							Math.min(
-								keys.length - 1,
-								Math.round(event.nativeEvent.contentOffset.x / width),
-							),
-						);
-						if (!dragging.current) return;
-						dragging.current = false;
-						visibleIndex.current = next;
-						if (next !== index && keys[next]) onSelect(keys[next]);
+						// A native interruption may settle short of the requested target.
+						programmaticTarget.current = null;
+						selectOffset(event.nativeEvent.contentOffset.x);
 					}}
 					renderItem={({ item: key }) => (
 						<View
