@@ -164,45 +164,43 @@ export function TopicSearch({
 							oder füge dein Thema selbst hinzu.
 						</Text>
 					) : (
-						<>
-							{current.result.topics.map((topic) => {
-								const isSelected = selected.some(
-									(value) => keyOf(value) === keyOf(topic.title),
-								);
-								return (
-									<ActionSurface
-										key={topic.id}
-										accessibilityRole="button"
-										accessibilityLabel={
-											isSelected
-												? `${topic.title}, hinzugefügt`
-												: `${topic.title} hinzufügen`
-										}
-										accessibilityState={{
-											disabled: disabled || isSelected,
-											selected: isSelected,
-										}}
-										disabled={disabled || isSelected}
-										onPress={() => add(topic.title)}
-										className="min-h-16 flex-row items-center gap-4 rounded-none bg-transparent px-1 py-4"
+						current.result.topics.map((topic) => {
+							const isSelected = selected.some(
+								(value) => keyOf(value) === keyOf(topic.title),
+							);
+							return (
+								<ActionSurface
+									key={topic.id}
+									accessibilityRole="button"
+									accessibilityLabel={
+										isSelected
+											? `${topic.title}, hinzugefügt`
+											: `${topic.title} hinzufügen`
+									}
+									accessibilityState={{
+										disabled: disabled || isSelected,
+										selected: isSelected,
+									}}
+									disabled={disabled || isSelected}
+									onPress={() => add(topic.title)}
+									className="min-h-16 flex-row items-center gap-4 rounded-none bg-transparent px-1 py-4"
+								>
+									<Text className="flex-1 font-poppins font-semibold text-body-2 text-text">
+										{topic.title}
+									</Text>
+									<View
+										accessible={false}
+										className="h-8 w-8 items-center justify-center rounded-full border border-secondary-text"
 									>
-										<Text className="flex-1 font-poppins font-semibold text-body-2 text-text">
-											{topic.title}
-										</Text>
-										<View
-											accessible={false}
-											className="h-8 w-8 items-center justify-center rounded-full border border-secondary-text"
-										>
-											{isSelected ? (
-												<Check size={20} color={colors.secondaryText} />
-											) : (
-												<Plus size={20} color={colors.secondaryText} />
-											)}
-										</View>
-									</ActionSurface>
-								);
-							})}
-						</>
+										{isSelected ? (
+											<Check size={20} color={colors.secondaryText} />
+										) : (
+											<Plus size={20} color={colors.secondaryText} />
+										)}
+									</View>
+								</ActionSurface>
+							);
+						})
 					)}
 					{current.result.truncated ? (
 						<Text className="font-poppins text-body-4 text-secondary-text">
