@@ -4,6 +4,10 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { getDayKeyQueryVariants } from "./dayKeyVariants";
 import { throwUserFacingError } from "./errors";
+import {
+	isReminderEntryPending,
+	learningReminderBody,
+} from "./notificationRules";
 
 const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const dailyBriefingEventKeyPattern =
@@ -18,6 +22,8 @@ type NotificationPreferences = {
 	dailyBriefingTime: string;
 	beforeExamEnabled: boolean;
 	beforeLearningTimeEnabled: boolean;
+	startLearningTimeEnabled?: boolean;
+	learningReminderOfferSeen?: boolean;
 	beforeHomeworkWorkEnabled: boolean;
 	beforeHomeworkDueEnabled: boolean;
 	reminderOffsetMinutes: number;
@@ -25,19 +31,39 @@ type NotificationPreferences = {
 };
 
 type NotificationCategory = "learningPlan" | "task" | "message";
-type NotificationType = "dailyBriefing" | "beforeEvent" | "forgottenEvent";
+type NotificationType =
+	| "dailyBriefing"
+	| "beforeEvent"
+	| "startEvent"
+	| "forgottenEvent";
 
 const defaultPreferences: NotificationPreferences = {
 	systemNotificationsEnabled: true,
-	dailyBriefingEnabled: true,
+	dailyBriefingEnabled: false,
 	dailyBriefingTime: "07:30",
 	beforeExamEnabled: true,
-	beforeLearningTimeEnabled: true,
+	beforeLearningTimeEnabled: false,
+	startLearningTimeEnabled: true,
+	learningReminderOfferSeen: false,
 	beforeHomeworkWorkEnabled: true,
 	beforeHomeworkDueEnabled: true,
 	reminderOffsetMinutes: 15,
 	forgottenEventEnabled: true,
 };
+
+const notificationPreferencesValidator = v.object({
+	systemNotificationsEnabled: v.boolean(),
+	dailyBriefingEnabled: v.boolean(),
+	dailyBriefingTime: v.string(),
+	beforeExamEnabled: v.boolean(),
+	beforeLearningTimeEnabled: v.boolean(),
+	startLearningTimeEnabled: v.optional(v.boolean()),
+	learningReminderOfferSeen: v.optional(v.boolean()),
+	beforeHomeworkWorkEnabled: v.boolean(),
+	beforeHomeworkDueEnabled: v.boolean(),
+	reminderOffsetMinutes: v.number(),
+	forgottenEventEnabled: v.boolean(),
+});
 
 const inboxCategoryValidator = v.union(
 	v.literal("all"),
@@ -55,6 +81,7 @@ const notificationCategoryValidator = v.union(
 const notificationTypeValidator = v.union(
 	v.literal("dailyBriefing"),
 	v.literal("beforeEvent"),
+	v.literal("startEvent"),
 	v.literal("forgottenEvent"),
 );
 
@@ -85,6 +112,8 @@ const publicPreferences = (
 	dailyBriefingTime: preferences.dailyBriefingTime,
 	beforeExamEnabled: preferences.beforeExamEnabled,
 	beforeLearningTimeEnabled: preferences.beforeLearningTimeEnabled,
+	startLearningTimeEnabled: preferences.startLearningTimeEnabled ?? true,
+	learningReminderOfferSeen: preferences.learningReminderOfferSeen ?? false,
 	beforeHomeworkWorkEnabled: preferences.beforeHomeworkWorkEnabled,
 	beforeHomeworkDueEnabled: preferences.beforeHomeworkDueEnabled,
 	reminderOffsetMinutes: preferences.reminderOffsetMinutes,
@@ -139,11 +168,7 @@ const formatEntryForBriefing = (entry: Doc<"dayEntries">) =>
 	entry.time ? `${entry.title} um ${entry.time}` : entry.title;
 
 const getDailyBriefingBody = (entries: Doc<"dayEntries">[]) => {
-	const activeEntries = entries.filter(
-		(entry) =>
-			entry.completed !== true &&
-			!(isLearningEntry(entry) && entry.executionStatus === "started"),
-	);
+	const activeEntries = entries.filter(isReminderEntryPending);
 	if (activeEntries.length === 0) {
 		return "Heute stehen keine offenen Einträge an.";
 	}
@@ -238,6 +263,7 @@ const insertNotificationOnce = async (
 const hasMatchingEventKey = (eventKey: string, type: NotificationType) => {
 	if (type === "dailyBriefing") return eventKey.startsWith("briefing:");
 	if (type === "beforeEvent") return eventKey.startsWith("before:");
+	if (type === "startEvent") return eventKey.startsWith("start:");
 	return eventKey.startsWith("forgotten:");
 };
 
@@ -247,7 +273,9 @@ const hasMatchingCategory = (
 ) =>
 	type === "dailyBriefing"
 		? category === "message"
-		: category === "learningPlan" || category === "task";
+		: type === "startEvent"
+			? category === "learningPlan"
+			: category === "learningPlan" || category === "task";
 
 const hasMatchingRelatedEntry = (
 	eventKey: string,
@@ -261,7 +289,12 @@ const hasMatchingRelatedEntry = (
 		);
 	}
 	if (!relatedDayEntryId) return false;
-	const prefix = type === "beforeEvent" ? "before" : "forgotten";
+	const prefix =
+		type === "beforeEvent"
+			? "before"
+			: type === "startEvent"
+				? "start"
+				: "forgotten";
 	return eventKey === `${prefix}:${relatedDayEntryId}`;
 };
 
@@ -316,6 +349,7 @@ const matchesLocalNotificationSchedule = (
 
 export const getPreferences = query({
 	args: {},
+	returns: notificationPreferencesValidator,
 	handler: async (ctx) => {
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
 		const preferences = await getPreferenceDocument(ctx, ownerTokenIdentifier);
@@ -377,11 +411,14 @@ export const updatePreferences = mutation({
 		dailyBriefingTime: v.optional(v.string()),
 		beforeExamEnabled: v.optional(v.boolean()),
 		beforeLearningTimeEnabled: v.optional(v.boolean()),
+		startLearningTimeEnabled: v.optional(v.boolean()),
+		learningReminderOfferSeen: v.optional(v.boolean()),
 		beforeHomeworkWorkEnabled: v.optional(v.boolean()),
 		beforeHomeworkDueEnabled: v.optional(v.boolean()),
 		reminderOffsetMinutes: v.optional(v.number()),
 		forgottenEventEnabled: v.optional(v.boolean()),
 	},
+	returns: notificationPreferencesValidator,
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
 		if (
@@ -480,6 +517,13 @@ export const registerLocalNotificationPlan = mutation({
 	args: {
 		notifications: v.array(localNotificationPlanItemValidator),
 	},
+	returns: v.array(
+		v.object({
+			eventKey: v.string(),
+			scheduledFor: v.number(),
+			registrationId: v.id("localNotificationSchedules"),
+		}),
+	),
 	handler: async (ctx, args) => {
 		if (args.notifications.length > maxLocalNotificationPlanSize) {
 			throwUserFacingError("Zu viele Mitteilungen auf einmal geplant.");
@@ -657,6 +701,7 @@ export const syncDueNotifications = mutation({
 		localDayKey: v.string(),
 		localMinutes: v.number(),
 	},
+	returns: v.object({ created: v.number() }),
 	handler: async (ctx, args) => {
 		if (
 			!Number.isInteger(args.localMinutes) ||
@@ -699,6 +744,7 @@ export const syncDueNotifications = mutation({
 		const briefingMinutes = parseTimeToMinutes(preferences.dailyBriefingTime);
 		if (
 			preferences.dailyBriefingEnabled &&
+			entriesForToday.some(isReminderEntryPending) &&
 			briefingMinutes !== null &&
 			args.localMinutes >= briefingMinutes &&
 			args.localMinutes <= briefingMinutes + 60
@@ -717,11 +763,7 @@ export const syncDueNotifications = mutation({
 		}
 
 		for (const entry of entriesForToday) {
-			if (
-				entry.completed === true ||
-				(isLearningEntry(entry) && entry.executionStatus === "started")
-			)
-				continue;
+			if (!isReminderEntryPending(entry)) continue;
 
 			const startMinutes =
 				entry.kind === "Leistungskontrolle"
@@ -734,7 +776,7 @@ export const syncDueNotifications = mutation({
 			if (
 				shouldCreateBeforeEvent(entry, preferences) &&
 				args.localMinutes >= beforeEventTriggerMinutes &&
-				args.localMinutes <= startMinutes
+				args.localMinutes < startMinutes
 			) {
 				const didCreate = await insertNotificationOnce(ctx, {
 					ownerTokenIdentifier,
@@ -742,7 +784,13 @@ export const syncDueNotifications = mutation({
 					category: getEntryNotificationCategory(entry),
 					type: "beforeEvent",
 					title: getBeforeEventTitle(entry),
-					body: `Deine ${entry.title} startet in ${preferences.reminderOffsetMinutes} Minuten.`,
+					body: isLearningEntry(entry)
+						? learningReminderBody(
+								entry,
+								"beforeEvent",
+								preferences.reminderOffsetMinutes,
+							)
+						: `Deine ${entry.title} startet in ${preferences.reminderOffsetMinutes} Minuten.`,
 					relatedDayEntryId: entry._id,
 					relatedLearningPlanId: entry.relatedLearningPlanId,
 					relatedLearningPlanSessionId: entry.relatedLearningPlanSessionId,
@@ -752,6 +800,27 @@ export const syncDueNotifications = mutation({
 				if (didCreate) created += 1;
 			}
 
+			if (
+				isLearningEntry(entry) &&
+				preferences.startLearningTimeEnabled !== false &&
+				args.localMinutes >= startMinutes &&
+				args.localMinutes < startMinutes + 5
+			) {
+				const didCreate = await insertNotificationOnce(ctx, {
+					ownerTokenIdentifier,
+					eventKey: `start:${entry._id}`,
+					category: "learningPlan",
+					type: "startEvent",
+					title: "Deine Lernsession beginnt",
+					body: learningReminderBody(entry, "startEvent"),
+					relatedDayEntryId: entry._id,
+					relatedLearningPlanId: entry.relatedLearningPlanId,
+					relatedLearningPlanSessionId: entry.relatedLearningPlanSessionId,
+					triggeredAt: now,
+					createdAt: now,
+				});
+				if (didCreate) created += 1;
+			}
 			const durationMinutes = entry.durationMinutes;
 			if (
 				preferences.forgottenEventEnabled &&
@@ -765,8 +834,12 @@ export const syncDueNotifications = mutation({
 						eventKey: `forgotten:${entry._id}`,
 						category: getEntryNotificationCategory(entry),
 						type: "forgottenEvent",
-						title: `${getBeforeEventTitle(entry)} nicht vergessen`,
-						body: `Du kannst deine ${entry.title} noch als erledigt markieren.`,
+						title: isLearningEntry(entry)
+							? "Lernsession neu planen"
+							: `${getBeforeEventTitle(entry)} nicht vergessen`,
+						body: isLearningEntry(entry)
+							? learningReminderBody(entry, "forgottenEvent")
+							: `Du kannst deine ${entry.title} noch als erledigt markieren.`,
 						relatedDayEntryId: entry._id,
 						relatedLearningPlanId: entry.relatedLearningPlanId,
 						relatedLearningPlanSessionId: entry.relatedLearningPlanSessionId,
@@ -779,5 +852,91 @@ export const syncDueNotifications = mutation({
 		}
 
 		return { created };
+	},
+});
+
+export const openNotification = mutation({
+	args: {
+		registrationId: v.optional(v.id("localNotificationSchedules")),
+		notificationId: v.optional(v.id("notificationHistory")),
+	},
+	returns: v.string(),
+	handler: async (ctx, args) => {
+		const owner = await requireOwnerTokenIdentifier(ctx);
+		if (Boolean(args.registrationId) === Boolean(args.notificationId))
+			throwUserFacingError("Ungültige Mitteilung.");
+		const notification = args.registrationId
+			? await ctx.db.get("localNotificationSchedules", args.registrationId)
+			: args.notificationId
+				? await ctx.db.get("notificationHistory", args.notificationId)
+				: null;
+		if (!notification || notification.ownerTokenIdentifier !== owner)
+			return "/notifications";
+		const now = Date.now();
+		if (args.registrationId && "scheduledFor" in notification) {
+			if (
+				now < notification.scheduledFor - localNotificationEarlyToleranceMs ||
+				now > notification.expiresAt
+			)
+				return "/notifications";
+			await insertNotificationOnce(ctx, {
+				ownerTokenIdentifier: owner,
+				eventKey: notification.eventKey,
+				category: notification.category,
+				type: notification.type,
+				title: notification.title,
+				body: notification.body,
+				relatedDayEntryId: notification.relatedDayEntryId,
+				relatedLearningPlanId: notification.relatedLearningPlanId,
+				relatedLearningPlanSessionId: notification.relatedLearningPlanSessionId,
+				triggeredAt: notification.scheduledFor,
+				createdAt: now,
+			});
+		}
+		const history = await getExistingEventNotification(
+			ctx,
+			owner,
+			notification.eventKey,
+		);
+		if (history)
+			await ctx.db.patch("notificationHistory", history._id, {
+				openedAt: history.openedAt ?? now,
+				readAt: history.readAt ?? now,
+			});
+		if (notification.type === "dailyBriefing") return "/home";
+		if (notification.type === "trialEnding") return "/subscription";
+		const planId = notification.relatedLearningPlanId;
+		if (!planId) {
+			const entry = notification.relatedDayEntryId
+				? await ctx.db.get("dayEntries", notification.relatedDayEntryId)
+				: null;
+			return entry?.ownerTokenIdentifier === owner
+				? `/entry/${entry._id}`
+				: "/home";
+		}
+		const plan = await ctx.db.get("learningPlans", planId);
+		if (!plan || plan.ownerTokenIdentifier !== owner) return "/learning-plans";
+		const planPath = `/learning-plans/${planId}`;
+		const sessionId = notification.relatedLearningPlanSessionId;
+		if (!sessionId) return planPath;
+		const session = await ctx.db.get("learningPlanSessions", sessionId);
+		if (
+			!session ||
+			session.ownerTokenIdentifier !== owner ||
+			session.learningPlanId !== planId ||
+			session.completed ||
+			session.executionStatus === "adjusted"
+		)
+			return planPath;
+		if (
+			notification.type === "forgottenEvent" &&
+			session.preparationSlotId &&
+			session.executionStatus !== "started"
+		) {
+			return `${planPath}/preparation?editSlot=${encodeURIComponent(session.preparationSlotId)}`;
+		}
+		if (session.planningStatus === "provisional")
+			return `${planPath}?sessionId=${sessionId}`;
+		return `${planPath}/sessions/${sessionId}${notification.type === "forgottenEvent" && session.executionStatus !== "started" ? "/edit" : ""}`;
 	},
 });

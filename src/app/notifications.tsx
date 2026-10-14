@@ -1,5 +1,5 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
-import { useRouter } from "expo-router";
+import { type Href, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
 	ActivityIndicator,
@@ -49,7 +49,12 @@ import { getPushNotificationDeliveryState } from "~/lib/notification-preferences
 type InboxNotification = {
 	id: Id<"notificationHistory">;
 	category: "learningPlan" | "task" | "message";
-	type: "dailyBriefing" | "beforeEvent" | "forgottenEvent" | "trialEnding";
+	type:
+		| "dailyBriefing"
+		| "beforeEvent"
+		| "startEvent"
+		| "forgottenEvent"
+		| "trialEnding";
 	title: string;
 	body: string;
 	triggeredAt: number;
@@ -113,9 +118,11 @@ function NotificationIcon({
 function NotificationCard({
 	notification,
 	onDelete,
+	onOpen,
 }: {
 	notification: InboxNotification;
 	onDelete: () => Promise<unknown>;
+	onOpen: () => void;
 }) {
 	const [isLocallyDeleted, setIsLocallyDeleted] = useState(false);
 	const translateX = useSharedValue(0);
@@ -251,7 +258,6 @@ function NotificationCard({
 			</Animated.View>
 			<GestureDetector gesture={panGesture}>
 				<Animated.View
-					accessible
 					accessibilityActions={[
 						{ name: "delete", label: "Mitteilung löschen" },
 					]}
@@ -287,6 +293,22 @@ function NotificationCard({
 						<Text className="font-poppins text-body-4 text-secondary-text">
 							{notification.body}
 						</Text>
+						<TouchableOpacity
+							accessibilityRole="button"
+							accessibilityLabel={`${notification.title} öffnen`}
+							onPress={onOpen}
+							className="min-h-11 justify-center self-start"
+						>
+							<Text
+								numberOfLines={1}
+								className="font-poppins font-semibold text-body-4 text-primary"
+							>
+								{notification.type === "forgottenEvent" &&
+								notification.category === "learningPlan"
+									? "Neu planen"
+									: "Öffnen"}
+							</Text>
+						</TouchableOpacity>
 					</View>
 				</Animated.View>
 			</GestureDetector>
@@ -296,6 +318,7 @@ function NotificationCard({
 
 export default function NotificationsScreen() {
 	const router = useRouter();
+	const openNotification = useMutation(api.notifications.openNotification);
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const [category, setCategory] = useState<InboxCategory>("all");
@@ -400,6 +423,16 @@ export default function NotificationsScreen() {
 						<NotificationCard
 							key={notification.id}
 							notification={notification}
+							onOpen={() => {
+								void openNotification({ notificationId: notification.id })
+									.then((href) => router.push(href as Href))
+									.catch((error: unknown) =>
+										logDiagnosticError("Failed to open notification.", error, {
+											source: "notifications.inboxOpen",
+											level: "warn",
+										}),
+									);
+							}}
 							onDelete={() =>
 								deleteNotification({
 									id: notification.id,

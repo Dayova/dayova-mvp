@@ -289,6 +289,8 @@ export default defineSchema({
 		dailyBriefingTime: v.string(),
 		beforeExamEnabled: v.boolean(),
 		beforeLearningTimeEnabled: v.boolean(),
+		startLearningTimeEnabled: v.optional(v.boolean()),
+		learningReminderOfferSeen: v.optional(v.boolean()),
 		beforeHomeworkWorkEnabled: v.boolean(),
 		beforeHomeworkDueEnabled: v.boolean(),
 		reminderOffsetMinutes: v.number(),
@@ -308,6 +310,7 @@ export default defineSchema({
 		type: v.union(
 			v.literal("dailyBriefing"),
 			v.literal("beforeEvent"),
+			v.literal("startEvent"),
 			v.literal("forgottenEvent"),
 		),
 		title: v.string(),
@@ -338,6 +341,7 @@ export default defineSchema({
 		type: v.union(
 			v.literal("dailyBriefing"),
 			v.literal("beforeEvent"),
+			v.literal("startEvent"),
 			v.literal("forgottenEvent"),
 			v.literal("trialEnding"),
 		),
@@ -348,6 +352,8 @@ export default defineSchema({
 		relatedLearningPlanSessionId: v.optional(v.id("learningPlanSessions")),
 		triggeredAt: v.number(),
 		readAt: v.optional(v.number()),
+		openedAt: v.optional(v.number()),
+		rescheduledAt: v.optional(v.number()),
 		deletedAt: v.optional(v.number()),
 		createdAt: v.number(),
 	})

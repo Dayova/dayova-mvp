@@ -91,3 +91,101 @@ test("timetable lessons appear in the briefing without creating individual remin
 		}),
 	]);
 });
+
+const learningEntry = {
+	relatedDayEntryId: "learning-1" as Id<"dayEntries">,
+	title: "Mathe: Brüche",
+	kind: "Lernen",
+	time: "16:00",
+	durationMinutes: 20,
+	executionStatus: "notStarted",
+};
+const learningPlan = (
+	entry = learningEntry,
+	preferences = defaultPreferences,
+) =>
+	buildLocalNotificationPlan({
+		now: new Date(2026, 5, 16, 7),
+		preferences,
+		entriesByDay: { "2026-06-16": [entry] },
+	});
+
+test("learning reminders run before, at start, and once 15 minutes after the end", () => {
+	const reminders = learningPlan().filter(
+		(item) => item.category === "learningPlan",
+	);
+	expect(
+		reminders.map((item) => [
+			item.type,
+			item.triggerAt.getHours(),
+			item.triggerAt.getMinutes(),
+		]),
+	).toEqual([
+		["beforeEvent", 15, 45],
+		["startEvent", 16, 0],
+		["forgottenEvent", 16, 35],
+	]);
+	expect(reminders[0]?.body).toContain("20 Minuten");
+	expect(reminders[2]?.body).toContain("Finde einen neuen Termin");
+});
+
+test("optional previews do not disable start or recovery reminders", () => {
+	const plan = learningPlan(learningEntry, {
+		...defaultPreferences,
+		dailyBriefingEnabled: false,
+		beforeLearningTimeEnabled: false,
+	});
+	expect(plan.map((item) => item.type)).toEqual([
+		"startEvent",
+		"forgottenEvent",
+	]);
+	expect(
+		learningPlan(learningEntry, {
+			...defaultPreferences,
+			startLearningTimeEnabled: false,
+		}).some((item) => item.type === "startEvent"),
+	).toBe(false);
+	expect(
+		learningPlan(learningEntry, {
+			...defaultPreferences,
+			systemNotificationsEnabled: false,
+		}),
+	).toEqual([]);
+});
+
+test.each([
+	"started",
+	"completed",
+	"partiallyCompleted",
+	"missed",
+	"adjusted",
+])("does not nudge a learning session already handled as %s", (executionStatus) => {
+	expect(learningPlan({ ...learningEntry, executionStatus })).toEqual([]);
+});
+
+test("empty or completed days do not produce a briefing", () => {
+	expect(
+		buildLocalNotificationPlan({
+			now: new Date(2026, 5, 16, 7),
+			preferences: defaultPreferences,
+			entriesByDay: {
+				"2026-06-16": [],
+				"2026-06-17": [{ ...learningEntry, completed: true }],
+			},
+		}),
+	).toEqual([]);
+});
+
+test("moving or deleting a learning entry replaces its planned times", () => {
+	const moved = learningPlan({ ...learningEntry, time: "18:00" }).find(
+		(item) => item.type === "startEvent",
+	);
+	expect(moved?.triggerAt.getHours()).toBe(18);
+	expect(
+		buildLocalNotificationPlan({
+			now: new Date(2026, 5, 16, 7),
+			preferences: defaultPreferences,
+			entriesByDay: {},
+		}),
+	).toEqual([]);
+});

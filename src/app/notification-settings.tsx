@@ -309,6 +309,13 @@ export default function NotificationSettingsScreen() {
 			),
 		[runPreferenceAction, update],
 	);
+	const handleStartLearningTimeEnabledChange = useCallback(
+		(value: boolean) =>
+			void runPreferenceAction("startLearningTimeEnabled", () =>
+				update({ startLearningTimeEnabled: value }),
+			),
+		[runPreferenceAction, update],
+	);
 	const handleBeforeHomeworkWorkEnabledChange = useCallback(
 		(value: boolean) =>
 			void runPreferenceAction("beforeHomeworkWorkEnabled", () =>
@@ -567,7 +574,7 @@ export default function NotificationSettingsScreen() {
 												strokeWidth={2}
 											/>
 											<Text className="flex-1 font-poppins text-body-4 text-secondary-text">
-												Täglich
+												An Tagen mit offenen Einträgen
 											</Text>
 											<Text className="font-poppins font-semibold text-body-4 text-text">
 												{preferencesForRender.dailyBriefingTime}
@@ -591,10 +598,17 @@ export default function NotificationSettingsScreen() {
 								/>
 								<SettingsDivider />
 								<SwitchRow
-									label="Vor Lernzeit"
+									label="Vor der Lernsession"
 									value={preferencesForRender.beforeLearningTimeEnabled}
 									disabled={controlState.beforeLearningTimeDisabled}
 									onValueChange={handleBeforeLearningTimeEnabledChange}
+								/>
+								<SettingsDivider />
+								<SwitchRow
+									label="Zum Start der Lernsession"
+									value={preferencesForRender.startLearningTimeEnabled ?? true}
+									disabled={controlState.startLearningTimeDisabled}
+									onValueChange={handleStartLearningTimeEnabledChange}
 								/>
 								<SettingsDivider />
 								<SwitchRow
@@ -638,7 +652,7 @@ export default function NotificationSettingsScreen() {
 								</TouchableOpacity>
 								<SettingsDivider />
 								<SwitchRow
-									label="Nach verpasstem Ereignis"
+									label="Nach verpasstem Termin"
 									value={preferencesForRender.forgottenEventEnabled}
 									disabled={controlState.forgottenEventDisabled}
 									onValueChange={handleForgottenEventEnabledChange}

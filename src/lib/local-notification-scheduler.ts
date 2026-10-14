@@ -61,7 +61,7 @@ export const syncPlannedLocalNotifications = async (
 	}
 
 	let scheduledCount = 0;
-	for (const notification of plan) {
+	for (const notification of plan.slice(0, 60)) {
 		await notifications.scheduleNotificationAsync({
 			content: {
 				title: notification.title,
