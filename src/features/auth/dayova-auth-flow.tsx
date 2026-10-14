@@ -2177,6 +2177,7 @@ function PasswordResetScreen({
 						<FeedbackPressable
 							accessibilityRole="button"
 							accessibilityLabel="Zurück"
+							pressScale={0.92}
 							disabled={isLoading}
 							hitSlop={8}
 							onPress={handleBack}

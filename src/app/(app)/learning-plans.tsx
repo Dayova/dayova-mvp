@@ -903,6 +903,7 @@ export default function LearningPlansScreen() {
 
 					<FeedbackTouchableOpacity
 						accessibilityRole="button"
+						pressScale={0.92}
 						accessibilityLabel="Neuen Eintrag erstellen."
 						accessibilityHint="Öffnet den Eintragserstellungsdialog, um entweder eine Prüfung oder Hausaufgabe zu erstellen."
 						activeOpacity={0.88}
