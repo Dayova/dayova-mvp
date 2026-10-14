@@ -34,6 +34,7 @@ function DashboardDayHeader({
 			</View>
 			{showAddPlanAction ? (
 				<FeedbackPressable
+					pressScale={0.92}
 					accessibilityHint="Öffnet die Erstellung eines neuen Lernplans."
 					accessibilityLabel="Lernplan hinzufügen"
 					accessibilityRole="button"

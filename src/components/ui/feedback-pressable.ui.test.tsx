@@ -121,8 +121,12 @@ test("mounting and opted-out controls do not animate", async () => {
 test.each([
 	FeedbackPressable,
 	FeedbackTouchableOpacity,
-])("a quick touch starts and releases motion without delaying the action", async (Control) => {
-	const timing = jest.spyOn(Animated, "timing");
+])("a completed compression releases without delaying the action", async (Control) => {
+	const timing = jest.spyOn(Animated, "timing").mockImplementation(() => ({
+		start: (callback) => callback?.({ finished: true }),
+		stop: jest.fn(),
+		reset: jest.fn(),
+	}));
 	const spring = jest.spyOn(Animated, "spring");
 	const onPress = jest.fn();
 	const screen = await render(
@@ -166,4 +170,62 @@ test("opacity controls also stop motion when disabled during an interaction", as
 	expect(reset).toHaveBeenCalledWith(1);
 	await fireEvent.press(screen.getByRole("button"));
 	expect(onPress).not.toHaveBeenCalled();
+});
+
+// Native compression finishes asynchronously; a short tap must not cancel it.
+test.each([
+	FeedbackPressable,
+	FeedbackTouchableOpacity,
+])("a short tap reaches the pressed size before returning", async (Control) => {
+	let finishCompression: ((result: { finished: boolean }) => void) | undefined;
+	jest.spyOn(Animated, "timing").mockImplementation(() => ({
+		start: (callback) => {
+			finishCompression = callback;
+		},
+		stop: jest.fn(),
+		reset: jest.fn(),
+	}));
+	const spring = jest.spyOn(Animated, "spring");
+	const onPress = jest.fn();
+	const screen = await render(
+		<Control accessibilityRole="button" onPress={onPress} pressScale={0.92}>
+			<Text>Heute</Text>
+		</Control>,
+	);
+	await fireEvent(screen.getByRole("button"), "pressIn", {});
+	await fireEvent(screen.getByRole("button"), "pressOut", {});
+	await fireEvent.press(screen.getByRole("button"));
+	expect(onPress).toHaveBeenCalledTimes(1);
+	expect(spring).not.toHaveBeenCalled();
+	expect(Animated.timing).toHaveBeenCalledWith(
+		expect.anything(),
+		expect.objectContaining({ toValue: 0.92 }),
+	);
+	await act(() => finishCompression?.({ finished: true }));
+	expect(spring).toHaveBeenCalledWith(
+		expect.anything(),
+		expect.objectContaining({ toValue: 1 }),
+	);
+});
+
+test("pending compression cannot restart motion after reduced motion is enabled", async () => {
+	let finishCompression: ((result: { finished: boolean }) => void) | undefined;
+	jest.spyOn(Animated, "timing").mockImplementation(() => ({
+		start: (callback) => {
+			finishCompression = callback;
+		},
+		stop: jest.fn(),
+		reset: jest.fn(),
+	}));
+	const spring = jest.spyOn(Animated, "spring");
+	const screen = await render(
+		<FeedbackPressable accessibilityRole="button">
+			<Text>Zurück</Text>
+		</FeedbackPressable>,
+	);
+	await fireEvent(screen.getByRole("button"), "pressIn", {});
+	await fireEvent(screen.getByRole("button"), "pressOut", {});
+	await act(() => preferenceChanged(true));
+	await act(() => finishCompression?.({ finished: true }));
+	expect(spring).not.toHaveBeenCalled();
 });

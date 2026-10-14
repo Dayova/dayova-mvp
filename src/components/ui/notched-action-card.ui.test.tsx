@@ -94,7 +94,11 @@ test("the separate action hit target animates its visible circle and dispatches 
 		.mockResolvedValue(false);
 	const timing = jest.spyOn(Animated, "timing").mockImplementation((value) => {
 		(value as Animated.Value).setValue(0.97);
-		return { start: jest.fn(), stop: jest.fn(), reset: jest.fn() };
+		return {
+			start: (callback) => callback?.({ finished: true }),
+			stop: jest.fn(),
+			reset: jest.fn(),
+		};
 	});
 	const spring = jest.spyOn(Animated, "spring");
 	try {

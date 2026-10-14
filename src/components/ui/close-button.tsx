@@ -18,6 +18,7 @@ function CloseButton({
 
 	return (
 		<FeedbackTouchableOpacity
+			pressScale={0.92}
 			accessibilityLabel={accessibilityLabel}
 			accessibilityRole="button"
 			activeOpacity={activeOpacity}

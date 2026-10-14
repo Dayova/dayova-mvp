@@ -141,6 +141,7 @@ export function MaterialCard({
 			<FeedbackTouchableOpacity
 				accessibilityHint="Entfernt dieses hochgeladene Material aus dem Lernplan."
 				accessibilityLabel={`${name} entfernen`}
+				pressScale={0.92}
 				accessibilityRole="button"
 				activeOpacity={0.75}
 				hitSlop={8}

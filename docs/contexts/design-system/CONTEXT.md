@@ -299,7 +299,11 @@ between weekdays and start time brings the profile flow to twelve steps.
 
 Shared Buttons (including icons and links), selection rows, and custom actions
 use `FeedbackPressable`: 90 ms press compression to 97%, followed by a damped
-return. Animation starts in the touch handler so fast taps are not lost to state
+return. Small/icon Buttons and compact add, close and notification controls use
+92% so their compression remains visible on small surfaces. Short taps complete
+the 90 ms compression before springing back; release never cancels the inward
+motion prematurely. Disabling, unmounting or reduced motion invalidates pending
+animation callbacks. Animation starts in the touch handler so fast taps are not lost to state
 batching; action dispatch never waits for animation. Opacity-based controls use
 `FeedbackTouchableOpacity`, preserving their existing active opacity.
 Coverage includes shared ActionSurface/FieldTrigger/sheets, dashboard cards,
