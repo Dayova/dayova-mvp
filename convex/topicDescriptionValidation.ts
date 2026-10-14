@@ -1,7 +1,7 @@
 import { throwUserFacingError } from "./errors";
 
-const MIN_TOPIC_DESCRIPTION_CHARS = 12;
-const MIN_MEANINGFUL_WORDS = 2;
+const MIN_TOPIC_DESCRIPTION_CHARS = 3;
+const MIN_MEANINGFUL_WORDS = 1;
 
 const placeholderWords = new Set([
 	"asdf",
@@ -18,6 +18,7 @@ const placeholderWords = new Set([
 	"nichts",
 	"mathe",
 	"mathematik",
+	"mathematiktest",
 	"arbeit",
 	"prufung",
 	"klausur",

@@ -339,8 +339,13 @@ describe("exam creation across the topics boundary", () => {
 		screen = await render(<NewLearningPlanScreen />);
 		expect(mockProgress.currentStep).toBe(3);
 		await fireEvent.changeText(
-			screen.getByLabelText("Prüfungsthemen"),
+			screen.getByLabelText("Thema suchen"),
 			"Zellteilung und Mitose",
+		);
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: "Eigenes Thema hinzufügen: Zellteilung und Mitose",
+			}),
 		);
 		await act(() => mockProgress.onBack());
 		expect(mockRouter.dismissTo).not.toHaveBeenCalled();

@@ -95,6 +95,7 @@ export default function NewLearningPlanScreen() {
 	const { user } = useAuthSession();
 	const { capture } = useValidationAnalytics();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
+	const searchTopics = useAction(api.wloTopics.search);
 	const createDraftPlan = useMutation(api.learningPlans.createDraft);
 	const updateRequiredTopics = useMutation(
 		api.learningPlans.updateRequiredTopics,
@@ -694,6 +695,8 @@ export default function NewLearningPlanScreen() {
 				<View key={setupStep} className="flex-1">
 					{setupStep === "requiredTopics" ? (
 						<RequiredTopicsStep
+							subject={snapshot?.plan.subject ?? subject}
+							searchTopics={searchTopics}
 							canContinue={canContinueTopics}
 							errorMessage={errorMessage}
 							isBusy={isBusy}

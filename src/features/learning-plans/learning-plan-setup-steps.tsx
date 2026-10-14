@@ -4,10 +4,10 @@ import { Button } from "~/components/ui/button";
 import { GraduationCap, Plus } from "~/components/ui/icon";
 import { ActionSurface, Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
-import { Textarea } from "~/components/ui/textarea";
 import { MaterialCard } from "~/features/learning-plans/learning-plan-ui";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { useDayovaTheme } from "~/lib/theme";
+import { type SearchTopics, TopicSearch } from "./topic-search";
 
 type PendingUploadAction = "camera" | "library" | "files";
 
@@ -275,6 +275,8 @@ export function MaterialUploadStep({
 }
 
 export function RequiredTopicsStep({
+	subject,
+	searchTopics,
 	canContinue,
 	errorMessage,
 	isBusy,
@@ -288,6 +290,8 @@ export function RequiredTopicsStep({
 	onChangeTopics: (value: string) => void;
 	onContinue: () => void;
 	topics: string;
+	subject: string;
+	searchTopics: SearchTopics;
 }) {
 	return (
 		<View className="flex-1">
@@ -295,14 +299,14 @@ export function RequiredTopicsStep({
 				Welche Themen kommen in der Prüfung dran?
 			</Text>
 			<Text className="mt-3 font-poppins text-body-3 text-secondary-text">
-				Nenne alle Themen, die du für diese Prüfung lernen musst.
+				Suche und wähle die Themen aus, die in deiner Prüfung vorkommen.
 			</Text>
-			<Textarea
-				accessibilityLabel="Prüfungsthemen"
-				className="mt-6 h-48 flex-none rounded-[24px] border border-border bg-card px-4 py-4"
-				value={topics}
-				onChangeText={onChangeTopics}
-				placeholder="Zum Beispiel: Lineare Funktionen, Steigung berechnen und den y-Achsenabschnitt bestimmen."
+			<TopicSearch
+				topics={topics}
+				subject={subject}
+				onChangeTopics={onChangeTopics}
+				searchTopics={searchTopics}
+				disabled={isBusy}
 			/>
 
 			<SetupError message={errorMessage} />
