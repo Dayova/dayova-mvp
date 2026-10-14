@@ -47,7 +47,11 @@ App screens that collect a date or time in one interaction must use
 `DateTimePickerSheet` from `src/components/ui/date-time-picker-sheet`. Do not
 import the underlying Expo UI picker directly from a screen. The wrapper owns
 platform display normalization, German locale, safe-area handling, and native
-presentation.
+presentation. Dedicated date steps with a persistent calendar use `InlineDatePicker`
+from `src/components/ui/inline-date-picker` instead. It owns native inline
+rendering, theme, native sizing, and Android date-only timezone conversion.
+[DAY-515](https://linear.app/dayova/issue/DAY-515) defines the exam-date step: it shows the selected date above this calendar and commits day
+changes immediately; the flow’s existing Continue action advances to topics.
 
 ## Icons
 

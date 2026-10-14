@@ -7,27 +7,25 @@ import Animated, {
 import { AddOptionButton } from "~/components/ui/add-option-button";
 import { Button } from "~/components/ui/button";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
-import {
-	Field,
-	FieldAccessory,
-	FieldLabel,
-	FieldTrigger,
-} from "~/components/ui/field";
+import { Field, FieldControl, FieldLabel } from "~/components/ui/field";
 import {
 	CalendarDays,
-	ChevronDown,
 	Computer,
 	GraduationCap,
 	Mic,
 	NotebookPen,
 	Pencil,
 } from "~/components/ui/icon";
+import { InlineDatePicker } from "~/components/ui/inline-date-picker";
 import { Input } from "~/components/ui/input";
 import { SelectionOptionRow } from "~/components/ui/selection-option-row";
 import { Text } from "~/components/ui/text";
 import { InlineSubjectPicker } from "~/features/subjects/subject-picker";
 import type { SubjectSelection } from "~/features/subjects/use-subject-options";
-import { formatAccessibleExamDate } from "~/lib/exam-date";
+import {
+	formatAccessibleExamDate,
+	getExamDatePickerRange,
+} from "~/lib/exam-date";
 import { useDayovaTheme } from "~/lib/theme";
 
 const EXAM_TYPE_OPTIONS = [
@@ -172,43 +170,40 @@ function SingleSelectOption({
 
 function ExamDateSelector({
 	selectedDate,
-	onOpen,
+	onSelect,
 }: {
 	selectedDate: Date;
-	onOpen: () => void;
+	onSelect: (date: Date) => void;
 }) {
 	const { colors } = useDayovaTheme();
 	const selectedDateLabel = formatAccessibleExamDate(selectedDate);
+	const dateRange = getExamDatePickerRange({ selectedDate });
 
 	return (
 		<Field className="mt-6 mb-0">
 			<FieldLabel>Prüfungsdatum</FieldLabel>
-			<FieldTrigger
-				accessibilityLabel="Prüfungsdatum ändern"
-				accessibilityRole="button"
-				accessibilityValue={{ text: selectedDateLabel }}
-				onPress={onOpen}
-			>
-				<View className="mr-4 h-9 w-9 items-center justify-center rounded-full bg-accent">
+			<FieldControl>
+				<View
+					className="mr-4 h-9 w-9 items-center justify-center rounded-full bg-accent"
+					accessibilityElementsHidden
+					importantForAccessibility="no-hide-descendants"
+				>
 					<CalendarDays size={20} color={colors.primary} strokeWidth={2.1} />
 				</View>
 				<Text
 					className="flex-1 font-poppins font-semibold text-body-2 text-text"
-					numberOfLines={2}
+					accessibilityLiveRegion="polite"
 				>
 					{selectedDateLabel}
 				</Text>
-				<FieldAccessory>
-					<ChevronDown
-						size={20}
-						color={colors.secondaryText}
-						strokeWidth={2.1}
-					/>
-				</FieldAccessory>
-			</FieldTrigger>
-			<Text className="mt-2 ml-1 font-poppins text-body-4 text-secondary-text">
-				Im Kalender auswählen
-			</Text>
+			</FieldControl>
+			<View className="mt-4">
+				<InlineDatePicker
+					value={selectedDate}
+					onChange={onSelect}
+					{...dateRange}
+				/>
+			</View>
 		</Field>
 	);
 }

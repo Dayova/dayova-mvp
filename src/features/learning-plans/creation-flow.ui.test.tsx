@@ -230,6 +230,16 @@ jest.mock("~/components/ui/confirmation-sheet", () => ({
 jest.mock("~/components/ui/date-time-picker-sheet", () => ({
 	DateTimePickerSheet: () => null,
 }));
+jest.mock("~/components/ui/inline-date-picker", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	return {
+		InlineDatePicker: (props: Record<string, unknown>) =>
+			React.createElement("InlineDatePicker", {
+				...props,
+				testID: "inline-calendar",
+			}),
+	};
+});
 jest.mock("~/components/ui/select-sheet", () => ({ SelectSheet: () => null }));
 jest.mock("~/components/ui/dayova-sheet-frame", () => ({
 	DayovaSheetFrame: () => null,
@@ -318,6 +328,29 @@ async function selectGalleryPhotos(
 }
 
 describe("exam creation across the topics boundary", () => {
+	test("carries an inline calendar selection into topics and back to the date step", async () => {
+		let screen = await render(<NewEntryScreen />);
+		await fireEvent(
+			screen.getByTestId("inline-calendar"),
+			"change",
+			new Date(2026, 10, 2, 15, 30),
+		);
+		expect(screen.getByText("2. November 2026")).toBeOnTheScreen();
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(followReplacement()).toBe("/learning-plans/new");
+		expect(mockParams.examDateKey).toBe("2026-11-02");
+		await screen.unmount();
+		screen = await render(<NewLearningPlanScreen />);
+		await act(() => mockProgress.onBack());
+		expect(followReplacement()).toBe("/entry/new");
+		await screen.unmount();
+		screen = await render(<NewEntryScreen />);
+		expect(screen.getByText("2. November 2026")).toBeOnTheScreen();
+		expect(screen.getByTestId("inline-calendar").props.value).toEqual(
+			new Date(2026, 10, 2),
+		);
+	});
+
 	test.each([
 		"available",
 		"missing",
