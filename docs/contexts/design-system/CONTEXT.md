@@ -315,8 +315,11 @@ manual confirmation, restore its route and the analysis-to-scope transition
 together; the backend confirmation requirement remains in place.
 
 The screen places a compact Dayova flower above a heading, animated shared
-`FlowProgressBar`, and a three-step checklist. Completion states follow actual
-request completion, not timers or invented document counts. Pending work remains
+`FlowProgressBar`, and a three-step checklist. Completion states require actual
+request completion; each active stage stays visible for at least 1.5 seconds so
+fast requests remain readable. The completed checklist stays visible for 600ms
+before navigation. Slow requests are never marked complete by a timer, and
+resuming prepared work does not replay already completed stages. Pending work remains
 numbered; active work shows an indicator; completed work uses the shared
 Hugeicons check on cyan with `onPrimary`. Reduced motion retains static stage
 indicators. Errors stay on the screen with a retry action.

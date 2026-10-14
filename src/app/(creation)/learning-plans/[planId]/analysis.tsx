@@ -61,7 +61,8 @@ export default function LearningPlanAnalysisScreen() {
 				snapshot.plan.diagnosticPlacement === "firstSession") ||
 			snapshot.plan.status === "accepted"
 		) {
-			router.replace(planPath(planId, "review"));
+			// A running pipeline owns navigation so a live snapshot cannot skip visible stages.
+			if (!didStartRef.current) router.replace(planPath(planId, "review"));
 			return;
 		}
 		if (didStartRef.current) return;
@@ -91,6 +92,10 @@ export default function LearningPlanAnalysisScreen() {
 				confirm: () => confirmScope({ learningPlanId: planId }),
 				prepare: () => prepareDiagnostic({ learningPlanId: planId }),
 			})
+				.then((completed) => {
+					if (completed && !didCloseRef.current)
+						router.replace(planPath(planId, "review"));
+				})
 				.catch((error: unknown) => {
 					if (didCloseRef.current) return;
 					const message = getErrorMessage(
