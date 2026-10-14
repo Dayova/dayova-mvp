@@ -13,7 +13,6 @@ import {
 	type FlatList,
 	Image,
 	Keyboard,
-	KeyboardAvoidingView,
 	type NativeScrollEvent,
 	type NativeSyntheticEvent,
 	Platform,
@@ -24,8 +23,8 @@ import {
 	useWindowDimensions,
 	View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Animated, {
-	Easing,
 	FadeIn,
 	FadeInDown,
 	FadeInUp,
@@ -35,7 +34,6 @@ import Animated, {
 	useAnimatedStyle,
 	useReducedMotion,
 	useSharedValue,
-	withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IntroUploadArtwork } from "~/components/intro-upload-artwork";
@@ -92,6 +90,10 @@ import {
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
 import { PasswordVisibilityButton } from "~/components/ui/password-visibility-button";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
+import {
+	SelectionControl,
+	SelectionText,
+} from "~/components/ui/selection-control";
 import { SnapCarouselSelector } from "~/components/ui/snap-carousel-selector";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
@@ -132,10 +134,6 @@ import { cn } from "~/lib/utils";
 // Password icons represent the current visibility state across this auth flow.
 // Decision: https://app.notion.com/p/39f2e87228bf81c28511c0728134c774
 const COLORS = DAYOVA_DESIGN_SYSTEM.colors;
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-const STUDY_DAY_SELECTION_DURATION_MS = 180;
-const STUDY_DAY_PRESS_IN_DURATION_MS = 80;
-const STUDY_DAY_PRESS_OUT_DURATION_MS = 120;
 const QUESTION_TITLE_STYLE = DAYOVA_DESIGN_SYSTEM.typography.headline.h2;
 const ONBOARDING_CONTENT_TOP_SPACING = 40;
 const CODE_LENGTH = 6;
@@ -736,10 +734,7 @@ export function OnboardingStepScreen({ stepId }: { stepId: OnboardingStepId }) {
 				}}
 			/>
 			<ThemedStatusBar />
-			<KeyboardAvoidingView
-				behavior={Platform.OS === "ios" ? "padding" : undefined}
-				className="flex-1"
-			>
+			<KeyboardAvoidingView behavior="padding" className="flex-1">
 				<View
 					className="flex-1 px-6"
 					// The routed question clears the runtime device safe-area inset.
@@ -1439,13 +1434,12 @@ function QuestionStepView({
 				disabled={busy}
 			/>
 
-			<ScrollView
+			<KeyboardSafeScrollView
+				enabled={step.kind === "text"}
 				key={step.id}
 				testID="onboarding-question-scroll"
 				className="flex-1"
-				keyboardShouldPersistTaps="handled"
 				contentInsetAdjustmentBehavior="never"
-				showsVerticalScrollIndicator={false}
 				// Runtime safe-area and layout mode reserve space for the primary action.
 				contentContainerStyle={{
 					flexGrow: 1,
@@ -1608,7 +1602,7 @@ function QuestionStepView({
 					</View>
 				</Animated.View>
 				{shouldStackInlineContent ? primaryAction : null}
-			</ScrollView>
+			</KeyboardSafeScrollView>
 
 			{shouldStackInlineContent ? null : primaryAction}
 			{isLearningTimeStep ? (
@@ -2368,14 +2362,9 @@ function VerificationScreen({
 		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ title: "E-Mail bestätigen", gestureEnabled }} />
 			<ThemedStatusBar />
-			<KeyboardAvoidingView
-				behavior={Platform.OS === "ios" ? "padding" : undefined}
-				className="flex-1"
-			>
-				<ScrollView
+			<KeyboardAvoidingView behavior="padding" className="flex-1">
+				<KeyboardSafeScrollView
 					testID="onboarding-verification-scroll"
-					keyboardShouldPersistTaps="handled"
-					showsVerticalScrollIndicator={false}
 					contentInsetAdjustmentBehavior="never"
 					contentContainerStyle={{
 						flexGrow: 1,
@@ -2447,7 +2436,7 @@ function VerificationScreen({
 							</Animated.Text>
 						) : null}
 					</View>
-				</ScrollView>
+				</KeyboardSafeScrollView>
 			</KeyboardAvoidingView>
 		</View>
 	);
@@ -2518,28 +2507,20 @@ export function OnboardingRecoveryScreen({
 					{ONBOARDING_DURATION_OPTIONS.map((duration) => {
 						const selected = answers.studyTime === String(duration);
 						return (
-							<Pressable
+							<SelectionControl
+								selected={selected}
+								appearance="pill"
 								key={duration}
 								accessibilityRole="radio"
 								accessibilityState={{ disabled: isSubmitting, selected }}
 								disabled={isSubmitting}
 								onPress={() => onChange("studyTime", String(duration))}
-								className={cn(
-									"rounded-full border px-4 py-3",
-									selected
-										? "border-primary bg-primary"
-										: "border-path-1 bg-system-subtle",
-								)}
+								contentClassName="px-4 py-3"
 							>
-								<Text
-									className={cn(
-										"font-poppins font-semibold text-body-4",
-										selected ? "text-on-primary" : "text-text",
-									)}
-								>
+								<SelectionText className="font-poppins font-semibold text-body-4">
 									{formatOnboardingDuration(duration)}
-								</Text>
-							</Pressable>
+								</SelectionText>
+							</SelectionControl>
 						);
 					})}
 				</View>
@@ -2551,7 +2532,9 @@ export function OnboardingRecoveryScreen({
 					{LEARNING_DAYS.map((day) => {
 						const selected = selectedDays.has(day.label);
 						return (
-							<Pressable
+							<SelectionControl
+								selected={selected}
+								appearance="pill"
 								key={day.label}
 								accessibilityRole="checkbox"
 								accessibilityState={{
@@ -2565,22 +2548,12 @@ export function OnboardingRecoveryScreen({
 										toggleOnboardingStudyDay(answers.studyDays, day.label),
 									)
 								}
-								className={cn(
-									"rounded-full border px-4 py-3",
-									selected
-										? "border-primary bg-primary"
-										: "border-path-1 bg-system-subtle",
-								)}
+								contentClassName="px-4 py-3"
 							>
-								<Text
-									className={cn(
-										"font-poppins font-semibold text-body-4",
-										selected ? "text-on-primary" : "text-text",
-									)}
-								>
+								<SelectionText className="font-poppins font-semibold text-body-4">
 									{day.label}
-								</Text>
-							</Pressable>
+								</SelectionText>
+							</SelectionControl>
 						);
 					})}
 				</View>
@@ -3096,91 +3069,19 @@ function AnimatedStudyDayPill({
 	isSelected: boolean;
 	onToggle: () => void;
 }) {
-	const { colors } = useDayovaTheme();
-	const reducedMotion = useReducedMotion();
-	const selectionProgress = useSharedValue(isSelected ? 1 : 0);
-	const pressedScale = useSharedValue(1);
-
-	useEffect(() => {
-		const nextProgress = isSelected ? 1 : 0;
-		selectionProgress.set(
-			reducedMotion
-				? nextProgress
-				: withTiming(nextProgress, {
-						duration: STUDY_DAY_SELECTION_DURATION_MS,
-						easing: Easing.out(Easing.cubic),
-					}),
-		);
-	}, [isSelected, reducedMotion, selectionProgress]);
-
-	const pillStyle = useAnimatedStyle(() => ({
-		backgroundColor: interpolateColor(
-			selectionProgress.get(),
-			[0, 1],
-			[colors.surface, colors.primary],
-		),
-		borderColor: interpolateColor(
-			selectionProgress.get(),
-			[0, 1],
-			[colors.border, colors.primary],
-		),
-		transform: [{ scale: pressedScale.get() }],
-	}));
-	const gradientStyle = useAnimatedStyle(() => ({
-		opacity: selectionProgress.get(),
-	}));
-	const labelStyle = useAnimatedStyle(() => ({
-		color: interpolateColor(
-			selectionProgress.get(),
-			[0, 1],
-			[colors.text, "#FFFFFF"],
-		),
-	}));
-
-	const setPressedScale = (scale: number, duration: number) => {
-		if (reducedMotion) return;
-		pressedScale.set(
-			withTiming(scale, {
-				duration,
-				easing: Easing.out(Easing.cubic),
-			}),
-		);
-	};
-
 	return (
-		<AnimatedPressable
+		<SelectionControl
+			selected={isSelected}
+			appearance="pill"
 			accessibilityRole="checkbox"
 			accessibilityLabel={label}
-			accessibilityState={{ checked: isSelected }}
 			onPress={onToggle}
-			onPressIn={() => setPressedScale(0.97, STUDY_DAY_PRESS_IN_DURATION_MS)}
-			onPressOut={() => setPressedScale(1, STUDY_DAY_PRESS_OUT_DURATION_MS)}
-			className="min-h-12 min-w-[100px] flex-row items-center justify-center overflow-hidden rounded-full border px-6 py-3"
-			// Runtime state and press feedback intentionally animate outside NativeWind.
-			style={pillStyle}
+			contentClassName="min-h-12 min-w-[100px] px-6 py-3"
 		>
-			<Animated.View
-				pointerEvents="none"
-				className="absolute inset-0"
-				style={gradientStyle}
-			>
-				<LinearGradient
-					testID={`weekday-gradient-${label}`}
-					{...DAYOVA_DESIGN_SYSTEM.gradients.selection}
-					style={{ width: "100%", height: "100%" }}
-				/>
-			</Animated.View>
-			<Animated.Text
-				className="font-poppins font-semibold text-body-3"
-				// Selection animation and Android font metrics require native styles.
-				style={[
-					Platform.select({ android: { includeFontPadding: false } }),
-					labelStyle,
-				]}
-			>
+			<SelectionText className="font-poppins font-semibold text-body-3">
 				{label}
-			</Animated.Text>
-		</AnimatedPressable>
+			</SelectionText>
+		</SelectionControl>
 	);
 }
 

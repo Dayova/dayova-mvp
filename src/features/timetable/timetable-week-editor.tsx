@@ -17,6 +17,10 @@ import {
 	Trash2,
 } from "~/components/ui/icon";
 import { Input } from "~/components/ui/input";
+import {
+	SelectionControl,
+	SelectionText,
+} from "~/components/ui/selection-control";
 import { Text } from "~/components/ui/text";
 import {
 	sortTimetableLessons,
@@ -274,34 +278,25 @@ function TimetableWeekEditor({
 		<View className="gap-4">
 			<View
 				accessibilityLabel="Wochentag auswählen"
-				className="flex-row justify-between gap-1"
+				className="flex-row flex-wrap justify-between gap-1"
 			>
 				{lessonsByDay.map((day) => {
 					const selected = day.value === selectedDay;
 					const lessonCount = day.lessons.length;
 
 					return (
-						<Pressable
+						<SelectionControl
 							key={day.value}
-							accessible
+							selected={selected}
+							appearance="pill"
 							accessibilityLabel={`${day.label}, ${lessonCount} ${lessonCount === 1 ? "Stunde" : "Stunden"}`}
-							accessibilityRole="button"
-							accessibilityState={{ selected }}
-							className={cn(
-								"h-11 min-w-11 items-center justify-center rounded-full active:opacity-75",
-								selected ? "bg-primary" : "bg-muted",
-							)}
+							contentClassName="min-h-11 min-w-11 px-2 py-3"
 							onPress={() => onSelectedDayChange(day.value)}
 						>
-							<Text
-								className={cn(
-									"font-poppins font-semibold text-body-4",
-									selected ? "text-white" : "text-secondary-text",
-								)}
-							>
+							<SelectionText className="font-poppins font-semibold text-body-4">
 								{day.shortLabel}
-							</Text>
-						</Pressable>
+							</SelectionText>
+						</SelectionControl>
 					);
 				})}
 			</View>

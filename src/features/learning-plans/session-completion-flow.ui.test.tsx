@@ -68,6 +68,14 @@ jest.mock("~/lib/theme", () => ({
 jest.mock("react-native-safe-area-context", () => ({
 	useSafeAreaInsets: () => ({ top: 0, bottom: 0 }),
 }));
+jest.mock("react-native-keyboard-controller", () => {
+	const { ScrollView, View } =
+		jest.requireActual<typeof import("react-native")>("react-native");
+	return {
+		KeyboardAvoidingView: View,
+		KeyboardAwareScrollView: ScrollView,
+	};
+});
 jest.mock("~/components/ui/button", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
 	const { Pressable, Text } =

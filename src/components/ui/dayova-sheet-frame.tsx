@@ -450,7 +450,9 @@ function DayovaSheetFrame({
 			ref={sheetRef}
 			containerComponent={SheetModalContainer}
 			accessible={false}
-			android_keyboardInputMode="adjustResize"
+			// KeyboardProvider preserves a full-height Android edge-to-edge root.
+			// Gorhom's resize path skips the IME offset; let the sheet calculate it.
+			android_keyboardInputMode="adjustPan"
 			backgroundComponent={renderBackground}
 			backgroundStyle={{ backgroundColor: colors.surface }}
 			backdropComponent={renderBackdrop}
