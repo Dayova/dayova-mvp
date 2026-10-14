@@ -315,23 +315,26 @@ export function AuthChoiceScreen() {
 						/>
 					</Animated.View>
 
-					<Text
+					<FeedbackPressable
 						accessibilityRole="button"
 						accessibilityLabel="Dayova, App-Informationen"
 						onPress={() => setShowReleaseInformation(true)}
-						allowFontScaling={false}
-						className="mt-6 text-center font-poppins font-semibold text-heading-1 text-text"
-						style={{
-							fontSize: responsiveLayout.brandFontSize,
-							lineHeight: responsiveLayout.brandLineHeight,
-							width: Math.min(
-								Math.max(width - 16, 0),
-								contentSizeLayout.containerMaxWidth,
-							),
-						}}
 					>
-						Dayova
-					</Text>
+						<Text
+							allowFontScaling={false}
+							className="mt-6 text-center font-poppins font-semibold text-heading-1 text-text"
+							style={{
+								fontSize: responsiveLayout.brandFontSize,
+								lineHeight: responsiveLayout.brandLineHeight,
+								width: Math.min(
+									Math.max(width - 16, 0),
+									contentSizeLayout.containerMaxWidth,
+								),
+							}}
+						>
+							Dayova
+						</Text>
+					</FeedbackPressable>
 					<Text
 						allowFontScaling={false}
 						className="mt-4 text-center font-poppins text-body-2 text-secondary-text"
@@ -461,19 +464,22 @@ export function AuthChoiceScreen() {
 							alignItems: "center",
 						}}
 					>
-						<Text
+						<FeedbackPressable
 							accessibilityRole="button"
 							accessibilityLabel="Dayova, App-Informationen"
 							onPress={() => setShowReleaseInformation(true)}
-							className="text-center font-poppins font-semibold text-text"
-							style={{
-								fontSize: scaled(AUTH_CHOICE_FRAME.title.fontSize),
-								lineHeight: scaled(AUTH_CHOICE_FRAME.title.lineHeight),
-								includeFontPadding: false,
-							}}
 						>
-							Dayova
-						</Text>
+							<Text
+								className="text-center font-poppins font-semibold text-text"
+								style={{
+									fontSize: scaled(AUTH_CHOICE_FRAME.title.fontSize),
+									lineHeight: scaled(AUTH_CHOICE_FRAME.title.lineHeight),
+									includeFontPadding: false,
+								}}
+							>
+								Dayova
+							</Text>
+						</FeedbackPressable>
 					</Animated.View>
 
 					<Animated.View

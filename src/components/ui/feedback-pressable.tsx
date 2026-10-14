@@ -15,7 +15,7 @@ type FeedbackPressableProps = React.ComponentProps<typeof Pressable> & {
 };
 
 /** Shared by pressable actions and opacity-based controls. */
-function usePressMotion(enabled: boolean) {
+export function usePressMotion(enabled: boolean) {
 	const scale = useAnimatedValue(1);
 	// Stay still until the system preference is known, including on first mount.
 	const [reduceMotion, setReduceMotion] = useState(true);
