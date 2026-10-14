@@ -5,6 +5,41 @@ import {
 	useLearningPlanCreationProgress,
 } from "./creation-progress-shell";
 
+// Model Expo UI's native button boundary; SwiftUI applies these modifiers on device.
+jest.mock("@expo/ui", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	const { Pressable, View } =
+		jest.requireActual<typeof import("react-native")>("react-native");
+	return {
+		Host: View,
+		RNHostView: View,
+		Button: ({
+			children,
+			modifiers,
+			disabled,
+			onPress,
+		}: {
+			children: React.ReactNode;
+			modifiers: Array<{ $type: string; label?: string }>;
+			disabled?: boolean;
+			onPress: () => void;
+		}) =>
+			React.createElement(
+				Pressable,
+				{
+					accessible: true,
+					accessibilityRole: "button",
+					accessibilityLabel: modifiers.find(
+						(modifier) => modifier.$type === "accessibilityLabel",
+					)?.label,
+					accessibilityState: { disabled },
+					disabled,
+					onPress,
+				},
+				children,
+			),
+	};
+});
 jest.mock("expo-router", () => ({ useIsFocused: () => true }));
 jest.mock("react-native-safe-area-context", () => ({
 	useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),

@@ -243,6 +243,14 @@ system, and dark options rather than introducing another toggle model.
 Icon-only close controls for sheets and modal chrome use the shared `CloseButton`
 component: path 2 background (`#D7DCE3`) with path 3 icon (`#8A8D92`).
 
+The learning-plan creation header is a scoped exception, per the 14 October
+2026 user direction: both back and close use native SwiftUI buttons through
+Expo UI, with Apple's `glass` button style on iOS 26+ and `bordered` on older
+iOS versions. The native control owns interaction and accessibility, while
+Dayova's Hugeicons remain the button content. Android and web retain the shared
+BackButton/CloseButton controls. Keep this treatment in the creation header;
+it does not change other buttons or modal close controls.
+
 ## Notes
 
 - Use `SupportContact` for contacting the team from Settings, access screens,

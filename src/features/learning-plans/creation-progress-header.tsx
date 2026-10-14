@@ -1,7 +1,6 @@
 import { View, type ViewProps } from "react-native";
-import { BackButton } from "~/components/ui/button";
-import { CloseButton } from "~/components/ui/close-button";
 import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
+import { CreationHeaderButton } from "~/features/learning-plans/creation-header-button";
 import {
 	getSafeLearningPlanCreationProgress,
 	LEARNING_PLAN_CREATION_TOTAL_STEPS,
@@ -29,7 +28,7 @@ export function LearningPlanCreationProgressHeader({
 
 	return (
 		<View className={cn("flex-row items-center gap-4", className)} {...props}>
-			<BackButton onPress={onBack} />
+			<CreationHeaderButton kind="back" onPress={onBack} />
 			<FlowProgressBar
 				accessible
 				className="flex-1"
@@ -42,13 +41,11 @@ export function LearningPlanCreationProgressHeader({
 					text: `Fortschritt ${progressPercentage} Prozent`,
 				}}
 			/>
-			<View className="h-12 w-12 items-center justify-center">
-				<CloseButton
-					onPress={onClose}
-					disabled={closeDisabled}
-					accessibilityState={{ disabled: closeDisabled }}
-				/>
-			</View>
+			<CreationHeaderButton
+				kind="close"
+				onPress={onClose}
+				disabled={closeDisabled}
+			/>
 		</View>
 	);
 }
