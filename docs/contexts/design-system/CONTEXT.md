@@ -303,3 +303,20 @@ are empty; example selections belong only in historical screenshot evidence.
 
 The duration explanation adapts to the chosen value; an additional explanation
 between weekdays and start time brings the profile flow to twelve steps.
+
+## Learning-plan preparation
+
+The temporary creation flow uses one preparation screen for material analysis,
+recognized scope, and diagnostic preparation. It skips the separate scope
+confirmation screen, automatically applies the recognized scope through the
+existing mutation, and continues to review after preparation. Existing scope and
+generating links redirect to analysis so saved links remain resumable. To restore
+manual confirmation, restore its route and the analysis-to-scope transition
+together; the backend confirmation requirement remains in place.
+
+The screen places a compact Dayova flower above a heading, animated shared
+`FlowProgressBar`, and a three-step checklist. Completion states follow actual
+request completion, not timers or invented document counts. Pending work remains
+numbered; active work shows an indicator; completed work uses the shared
+Hugeicons check on cyan with `onPrimary`. Reduced motion retains static stage
+indicators. Errors stay on the screen with a retry action.

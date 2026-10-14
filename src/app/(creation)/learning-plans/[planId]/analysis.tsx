@@ -1,10 +1,9 @@
-import { useAction, useConvexAuth, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
-import { AnimatedFlowerLoader } from "~/components/ui/animated-flower-loader";
 import { Button } from "~/components/ui/button";
 import { ErrorMessage } from "~/components/ui/error-message";
 import { Text } from "~/components/ui/text";
@@ -13,6 +12,11 @@ import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { learningPlanMaterialPath } from "~/features/learning-plans/creation-routes";
+import { PlanPreparationProgress } from "~/features/learning-plans/plan-preparation-progress";
+import {
+	type PreparationStage,
+	runPlanPreparation,
+} from "~/features/learning-plans/run-plan-preparation";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import {
@@ -34,6 +38,9 @@ export default function LearningPlanAnalysisScreen() {
 	const generateKnowledgeQuestions = useAction(
 		api.learningPlanAi.generateKnowledgeQuestions,
 	);
+	const confirmScope = useMutation(api.learningPlans.confirmScope);
+	const prepareDiagnostic = useMutation(api.learningPlans.prepareDiagnostic);
+	const [stage, setStage] = useState<PreparationStage>(0);
 	const [isBusy, setIsBusy] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [retryAttempt, setRetryAttempt] = useState(0);
@@ -50,21 +57,11 @@ export default function LearningPlanAnalysisScreen() {
 		if (!planId || !snapshot || didCloseRef.current) return;
 
 		if (
-			snapshot.plan.status === "generated" &&
-			snapshot.plan.diagnosticPlacement === "firstSession"
+			(snapshot.plan.status === "generated" &&
+				snapshot.plan.diagnosticPlacement === "firstSession") ||
+			snapshot.plan.status === "accepted"
 		) {
 			router.replace(planPath(planId, "review"));
-			return;
-		}
-		if (
-			snapshot.plan.diagnosticPlacement === "firstSession" &&
-			snapshot.plan.knowledgeQuestions.length > 0
-		) {
-			router.replace(
-				snapshot.plan.scopeConfirmedAt
-					? planPath(planId, "generating")
-					: planPath(planId, "scope"),
-			);
 			return;
 		}
 		if (didStartRef.current) return;
@@ -73,34 +70,40 @@ export default function LearningPlanAnalysisScreen() {
 		queueMicrotask(() => {
 			setIsBusy(true);
 			setErrorMessage(null);
-			void requestAiConsent()
-				.then((allowed) => {
-					if (didCloseRef.current) return null;
+			void runPlanPreparation({
+				questionsReady:
+					snapshot.plan.diagnosticPlacement === "firstSession" &&
+					snapshot.plan.knowledgeQuestions.length > 0,
+				scopeConfirmed: Boolean(snapshot.plan.scopeConfirmedAt),
+				isCancelled: () => didCloseRef.current,
+				onStage: setStage,
+				analyze: async () => {
+					const allowed = await requestAiConsent();
+					if (didCloseRef.current) return;
 					if (!allowed) {
-						didStartRef.current = false;
+						didCloseRef.current = true;
 						dismissToOrReplace(router, learningPlanMaterialPath(planId));
-						return null;
+						return;
 					}
-					return generateKnowledgeQuestions({ learningPlanId: planId });
-				})
+					if (!didCloseRef.current)
+						await generateKnowledgeQuestions({ learningPlanId: planId });
+				},
+				confirm: () => confirmScope({ learningPlanId: planId }),
+				prepare: () => prepareDiagnostic({ learningPlanId: planId }),
+			})
 				.catch((error: unknown) => {
 					if (didCloseRef.current) return;
 					const message = getErrorMessage(
 						error,
-						"Deine Unterlagen konnten nicht zuverlässig analysiert werden.",
+						"Dein Lernplan konnte nicht vorbereitet werden. Bitte versuche es erneut.",
 					);
 					setErrorMessage(message);
-					didStartRef.current = false;
-					dismissToOrReplace(
-						router,
-						learningPlanMaterialPath(planId, {
-							errorMessage: message,
-						}),
-					);
 				})
 				.finally(() => setIsBusy(false));
 		});
 	}, [
+		confirmScope,
+		prepareDiagnostic,
 		generateKnowledgeQuestions,
 		planId,
 		requestAiConsent,
@@ -109,7 +112,15 @@ export default function LearningPlanAnalysisScreen() {
 		snapshot,
 	]);
 
+	useEffect(() => {
+		didCloseRef.current = false;
+		return () => {
+			didCloseRef.current = true;
+		};
+	}, []);
+
 	const goBack = () => {
+		didCloseRef.current = true;
 		goBackOrReplace(
 			router,
 			planId ? learningPlanMaterialPath(planId) : "/learning-plans/new",
@@ -139,18 +150,11 @@ export default function LearningPlanAnalysisScreen() {
 				}}
 				showsVerticalScrollIndicator={false}
 			>
-				<View className="min-h-[620px] flex-1 items-center justify-center pb-20">
-					<View className="mb-12">
-						<AnimatedFlowerLoader />
-					</View>
-					<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
-						Wir ordnen deine Schulunterlagen.
-					</Text>
-					<Text className="mt-3 max-w-[320px] text-center font-poppins text-body-3 text-secondary-text">
-						Dayova trennt wahrscheinlichen Prüfungsstoff von zusätzlichem
-						Material und bereitet den Wissenscheck für deinen ersten Lerntermin
-						vor.
-					</Text>
+				<View className="w-full max-w-[480px] self-center py-8">
+					<PlanPreparationProgress
+						stage={stage}
+						failed={Boolean(errorMessage)}
+					/>
 					{errorMessage ? (
 						<>
 							<ErrorMessage className="mt-6 text-center">
