@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import {
 	ActivityIndicator,
 	FlatList as NativeFlatList,
-	Pressable,
 	useWindowDimensions,
 	View,
 } from "react-native";
@@ -21,6 +20,7 @@ import type { Id } from "#convex/_generated/dataModel";
 import { NotificationButton } from "~/components/notification-button";
 import { AnimatedFlowerLoader } from "~/components/ui/animated-flower-loader";
 import { Button } from "~/components/ui/button";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import {
 	ArrowDataTransferHorizontal,
 	ArrowRight,
@@ -810,7 +810,7 @@ function TopicAnswerFlipCard({
 	};
 
 	return (
-		<Pressable
+		<FeedbackPressable
 			accessible
 			accessibilityHint={
 				isFlipped
@@ -904,7 +904,7 @@ function TopicAnswerFlipCard({
 					<TopicAnswerFlipHint label="Frage ansehen" />
 				</Surface>
 			</Animated.View>
-		</Pressable>
+		</FeedbackPressable>
 	);
 }
 

@@ -306,10 +306,12 @@ Coverage includes shared ActionSurface/FieldTrigger/sheets, dashboard cards,
 learning-plan cards and theory disclosures, settings, learning times, timetable,
 notifications, access screens, and plain authentication/onboarding actions.
 Existing active colors, labels, handlers, and caller styles remain intact.
-Existing choice-row springs, calendar selection transitions, learning-path
-breathing, analytics flips, native controls and animated auth actions are retained
-without a second transform. The notched card's separate invisible hit target
-continues to drive its existing visible action feedback.
+Existing choice-row and auth press springs remain the single press animation.
+Calendar selection, learning-path breathing and analytics flips stay on child
+views; their outer controls now provide independent press feedback. Native
+controls retain system feedback. The notched card's invisible hit target drives
+the shared press motion on its visible action circle, keeping the hit area fixed.
+Both interactive brand titles also use the shared press control.
 Caller transforms take precedence so existing animations are not replaced.
 The simple transform runs with React Native Animated's native driver on native
 platforms; it adds no dependency and does not migrate existing Reanimated code.
