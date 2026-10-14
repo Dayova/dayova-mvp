@@ -176,7 +176,8 @@ describe("ExamDateSelector", () => {
 		const screen = await render(
 			<ExamDateSelector selectedDate={selectedDate} onSelect={onSelect} />,
 		);
-		expect(screen.getByText("14. Oktober 2026")).toBeOnTheScreen();
+		expect(screen.queryByText("14. Oktober 2026")).toBeNull();
+		expect(screen.queryByText("Prüfungsdatum")).toBeNull();
 		expect(
 			screen.queryByRole("button", { name: "Prüfungsdatum ändern" }),
 		).toBeNull();
@@ -188,7 +189,8 @@ describe("ExamDateSelector", () => {
 		await screen.rerender(
 			<ExamDateSelector selectedDate={nextDate} onSelect={onSelect} />,
 		);
-		expect(screen.getByText("2. November 2026")).toBeOnTheScreen();
+		expect(screen.queryByText("2. November 2026")).toBeNull();
+		expect(screen.getByTestId("inline-calendar").props.value).toEqual(nextDate);
 		expect(screen.getByTestId("inline-calendar")).toBeOnTheScreen();
 	});
 });

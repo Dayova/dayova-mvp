@@ -58,6 +58,7 @@ import {
 	MIN_EXAM_DURATION_MINUTES,
 	shiftEndTimeForStartChange,
 } from "~/lib/entry-time";
+import { formatAccessibleExamDate } from "~/lib/exam-date";
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
 import { ROUTES } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
@@ -946,7 +947,11 @@ export default function NewEntryScreen() {
 							{step === "basics" && isStartingLearningPlan ? (
 								<ActivityIndicator color="#FFFFFF" />
 							) : (
-								<Text>Weiter</Text>
+								<Text className="shrink text-center">
+									{step === "basics"
+										? `Weiter mit ${formatAccessibleExamDate(plannedDate)}`
+										: "Weiter"}
+								</Text>
 							)}
 						</Button>
 					</StickyActionFooter>

@@ -7,9 +7,7 @@ import Animated, {
 import { AddOptionButton } from "~/components/ui/add-option-button";
 import { Button } from "~/components/ui/button";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
-import { Field, FieldControl, FieldLabel } from "~/components/ui/field";
 import {
-	CalendarDays,
 	Computer,
 	GraduationCap,
 	Mic,
@@ -22,11 +20,7 @@ import { SelectionOptionRow } from "~/components/ui/selection-option-row";
 import { Text } from "~/components/ui/text";
 import { InlineSubjectPicker } from "~/features/subjects/subject-picker";
 import type { SubjectSelection } from "~/features/subjects/use-subject-options";
-import {
-	formatAccessibleExamDate,
-	getExamDatePickerRange,
-} from "~/lib/exam-date";
-import { useDayovaTheme } from "~/lib/theme";
+import { getExamDatePickerRange } from "~/lib/exam-date";
 
 const EXAM_TYPE_OPTIONS = [
 	{ label: "Test", Icon: Pencil },
@@ -175,36 +169,10 @@ function ExamDateSelector({
 	selectedDate: Date;
 	onSelect: (date: Date) => void;
 }) {
-	const { colors } = useDayovaTheme();
-	const selectedDateLabel = formatAccessibleExamDate(selectedDate);
 	const dateRange = getExamDatePickerRange({ selectedDate });
 
 	return (
-		<Field className="mt-6 mb-0">
-			<FieldLabel>Prüfungsdatum</FieldLabel>
-			<FieldControl>
-				<View
-					className="mr-4 h-9 w-9 items-center justify-center rounded-full bg-accent"
-					accessibilityElementsHidden
-					importantForAccessibility="no-hide-descendants"
-				>
-					<CalendarDays size={20} color={colors.primary} strokeWidth={2.1} />
-				</View>
-				<Text
-					className="flex-1 font-poppins font-semibold text-body-2 text-text"
-					accessibilityLiveRegion="polite"
-				>
-					{selectedDateLabel}
-				</Text>
-			</FieldControl>
-			<View className="mt-4">
-				<InlineDatePicker
-					value={selectedDate}
-					onChange={onSelect}
-					{...dateRange}
-				/>
-			</View>
-		</Field>
+		<InlineDatePicker value={selectedDate} onChange={onSelect} {...dateRange} />
 	);
 }
 

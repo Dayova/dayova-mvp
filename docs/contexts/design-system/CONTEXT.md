@@ -50,8 +50,10 @@ platform display normalization, German locale, safe-area handling, and native
 presentation. Dedicated date steps with a persistent calendar use `InlineDatePicker`
 from `src/components/ui/inline-date-picker` instead. It owns native inline
 rendering, theme, native sizing, and Android date-only timezone conversion.
-[DAY-515](https://linear.app/dayova/issue/DAY-515) defines the exam-date step: it shows the selected date above this calendar and commits day
-changes immediately; the flow’s existing Continue action advances to topics.
+[DAY-515](https://linear.app/dayova/issue/DAY-515) defines the exam-date step: the
+calendar appears below the question, without a separate selected-date card. Day
+changes immediately update the Continue label ("Weiter mit 2. November 2026").
+The creation progress header stays visible, and Continue advances to topics.
 
 ## Icons
 
