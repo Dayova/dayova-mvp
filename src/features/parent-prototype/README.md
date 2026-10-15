@@ -46,3 +46,11 @@ TypeScript, Biome und ESLint für geänderte Dateien; vorhandene UI-Tests für H
 Profil mit lokalem Speichern und Eingabeprüfung, Support-Entwurf, Mias Lernzeiten und Fächer, App-Informationen, Mitteilungsoptionen, funktionierender Designwechsel, Abo-Vorschau, KI-Einwilligung als Simulation, Datenschutz-/Nutzungsbedingungen-Vorschau, Passwortänderung und Kontolöschung als Simulation. Es werden keine Nachrichten versendet, Käufe gestartet, Zugangsdaten geändert oder Rechtstexte akzeptiert. Demo-Werte gelten nur für die laufende Ansicht; ein Neustart setzt sie zurück. Der Designwechsel verwendet die vorhandene lokale App-Präferenz.
 
 Nach der Erweiterung: 13 bestehende Tests für Einstellungen und Navigation bestanden. iOS: Kalender-Tageswechsel, Profil speichern, Mitteilungsschalter und dunkles Design geprüft. Android, VoiceOver und vollständige Großschriftprüfung sind weiterhin offen.
+
+## Lernplan und Eltern-Leseansicht
+
+Der Detailbereich verwendet jetzt die originale `LearningPathVisual` mit auswählbaren Einheiten und die gemeinsam genutzte `SessionPreviewCard` der Schüleransicht. Die Vorschau wurde ohne Änderung der Standardaktionen aus dem Schüler-Screen extrahiert. Eltern öffnen „Thema verstehen“ oder eine ausdrücklich markierte adaptive Themenvorschau. Arbeitstermin, Thema und nächster Lernschritt sind auf den Karten getrennt; der Fortschritt entspricht den Demo-Einheiten (1 von 3).
+
+Je drei Einheiten für Mathematik und Englisch enthalten eigenständige Lesetexte, Beispiele, Stolperstellen und aufklappbare Unterstützung. Beschriftete Bruchbalken zeigen gleiche Mengen und Addition; Übersichten erklären Verbformen und Satzbau. Die Darstellungen sind native, skalierbare UI-Elemente mit Textalternativen. Sie beruhen auf vorbereiteten Beispielen, nicht auf tatsächlich hochgeladenen Dokumenten.
+
+Validierung dieser Erweiterung: 7 Lernpfadtests und 3 Kartentests bestanden. iOS: hervorgehobene Termine, beide Lernpfade, Einheitenwechsel, zukünftige Themenvorschau, Leseseite, Bruchgrafik und aufklappbare Unterstützung geprüft. Android und vollständige VoiceOver-/Großschriftprüfung bleiben offen.

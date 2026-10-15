@@ -39,6 +39,8 @@ type LearningPlanCardVisualModel = {
 	subject: string;
 	status: LearningPlanCardStatus;
 	examDateLabel: string;
+	emphasizeExam?: boolean;
+	topicTitle?: string;
 	currentTitle: string;
 	state: LearningPlanCardVisualState;
 };
@@ -132,7 +134,12 @@ export function LearningPlanCardVisual(props: LearningPlanCardVisualProps) {
 					</View>
 				</View>
 
-				<View className="flex-row items-center gap-1">
+				<View
+					className={cn(
+						"flex-row items-center gap-1",
+						model.emphasizeExam && "rounded-xl bg-system-subtle p-3",
+					)}
+				>
 					<GraduationCap
 						size={14}
 						color={colors.secondaryText}
@@ -140,16 +147,24 @@ export function LearningPlanCardVisual(props: LearningPlanCardVisualProps) {
 					/>
 					<Text
 						allowFontScaling={!fixedTextScale}
-						className="min-w-0 flex-1 font-poppins text-body-4 text-secondary-text"
+						className={cn(
+							"min-w-0 flex-1 font-poppins text-body-4 text-secondary-text",
+							model.emphasizeExam && "font-semibold text-primary-strong",
+						)}
 					>
 						{model.examDateLabel}
 					</Text>
 				</View>
 
+				{model.topicTitle && (
+					<Text className="font-semibold text-body-2">{model.topicTitle}</Text>
+				)}
 				<Text
 					allowFontScaling={!fixedTextScale}
 					className={cn(
-						"font-poppins font-semibold text-body-2 text-text",
+						model.topicTitle
+							? "font-poppins text-body-3 text-secondary-text"
+							: "font-poppins font-semibold text-body-2 text-text",
 						!shouldReflowCard && "max-w-[282px]",
 					)}
 					numberOfLines={shouldReflowCard ? undefined : 2}

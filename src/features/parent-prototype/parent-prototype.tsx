@@ -48,6 +48,7 @@ import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { DayovaThemeProvider, NAV_THEMES, useDayovaTheme } from "~/lib/theme";
 import { DARK_THEME_VARIABLES } from "~/lib/theme-variables";
 import { ParentCalendar } from "./parent-calendar";
+import { ParentLearningPlan, ParentUnitReading } from "./parent-learning-plan";
 import { ParentSettings } from "./parent-settings";
 
 type RootPage = "home" | "plans" | "more";
@@ -259,16 +260,14 @@ export function ParentPrototype({ rootPage }: { rootPage: RootPage }) {
 	const [activeTab, setActiveTab] = useState<PlanTab>("learningPlans");
 	const [planIndex, setPlanIndex] = useState(0);
 	const [homeworkIndex, setHomeworkIndex] = useState(0);
-	const [revealed, setRevealed] = useState(false);
-	const plan = plans[planIndex];
+	const [selectedUnit, setSelectedUnit] = useState(1);
 	const assignment = homework[homeworkIndex];
 	const openPlan = (index: number) => {
 		setPlanIndex(index);
-		setRevealed(false);
+		setSelectedUnit(1);
 		navigate("plan");
 	};
 	const openHelp = () => {
-		setRevealed(false);
 		navigate("help");
 	};
 	const swipe = useMemo(
@@ -291,9 +290,9 @@ export function ParentPrototype({ rootPage }: { rootPage: RootPage }) {
 				: page === "home"
 					? "Hallo Anna"
 					: page === "plan"
-						? plan.subject
+						? "Lernplan"
 						: page === "help"
-							? "Gemeinsam lernen"
+							? "Thema verstehen"
 							: page === "homework"
 								? "Hausaufgabe"
 								: page === "sharing"
@@ -414,12 +413,12 @@ export function ParentPrototype({ rootPage }: { rootPage: RootPage }) {
 									fallbackAction={EMPTY_DASHBOARD_PRIMARY_ACTION}
 									onOpenItem={() => {
 										setPlanIndex(0);
-										openHelp();
+										openPlan(0);
 									}}
 									onOpenFallback={() => openPlan(0)}
 									action={{
-										label: "So kannst du helfen",
-										hint: "Öffnet passende Hilfestellungen für Eltern.",
+										label: "Lernplan ansehen",
+										hint: "Öffnet Mias Lernpfad mit Erklärungen für Eltern.",
 										icon: ArrowRightStraight,
 									}}
 								/>
@@ -463,7 +462,7 @@ export function ParentPrototype({ rootPage }: { rootPage: RootPage }) {
 											{plans.map((item, index) => (
 												<LearningPlanCardVisual
 													key={item.subject}
-													accessibilityLabel={`${item.subject}: ${item.title}. Lernplan ansehen.`}
+													accessibilityLabel={`${item.subject}: ${item.title}. ${item.kind}, ${item.date}, ${item.countdown}. 1 von 3 Einheiten abgeschlossen. Lernplan ansehen.`}
 													accessibilityHint="Zeigt Mias Lernplan und passende Unterstützung für Eltern."
 													onPress={() => openPlan(index)}
 													model={{
@@ -473,14 +472,17 @@ export function ParentPrototype({ rootPage }: { rootPage: RootPage }) {
 															background: colors.systemSubtle,
 															foreground: colors.primary,
 														},
-														examDateLabel: `${item.kind} · ${item.date}`,
-														currentTitle: item.session,
+														examDateLabel: `${item.kind} · ${item.date} · ${item.countdown}`,
+														emphasizeExam: true,
+														topicTitle: item.title,
+														currentTitle: `Nächster Lernschritt: ${item.session}`,
 														state: {
 															kind: "ready",
 															durationMinutes: index === 0 ? 20 : 15,
-															progress: index === 0 ? 40 : 20,
+															progress: 33,
 															remainingDays: index === 0 ? 5 : 8,
-															rollingWindowLabel: "Nächster Schritt + Vorschau",
+															rollingWindowLabel:
+																"1 von 3 Einheiten abgeschlossen",
 														},
 													}}
 												/>
@@ -578,128 +580,22 @@ export function ParentPrototype({ rootPage }: { rootPage: RootPage }) {
 						</>
 					)}
 					{page === "plan" && (
-						<>
-							<View className="gap-2">
-								<Heading>{plan.title}</Heading>
-								<Meta>
-									{plan.kind} · {plan.date} · {plan.countdown}
-								</Meta>
-							</View>
-							<Block>
-								<View className="flex-row items-center gap-2">
-									<Clock3 size={18} color={colors.primaryStrong} />
-									<Meta>{plan.time}</Meta>
-								</View>
-								<Heading>{plan.session}</Heading>
-								<Text className="text-body-3 text-secondary-text">
-									{plan.goal}
-								</Text>
-								<Button onPress={openHelp}>
-									<Text>So kannst du helfen</Text>
-								</Button>
-							</Block>
-							<View className="gap-4">
-								<Heading>Mias Lernplan</Heading>
-								<View className="flex-row items-start gap-3">
-									<View className="h-9 w-9 items-center justify-center rounded-full bg-success-subtle">
-										<Check size={18} color={colors.text} />
-									</View>
-									<View className="flex-1 gap-1">
-										<Text className="font-semibold">Wissenscheck</Text>
-										<Meta>Abgeschlossen</Meta>
-									</View>
-								</View>
-								<View className="ml-4 h-5 border-border border-l-2" />
-								<View className="flex-row items-start gap-3">
-									<View className="h-9 w-9 items-center justify-center rounded-full bg-primary">
-										<Text className="font-semibold text-on-primary">2</Text>
-									</View>
-									<View className="flex-1 gap-1">
-										<Text className="font-semibold">{plan.session}</Text>
-										<Meta>{plan.time}</Meta>
-									</View>
-								</View>
-								<View className="ml-4 h-5 border-border border-l-2" />
-								<View className="flex-row items-start gap-3">
-									<View className="h-9 w-9 items-center justify-center rounded-full border border-border">
-										<Text>3</Text>
-									</View>
-									<View className="flex-1 gap-1">
-										<Text>{plan.preview}</Text>
-										<Meta>{plan.next} · Vorschau</Meta>
-									</View>
-								</View>
-								<Meta>
-									Die Vorschau passt sich nach der aktuellen Lernsession an.
-								</Meta>
-							</View>
-							<Block>
-								<Text className="font-semibold">Themen der Arbeit</Text>
-								{plan.topics.map((topic) => (
-									<Text key={topic} className="text-body-3">
-										{topic}
-									</Text>
-								))}
-							</Block>
-							<Block>
-								<Text className="font-semibold">
-									Schulmaterial als Grundlage
-								</Text>
-								<Text className="text-body-3">{plan.material}</Text>
-								<Meta>Von Mia hochgeladen · Beispielmaterial</Meta>
-							</Block>
-						</>
+						<ParentLearningPlan
+							planIndex={planIndex}
+							selectedIndex={selectedUnit}
+							onSelect={(index) => {
+								setSelectedUnit(index);
+								scroll.current?.scrollTo({ y: 0, animated: true });
+							}}
+							onRead={openHelp}
+						/>
 					)}
 					{page === "help" && (
-						<>
-							<View className="gap-3">
-								<View className="flex-row items-center gap-2">
-									<Sparkles size={18} color={colors.theorie} />
-									<Meta>{plan.subject} · Etwa 5 Minuten zusammen</Meta>
-								</View>
-								<Heading>{plan.session}</Heading>
-								<Text className="text-body-3 text-secondary-text">
-									{plan.goal}
-								</Text>
-							</View>
-							<Block>
-								<Meta>1 · Ins Gespräch kommen</Meta>
-								<Heading>„{plan.question}“</Heading>
-								<Text className="text-body-3 text-secondary-text">
-									Lass Mia erst selbst erklären. Zuhören ist schon
-									Unterstützung.
-								</Text>
-							</Block>
-							<Block>
-								<Meta>2 · Gemeinsam ausprobieren</Meta>
-								<Text>{plan.exercise}</Text>
-								<Button
-									variant="neutral"
-									onPress={() => setRevealed(!revealed)}
-									accessibilityState={{ expanded: revealed }}
-								>
-									<Text>
-										{revealed ? "Erklärung ausblenden" : "Erklärung für dich"}
-									</Text>
-								</Button>
-								{revealed && <Text className="text-body-3">{plan.hint}</Text>}
-							</Block>
-							<Block>
-								<Meta>3 · Wenn es noch hakt</Meta>
-								<Text>{plan.nudge}</Text>
-							</Block>
-							<Text className="text-body-3 text-secondary-text">
-								Zum Abschluss: „Was war gerade hilfreich für dich?“ Wenn es zu
-								viel wird, macht eine Pause.
-							</Text>
-							<View className="gap-2 border-border border-t pt-4">
-								<Meta>Grundlage: {plan.material}</Meta>
-								<Meta>
-									KI-Hilfestellung als vorbereitetes Beispiel. In der fertigen
-									Version passend zu Mias freigegebenem Schulmaterial.
-								</Meta>
-							</View>
-						</>
+						<ParentUnitReading
+							key={`${planIndex}-${selectedUnit}`}
+							planIndex={planIndex}
+							selectedIndex={selectedUnit}
+						/>
 					)}
 					{page === "homework" && (
 						<>
