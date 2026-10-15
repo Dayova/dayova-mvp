@@ -22,6 +22,7 @@ import {
 import { LearningCardIllustration } from "./learning-card-illustration";
 
 type Props = {
+	action?: { label: string; hint: string; icon: typeof ArrowRightStraight };
 	todayKey?: string;
 	item: DashboardAgendaItem | undefined;
 	plan?: {
@@ -42,6 +43,7 @@ type Props = {
 
 /** Reference-inspired learning card, using Dayova surfaces and one learning action. */
 export function TodayLearningCard({
+	action,
 	todayKey = getDayKey(new Date()),
 	item,
 	plan,
@@ -112,7 +114,7 @@ export function TodayLearningCard({
 							month: "short",
 						}).format(stepDate)
 			: null;
-	const buttonLabel = isLoading
+	const defaultButtonLabel = isLoading
 		? "Wird geladen …"
 		: item
 			? item.entry.executionStatus === "started"
@@ -141,8 +143,10 @@ export function TodayLearningCard({
 			: hasNoPlan
 				? "Plane deine nächste Prüfung und lerne Schritt für Schritt."
 				: "Hier findest du deine bestehenden Lernpläne.";
+	const buttonLabel = !isLoading && action ? action.label : defaultButtonLabel;
 	const ActionIcon =
-		item || isLoading ? Play : hasNoPlan ? Plus : ArrowRightStraight;
+		action?.icon ??
+		(item || isLoading ? Play : hasNoPlan ? Plus : ArrowRightStraight);
 	return (
 		<ActionSurface
 			accessibilityRole="button"
@@ -157,7 +161,8 @@ export function TodayLearningCard({
 				.filter(Boolean)
 				.join(". ")}
 			accessibilityHint={
-				item ? "Öffnet diesen Lernschritt." : fallbackAction.accessibilityHint
+				action?.hint ??
+				(item ? "Öffnet diesen Lernschritt." : fallbackAction.accessibilityHint)
 			}
 			disabled={isLoading}
 			accessibilityState={{ disabled: isLoading, busy: isLoading }}

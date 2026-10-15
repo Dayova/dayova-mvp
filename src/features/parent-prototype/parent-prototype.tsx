@@ -1,28 +1,40 @@
-/** Throwaway native concept: compare overview, week and support-first layouts.
- * Job: understand the next school deadline and offer useful, material-based help.
- * Hierarchy: next step → homework → plans. Primary action: So kannst du helfen.
- * Friction: one child, no full calendar, no marks or activity surveillance.
- * Decision: overview is the default; native comparison stays in this demo only.
- * All people, dates, documents and AI suggestions below are fixtures.
+/** Throwaway parent concept, composed from the actual Today and Plans UI.
+ * Job: see the child's upcoming work and open contextual parent support.
+ * Hierarchy: Today learning card → work deadlines → original Plans switch/cards.
+ * Primary action: So kannst du helfen. No competing layout variants.
+ * All data, sharing and AI guidance remain local fixtures.
  */
 import { vars } from "nativewind";
 import { type ReactNode, useMemo, useState } from "react";
-import { Pressable, ScrollView, useWindowDimensions, View } from "react-native";
+import { PanResponder, Pressable, ScrollView, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
 	SafeAreaProvider,
 	useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import type { Id } from "#convex/_generated/dataModel";
 import { BackButton, Button } from "~/components/ui/button";
 import {
-	ArrowLeft,
-	ArrowRight,
-	BookOpen,
+	ArrowRightStraight,
+	ArrowUpRight,
 	CalendarDays,
 	Check,
 	Clock3,
 	Sparkles,
 } from "~/components/ui/icon";
+import { CompactNotchedActionCard } from "~/components/ui/notched-action-card";
+import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
+import type { DashboardAgendaItem } from "~/features/dashboard/dashboard-agenda";
+import { EMPTY_DASHBOARD_PRIMARY_ACTION } from "~/features/dashboard/dashboard-empty-state";
+import { TodayLearningCard } from "~/features/dashboard/today-learning-card";
+import { LearningPlanCardVisual } from "~/features/learning-plans/learning-plan-card-visual";
+import { LearningPlanStatusBadge } from "~/features/learning-plans/learning-plan-status-badge";
+import {
+	PlansTabSwitch,
+	type PlanTab,
+} from "~/features/learning-plans/plans-tab-switch";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { DayovaThemeProvider, useDayovaTheme } from "~/lib/theme";
 import { DARK_THEME_VARIABLES } from "~/lib/theme-variables";
 
@@ -100,76 +112,38 @@ const homework = [
 		done: true,
 	},
 ];
-function Card({
-	children,
-	accent = false,
-}: {
-	children: ReactNode;
-	accent?: boolean;
-}) {
-	return (
-		<View
-			className={
-				accent
-					? "gap-4 rounded-3xl border border-border bg-system-subtle p-5"
-					: "gap-3 rounded-3xl border border-border bg-card p-5"
-			}
-		>
-			{children}
-		</View>
-	);
+const nextStep: DashboardAgendaItem = {
+	dayKey: "2026-10-15",
+	kind: "learningSession",
+	startMinutes: 960,
+	endMinutes: 980,
+	entry: {
+		id: "prototype-session" as Id<"learningPlanSessions">,
+		subject: "Mathematik",
+		title: "Brüche auf einen Nenner bringen",
+		durationMinutes: 20,
+		relatedLearningPlanSessionId:
+			"prototype-session" as Id<"learningPlanSessions">,
+	},
+};
+function Block({ children }: { children: ReactNode }) {
+	return <Surface className="gap-3 p-6">{children}</Surface>;
 }
-function Label({ children }: { children: ReactNode }) {
-	return (
-		<Text className="font-semibold text-body-4 text-secondary-text">
-			{children}
-		</Text>
-	);
+function Heading({ children }: { children: ReactNode }) {
+	return <Text variant="h3">{children}</Text>;
 }
-function Section({ children }: { children: ReactNode }) {
-	return (
-		<Text variant="h3" className="mt-2">
-			{children}
-		</Text>
-	);
-}
-function Row({
-	title,
-	subtitle,
-	onPress,
-	finished = false,
-}: {
-	title: string;
-	subtitle: string;
-	onPress: () => void;
-	finished?: boolean;
-}) {
-	const { colors } = useDayovaTheme();
-	return (
-		<Pressable
-			accessibilityRole="button"
-			onPress={onPress}
-			className="min-h-16 flex-row items-center gap-3 rounded-2xl bg-card p-4 active:opacity-70"
-		>
-			<View className="flex-1 gap-1">
-				<Text className="font-semibold">{title}</Text>
-				<Text className="text-body-4 text-secondary-text">{subtitle}</Text>
-			</View>
-			{finished ? (
-				<Check size={20} color={colors.text} />
-			) : (
-				<ArrowRight size={20} color={colors.text} />
-			)}
-		</Pressable>
-	);
+function Meta({ children }: { children: ReactNode }) {
+	return <Text className="text-body-4 text-secondary-text">{children}</Text>;
 }
 export function ParentPrototypeRoot() {
 	return (
-		<SafeAreaProvider>
-			<DayovaThemeProvider>
-				<ParentPrototype />
-			</DayovaThemeProvider>
-		</SafeAreaProvider>
+		<GestureHandlerRootView style={{ flex: 1 }}>
+			<SafeAreaProvider>
+				<DayovaThemeProvider>
+					<ParentPrototype />
+				</DayovaThemeProvider>
+			</SafeAreaProvider>
+		</GestureHandlerRootView>
 	);
 }
 function ParentPrototype() {
@@ -179,16 +153,13 @@ function ParentPrototype() {
 		[resolvedTheme],
 	);
 	const insets = useSafeAreaInsets();
-	const largeText = useWindowDimensions().fontScale > 1.3;
 	const [page, setPage] = useState<Page>("home");
-	const [variant, setVariant] = useState(0);
+	const [activeTab, setActiveTab] = useState<PlanTab>("learningPlans");
 	const [planIndex, setPlanIndex] = useState(0);
 	const [homeworkIndex, setHomeworkIndex] = useState(0);
 	const [revealed, setRevealed] = useState(false);
-	const [savedPlans, setSavedPlans] = useState<number[]>([]);
-	const saved = savedPlans.includes(planIndex);
-	const [empty, setEmpty] = useState(false);
 	const [linked, setLinked] = useState(true);
+	const [empty, setEmpty] = useState(false);
 	const plan = plans[planIndex];
 	const assignment = homework[homeworkIndex];
 	const openPlan = (index: number) => {
@@ -196,607 +167,486 @@ function ParentPrototype() {
 		setRevealed(false);
 		setPage("plan");
 	};
-	const openHomework = (index: number) => {
-		setHomeworkIndex(index);
-		setPage("homework");
-	};
-	const back = () => {
+	const openHelp = () => {
 		setRevealed(false);
-		setPage(page === "help" ? "plan" : "home");
+		setPage("help");
 	};
-	const planList = (
-		<>
-			<Section>Aktive Lernpläne</Section>
-			<Text className="text-body-3 text-secondary-text">
-				Was Mia gerade lernt – und wie du helfen kannst.
-			</Text>
-			{plans.map((item, index) => (
-				<Pressable
-					key={item.subject}
-					accessibilityRole="button"
-					accessibilityLabel={`${item.subject}: ${item.title}`}
-					onPress={() => openPlan(index)}
-				>
-					<Card>
-						<View className="flex-row items-center justify-between gap-2">
-							<Label>{item.subject}</Label>
-							<BookOpen size={20} color={colors.theorie} />
-						</View>
-						<Text variant="h3">{item.title}</Text>
-						<Text className="text-body-3 text-secondary-text">
-							{item.kind} · {item.date}
-						</Text>
-						<View className="border-border border-t pt-3">
-							<Text className="text-body-4 text-secondary-text">
-								Nächster Lernschritt
-							</Text>
-							<Text className="mt-1">{item.session}</Text>
-						</View>
-						<View className="flex-row items-center justify-between">
-							<Text className="font-semibold text-body-3">
-								Lernplan ansehen
-							</Text>
-							<ArrowRight size={20} color={colors.text} />
-						</View>
-					</Card>
-				</Pressable>
-			))}
-		</>
+	const swipe = useMemo(
+		() =>
+			PanResponder.create({
+				onMoveShouldSetPanResponderCapture: (_, g) =>
+					Math.abs(g.dx) > 24 && Math.abs(g.dx) > Math.abs(g.dy) * 2,
+				onPanResponderRelease: (_, g) => {
+					if (Math.abs(g.dx) > 50)
+						setActiveTab(g.dx < 0 ? "homework" : "learningPlans");
+				},
+			}),
+		[],
 	);
-	const homeworkList = (
-		<>
-			<Section>Hausaufgaben</Section>
-			<Text className="text-body-3 text-secondary-text">
-				2 offen · 1 erledigt
-			</Text>
-			{homework.map((item, index) => (
-				<Row
-					key={item.subject}
-					title={item.title}
-					subtitle={`${item.subject} · ${item.done ? "Erledigt" : item.due}`}
-					finished={item.done}
-					onPress={() => openHomework(index)}
-				/>
-			))}
-		</>
-	);
-	const nextCard = (
-		<Card accent>
-			<View className="flex-row items-center gap-2">
-				<CalendarDays size={18} color={colors.text} />
-				<Label>Nächste Arbeit · In 5 Tagen</Label>
-			</View>
-			<Text variant="h3">Mathematik: Brüche</Text>
-			<Text className="text-body-3 text-secondary-text">
-				Dienstag, 20. Oktober
-			</Text>
-			<View className="gap-2 rounded-2xl bg-card p-4">
-				<Label>Heute im Lernplan</Label>
-				<Text className="font-semibold">Brüche auf einen Nenner bringen</Text>
-				<View className="flex-row items-center gap-2">
-					<Clock3 size={16} color={colors.secondaryText} />
-					<Text className="text-body-4 text-secondary-text">
-						16:00 Uhr · 20 Minuten
-					</Text>
-				</View>
-			</View>
-			<Button
-				variant="neutral"
-				onPress={() => {
-					setPlanIndex(0);
-					setRevealed(false);
-					setPage("help");
-				}}
-			>
-				<Text>So kannst du helfen</Text>
-			</Button>
-		</Card>
-	);
-	const controls = (
-		<View className="mx-auto w-full max-w-xl gap-1 border-border border-t bg-card px-4 py-2">
-			<View className="flex-row items-center justify-between">
-				<Button
-					variant="ghost"
-					size="icon"
-					accessibilityLabel="Vorherige Konzeptvariante"
-					onPress={() => {
-						setVariant((variant + 2) % 3);
-						setPage("home");
-					}}
-				>
-					<ArrowLeft size={20} color={colors.text} />
-				</Button>
-				<View className="flex-1 items-center">
-					<Text className="font-semibold text-body-4">
-						{
-							["A · Überblick (Empfehlung)", "B · Woche", "C · Begleiten"][
-								variant
-							]
-						}
-					</Text>
-					<Text className="text-body-5 text-secondary-text">
-						Konzept wechseln
-					</Text>
-				</View>
-				<Button
-					variant="ghost"
-					size="icon"
-					accessibilityLabel="Nächste Konzeptvariante"
-					onPress={() => {
-						setVariant((variant + 1) % 3);
-						setPage("home");
-					}}
-				>
-					<ArrowRight size={20} color={colors.text} />
-				</Button>
-			</View>
-			<View className="flex-row justify-center gap-2">
-				<Pressable
-					accessibilityRole="button"
-					className="min-h-11 flex-1 justify-center px-3"
-					onPress={() => {
-						setEmpty(!empty);
-						setLinked(true);
-						setPage("home");
-					}}
-				>
-					<Text className="text-body-4 text-secondary-text">
-						{empty ? "Beispieldaten" : "Leerzustand"}
-					</Text>
-				</Pressable>
-				<Pressable
-					accessibilityRole="button"
-					className="min-h-11 flex-1 justify-center px-3"
-					onPress={() => {
-						setLinked(false);
-						setPage("home");
-					}}
-				>
-					<Text className="text-body-4 text-secondary-text">
-						Ohne Verbindung
-					</Text>
-				</Pressable>
-			</View>
-		</View>
-	);
+	const title =
+		page === "home"
+			? "Mias Überblick"
+			: page === "plan"
+				? plan.subject
+				: page === "help"
+					? "Gemeinsam lernen"
+					: page === "homework"
+						? "Hausaufgabe"
+						: page === "sharing"
+							? "Elternzugang"
+							: "Einladung";
 	return (
 		<View
 			className="flex-1 bg-background"
 			style={[
 				themeVariables,
-				{ paddingTop: insets.top, paddingBottom: insets.bottom },
+				{ paddingTop: insets.top + 16, paddingBottom: insets.bottom },
 			]}
 		>
-			<View
-				className={
-					largeText
-						? "mx-auto w-full max-w-xl gap-2 px-5 py-2"
-						: "mx-auto w-full max-w-xl flex-row items-center justify-between gap-2 px-5 py-2"
-				}
-			>
-				<Text
-					className={
-						largeText
-							? "w-full font-semibold text-body-4 text-secondary-text"
-							: "flex-1 font-semibold text-body-4 text-secondary-text"
-					}
-				>
-					DAYOVA · ELTERN
-				</Text>
-				<Text
-					className={
-						largeText
-							? "w-full text-body-4 text-secondary-text"
-							: "flex-1 text-right text-body-4 text-secondary-text"
-					}
-				>
-					Prototyp · Beispieldaten
-				</Text>
+			<View className="mx-auto w-full max-w-xl gap-1 px-6 pb-6">
+				<View className="min-h-12 flex-row items-center gap-4">
+					{page !== "home" && (
+						<BackButton
+							onPress={() => setPage(page === "help" ? "plan" : "home")}
+						/>
+					)}
+					<Text
+						accessibilityRole="header"
+						className="min-w-0 flex-1 font-semibold text-heading-2"
+					>
+						{title}
+					</Text>
+					{page === "home" && (
+						<Pressable
+							accessibilityRole="button"
+							accessibilityLabel="Verbindung mit Mia ansehen"
+							onPress={() => setPage(linked ? "sharing" : "connect")}
+							className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
+						>
+							<Text className="font-semibold">M</Text>
+						</Pressable>
+					)}
+				</View>
+				{page === "home" && (
+					<Meta>
+						{linked
+							? "2 Lernpläne · 2 offene Hausaufgaben"
+							: "Gemeinsam mit deinem Kind starten"}
+					</Meta>
+				)}
 			</View>
 			<ScrollView
-				key={`${page}-${variant}-${empty}-${linked}`}
-				contentInsetAdjustmentBehavior="automatic"
-				contentContainerStyle={{ paddingBottom: 24 }}
+				key={page}
+				contentInsetAdjustmentBehavior="never"
+				showsVerticalScrollIndicator={false}
+				contentContainerStyle={{ paddingBottom: 32 }}
 			>
-				<View className="mx-auto w-full max-w-xl gap-4 px-5 pt-3">
-					{page !== "home" && (
-						<View className="flex-row items-center gap-3">
-							<BackButton onPress={back} />
-							<Text className="text-body-3 text-secondary-text">
-								{page === "help" ? "Lernplan" : "Übersicht"}
-							</Text>
-						</View>
-					)}
+				<View className="mx-auto w-full max-w-xl gap-6 px-6">
 					{page === "home" && (
 						<>
-							<View className="gap-3 pb-2">
-								<View className="flex-row items-center justify-between gap-2">
-									<Text variant="h1" className="flex-1 text-left">
-										Für Mia da sein.
-									</Text>
-									<Pressable
-										accessibilityRole="button"
-										accessibilityLabel="Verbindung und Freigabe ansehen"
-										onPress={() => setPage(linked ? "sharing" : "connect")}
-										className="min-h-12 min-w-12 items-center justify-center rounded-full bg-theorie-subtle"
-									>
-										<Text className="font-semibold text-text">M</Text>
-									</Pressable>
-								</View>
-								<Text className="text-secondary-text">
-									{linked
-										? "Das steht an. So kannst du unterstützen."
-										: "Verbinde dich mit deinem Kind."}
-								</Text>
-								<Label>Donnerstag, 15. Oktober · Demo-Woche</Label>
-							</View>
 							{!linked ? (
-								<Card>
-									<Text variant="h3">Gemeinsam starten</Text>
+								<Block>
+									<Heading>Mia lädt dich ein</Heading>
 									<Text>
-										Mit einer Einladung von Mia siehst du ihre freigegebenen
-										Lernpläne und Hausaufgaben.
+										Verbinde deinen Elternzugang mit Mia, um ihre freigegebenen
+										Pläne zu sehen.
 									</Text>
-									<Button variant="neutral" onPress={() => setPage("connect")}>
+									<Button onPress={() => setPage("connect")}>
 										<Text>Einladung ansehen</Text>
 									</Button>
-								</Card>
+								</Block>
 							) : empty ? (
-								<Card>
-									<BookOpen size={28} color={colors.theorie} />
-									<Text variant="h3">Gerade steht nichts an</Text>
+								<Block>
+									<Heading>Noch keine geteilten Pläne</Heading>
 									<Text>
-										Mia hat noch keine Lernpläne oder Hausaufgaben geteilt.
-										Sobald sie etwas freigibt, erscheint es hier.
+										Sobald Mia Lernpläne oder Hausaufgaben teilt, erscheinen sie
+										hier.
 									</Text>
-									<Button variant="neutral" onPress={() => setPage("sharing")}>
+									<Button onPress={() => setPage("sharing")}>
 										<Text>Freigabe ansehen</Text>
 									</Button>
-								</Card>
+								</Block>
 							) : (
 								<>
-									{variant === 0 && (
-										<>
-											{nextCard}
-											{homeworkList}
-											{planList}
-										</>
-									)}
-									{variant === 1 && (
-										<>
-											<Section>Die nächste Woche</Section>
-											<Text className="text-body-3 text-secondary-text">
-												Lernen, Abgaben und Arbeiten in einer Reihenfolge.
-											</Text>
-											{[
-												{
-													day: "HEUTE · 15. OKT",
-													title: "16:00 · Brüche üben",
-													sub: "Lernsession · 20 Minuten",
-													action: () => openPlan(0),
-												},
-												{
-													day: "MORGEN · 16. OKT",
-													title: "Brüche kürzen abgeben",
-													sub: "Hausaufgabe · Mathematik",
-													action: () => openHomework(0),
-												},
-												{
-													day: "MORGEN · 16. OKT",
-													title: "17:00 · Simple past",
-													sub: "Lernsession · 15 Minuten",
-													action: () => openPlan(1),
-												},
-												{
-													day: "MONTAG · 19. OKT",
-													title: "Fabel abgeben",
-													sub: "Hausaufgabe · Deutsch",
-													action: () => openHomework(1),
-												},
-												{
-													day: "DIENSTAG · 20. OKT",
-													title: "Klassenarbeit: Brüche",
-													sub: "Mathematik · in 5 Tagen",
-													action: () => openPlan(0),
-												},
-												{
-													day: "FREITAG · 23. OKT",
-													title: "Test: Simple past",
-													sub: "Englisch · in 8 Tagen",
-													action: () => openPlan(1),
-												},
-											].map((item) => (
-												<View
-													key={item.title}
-													className="gap-2 border-border border-l-2 pl-4"
-												>
-													<Label>{item.day}</Label>
-													<Row
-														title={item.title}
-														subtitle={item.sub}
-														onPress={item.action}
+									<TodayLearningCard
+										todayKey="2026-10-15"
+										item={nextStep}
+										plan={{
+											subject: "Mathematik",
+											currentSession: {
+												id: "prototype-session",
+												goal: "Hilf Mia mit einer kurzen gemeinsamen Übung.",
+												sessionPurpose: "learning",
+											},
+										}}
+										isLoading={false}
+										fallbackAction={EMPTY_DASHBOARD_PRIMARY_ACTION}
+										onOpenItem={() => {
+											setPlanIndex(0);
+											openHelp();
+										}}
+										onOpenFallback={() => openPlan(0)}
+										action={{
+											label: "So kannst du helfen",
+											hint: "Öffnet passende Hilfestellungen für Eltern.",
+											icon: ArrowRightStraight,
+										}}
+									/>
+									<View className="gap-3">
+										<Text className="font-semibold text-body-2">
+											Nächste Arbeiten
+										</Text>
+										{plans.map((item, index) => (
+											<Pressable
+												key={item.subject}
+												accessibilityRole="button"
+												accessibilityLabel={`${item.subject}, ${item.kind}, ${item.date}`}
+												onPress={() => openPlan(index)}
+												className="min-h-12 flex-row items-center gap-3"
+											>
+												<View className="h-11 w-11 items-center justify-center rounded-full bg-system-subtle">
+													<CalendarDays
+														size={20}
+														color={colors.primaryStrong}
 													/>
 												</View>
-											))}
-											{planList}
-											{homeworkList}
-										</>
-									)}
-									{variant === 2 && (
-										<>
-											<Card accent>
-												<Sparkles size={28} color={colors.theorie} />
-												<Label>Ein kleiner Moment zusammen</Label>
-												<Text variant="h3">
-													„Warum ist eine Hälfte genauso viel wie zwei Viertel?“
-												</Text>
-												<Text className="text-body-3">
-													Diese Frage passt zu Mias heutiger Lernsession. Du
-													musst dafür kein Mathe-Profi sein.
-												</Text>
-												<Button
-													variant="neutral"
-													onPress={() => {
-														setPlanIndex(0);
-														setPage("help");
-													}}
-												>
-													<Text>5 Minuten gemeinsam lernen</Text>
-												</Button>
-											</Card>
-											<Section>Das steht an</Section>
-											<Row
-												title="Mathematik · Klassenarbeit"
-												subtitle="Di, 20.10. · In 5 Tagen"
-												onPress={() => openPlan(0)}
-											/>
-											<Row
-												title="Englisch · Test"
-												subtitle="Fr, 23.10. · In 8 Tagen"
-												onPress={() => openPlan(1)}
-											/>
-											{homeworkList}
-											{planList}
-										</>
-									)}
-									<Text className="py-2 text-body-4 text-secondary-text">
-										Du siehst, was Mia teilt. Die Angaben zeigen den Stand in
-										Dayova und können vom Schulalltag abweichen.
-									</Text>
+												<View className="flex-1">
+													<Text className="font-semibold text-body-3">
+														{item.subject} · {item.kind}
+													</Text>
+													<Meta>
+														{item.date} · {item.countdown}
+													</Meta>
+												</View>
+												<ArrowUpRight size={20} color={colors.text} />
+											</Pressable>
+										))}
+									</View>
+									<View className="gap-6" {...swipe.panHandlers}>
+										<PlansTabSwitch
+											activeTab={activeTab}
+											onChange={setActiveTab}
+										/>
+										{activeTab === "learningPlans" ? (
+											<View className="gap-7">
+												{plans.map((item, index) => (
+													<LearningPlanCardVisual
+														key={item.subject}
+														accessibilityLabel={`${item.subject}: ${item.title}. Lernplan ansehen.`}
+														accessibilityHint="Zeigt Mias Lernplan und passende Unterstützung für Eltern."
+														onPress={() => openPlan(index)}
+														model={{
+															subject: item.subject,
+															status: {
+																label: index === 0 ? "Heute" : "Morgen",
+																background: colors.systemSubtle,
+																foreground: colors.primary,
+															},
+															examDateLabel: `${item.kind} · ${item.date}`,
+															currentTitle: item.session,
+															state: {
+																kind: "ready",
+																durationMinutes: index === 0 ? 20 : 15,
+																progress: index === 0 ? 40 : 20,
+																remainingDays: index === 0 ? 5 : 8,
+																rollingWindowLabel:
+																	"Nächster Schritt + Vorschau",
+															},
+														}}
+													/>
+												))}
+											</View>
+										) : (
+											<View className="gap-7">
+												{homework.map((item, index) => (
+													<CompactNotchedActionCard
+														key={item.subject}
+														pressType="card"
+														onPress={() => {
+															setHomeworkIndex(index);
+															setPage("homework");
+														}}
+														cardAccessibilityLabel={`${item.subject}: ${item.title}. ${item.done ? "Erledigt" : item.due}`}
+														cardAccessibilityHint="Öffnet die Hausaufgabe mit Hinweisen für Eltern."
+														actionIcon={
+															<ArrowUpRight
+																size={24}
+																color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+																strokeWidth={1.9}
+															/>
+														}
+													>
+														<View className="gap-2">
+															<View className="flex-row flex-wrap items-start justify-between gap-3">
+																<Text className="font-semibold text-body-1">
+																	{item.subject}
+																</Text>
+																<LearningPlanStatusBadge
+																	fixedTextScale={false}
+																	status={{
+																		label: item.done ? "Erledigt" : "Offen",
+																		background: item.done
+																			? colors.successSubtle
+																			: colors.hausaufgabeSubtle,
+																		foreground: colors.text,
+																	}}
+																/>
+															</View>
+															<View className="flex-row items-center gap-1">
+																<Clock3
+																	size={14}
+																	color={colors.secondaryText}
+																/>
+																<Meta>{item.due}</Meta>
+															</View>
+															<Text className="font-semibold text-body-4">
+																{item.title} · {item.task}
+															</Text>
+														</View>
+													</CompactNotchedActionCard>
+												))}
+											</View>
+										)}
+									</View>
+									<Meta>
+										Von Mia geteilt. Der Status zeigt ihre Angaben in Dayova.
+									</Meta>
 								</>
 							)}
+							<View className="gap-2 border-border border-t pt-4">
+								<Meta>Prototyp · Beispieldaten vom 15.10.2026</Meta>
+								<View className="flex-row flex-wrap gap-4">
+									<Pressable
+										accessibilityRole="button"
+										className="min-h-11 justify-center"
+										onPress={() => {
+											setEmpty(!empty);
+											setLinked(true);
+										}}
+									>
+										<Meta>
+											{empty ? "Beispieldaten anzeigen" : "Leerzustand ansehen"}
+										</Meta>
+									</Pressable>
+									<Pressable
+										accessibilityRole="button"
+										className="min-h-11 justify-center"
+										onPress={() => {
+											setLinked(false);
+											setEmpty(false);
+										}}
+									>
+										<Meta>Ohne Verbindung</Meta>
+									</Pressable>
+								</View>
+							</View>
 						</>
 					)}
 					{page === "plan" && (
 						<>
-							<Label>
-								{plan.subject} · {plan.kind}
-							</Label>
-							<Text variant="h1" className="text-left">
-								{plan.title}
-							</Text>
-							<Text className="text-secondary-text">
-								{plan.date} · {plan.countdown}
-							</Text>
-							<Card accent>
-								<Label>Nächster Lernschritt · {plan.time}</Label>
-								<Text variant="h3">{plan.session}</Text>
-								<Text>{plan.goal}</Text>
-								<Button
-									variant="neutral"
-									onPress={() => {
-										setRevealed(false);
-										setPage("help");
-									}}
-								>
+							<View className="gap-2">
+								<Heading>{plan.title}</Heading>
+								<Meta>
+									{plan.kind} · {plan.date} · {plan.countdown}
+								</Meta>
+							</View>
+							<Block>
+								<View className="flex-row items-center gap-2">
+									<Clock3 size={18} color={colors.primaryStrong} />
+									<Meta>{plan.time}</Meta>
+								</View>
+								<Heading>{plan.session}</Heading>
+								<Text className="text-body-3 text-secondary-text">
+									{plan.goal}
+								</Text>
+								<Button onPress={openHelp}>
 									<Text>So kannst du helfen</Text>
 								</Button>
-							</Card>
-							<Section>Darum geht es in der Arbeit</Section>
-							{plan.topics.map((topic) => (
-								<Text key={topic}>• {topic}</Text>
-							))}
-							<Section>Im Lernplan</Section>
-							<Card>
-								<Label>Bisher</Label>
-								<Text>{plan.done}</Text>
-								<View className="border-border border-t pt-3">
-									<Label>Danach · Vorschau</Label>
-									<Text className="mt-2 font-semibold">{plan.preview}</Text>
-									<Text className="text-body-4 text-secondary-text">
-										{plan.next}
-									</Text>
-									<Text className="mt-2 text-body-3 text-secondary-text">
-										Der nächste Schritt kann sich nach der aktuellen Lernsession
-										noch ändern.
-									</Text>
+							</Block>
+							<View className="gap-4">
+								<Heading>Mias Lernplan</Heading>
+								<View className="flex-row items-start gap-3">
+									<View className="h-9 w-9 items-center justify-center rounded-full bg-success-subtle">
+										<Check size={18} color={colors.text} />
+									</View>
+									<View className="flex-1 gap-1">
+										<Text className="font-semibold">Wissenscheck</Text>
+										<Meta>Abgeschlossen</Meta>
+									</View>
 								</View>
-							</Card>
-							<Section>Grundlage aus der Schule</Section>
-							<Card>
-								<Text className="font-semibold">{plan.material}</Text>
-								<Text className="text-body-3 text-secondary-text">
-									Von Mia hochgeladen · Beispielmaterial im Prototyp
+								<View className="ml-4 h-5 border-border border-l-2" />
+								<View className="flex-row items-start gap-3">
+									<View className="h-9 w-9 items-center justify-center rounded-full bg-primary">
+										<Text className="font-semibold text-on-primary">2</Text>
+									</View>
+									<View className="flex-1 gap-1">
+										<Text className="font-semibold">{plan.session}</Text>
+										<Meta>{plan.time}</Meta>
+									</View>
+								</View>
+								<View className="ml-4 h-5 border-border border-l-2" />
+								<View className="flex-row items-start gap-3">
+									<View className="h-9 w-9 items-center justify-center rounded-full border border-border">
+										<Text>3</Text>
+									</View>
+									<View className="flex-1 gap-1">
+										<Text>{plan.preview}</Text>
+										<Meta>{plan.next} · Vorschau</Meta>
+									</View>
+								</View>
+								<Meta>
+									Die Vorschau passt sich nach der aktuellen Lernsession an.
+								</Meta>
+							</View>
+							<Block>
+								<Text className="font-semibold">Themen der Arbeit</Text>
+								{plan.topics.map((topic) => (
+									<Text key={topic} className="text-body-3">
+										{topic}
+									</Text>
+								))}
+							</Block>
+							<Block>
+								<Text className="font-semibold">
+									Schulmaterial als Grundlage
 								</Text>
-								<Text className="text-body-3">
-									Der Lernplan orientiert sich an Mias Schulmaterial. Der
-									tatsächliche Prüfungsumfang wird von der Lehrkraft festgelegt.
-								</Text>
-							</Card>
+								<Text className="text-body-3">{plan.material}</Text>
+								<Meta>Von Mia hochgeladen · Beispielmaterial</Meta>
+							</Block>
 						</>
 					)}
 					{page === "help" && (
 						<>
-							<Label>{plan.subject} · Gemeinsam etwa 5 Minuten</Label>
-							<Text variant="h1" className="text-left">
-								So kannst du helfen.
-							</Text>
-							<Text className="text-secondary-text">
-								Passend zu „{plan.session}“.
-							</Text>
-							<Card accent>
+							<View className="gap-3">
 								<View className="flex-row items-center gap-2">
-									<Sparkles size={20} color={colors.theorie} />
-									<Label>KI-Hilfestellung · Beispiel</Label>
+									<Sparkles size={18} color={colors.theorie} />
+									<Meta>{plan.subject} · Etwa 5 Minuten zusammen</Meta>
 								</View>
-								<Text>{plan.goal}</Text>
-								<Text className="text-body-4 text-secondary-text">
-									Grundlage: {plan.material}
+								<Heading>{plan.session}</Heading>
+								<Text className="text-body-3 text-secondary-text">
+									{plan.goal}
 								</Text>
-							</Card>
-							<Section>1. Mit einer Frage starten</Section>
-							<Card>
-								<Text className="font-semibold text-body-1">
-									„{plan.question}“
-								</Text>
+							</View>
+							<Block>
+								<Meta>1 · Ins Gespräch kommen</Meta>
+								<Heading>„{plan.question}“</Heading>
 								<Text className="text-body-3 text-secondary-text">
 									Lass Mia erst selbst erklären. Zuhören ist schon
 									Unterstützung.
 								</Text>
-							</Card>
-							<Section>2. Gemeinsam ausprobieren</Section>
-							<Text>{plan.exercise}</Text>
-							<Button
-								variant="neutral"
-								onPress={() => setRevealed(!revealed)}
-								accessibilityState={{ expanded: revealed }}
-							>
-								<Text>
-									{revealed
-										? "Erklärung ausblenden"
-										: "Erklärung für dich anzeigen"}
-								</Text>
-							</Button>
-							{revealed && (
-								<Card>
-									<Text variant="h4">Das steckt dahinter</Text>
-									<Text>{plan.hint}</Text>
-								</Card>
-							)}
-							<Section>3. Wenn es noch hakt</Section>
-							<Text>{plan.nudge}</Text>
-							<Card>
-								<Text className="font-semibold">Ein guter Abschluss</Text>
-								<Text>
-									„Was war gerade hilfreich für dich?“ Wenn es zu viel wird,
-									macht eine Pause und vereinbart gemeinsam, wann es weitergeht.
-								</Text>
-							</Card>
-							<Text className="text-body-4 text-secondary-text">
-								Hier sind die Hinweise vorbereitet. Später werden sie aus der
-								freigegebenen Lernsession und dem Schulmaterial erzeugt.
+							</Block>
+							<Block>
+								<Meta>2 · Gemeinsam ausprobieren</Meta>
+								<Text>{plan.exercise}</Text>
+								<Button
+									variant="neutral"
+									onPress={() => setRevealed(!revealed)}
+									accessibilityState={{ expanded: revealed }}
+								>
+									<Text>
+										{revealed ? "Erklärung ausblenden" : "Erklärung für dich"}
+									</Text>
+								</Button>
+								{revealed && <Text className="text-body-3">{plan.hint}</Text>}
+							</Block>
+							<Block>
+								<Meta>3 · Wenn es noch hakt</Meta>
+								<Text>{plan.nudge}</Text>
+							</Block>
+							<Text className="text-body-3 text-secondary-text">
+								Zum Abschluss: „Was war gerade hilfreich für dich?“ Wenn es zu
+								viel wird, macht eine Pause.
 							</Text>
-							<Button
-								variant="neutral"
-								onPress={() =>
-									setSavedPlans(
-										saved
-											? savedPlans.filter((index) => index !== planIndex)
-											: [...savedPlans, planIndex],
-									)
-								}
-								accessibilityState={{ selected: saved }}
-							>
-								<Text>{saved ? "Gemerkt ✓" : "Für später merken"}</Text>
-							</Button>
+							<View className="gap-2 border-border border-t pt-4">
+								<Meta>Grundlage: {plan.material}</Meta>
+								<Meta>
+									KI-Hilfestellung als vorbereitetes Beispiel. In der fertigen
+									Version passend zu Mias freigegebenem Schulmaterial.
+								</Meta>
+							</View>
 						</>
 					)}
 					{page === "homework" && (
 						<>
-							<Label>{assignment.subject} · Hausaufgabe</Label>
-							<Text variant="h1" className="text-left">
-								{assignment.title}
-							</Text>
-							<Text className="text-secondary-text">
-								{assignment.done
-									? "Erledigt · von Mia markiert"
-									: `Abgabe ${assignment.due}`}
-							</Text>
-							<Card>
-								<Label>Aufgabe aus der Schule</Label>
-								<Text variant="h3">{assignment.task}</Text>
+							<View className="gap-2">
+								<Meta>
+									{assignment.subject} ·{" "}
+									{assignment.done ? "Erledigt" : "Offen"}
+								</Meta>
+								<Heading>{assignment.title}</Heading>
+								<Meta>Abgabe: {assignment.due}</Meta>
+							</View>
+							<Block>
+								<Text className="font-semibold">{assignment.task}</Text>
 								<Text>{assignment.note}</Text>
-							</Card>
-							<Section>So kannst du unterstützen</Section>
-							<Card accent>
+							</Block>
+							<View className="flex-row items-center gap-2">
+								<Sparkles size={20} color={colors.theorie} />
+								<Heading>So kannst du helfen</Heading>
+							</View>
+							<Block>
 								<Text>{assignment.help}</Text>
-								<Text className="text-body-4 text-secondary-text">
-									Beispiel-Hinweis zur Aufgabe · keine Musterlösung
-								</Text>
-							</Card>
-							<Text className="text-body-3 text-secondary-text">
-								Mia plant und erledigt die Aufgabe selbst. Der Status wird in
-								ihrer Ansicht gepflegt.
-							</Text>
+								<Meta>Beispiel-Hinweis zur Hausaufgabe</Meta>
+							</Block>
+							<Meta>
+								Mia bearbeitet die Aufgabe und aktualisiert ihren Status selbst.
+							</Meta>
 							{homeworkIndex === 0 && (
-								<Button variant="neutral" onPress={() => openPlan(0)}>
-									<Text>Passenden Lernplan ansehen</Text>
+								<Button onPress={() => openPlan(0)}>
+									<Text>Zum Lernplan Mathematik</Text>
 								</Button>
 							)}
 						</>
 					)}
 					{page === "sharing" && (
 						<>
-							<Label>Elternzugang</Label>
-							<Text variant="h1" className="text-left">
-								Mit Mia verbunden.
-							</Text>
+							<Heading>Mit Mia verbunden</Heading>
 							<Text className="text-secondary-text">
-								Ein eigener Zugang. Gemeinsam vereinbarter Einblick.
+								Du siehst die Inhalte, die Mia mit dir teilt.
 							</Text>
-							<Card>
-								<Text variant="h3">Mia teilt mit dir</Text>
+							<Block>
 								{[
-									"Anstehende Arbeiten und Tests",
+									"Arbeiten und Tests",
 									"Lernpläne und nächste Lernschritte",
 									"Hausaufgaben und ihren Status",
-									"Hilfestellungen zu geteilten Lerninhalten",
+									"Passende Hilfestellungen",
 								].map((item) => (
 									<View key={item} className="flex-row gap-3">
 										<Check size={20} color={colors.text} />
 										<Text className="flex-1">{item}</Text>
 									</View>
 								))}
-							</Card>
-							<Card>
-								<Text variant="h3">Mia behält die Kontrolle</Text>
+							</Block>
+							<Block>
+								<Text className="font-semibold">
+									Gemeinsam vereinbarter Einblick
+								</Text>
 								<Text>
-									Die Freigabe wird in Mias Account verwaltet. Persönliche
-									Antworten und einzelne Fehler bleiben in ihrer Lernansicht.
+									Mia verwaltet die Freigabe in ihrer App. Persönliche Antworten
+									und einzelne Fehler bleiben in ihrer Lernansicht.
 								</Text>
-								<Text className="text-body-3 text-secondary-text">
-									Konzeptvorschlag: Eltern begleiten; Lernpläne und Aufgaben
-									werden weiterhin vom Kind bearbeitet.
-								</Text>
-							</Card>
-							<Button variant="neutral" onPress={() => setPage("connect")}>
+							</Block>
+							<Button onPress={() => setPage("connect")}>
 								<Text>Einladungsablauf ansehen</Text>
 							</Button>
+							<Meta>Freigabe-Konzept · im Prototyp simuliert</Meta>
 						</>
 					)}
 					{page === "connect" && (
 						<>
-							<Label>Demo · Zugang und Verknüpfung</Label>
-							<Text variant="h1" className="text-left">
-								Mia lädt dich ein.
-							</Text>
-							<Text className="text-secondary-text">
-								Begleite ihr Lernen mit deinem eigenen Elternzugang.
-							</Text>
-							<Card>
-								<Text variant="h3">So würde der Einstieg funktionieren</Text>
+							<Heading>Mia lädt dich ein</Heading>
+							<Block>
 								<Text>1. Mia sendet dir eine Einladung aus ihrer App.</Text>
 								<Text>
-									2. Du meldest dich an oder erstellst deinen Eltern-Account.
+									2. Du meldest dich mit deinem eigenen Eltern-Account an.
 								</Text>
-								<Text>3. Du siehst die von Mia freigegebenen Inhalte.</Text>
-							</Card>
-							<Text className="text-body-3 text-secondary-text">
-								Im Prototyp überspringen wir die Anmeldung. Es wird kein Account
-								erstellt und keine Einladung verschickt.
-							</Text>
+								<Text>3. Du siehst ihre freigegebenen Inhalte.</Text>
+							</Block>
+							<Meta>
+								Demo: Es wird kein Account erstellt und keine Einladung
+								verschickt.
+							</Meta>
 							<Button
-								variant="neutral"
 								onPress={() => {
 									setLinked(true);
 									setEmpty(false);
@@ -808,9 +658,7 @@ function ParentPrototype() {
 						</>
 					)}
 				</View>
-				{largeText && controls}
 			</ScrollView>
-			{!largeText && controls}
 		</View>
 	);
 }

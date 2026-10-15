@@ -1,33 +1,35 @@
-# Eltern-Dashboard — wegwerfbarer nativer Prototyp
+# Eltern-Dashboard — nativer Prototyp
 
 Fragestellung: Finden Eltern schnell heraus, was ansteht und wie sie passend zum Schulmaterial unterstützen können?
 
-Start: `pnpm prototype:parents` (installierter Dayova Development Client erforderlich). Im iOS-Simulator öffnen:
+Start: `pnpm prototype:parents` (installierter Dayova Development Client erforderlich).
 
 ```sh
 xcrun simctl openurl <device-id> 'dayova://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8083'
 ```
 
-Der Schalter `EXPO_PUBLIC_PARENT_PROTOTYPE=1` ersetzt ausschließlich im Entwicklungsmodus die App-Oberfläche durch diese lokale Demo. Der normale Auth-/Access-Flow wird nicht geändert. Die Demo mountet keine Account- oder Backend-Provider. Alle Inhalte und die feste Demo-Woche ab 15.10.2026 sind erfunden. Es werden keine Accounts, Einladungen, Freigaben oder KI-Anfragen angelegt.
+`EXPO_PUBLIC_PARENT_PROTOTYPE=1` aktiviert ausschließlich im Entwicklungsmodus die lokale Demo. Sie mountet keine Account- oder Backend-Provider. Alle Inhalte, Fortschritte und die feste Demo-Woche ab 15.10.2026 sind erfunden. Es werden keine Accounts, Einladungen, Freigaben oder KI-Anfragen angelegt.
 
-## Vergleich
+## Gestaltung
 
-- A — Überblick (Empfehlung): nächste Arbeit und Lernsession, dann Hausaufgaben und Lernpläne.
-- B — Woche: chronologische Liste von Lernterminen, Abgaben und Arbeiten.
-- C — Begleiten: eine gemeinsame Mini-Übung als Einstieg, danach Termine und Inhalte.
+Nach Nutzerfeedback gibt es eine einzige Übersicht, zusammengesetzt aus bestehenden App-Komponenten:
 
-Die native Vergleichsleiste ersetzt bewusst den browserorientierten URL-Variantenumschalter. Alle drei Varianten führen zu denselben Details. Die Leiste bietet außerdem leere und unverknüpfte Zustände. Einstieg ist die Elternübersicht; über das M oben rechts sind Freigabe und Einladungsablauf erreichbar. „Merken“ gilt pro Lernplan nur für diese Demo-Sitzung.
+- `TodayLearningCard`: originale Verlaufskarte, Fachillustration, Badges und kleine runde Aktion; Elternaktion „So kannst du helfen“ über einen optionalen Präsentationsparameter.
+- `PlansTabSwitch`: unverändert aus dem Pläne-Screen extrahierter animierter Umschalter, jetzt von beiden Screens verwendet.
+- `LearningPlanCardVisual`: originale Lernplankarte mit ausgesparter Pfeilaktion, Statusbadges und Fortschrittsfuß.
+- `CompactNotchedActionCard`: originale Form für Hausaufgaben, mit denselben Metadaten-/Textmustern.
+- Shared `Surface`, `Button`, `BackButton`, `Text` und Icons für Details. Header und Abstände folgen Heute und Deine Pläne.
 
-## Vorgeschlagener MVP
+Der Prototyp ergänzt horizontales Wischen im Plänebereich; die Tabs bleiben direkt antippbar. Arbeiten und Tests stehen als kompakte Zeilen zwischen Heute-Karte und Plänen. Elternhilfen sind von der Heute-Karte und jedem Lernplan aus erreichbar. Die frühere Variantenleiste wurde entfernt. Leerzustand und fehlende Verbindung bleiben als untergeordnete Demo-Aktionen am Seitenende verfügbar.
 
-Ein eigener Elternzugang, Verbindung mit einem Kind über eine vom Kind initiierte Einladung, freigegebene Arbeiten/Tests, nächste Lernsession, Hausaufgabenstatus und materialbezogene Elternhilfen. Die Hilfen enthalten Lernziel, Gesprächsfrage, Mini-Übung, Erklärung und einen Hinweis bei Schwierigkeiten. Vorläufige zukünftige Sessions sind ausdrücklich Vorschauen; es gibt keinen erfundenen festen vollständigen Lernplan oder pauschalen Beherrschungswert.
+## Umfang
 
-Echte Authentifizierung, rollenbasierte Autorisierung, Freigabe/Widerruf, sichere Einladungen und die KI-Erzeugung sind spätere Implementierungsarbeit. Auch die vorgeschlagene Grenze zwischen geteilten Lernzielen und privaten Einzelantworten muss vor Produktivbau entschieden werden. Wochenberichte, Push-Nachrichten, Eltern-Chat, Notenübersicht und mehrere Kinder sind nicht Teil dieses ersten Konzepts.
+Ein Kind, freigegebene Arbeiten/Tests, nächste Lernsession, Hausaufgabenstatus und materialbezogene Elternhilfen mit Gesprächsfrage, Mini-Übung und aufklappbarer Erklärung. Zukünftige Sessions sind ausdrücklich Vorschauen. Der Einladungsablauf und Freigabeumfang werden nur erklärt und simuliert.
 
-Kontext: [Dayova – Future Feature Ideas](https://app.notion.com/p/e555729f115849f888993919c7f4fbed) nennt einen Parents Login. Die hier konkrete MVP-Abgrenzung ist ein Vorschlag aus der aktuellen Konzeptanfrage, keine bereits verabschiedete Produktentscheidung.
+Echte Authentifizierung, Autorisierung, Einladungen, Freigabe/Widerruf und KI-Erzeugung sind spätere Implementierungsarbeit. Die Grenze zwischen geteilten Lernzielen und privaten Einzelantworten ist ein Produktvorschlag. Wochenberichte, Push, Eltern-Chat, Noten und mehrere Kinder gehören nicht zu diesem Konzept.
 
-Noch kein Sieger bestätigt. Diesen Branch als Konzeptbeleg behalten; nicht als produktionsfertigen Elternzugang mergen.
+Kontext: [Dayova – Future Feature Ideas](https://app.notion.com/p/e555729f115849f888993919c7f4fbed) nennt einen Parents Login. Die MVP-Abgrenzung ist noch keine verabschiedete Produktentscheidung. Diesen Branch als Konzeptbeleg behalten und nicht als produktionsfertigen Elternzugang mergen.
 
 ## Überprüfung
 
-TypeScript, Biome und ESLint für die geänderten App-Dateien sind geprüft. Auf iOS 26.4.1 wurden die drei Varianten, beide Lernpläne, aufklappbare Hilfen, Hausaufgabendetails sowie Leer- und Einladungszustände durchgeklickt. Dunkles Design, große Bedienungshilfen-Schrift und der Wechsel zurück wurden visuell kontrolliert; die Vergleichssteuerung scrollt bei großer Schrift mit. Android und VoiceOver wurden nicht separat geprüft. Dies ist eine Konzeptprüfung, keine Freigabe eines produktiven Elternkontos.
+TypeScript, Biome und ESLint für geänderte Dateien; vorhandene UI-Tests für Heute- und Lernplankarte. Visuelle iOS-Kontrolle der Übersicht, beider Kartenlisten, des Tabwechsels und der Eltern-Detailansichten. Android und VoiceOver sind nicht separat geprüft. Die frühere Version wurde zusätzlich mit dunklem Design und großer Schrift geprüft; diese vollständige Prüfung ist nach dem Redesign noch offen.
