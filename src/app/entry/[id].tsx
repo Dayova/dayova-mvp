@@ -5,13 +5,13 @@ import { ActivityIndicator, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import { EntryCompletionAction } from "~/components/entry/entry-completion-action";
 import { BackButton, Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import {
 	Attachment,
 	BookOpen,
 	CalendarDays,
-	Check,
 	Clock3,
 	NotebookPen,
 	Timer,
@@ -241,12 +241,11 @@ export default function EntryDetailScreen() {
 		setDeleteError(null);
 	};
 
-	const toggleCompleted = () => {
-		if (!canToggleCompleted || !id || !user || !isConvexAuthenticated) return;
-		void setDayEntryCompleted({
-			id: id as Id<"dayEntries">,
-			completed: !isCompleted,
-		});
+	const changeCompleted = async (completed: boolean) => {
+		if (!canToggleCompleted || !id || !user || !isConvexAuthenticated) {
+			throw new Error("Entry completion unavailable");
+		}
+		await setDayEntryCompleted({ id: id as Id<"dayEntries">, completed });
 	};
 
 	const openLearningPlan = () => {
@@ -417,20 +416,12 @@ export default function EntryDetailScreen() {
 					</Button>
 				) : null}
 				{canToggleCompleted ? (
-					<Button
-						className="mt-5"
-						variant={isCompleted ? "neutral" : "default"}
-						onPress={toggleCompleted}
-					>
-						<Check
-							size={18}
-							color={isCompleted ? "#1A1A1A" : "#FFFFFF"}
-							strokeWidth={2.3}
-						/>
-						<Text>
-							{isCompleted ? "Als offen markieren" : "Als erledigt markieren"}
-						</Text>
-					</Button>
+					<EntryCompletionAction
+						key={id}
+						completed={isCompleted}
+						disabled={!user || !isConvexAuthenticated}
+						onChange={changeCompleted}
+					/>
 				) : null}
 				{canDelete ? (
 					<Button className="mt-5" variant="destructive" onPress={handleDelete}>
