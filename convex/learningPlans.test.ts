@@ -2,6 +2,7 @@
 
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { AI_CONSENT_VERSION } from "../src/lib/ai-consent";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { USER_FACING_ERROR_KIND } from "./errors";
@@ -924,18 +925,149 @@ test("claims plan generation atomically and persists an empty failed claim for e
 		t.mutation(internal.learningPlans.clearEmptyContentGeneration, {
 			learningPlanId,
 			generationId: "generation-1",
+			failureReason: "generationProcessing",
+			failureMessage: "Der Lernplan konnte nicht zuverlässig erstellt werden.",
 		}),
 	).resolves.toBe(true);
 	const failed = await t.query(api.learningPlans.getSnapshot, {
 		id: learningPlanId,
 	});
 	expect(failed?.plan.contentGeneration?.stage).toBe("failed");
+	expect(failed?.plan.contentGeneration?.failureReason).toBe(
+		"generationProcessing",
+	);
+	expect(failed?.plan.contentGeneration?.failureMessage).toBe(
+		"Der Lernplan konnte nicht zuverlässig erstellt werden.",
+	);
 	await expect(
 		t.mutation(internal.learningPlans.beginContentGeneration, {
 			learningPlanId,
 			generationId: "generation-2",
 		}),
 	).resolves.toBeTypeOf("number");
+	const retried = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(retried?.plan.contentGeneration?.failureReason).toBeUndefined();
+	expect(retried?.plan.contentGeneration?.failureMessage).toBeUndefined();
+});
+
+test.each([
+	true,
+	false,
+])("legacy public generation releases a failed claim with existing sessions (material corrected: %s)", async (materialCorrected) => {
+	const t = convexTest(schema, modules).withIdentity({
+		...user,
+		subject: "recovery",
+		email: "recovery@example.com",
+	});
+	await t.mutation(api.users.syncCurrentUser, { name: "Recovery test" });
+	await t.mutation(api.aiConsent.setDecision, {
+		decision: "granted",
+		version: AI_CONSENT_VERSION,
+	});
+	const learningPlanId = await createPlan(t);
+	await t.mutation(api.learningTimes.upsertMine, {
+		dayOfWeek: 1,
+		startTime: "17:00",
+		endTime: "17:15",
+	});
+	await t.mutation(api.learningPlans.setTargetStudyMinutes, {
+		learningPlanId,
+		targetStudyMinutes: 10,
+	});
+	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
+		learningPlanId,
+		knowledgeAnswersJson: "[]",
+		sourceSummary: "Altes Material",
+		insight: { summary: "Vorheriger Versuch.", strengths: [], gaps: [] },
+		sessions: [
+			{
+				phase: "practice",
+				title: "Alte Sitzung",
+				dateKey: "2026-06-01",
+				dateLabel: "1. Juni 2026",
+				startTime: "17:00",
+				durationMinutes: 15,
+				goal: "Wiederholen.",
+				tasks: ["Aufgaben lösen"],
+				expectedOutcome: "Vorbereitet.",
+			},
+		],
+	});
+	const original = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	const oldSessionId = original?.sessions[0]?.id;
+	if (!oldSessionId) throw new Error("Missing legacy session");
+	await t.run(async (ctx) => {
+		await ctx.db.patch("learningPlans", learningPlanId, {
+			status: "questionsReady",
+			contentGenerationStage: "failed",
+		});
+		await ctx.db.patch("learningPlanSessions", oldSessionId, {
+			contentGenerationStatus: "ready",
+		});
+	});
+	if (materialCorrected)
+		await t.mutation(internal.learningPlans.storeUploadedDocument, {
+			ownerTokenIdentifier: user.tokenIdentifier,
+			learningPlanId,
+			storageId: "replacement",
+			storageProvider: "convex",
+			fileName: "replacement.pdf",
+			fileType: "application/pdf",
+			fileSizeBytes: 1024,
+			sourceKind: "school",
+		});
+	await t.run((ctx) =>
+		ctx.db.patch("learningPlans", learningPlanId, {
+			status: "questionsReady",
+			diagnosticPlacement: "firstSession",
+			scopeConfirmedAt: Date.now(),
+			knowledgeQuestions: createKnowledgeQuestions(),
+		}),
+	);
+	for (let attempt = 0; attempt < 2; attempt++) {
+		await expect(
+			t.action(api.learningPlanAi.generatePlan, {
+				learningPlanId,
+				answers: [],
+			}),
+		).rejects.toMatchObject({ data: { code: "scheduling_constraints" } });
+		const failed = await t.query(api.learningPlans.getSnapshot, {
+			id: learningPlanId,
+		});
+		expect(failed?.plan.contentGeneration).toMatchObject({
+			stage: "failed",
+			failureReason: "schedulingConstraints",
+			failureMessage: expect.any(String),
+		});
+		expect(
+			await t.run((ctx) => ctx.db.get("learningPlanSessions", oldSessionId)),
+		).toEqual(
+			materialCorrected
+				? null
+				: expect.objectContaining({ contentGenerationStatus: "ready" }),
+		);
+		expect(failed?.sessions).toHaveLength(materialCorrected ? 0 : 1);
+		expect(failed?.documents).toHaveLength(materialCorrected ? 1 : 0);
+	}
+	await t.mutation(internal.learningPlans.beginContentGeneration, {
+		learningPlanId,
+		generationId: "newer-claim",
+	});
+	await expect(
+		t.mutation(internal.learningPlans.markContentGenerationClaimFailed, {
+			learningPlanId,
+			generationId: "stale-claim",
+			failureReason: "unknown",
+		}),
+	).resolves.toBe(false);
+	expect(
+		(await t.query(api.learningPlans.getSnapshot, { id: learningPlanId }))?.plan
+			.contentGeneration?.stage,
+	).toBe("content");
 });
 
 test("requires scope confirmation before plan generation begins", async () => {
@@ -1093,14 +1225,27 @@ test("atomically claims stale session retries and rejects a second claimant", as
 		t.mutation(internal.learningPlans.markContentGenerationClaimFailed, {
 			learningPlanId,
 			generationId: "outdated-retry",
+			failureReason: "materialProcessing",
 		}),
 	).resolves.toBe(false);
 	await expect(
 		t.mutation(internal.learningPlans.markContentGenerationClaimFailed, {
 			learningPlanId,
 			generationId: "claimed-retry",
+			failureReason: "materialProcessing",
+			failureMessage:
+				'Die Datei "arbeitsblatt.docx" konnte nicht verarbeitet werden.',
 		}),
 	).resolves.toBe(true);
+	const failedRetry = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(failedRetry?.plan.contentGeneration?.failureReason).toBe(
+		"materialProcessing",
+	);
+	expect(failedRetry?.plan.contentGeneration?.failureMessage).toContain(
+		"arbeitsblatt.docx",
+	);
 	await expect(
 		t.mutation(
 			internal.learningPlans.claimIncompleteContentGenerationSessions,
@@ -1110,6 +1255,118 @@ test("atomically claims stale session retries and rejects a second claimant", as
 			},
 		),
 	).resolves.toEqual(generated.sessionIds);
+	const reclaimed = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(reclaimed?.plan.contentGeneration?.failureMessage).toBeUndefined();
+});
+
+test("retries only failed content while preserving a ready session", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	const generated = await t.mutation(
+		internal.learningPlans.replaceGeneratedSessions,
+		{
+			learningPlanId,
+			knowledgeAnswersJson: "[]",
+			sourceSummary: "Testmaterial",
+			insight: { summary: "Bereit zum Lernen.", strengths: [], gaps: [] },
+			deferReadyUntilContent: true,
+			sessions: [
+				{
+					phase: "practice",
+					title: "Fertige Sitzung",
+					dateKey: "2026-06-01",
+					dateLabel: "1. Juni 2026",
+					startTime: "17:00",
+					durationMinutes: 15,
+					goal: "Wiederholen.",
+					tasks: ["Aufgabe lösen"],
+					expectedOutcome: "Du bist vorbereitet.",
+				},
+				{
+					phase: "practice",
+					title: "Fehlgeschlagene Sitzung",
+					dateKey: "2026-06-02",
+					dateLabel: "2. Juni 2026",
+					startTime: "17:00",
+					durationMinutes: 15,
+					goal: "Anwenden.",
+					tasks: ["Weitere Aufgabe lösen"],
+					expectedOutcome: "Du kannst das Gelernte anwenden.",
+				},
+			],
+		},
+	);
+	if (!generated) throw new Error("Expected deferred session generation.");
+	const [readySessionId, failedSessionId] = generated.sessionIds;
+	if (!readySessionId || !failedSessionId) {
+		throw new Error("Expected two generated sessions.");
+	}
+	const readyContentId = await t.run((ctx) =>
+		ctx.db.insert("learningSessionContentItems", {
+			ownerTokenIdentifier: user.tokenIdentifier,
+			learningPlanId,
+			sessionId: readySessionId,
+			phase: "practice",
+			kind: "written",
+			title: "Fertige Aufgabe",
+			prompt: "Was ist 2 + 2?",
+			explanation: "Addiere die Zahlen.",
+			idealAnswer: "4",
+			evaluationKeywords: ["4"],
+			sortOrder: 0,
+			createdAt: Date.now(),
+			updatedAt: Date.now(),
+		}),
+	);
+	await t.mutation(internal.learningPlans.setSessionContentGenerationStatus, {
+		sessionId: readySessionId,
+		status: "ready",
+	});
+	await t.mutation(internal.learningPlans.setSessionContentGenerationStatus, {
+		sessionId: failedSessionId,
+		status: "failed",
+	});
+	await t.mutation(internal.learningPlans.finalizeContentGeneration, {
+		learningPlanId,
+	});
+
+	const failed = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(failed?.plan.contentGeneration?.stage).toBe("failed");
+	expect(failed?.plan.contentGeneration?.readySessionCount).toBe(1);
+	expect(failed?.plan.contentGeneration?.failedSessionCount).toBe(1);
+	await expect(
+		t.mutation(
+			internal.learningPlans.claimIncompleteContentGenerationSessions,
+			{ learningPlanId, generationId: "mixed-session-retry" },
+		),
+	).resolves.toEqual([failedSessionId]);
+	await t.mutation(internal.learningPlans.setSessionContentGenerationStatus, {
+		sessionId: failedSessionId,
+		status: "ready",
+	});
+	await t.mutation(internal.learningPlans.finalizeContentGeneration, {
+		learningPlanId,
+		generationId: "mixed-session-retry",
+	});
+
+	const ready = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(ready?.plan.contentGeneration?.stage).toBe("ready");
+	expect(ready?.sessions[0]?.contentGenerationStatus).toBe("ready");
+	await t.run(async (ctx) => {
+		expect(
+			await ctx.db.get("learningSessionContentItems", readyContentId),
+		).toMatchObject({
+			sessionId: readySessionId,
+			title: "Fertige Aufgabe",
+			prompt: "Was ist 2 + 2?",
+		});
+	});
 });
 
 test("invalidates only educational session edits while calendar moves preserve content", async () => {

@@ -1,4 +1,5 @@
 import type { Id } from "#convex/_generated/dataModel";
+import type { LearningPlanGenerationFailureReason } from "#convex/learningPlanGenerationFailure";
 
 export type PickerTarget = "editDate" | "editStart" | "editEnd";
 
@@ -228,6 +229,8 @@ export type LearningPlanSnapshot = {
 		contentGeneration?: {
 			stage: "content" | "validating" | "ready" | "failed";
 			startedAt?: number;
+			failureReason?: LearningPlanGenerationFailureReason;
+			failureMessage?: string;
 			totalSessionCount: number;
 			readySessionCount: number;
 			failedSessionCount: number;

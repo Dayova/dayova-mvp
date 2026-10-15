@@ -104,6 +104,28 @@ export async function getDiagnosticBudget(
 	);
 }
 
+export async function clearLegacyDraftSessions(
+	ctx: MutationCtx,
+	plan: Doc<"learningPlans">,
+) {
+	const legacySessions = await ctx.db
+		.query("learningPlanSessions")
+		.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+			q.eq("learningPlanId", plan._id),
+		)
+		.take(501);
+	if (legacySessions.length > 500)
+		throwUserFacingError(
+			"Dieser Lernplan enthält zu viele Lerneinheiten. Erstelle einen neuen Lernplan.",
+			"legacy_plan_too_large",
+		);
+	for (const session of legacySessions) {
+		await deleteSessionLearningDataForSession(ctx, session._id);
+		await clearSessionDayEntry(ctx, session);
+		await ctx.db.delete("learningPlanSessions", session._id);
+	}
+}
+
 export async function prepareDiagnostic(
 	ctx: MutationCtx,
 	args: { learningPlanId: Id<"learningPlans"> },
@@ -116,12 +138,17 @@ export async function prepareDiagnostic(
 		)
 		.first();
 	if (existing && plan.preparationState) return existing._id;
-	if (plan.status === "accepted" || existing)
+	const replacesLegacyDraft =
+		existing &&
+		plan.status === "questionsReady" &&
+		!plan.contentGenerationStage;
+	if (plan.status === "accepted" || (existing && !replacesLegacyDraft))
 		throwUserFacingError("Dieser Lernplan wurde bereits erstellt.");
 	if (!plan.scopeConfirmedAt)
 		throwUserFacingError("Bestätige zuerst deinen Prüfungsstoff.");
 	const questions = (plan.knowledgeQuestions ?? []).slice(0, 10);
 	validateFirstSessionDiagnosticQuestions(questions, plan.topicMap);
+	if (replacesLegacyDraft) await clearLegacyDraftSessions(ctx, plan);
 	const now = Date.now();
 	const current = berlinNow();
 	const sessionId = await ctx.db.insert("learningPlanSessions", {
@@ -161,6 +188,10 @@ export async function prepareDiagnostic(
 		status: "generated",
 		rollingPlanEnabled: true,
 		contentGenerationStage: "ready",
+		contentGenerationId: undefined,
+		contentGenerationStartedAt: undefined,
+		contentGenerationFailureReason: undefined,
+		contentGenerationFailureMessage: undefined,
 		updatedAt: now,
 	});
 	return sessionId;

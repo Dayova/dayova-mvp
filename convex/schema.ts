@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { crmCounts, crmError, operatingSystem } from "./crmContract";
+import { contentGenerationFailureReasonValidator } from "./learningPlanGenerationFailure";
 import {
 	learningEvidenceDimensionValidator,
 	learningTopicValidator,
@@ -492,6 +493,10 @@ export default defineSchema({
 		contentGenerationStage: v.optional(contentGenerationStageValidator),
 		contentGenerationId: v.optional(v.string()),
 		contentGenerationStartedAt: v.optional(v.number()),
+		contentGenerationFailureReason: v.optional(
+			contentGenerationFailureReasonValidator,
+		),
+		contentGenerationFailureMessage: v.optional(v.string()),
 		sessionCompositionVariant: v.optional(sessionCompositionVariantValidator),
 		examDayEntryId: v.optional(v.id("dayEntries")),
 		acceptedAt: v.optional(v.number()),

@@ -1,0 +1,29 @@
+Lineare Funktionen - Unterrichtsmaterial fuer den Wissenscheck
+
+Eine lineare Funktion hat die Form f(x) = m*x + b. Ihr Graph ist eine Gerade.
+m heisst Steigung. b ist der Schnittpunkt des Graphen mit der y-Achse.
+Bei m > 0 steigt die Gerade; bei m < 0 faellt sie; bei m = 0 ist sie waagerecht.
+Aus zwei Punkten (x1,y1) und (x2,y2) berechnet man m = (y2-y1)/(x2-x1).
+Danach setzt man einen Punkt in y = m*x + b ein und loest nach b auf.
+
+Beispiel 1: Die Punkte A(1,3) und B(3,7) liegen auf einer Geraden.
+Die Steigung ist m = (7-3)/(3-1) = 2.
+Mit A folgt 3 = 2*1 + b, also b = 1. Die Funktion lautet f(x) = 2*x + 1.
+Probe: f(3) = 2*3 + 1 = 7, also liegt B auf dem Graphen.
+
+Die Nullstelle ist der x-Wert, bei dem f(x) = 0 gilt.
+Bei f(x) = 2*x + 1 ergibt 0 = 2*x + 1 die Nullstelle x = -0.5.
+Zwei Geraden mit gleicher Steigung und unterschiedlichem b sind parallel.
+Geraden mit verschiedenen Steigungen schneiden sich in einem Punkt.
+Um den Schnittpunkt zu finden, setzt man beide Funktionsgleichungen gleich.
+
+Beispiel 2: f(x) = 2*x + 1 und g(x) = -x + 7.
+2*x + 1 = -x + 7 ergibt 3*x = 6, also x = 2.
+Einsetzen liefert y = f(2) = 5. Der Schnittpunkt ist S(2,5).
+
+Uebung A: Bestimme m und b fuer die Gerade durch P(0,4) und Q(2,8).
+Loesung A: m = (8-4)/(2-0) = 2 und b = 4, also y = 2*x + 4.
+Uebung B: Bestimme die Nullstelle von h(x) = -3*x + 9.
+Loesung B: 0 = -3*x + 9, also x = 3.
+Uebung C: Erklaere die Wirkung von b auf den Graphen einer linearen Funktion.
+Loesung C: b verschiebt die Gerade entlang der y-Achse; die Steigung bleibt gleich.
