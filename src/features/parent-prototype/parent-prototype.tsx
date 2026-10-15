@@ -4,23 +4,34 @@
  * Primary action: So kannst du helfen. No competing layout variants.
  * All data, sharing and AI guidance remain local fixtures.
  */
+import { router, Stack } from "expo-router";
 import { vars } from "nativewind";
-import { type ReactNode, useMemo, useState } from "react";
+import {
+	createContext,
+	type ReactNode,
+	useContext,
+	useMemo,
+	useState,
+} from "react";
 import { PanResponder, Pressable, ScrollView, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
 	SafeAreaProvider,
 	useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-screens/experimental";
 import type { Id } from "#convex/_generated/dataModel";
 import { BackButton, Button } from "~/components/ui/button";
 import {
 	ArrowRightStraight,
 	ArrowUpRight,
+	BookOpen,
 	CalendarDays,
 	Check,
 	Clock3,
+	Logout,
 	Sparkles,
+	UserRound,
 } from "~/components/ui/icon";
 import { CompactNotchedActionCard } from "~/components/ui/notched-action-card";
 import { Surface } from "~/components/ui/surface";
@@ -34,11 +45,26 @@ import {
 	PlansTabSwitch,
 	type PlanTab,
 } from "~/features/learning-plans/plans-tab-switch";
+import {
+	SettingsCard,
+	SettingsRow,
+	SettingsSection,
+} from "~/features/settings/settings-list";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { DayovaThemeProvider, useDayovaTheme } from "~/lib/theme";
 import { DARK_THEME_VARIABLES } from "~/lib/theme-variables";
 
-type Page = "home" | "plan" | "help" | "homework" | "sharing" | "connect";
+type RootPage = "home" | "plans" | "more";
+type Page =
+	| "plans"
+	| "more"
+	| "profile"
+	| "home"
+	| "plan"
+	| "help"
+	| "homework"
+	| "sharing"
+	| "connect";
 const plans = [
 	{
 		subject: "Mathematik",
@@ -135,41 +161,111 @@ function Heading({ children }: { children: ReactNode }) {
 function Meta({ children }: { children: ReactNode }) {
 	return <Text className="text-body-4 text-secondary-text">{children}</Text>;
 }
+const DemoContext = createContext<{
+	linked: boolean;
+	setLinked: (value: boolean) => void;
+	empty: boolean;
+	setEmpty: (value: boolean) => void;
+	signedOut: boolean;
+	setSignedOut: (value: boolean) => void;
+} | null>(null);
 export function ParentPrototypeRoot() {
+	const [linked, setLinked] = useState(true);
+	const [empty, setEmpty] = useState(false);
+	const [signedOut, setSignedOut] = useState(false);
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>
 			<SafeAreaProvider>
 				<DayovaThemeProvider>
-					<ParentPrototype />
+					<DemoContext.Provider
+						value={{
+							linked,
+							setLinked,
+							empty,
+							setEmpty,
+							signedOut,
+							setSignedOut,
+						}}
+					>
+						<Stack
+							initialRouteName="parent-prototype"
+							screenOptions={{ headerShown: false }}
+						>
+							<Stack.Screen name="parent-prototype" />
+							<Stack.Protected guard={false}>
+								{[
+									"subscription-success",
+									"(app)",
+									"subscription",
+									"entry/[id]",
+									"entry/success",
+									"(creation)",
+									"change-password",
+									"password-reset-success",
+									"trial",
+									"session-tasks/reset-password",
+									"paywall",
+									"learning-plans/[planId]/index",
+									"learning-plans/[planId]/review",
+									"learning-plans/[planId]/success",
+									"learning-plans/[planId]/preparation",
+									"learning-plans/[planId]/sessions/[sessionId]/index",
+									"learning-plans/[planId]/sessions/[sessionId]/edit",
+									"notifications",
+									"personal-subjects",
+									"profile",
+									"analyse",
+									"(auth)",
+									"notification-settings",
+									"timetable",
+									"learning-times/index",
+									"learning-times/edit",
+								].map((name) => (
+									<Stack.Screen key={name} name={name} />
+								))}
+							</Stack.Protected>
+						</Stack>
+					</DemoContext.Provider>
 				</DayovaThemeProvider>
 			</SafeAreaProvider>
 		</GestureHandlerRootView>
 	);
 }
-function ParentPrototype() {
+
+export function ParentPrototype({ rootPage }: { rootPage: RootPage }) {
+	const demo = useContext(DemoContext);
+	if (!demo) throw new Error("Parent prototype provider missing");
+	const { linked, setLinked, empty, setEmpty, signedOut, setSignedOut } = demo;
 	const { colors, resolvedTheme } = useDayovaTheme();
 	const themeVariables = useMemo(
 		() => vars(resolvedTheme === "dark" ? DARK_THEME_VARIABLES : {}),
 		[resolvedTheme],
 	);
 	const insets = useSafeAreaInsets();
-	const [page, setPage] = useState<Page>("home");
+	const [page, setPage] = useState<Page>(rootPage);
+	const [history, setHistory] = useState<Page[]>([]);
+	const navigate = (next: Page) => {
+		setHistory((current) => [...current, page]);
+		setPage(next);
+	};
+	const goBack = () => {
+		setPage(history.at(-1) ?? rootPage);
+		setHistory((current) => current.slice(0, -1));
+	};
 	const [activeTab, setActiveTab] = useState<PlanTab>("learningPlans");
 	const [planIndex, setPlanIndex] = useState(0);
 	const [homeworkIndex, setHomeworkIndex] = useState(0);
 	const [revealed, setRevealed] = useState(false);
-	const [linked, setLinked] = useState(true);
-	const [empty, setEmpty] = useState(false);
 	const plan = plans[planIndex];
 	const assignment = homework[homeworkIndex];
 	const openPlan = (index: number) => {
 		setPlanIndex(index);
 		setRevealed(false);
-		setPage("plan");
+		navigate("plan");
 	};
 	const openHelp = () => {
 		setRevealed(false);
-		setPage("help");
+		navigate("help");
 	};
 	const swipe = useMemo(
 		() =>
@@ -184,32 +280,53 @@ function ParentPrototype() {
 		[],
 	);
 	const title =
-		page === "home"
-			? "Mias Überblick"
-			: page === "plan"
-				? plan.subject
-				: page === "help"
-					? "Gemeinsam lernen"
-					: page === "homework"
-						? "Hausaufgabe"
-						: page === "sharing"
-							? "Elternzugang"
-							: "Einladung";
+		page === "plans"
+			? "Mias Pläne"
+			: page === "more"
+				? "Mehr"
+				: page === "profile"
+					? "Profil & Konto"
+					: page === "home"
+						? "Heute für Mia"
+						: page === "plan"
+							? plan.subject
+							: page === "help"
+								? "Gemeinsam lernen"
+								: page === "homework"
+									? "Hausaufgabe"
+									: page === "sharing"
+										? "Elternzugang"
+										: "Einladung";
+	if (signedOut)
+		return (
+			<View
+				className="flex-1 justify-center gap-6 bg-background px-6"
+				style={themeVariables}
+			>
+				<Heading>Du bist abgemeldet</Heading>
+				<Text>
+					Die Demo ist beendet. Es wurde kein echter Account abgemeldet.
+				</Text>
+				<Button
+					onPress={() => {
+						setSignedOut(false);
+						setPage(rootPage);
+						setHistory([]);
+					}}
+				>
+					<Text>Demo erneut öffnen</Text>
+				</Button>
+			</View>
+		);
 	return (
-		<View
+		<SafeAreaView
+			edges={{ bottom: true }}
 			className="flex-1 bg-background"
-			style={[
-				themeVariables,
-				{ paddingTop: insets.top + 16, paddingBottom: insets.bottom },
-			]}
+			style={[themeVariables, { flex: 1, paddingTop: insets.top + 16 }]}
 		>
 			<View className="mx-auto w-full max-w-xl gap-1 px-6 pb-6">
 				<View className="min-h-12 flex-row items-center gap-4">
-					{page !== "home" && (
-						<BackButton
-							onPress={() => setPage(page === "help" ? "plan" : "home")}
-						/>
-					)}
+					{page !== rootPage && <BackButton onPress={goBack} />}
 					<Text
 						accessibilityRole="header"
 						className="min-w-0 flex-1 font-semibold text-heading-2"
@@ -220,7 +337,7 @@ function ParentPrototype() {
 						<Pressable
 							accessibilityRole="button"
 							accessibilityLabel="Verbindung mit Mia ansehen"
-							onPress={() => setPage(linked ? "sharing" : "connect")}
+							onPress={() => navigate(linked ? "sharing" : "connect")}
 							className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
 						>
 							<Text className="font-semibold">M</Text>
@@ -230,7 +347,9 @@ function ParentPrototype() {
 				{page === "home" && (
 					<Meta>
 						{linked
-							? "2 Lernpläne · 2 offene Hausaufgaben"
+							? empty
+								? "Noch keine geteilten Inhalte"
+								: "2 Lernpläne · 2 offene Hausaufgaben"
 							: "Gemeinsam mit deinem Kind starten"}
 					</Meta>
 				)}
@@ -242,177 +361,238 @@ function ParentPrototype() {
 				contentContainerStyle={{ paddingBottom: 32 }}
 			>
 				<View className="mx-auto w-full max-w-xl gap-6 px-6">
-					{page === "home" && (
-						<>
-							{!linked ? (
-								<Block>
-									<Heading>Mia lädt dich ein</Heading>
-									<Text>
-										Verbinde deinen Elternzugang mit Mia, um ihre freigegebenen
-										Pläne zu sehen.
+					{page === "home" &&
+						(!linked ? (
+							<Block>
+								<Heading>Mia lädt dich ein</Heading>
+								<Text>
+									Verbinde deinen Elternzugang mit Mia, um ihre freigegebenen
+									Pläne zu sehen.
+								</Text>
+								<Button onPress={() => navigate("connect")}>
+									<Text>Einladung ansehen</Text>
+								</Button>
+							</Block>
+						) : empty ? (
+							<Block>
+								<Heading>Noch keine geteilten Pläne</Heading>
+								<Text>
+									Sobald Mia Lernpläne oder Hausaufgaben teilt, erscheinen sie
+									hier.
+								</Text>
+								<Button onPress={() => navigate("sharing")}>
+									<Text>Freigabe ansehen</Text>
+								</Button>
+							</Block>
+						) : (
+							<>
+								<TodayLearningCard
+									todayKey="2026-10-15"
+									item={nextStep}
+									plan={{
+										subject: "Mathematik",
+										currentSession: {
+											id: "prototype-session",
+											goal: "Hilf Mia mit einer kurzen gemeinsamen Übung.",
+											sessionPurpose: "learning",
+										},
+									}}
+									isLoading={false}
+									fallbackAction={EMPTY_DASHBOARD_PRIMARY_ACTION}
+									onOpenItem={() => {
+										setPlanIndex(0);
+										openHelp();
+									}}
+									onOpenFallback={() => openPlan(0)}
+									action={{
+										label: "So kannst du helfen",
+										hint: "Öffnet passende Hilfestellungen für Eltern.",
+										icon: ArrowRightStraight,
+									}}
+								/>
+								<View className="gap-3">
+									<Text className="font-semibold text-body-2">
+										Nächste Arbeiten
 									</Text>
-									<Button onPress={() => setPage("connect")}>
-										<Text>Einladung ansehen</Text>
-									</Button>
-								</Block>
-							) : empty ? (
-								<Block>
-									<Heading>Noch keine geteilten Pläne</Heading>
-									<Text>
-										Sobald Mia Lernpläne oder Hausaufgaben teilt, erscheinen sie
-										hier.
-									</Text>
-									<Button onPress={() => setPage("sharing")}>
-										<Text>Freigabe ansehen</Text>
-									</Button>
-								</Block>
-							) : (
-								<>
-									<TodayLearningCard
-										todayKey="2026-10-15"
-										item={nextStep}
-										plan={{
-											subject: "Mathematik",
-											currentSession: {
-												id: "prototype-session",
-												goal: "Hilf Mia mit einer kurzen gemeinsamen Übung.",
-												sessionPurpose: "learning",
-											},
-										}}
-										isLoading={false}
-										fallbackAction={EMPTY_DASHBOARD_PRIMARY_ACTION}
-										onOpenItem={() => {
-											setPlanIndex(0);
-											openHelp();
-										}}
-										onOpenFallback={() => openPlan(0)}
-										action={{
-											label: "So kannst du helfen",
-											hint: "Öffnet passende Hilfestellungen für Eltern.",
-											icon: ArrowRightStraight,
-										}}
-									/>
-									<View className="gap-3">
-										<Text className="font-semibold text-body-2">
-											Nächste Arbeiten
-										</Text>
-										{plans.map((item, index) => (
-											<Pressable
-												key={item.subject}
-												accessibilityRole="button"
-												accessibilityLabel={`${item.subject}, ${item.kind}, ${item.date}`}
-												onPress={() => openPlan(index)}
-												className="min-h-12 flex-row items-center gap-3"
-											>
-												<View className="h-11 w-11 items-center justify-center rounded-full bg-system-subtle">
-													<CalendarDays
-														size={20}
-														color={colors.primaryStrong}
-													/>
-												</View>
-												<View className="flex-1">
-													<Text className="font-semibold text-body-3">
-														{item.subject} · {item.kind}
-													</Text>
-													<Meta>
-														{item.date} · {item.countdown}
-													</Meta>
-												</View>
-												<ArrowUpRight size={20} color={colors.text} />
-											</Pressable>
-										))}
-									</View>
-									<View className="gap-6" {...swipe.panHandlers}>
-										<PlansTabSwitch
-											activeTab={activeTab}
-											onChange={setActiveTab}
+									{plans.map((item, index) => (
+										<Pressable
+											key={item.subject}
+											accessibilityRole="button"
+											accessibilityLabel={`${item.subject}, ${item.kind}, ${item.date}`}
+											onPress={() => openPlan(index)}
+											className="min-h-12 flex-row items-center gap-3"
+										>
+											<View className="h-11 w-11 items-center justify-center rounded-full bg-system-subtle">
+												<CalendarDays size={20} color={colors.primaryStrong} />
+											</View>
+											<View className="flex-1">
+												<Text className="font-semibold text-body-3">
+													{item.subject} · {item.kind}
+												</Text>
+												<Meta>
+													{item.date} · {item.countdown}
+												</Meta>
+											</View>
+											<ArrowUpRight size={20} color={colors.text} />
+										</Pressable>
+									))}
+								</View>
+								<View className="gap-3">
+									<Text className="font-semibold">Bis morgen abgeben</Text>
+									<SettingsCard>
+										<SettingsRow
+											icon={BookOpen}
+											label="Brüche kürzen"
+											description="Mathematik · Buch S. 42, Aufgaben 3 und 4"
+											onPress={() => {
+												setHomeworkIndex(0);
+												navigate("homework");
+											}}
 										/>
-										{activeTab === "learningPlans" ? (
-											<View className="gap-7">
-												{plans.map((item, index) => (
-													<LearningPlanCardVisual
-														key={item.subject}
-														accessibilityLabel={`${item.subject}: ${item.title}. Lernplan ansehen.`}
-														accessibilityHint="Zeigt Mias Lernplan und passende Unterstützung für Eltern."
-														onPress={() => openPlan(index)}
-														model={{
-															subject: item.subject,
-															status: {
-																label: index === 0 ? "Heute" : "Morgen",
-																background: colors.systemSubtle,
-																foreground: colors.primary,
-															},
-															examDateLabel: `${item.kind} · ${item.date}`,
-															currentTitle: item.session,
-															state: {
-																kind: "ready",
-																durationMinutes: index === 0 ? 20 : 15,
-																progress: index === 0 ? 40 : 20,
-																remainingDays: index === 0 ? 5 : 8,
-																rollingWindowLabel:
-																	"Nächster Schritt + Vorschau",
-															},
-														}}
-													/>
-												))}
-											</View>
-										) : (
-											<View className="gap-7">
-												{homework.map((item, index) => (
-													<CompactNotchedActionCard
-														key={item.subject}
-														pressType="card"
-														onPress={() => {
-															setHomeworkIndex(index);
-															setPage("homework");
-														}}
-														cardAccessibilityLabel={`${item.subject}: ${item.title}. ${item.done ? "Erledigt" : item.due}`}
-														cardAccessibilityHint="Öffnet die Hausaufgabe mit Hinweisen für Eltern."
-														actionIcon={
-															<ArrowUpRight
-																size={24}
-																color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-																strokeWidth={1.9}
-															/>
-														}
-													>
-														<View className="gap-2">
-															<View className="flex-row flex-wrap items-start justify-between gap-3">
-																<Text className="font-semibold text-body-1">
-																	{item.subject}
-																</Text>
-																<LearningPlanStatusBadge
-																	fixedTextScale={false}
-																	status={{
-																		label: item.done ? "Erledigt" : "Offen",
-																		background: item.done
-																			? colors.successSubtle
-																			: colors.hausaufgabeSubtle,
-																		foreground: colors.text,
-																	}}
-																/>
-															</View>
-															<View className="flex-row items-center gap-1">
-																<Clock3
-																	size={14}
-																	color={colors.secondaryText}
-																/>
-																<Meta>{item.due}</Meta>
-															</View>
-															<Text className="font-semibold text-body-4">
-																{item.title} · {item.task}
+									</SettingsCard>
+									<Button
+										variant="neutral"
+										onPress={() =>
+											router.navigate("/parent-prototype/learning-plans")
+										}
+									>
+										<Text>Alle Pläne ansehen</Text>
+									</Button>
+								</View>
+								<Meta>
+									Von Mia geteilt. Der Status zeigt ihre Angaben in Dayova.
+								</Meta>
+							</>
+						))}
+					{page === "plans" &&
+						(!linked ? (
+							<Block>
+								<Heading>Noch nicht verbunden</Heading>
+								<Text>
+									Mit Mias Einladung kannst du ihre freigegebenen Pläne sehen.
+								</Text>
+								<Button onPress={() => navigate("connect")}>
+									<Text>Einladung ansehen</Text>
+								</Button>
+							</Block>
+						) : empty ? (
+							<Block>
+								<Heading>Noch keine geteilten Pläne</Heading>
+								<Text>Sobald Mia etwas teilt, erscheint es hier.</Text>
+							</Block>
+						) : (
+							<>
+								<View className="gap-6" {...swipe.panHandlers}>
+									<PlansTabSwitch
+										activeTab={activeTab}
+										onChange={setActiveTab}
+									/>
+									{activeTab === "learningPlans" ? (
+										<View className="gap-7">
+											{plans.map((item, index) => (
+												<LearningPlanCardVisual
+													key={item.subject}
+													accessibilityLabel={`${item.subject}: ${item.title}. Lernplan ansehen.`}
+													accessibilityHint="Zeigt Mias Lernplan und passende Unterstützung für Eltern."
+													onPress={() => openPlan(index)}
+													model={{
+														subject: item.subject,
+														status: {
+															label: index === 0 ? "Heute" : "Morgen",
+															background: colors.systemSubtle,
+															foreground: colors.primary,
+														},
+														examDateLabel: `${item.kind} · ${item.date}`,
+														currentTitle: item.session,
+														state: {
+															kind: "ready",
+															durationMinutes: index === 0 ? 20 : 15,
+															progress: index === 0 ? 40 : 20,
+															remainingDays: index === 0 ? 5 : 8,
+															rollingWindowLabel: "Nächster Schritt + Vorschau",
+														},
+													}}
+												/>
+											))}
+										</View>
+									) : (
+										<View className="gap-7">
+											{homework.map((item, index) => (
+												<CompactNotchedActionCard
+													key={item.subject}
+													pressType="card"
+													onPress={() => {
+														setHomeworkIndex(index);
+														navigate("homework");
+													}}
+													cardAccessibilityLabel={`${item.subject}: ${item.title}. ${item.done ? "Erledigt" : item.due}`}
+													cardAccessibilityHint="Öffnet die Hausaufgabe mit Hinweisen für Eltern."
+													actionIcon={
+														<ArrowUpRight
+															size={24}
+															color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+															strokeWidth={1.9}
+														/>
+													}
+												>
+													<View className="gap-2">
+														<View className="flex-row flex-wrap items-start justify-between gap-3">
+															<Text className="font-semibold text-body-1">
+																{item.subject}
 															</Text>
+															<LearningPlanStatusBadge
+																fixedTextScale={false}
+																status={{
+																	label: item.done ? "Erledigt" : "Offen",
+																	background: item.done
+																		? colors.successSubtle
+																		: colors.hausaufgabeSubtle,
+																	foreground: colors.text,
+																}}
+															/>
 														</View>
-													</CompactNotchedActionCard>
-												))}
-											</View>
-										)}
-									</View>
-									<Meta>
-										Von Mia geteilt. Der Status zeigt ihre Angaben in Dayova.
-									</Meta>
-								</>
-							)}
+														<View className="flex-row items-center gap-1">
+															<Clock3 size={14} color={colors.secondaryText} />
+															<Meta>{item.due}</Meta>
+														</View>
+														<Text className="font-semibold text-body-4">
+															{item.title} · {item.task}
+														</Text>
+													</View>
+												</CompactNotchedActionCard>
+											))}
+										</View>
+									)}
+								</View>
+								<Meta>Von Mia geteilt · Beispieldaten</Meta>
+							</>
+						))}
+					{page === "more" && (
+						<>
+							<SettingsCard>
+								<SettingsRow
+									icon={UserRound}
+									label="Anna"
+									description="Profil & Konto · Elternzugang"
+									onPress={() => navigate("profile")}
+								/>
+							</SettingsCard>
+							<SettingsSection title="Familie">
+								<SettingsRow
+									icon={UserRound}
+									label={linked ? "Mit Mia verbunden" : "Kind verbinden"}
+									description={
+										linked
+											? "Verbindung & Freigaben"
+											: "Einladung deines Kindes öffnen"
+									}
+									onPress={() => navigate(linked ? "sharing" : "connect")}
+								/>
+							</SettingsSection>
+							<Meta>
+								Du begleitest Mias Lernen. Ihre Pläne und Aufgaben verwaltet sie
+								selbst.
+							</Meta>
 							<View className="gap-2 border-border border-t pt-4">
 								<Meta>Prototyp · Beispieldaten vom 15.10.2026</Meta>
 								<View className="flex-row flex-wrap gap-4">
@@ -442,6 +622,34 @@ function ParentPrototype() {
 							</View>
 						</>
 					)}
+					{page === "profile" && (
+						<>
+							<SettingsCard>
+								<SettingsRow
+									icon={UserRound}
+									label="Anna"
+									description="Eltern-Account · Demo"
+									showDisclosure={false}
+								/>
+							</SettingsCard>
+							<Block>
+								<Text>
+									Du bist mit einem eigenen Elternzugang angemeldet. Deine
+									Verbindung zu Mia verwaltest du unter „Mehr“.
+								</Text>
+								<Meta>Im Prototyp ist dieser Account simuliert.</Meta>
+							</Block>
+							<SettingsCard>
+								<SettingsRow
+									icon={Logout}
+									label="Abmelden"
+									description="Nur die Demo verlassen"
+									onPress={() => setSignedOut(true)}
+								/>
+							</SettingsCard>
+						</>
+					)}
+
 					{page === "plan" && (
 						<>
 							<View className="gap-2">
@@ -626,7 +834,7 @@ function ParentPrototype() {
 									und einzelne Fehler bleiben in ihrer Lernansicht.
 								</Text>
 							</Block>
-							<Button onPress={() => setPage("connect")}>
+							<Button onPress={() => navigate("connect")}>
 								<Text>Einladungsablauf ansehen</Text>
 							</Button>
 							<Meta>Freigabe-Konzept · im Prototyp simuliert</Meta>
@@ -650,7 +858,8 @@ function ParentPrototype() {
 								onPress={() => {
 									setLinked(true);
 									setEmpty(false);
-									setPage("home");
+									setHistory([]);
+									setPage(rootPage);
 								}}
 							>
 								<Text>Elternansicht ausprobieren</Text>
@@ -659,6 +868,6 @@ function ParentPrototype() {
 					)}
 				</View>
 			</ScrollView>
-		</View>
+		</SafeAreaView>
 	);
 }

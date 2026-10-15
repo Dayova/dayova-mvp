@@ -12,7 +12,12 @@ xcrun simctl openurl <device-id> 'dayova://expo-development-client/?url=http%3A%
 
 ## Gestaltung
 
-Nach Nutzerfeedback gibt es eine einzige Übersicht, zusammengesetzt aus bestehenden App-Komponenten:
+Die Elternansicht übernimmt drei Bereiche der bestehenden App: **Heute**, **Pläne** und **Mehr**. Heute zeigt den nächsten Lernschritt, Arbeiten und fällige Hausaufgaben. Pläne enthält die vollständigen Listen. Mehr bündelt Profil, Familienverbindung und Demo-Zustände.
+
+Wiederverwendete App-Komponenten:
+
+- `DayovaTabs`: originale native Tab-Leiste, aus dem App-Layout extrahiert; nur das Eltern-Label lautet „Mehr“.
+- `SettingsCard`, `SettingsSection`, `SettingsRow`: vorhandene Einstellungen für Profil und Verbindung.
 
 - `TodayLearningCard`: originale Verlaufskarte, Fachillustration, Badges und kleine runde Aktion; Elternaktion „So kannst du helfen“ über einen optionalen Präsentationsparameter.
 - `PlansTabSwitch`: unverändert aus dem Pläne-Screen extrahierter animierter Umschalter, jetzt von beiden Screens verwendet.
@@ -20,7 +25,7 @@ Nach Nutzerfeedback gibt es eine einzige Übersicht, zusammengesetzt aus bestehe
 - `CompactNotchedActionCard`: originale Form für Hausaufgaben, mit denselben Metadaten-/Textmustern.
 - Shared `Surface`, `Button`, `BackButton`, `Text` und Icons für Details. Header und Abstände folgen Heute und Deine Pläne.
 
-Der Prototyp ergänzt horizontales Wischen im Plänebereich; die Tabs bleiben direkt antippbar. Arbeiten und Tests stehen als kompakte Zeilen zwischen Heute-Karte und Plänen. Elternhilfen sind von der Heute-Karte und jedem Lernplan aus erreichbar. Die frühere Variantenleiste wurde entfernt. Leerzustand und fehlende Verbindung bleiben als untergeordnete Demo-Aktionen am Seitenende verfügbar.
+Der Prototyp ergänzt horizontales Wischen im Plänebereich; die Tabs bleiben direkt antippbar. Arbeiten und Tests stehen als kompakte Zeilen auf Heute. Elternhilfen sind von der Heute-Karte und jedem Lernplan aus erreichbar. Die frühere Variantenleiste wurde entfernt. Leerzustand und fehlende Verbindung bleiben als untergeordnete Demo-Aktionen unter Mehr verfügbar.
 
 ## Umfang
 
@@ -32,4 +37,4 @@ Kontext: [Dayova – Future Feature Ideas](https://app.notion.com/p/e555729f1158
 
 ## Überprüfung
 
-TypeScript, Biome und ESLint für geänderte Dateien; vorhandene UI-Tests für Heute- und Lernplankarte. Visuelle iOS-Kontrolle der Übersicht, beider Kartenlisten, des Tabwechsels und der Eltern-Detailansichten. Android und VoiceOver sind nicht separat geprüft. Die frühere Version wurde zusätzlich mit dunklem Design und großer Schrift geprüft; diese vollständige Prüfung ist nach dem Redesign noch offen.
+TypeScript, Biome und ESLint für geänderte Dateien; vorhandene UI-Tests für Heute- und Lernplankarte (19 Tests) sowie native Navigation (5 Tests). Visuelle iOS-Kontrolle der drei nativen Tabs, beider Kartenlisten, Hausaufgabendetails, Profil, Familienverbindung und simuliertem Abmelden/Wiedereinstieg. Der antippbare Listenwechsel funktioniert; die Wischgeste konnte per Simulator-Automation nicht zuverlässig bestätigt werden. Android und VoiceOver sind nicht separat geprüft. Die frühere Version wurde zusätzlich mit dunklem Design und großer Schrift geprüft; diese vollständige Prüfung ist nach dem Redesign noch offen.
