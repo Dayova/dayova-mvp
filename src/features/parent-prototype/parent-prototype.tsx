@@ -1,16 +1,18 @@
 /** Throwaway parent concept, composed from the actual Today and Plans UI.
  * Job: see the child's upcoming work and open contextual parent support.
- * Hierarchy: Today learning card → work deadlines → original Plans switch/cards.
+ * Hierarchy: Today learning card → shared calendar/agenda; original Plans and full settings.
  * Primary action: So kannst du helfen. No competing layout variants.
  * All data, sharing and AI guidance remain local fixtures.
  */
-import { router, Stack } from "expo-router";
+import { Stack } from "expo-router";
+import { ThemeProvider } from "expo-router/react-navigation";
 import { vars } from "nativewind";
 import {
 	createContext,
 	type ReactNode,
 	useContext,
 	useMemo,
+	useRef,
 	useState,
 } from "react";
 import { PanResponder, Pressable, ScrollView, View } from "react-native";
@@ -25,17 +27,14 @@ import { BackButton, Button } from "~/components/ui/button";
 import {
 	ArrowRightStraight,
 	ArrowUpRight,
-	BookOpen,
-	CalendarDays,
 	Check,
 	Clock3,
-	Logout,
 	Sparkles,
-	UserRound,
 } from "~/components/ui/icon";
 import { CompactNotchedActionCard } from "~/components/ui/notched-action-card";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
+import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import type { DashboardAgendaItem } from "~/features/dashboard/dashboard-agenda";
 import { EMPTY_DASHBOARD_PRIMARY_ACTION } from "~/features/dashboard/dashboard-empty-state";
 import { TodayLearningCard } from "~/features/dashboard/today-learning-card";
@@ -45,20 +44,16 @@ import {
 	PlansTabSwitch,
 	type PlanTab,
 } from "~/features/learning-plans/plans-tab-switch";
-import {
-	SettingsCard,
-	SettingsRow,
-	SettingsSection,
-} from "~/features/settings/settings-list";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
-import { DayovaThemeProvider, useDayovaTheme } from "~/lib/theme";
+import { DayovaThemeProvider, NAV_THEMES, useDayovaTheme } from "~/lib/theme";
 import { DARK_THEME_VARIABLES } from "~/lib/theme-variables";
+import { ParentCalendar } from "./parent-calendar";
+import { ParentSettings } from "./parent-settings";
 
 type RootPage = "home" | "plans" | "more";
 type Page =
 	| "plans"
 	| "more"
-	| "profile"
 	| "home"
 	| "plan"
 	| "help"
@@ -169,6 +164,12 @@ const DemoContext = createContext<{
 	signedOut: boolean;
 	setSignedOut: (value: boolean) => void;
 } | null>(null);
+function PrototypeNavigationTheme({ children }: { children: ReactNode }) {
+	const { resolvedTheme } = useDayovaTheme();
+	return (
+		<ThemeProvider value={NAV_THEMES[resolvedTheme]}>{children}</ThemeProvider>
+	);
+}
 export function ParentPrototypeRoot() {
 	const [linked, setLinked] = useState(true);
 	const [empty, setEmpty] = useState(false);
@@ -177,55 +178,57 @@ export function ParentPrototypeRoot() {
 		<GestureHandlerRootView style={{ flex: 1 }}>
 			<SafeAreaProvider>
 				<DayovaThemeProvider>
-					<DemoContext.Provider
-						value={{
-							linked,
-							setLinked,
-							empty,
-							setEmpty,
-							signedOut,
-							setSignedOut,
-						}}
-					>
-						<Stack
-							initialRouteName="parent-prototype"
-							screenOptions={{ headerShown: false }}
+					<PrototypeNavigationTheme>
+						<DemoContext.Provider
+							value={{
+								linked,
+								setLinked,
+								empty,
+								setEmpty,
+								signedOut,
+								setSignedOut,
+							}}
 						>
-							<Stack.Screen name="parent-prototype" />
-							<Stack.Protected guard={false}>
-								{[
-									"subscription-success",
-									"(app)",
-									"subscription",
-									"entry/[id]",
-									"entry/success",
-									"(creation)",
-									"change-password",
-									"password-reset-success",
-									"trial",
-									"session-tasks/reset-password",
-									"paywall",
-									"learning-plans/[planId]/index",
-									"learning-plans/[planId]/review",
-									"learning-plans/[planId]/success",
-									"learning-plans/[planId]/preparation",
-									"learning-plans/[planId]/sessions/[sessionId]/index",
-									"learning-plans/[planId]/sessions/[sessionId]/edit",
-									"notifications",
-									"personal-subjects",
-									"profile",
-									"analyse",
-									"(auth)",
-									"notification-settings",
-									"timetable",
-									"learning-times/index",
-									"learning-times/edit",
-								].map((name) => (
-									<Stack.Screen key={name} name={name} />
-								))}
-							</Stack.Protected>
-						</Stack>
-					</DemoContext.Provider>
+							<Stack
+								initialRouteName="parent-prototype"
+								screenOptions={{ headerShown: false }}
+							>
+								<Stack.Screen name="parent-prototype" />
+								<Stack.Protected guard={false}>
+									{[
+										"subscription-success",
+										"(app)",
+										"subscription",
+										"entry/[id]",
+										"entry/success",
+										"(creation)",
+										"change-password",
+										"password-reset-success",
+										"trial",
+										"session-tasks/reset-password",
+										"paywall",
+										"learning-plans/[planId]/index",
+										"learning-plans/[planId]/review",
+										"learning-plans/[planId]/success",
+										"learning-plans/[planId]/preparation",
+										"learning-plans/[planId]/sessions/[sessionId]/index",
+										"learning-plans/[planId]/sessions/[sessionId]/edit",
+										"notifications",
+										"personal-subjects",
+										"profile",
+										"analyse",
+										"(auth)",
+										"notification-settings",
+										"timetable",
+										"learning-times/index",
+										"learning-times/edit",
+									].map((name) => (
+										<Stack.Screen key={name} name={name} />
+									))}
+								</Stack.Protected>
+							</Stack>
+						</DemoContext.Provider>
+					</PrototypeNavigationTheme>
 				</DayovaThemeProvider>
 			</SafeAreaProvider>
 		</GestureHandlerRootView>
@@ -242,6 +245,7 @@ export function ParentPrototype({ rootPage }: { rootPage: RootPage }) {
 		[resolvedTheme],
 	);
 	const insets = useSafeAreaInsets();
+	const scroll = useRef<ScrollView>(null);
 	const [page, setPage] = useState<Page>(rootPage);
 	const [history, setHistory] = useState<Page[]>([]);
 	const navigate = (next: Page) => {
@@ -283,20 +287,18 @@ export function ParentPrototype({ rootPage }: { rootPage: RootPage }) {
 		page === "plans"
 			? "Mias Pläne"
 			: page === "more"
-				? "Mehr"
-				: page === "profile"
-					? "Profil & Konto"
-					: page === "home"
-						? "Heute für Mia"
-						: page === "plan"
-							? plan.subject
-							: page === "help"
-								? "Gemeinsam lernen"
-								: page === "homework"
-									? "Hausaufgabe"
-									: page === "sharing"
-										? "Elternzugang"
-										: "Einladung";
+				? "Einstellungen"
+				: page === "home"
+					? "Hallo Anna"
+					: page === "plan"
+						? plan.subject
+						: page === "help"
+							? "Gemeinsam lernen"
+							: page === "homework"
+								? "Hausaufgabe"
+								: page === "sharing"
+									? "Elternzugang"
+									: "Einladung";
 	if (signedOut)
 		return (
 			<View
@@ -322,39 +324,50 @@ export function ParentPrototype({ rootPage }: { rootPage: RootPage }) {
 		<SafeAreaView
 			edges={{ bottom: true }}
 			className="flex-1 bg-background"
-			style={[themeVariables, { flex: 1, paddingTop: insets.top + 16 }]}
+			style={[
+				themeVariables,
+				{
+					flex: 1,
+					backgroundColor: colors.background,
+					paddingTop: insets.top + 16,
+				},
+			]}
 		>
-			<View className="mx-auto w-full max-w-xl gap-1 px-6 pb-6">
-				<View className="min-h-12 flex-row items-center gap-4">
-					{page !== rootPage && <BackButton onPress={goBack} />}
-					<Text
-						accessibilityRole="header"
-						className="min-w-0 flex-1 font-semibold text-heading-2"
-					>
-						{title}
-					</Text>
-					{page === "home" && (
-						<Pressable
-							accessibilityRole="button"
-							accessibilityLabel="Verbindung mit Mia ansehen"
-							onPress={() => navigate(linked ? "sharing" : "connect")}
-							className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
+			<ThemedStatusBar />
+			{page !== "more" && (
+				<View className="mx-auto w-full max-w-xl gap-1 px-6 pb-6">
+					<View className="min-h-12 flex-row items-center gap-4">
+						{page !== rootPage && <BackButton onPress={goBack} />}
+						<Text
+							accessibilityRole="header"
+							className="min-w-0 flex-1 font-semibold text-heading-2"
 						>
-							<Text className="font-semibold">M</Text>
-						</Pressable>
+							{title}
+						</Text>
+						{page === "home" && (
+							<Pressable
+								accessibilityRole="button"
+								accessibilityLabel="Verbindung mit Mia ansehen"
+								onPress={() => navigate(linked ? "sharing" : "connect")}
+								className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
+							>
+								<Text className="font-semibold">M</Text>
+							</Pressable>
+						)}
+					</View>
+					{page === "home" && (
+						<Meta>
+							{linked
+								? empty
+									? "Noch keine geteilten Inhalte"
+									: "Mias Lernen im Überblick"
+								: "Gemeinsam mit deinem Kind starten"}
+						</Meta>
 					)}
 				</View>
-				{page === "home" && (
-					<Meta>
-						{linked
-							? empty
-								? "Noch keine geteilten Inhalte"
-								: "2 Lernpläne · 2 offene Hausaufgaben"
-							: "Gemeinsam mit deinem Kind starten"}
-					</Meta>
-				)}
-			</View>
+			)}
 			<ScrollView
+				ref={scroll}
 				key={page}
 				contentInsetAdjustmentBehavior="never"
 				showsVerticalScrollIndicator={false}
@@ -410,55 +423,13 @@ export function ParentPrototype({ rootPage }: { rootPage: RootPage }) {
 										icon: ArrowRightStraight,
 									}}
 								/>
-								<View className="gap-3">
-									<Text className="font-semibold text-body-2">
-										Nächste Arbeiten
-									</Text>
-									{plans.map((item, index) => (
-										<Pressable
-											key={item.subject}
-											accessibilityRole="button"
-											accessibilityLabel={`${item.subject}, ${item.kind}, ${item.date}`}
-											onPress={() => openPlan(index)}
-											className="min-h-12 flex-row items-center gap-3"
-										>
-											<View className="h-11 w-11 items-center justify-center rounded-full bg-system-subtle">
-												<CalendarDays size={20} color={colors.primaryStrong} />
-											</View>
-											<View className="flex-1">
-												<Text className="font-semibold text-body-3">
-													{item.subject} · {item.kind}
-												</Text>
-												<Meta>
-													{item.date} · {item.countdown}
-												</Meta>
-											</View>
-											<ArrowUpRight size={20} color={colors.text} />
-										</Pressable>
-									))}
-								</View>
-								<View className="gap-3">
-									<Text className="font-semibold">Bis morgen abgeben</Text>
-									<SettingsCard>
-										<SettingsRow
-											icon={BookOpen}
-											label="Brüche kürzen"
-											description="Mathematik · Buch S. 42, Aufgaben 3 und 4"
-											onPress={() => {
-												setHomeworkIndex(0);
-												navigate("homework");
-											}}
-										/>
-									</SettingsCard>
-									<Button
-										variant="neutral"
-										onPress={() =>
-											router.navigate("/parent-prototype/learning-plans")
-										}
-									>
-										<Text>Alle Pläne ansehen</Text>
-									</Button>
-								</View>
+								<ParentCalendar
+									onPlan={openPlan}
+									onHomework={(index) => {
+										setHomeworkIndex(index);
+										navigate("homework");
+									}}
+								/>
 								<Meta>
 									Von Mia geteilt. Der Status zeigt ihre Angaben in Dayova.
 								</Meta>
@@ -569,30 +540,14 @@ export function ParentPrototype({ rootPage }: { rootPage: RootPage }) {
 						))}
 					{page === "more" && (
 						<>
-							<SettingsCard>
-								<SettingsRow
-									icon={UserRound}
-									label="Anna"
-									description="Profil & Konto · Elternzugang"
-									onPress={() => navigate("profile")}
-								/>
-							</SettingsCard>
-							<SettingsSection title="Familie">
-								<SettingsRow
-									icon={UserRound}
-									label={linked ? "Mit Mia verbunden" : "Kind verbinden"}
-									description={
-										linked
-											? "Verbindung & Freigaben"
-											: "Einladung deines Kindes öffnen"
-									}
-									onPress={() => navigate(linked ? "sharing" : "connect")}
-								/>
-							</SettingsSection>
-							<Meta>
-								Du begleitest Mias Lernen. Ihre Pläne und Aufgaben verwaltet sie
-								selbst.
-							</Meta>
+							<ParentSettings
+								onNavigate={() =>
+									scroll.current?.scrollTo({ y: 0, animated: false })
+								}
+								linked={linked}
+								onConnection={() => navigate(linked ? "sharing" : "connect")}
+								onSignOut={() => setSignedOut(true)}
+							/>
 							<View className="gap-2 border-border border-t pt-4">
 								<Meta>Prototyp · Beispieldaten vom 15.10.2026</Meta>
 								<View className="flex-row flex-wrap gap-4">
@@ -622,34 +577,6 @@ export function ParentPrototype({ rootPage }: { rootPage: RootPage }) {
 							</View>
 						</>
 					)}
-					{page === "profile" && (
-						<>
-							<SettingsCard>
-								<SettingsRow
-									icon={UserRound}
-									label="Anna"
-									description="Eltern-Account · Demo"
-									showDisclosure={false}
-								/>
-							</SettingsCard>
-							<Block>
-								<Text>
-									Du bist mit einem eigenen Elternzugang angemeldet. Deine
-									Verbindung zu Mia verwaltest du unter „Mehr“.
-								</Text>
-								<Meta>Im Prototyp ist dieser Account simuliert.</Meta>
-							</Block>
-							<SettingsCard>
-								<SettingsRow
-									icon={Logout}
-									label="Abmelden"
-									description="Nur die Demo verlassen"
-									onPress={() => setSignedOut(true)}
-								/>
-							</SettingsCard>
-						</>
-					)}
-
 					{page === "plan" && (
 						<>
 							<View className="gap-2">
