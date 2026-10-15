@@ -22,7 +22,13 @@ type AiConsentContextValue = {
 	statusLabel: "Aktiv" | "Nicht aktiv" | "Wird geladen";
 	hasCurrentConsent: boolean;
 	requestAiConsent: () => Promise<boolean>;
+	requestAiConsentDisclosure: () => Promise<boolean>;
 	openAiConsentSettings: () => void;
+};
+
+type PendingConsentRequest = {
+	forceDisclosure: boolean;
+	resolve: (allowed: boolean) => void;
 };
 
 const AiConsentContext = createContext<AiConsentContextValue | null>(null);
@@ -51,7 +57,7 @@ function AiConsentProvider({ children }: { children: ReactNode }) {
 	const [mode, setMode] = useState<AiConsentSheetMode>("required");
 	const [isBusy, setIsBusy] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
-	const pendingResolversRef = useRef<Array<(allowed: boolean) => void>>([]);
+	const pendingRequestsRef = useRef<PendingConsentRequest[]>([]);
 	const stateRef = useRef({
 		canQuery,
 		isLoaded: !canQuery || serverSnapshot !== undefined,
@@ -66,8 +72,8 @@ function AiConsentProvider({ children }: { children: ReactNode }) {
 	}, [canQuery, localSnapshot, serverSnapshot]);
 
 	const resolvePending = useCallback((allowed: boolean) => {
-		const resolvers = pendingResolversRef.current.splice(0);
-		for (const resolve of resolvers) resolve(allowed);
+		const requests = pendingRequestsRef.current.splice(0);
+		for (const request of requests) request.resolve(allowed);
 	}, []);
 
 	const showRequiredSheet = useCallback(() => {
@@ -79,14 +85,17 @@ function AiConsentProvider({ children }: { children: ReactNode }) {
 	useEffect(() => {
 		void canQuery;
 		void serverSnapshot;
-		if (pendingResolversRef.current.length === 0) return;
+		if (pendingRequestsRef.current.length === 0) return;
 		const state = stateRef.current;
 		if (!state.canQuery) {
 			resolvePending(false);
 			return;
 		}
 		if (!state.isLoaded) return;
-		if (state.snapshot?.hasCurrentConsent) {
+		const forceDisclosure = pendingRequestsRef.current.some(
+			(request) => request.forceDisclosure,
+		);
+		if (!forceDisclosure && state.snapshot?.hasCurrentConsent) {
 			resolvePending(true);
 			return;
 		}
@@ -95,22 +104,32 @@ function AiConsentProvider({ children }: { children: ReactNode }) {
 
 	useEffect(
 		() => () => {
-			const resolvers = pendingResolversRef.current.splice(0);
-			for (const resolve of resolvers) resolve(false);
+			const requests = pendingRequestsRef.current.splice(0);
+			for (const request of requests) request.resolve(false);
 		},
 		[],
+	);
+
+	const enqueueConsentRequest = useCallback(
+		(forceDisclosure: boolean) =>
+			new Promise<boolean>((resolve) => {
+				pendingRequestsRef.current.push({ forceDisclosure, resolve });
+				if (stateRef.current.isLoaded) showRequiredSheet();
+			}),
+		[showRequiredSheet],
 	);
 
 	const requestAiConsent = useCallback(() => {
 		const state = stateRef.current;
 		if (!state.canQuery) return Promise.resolve(false);
 		if (state.snapshot?.hasCurrentConsent) return Promise.resolve(true);
+		return enqueueConsentRequest(false);
+	}, [enqueueConsentRequest]);
 
-		return new Promise<boolean>((resolve) => {
-			pendingResolversRef.current.push(resolve);
-			if (state.isLoaded) showRequiredSheet();
-		});
-	}, [showRequiredSheet]);
+	const requestAiConsentDisclosure = useCallback(() => {
+		if (!stateRef.current.canQuery) return Promise.resolve(false);
+		return enqueueConsentRequest(true);
+	}, [enqueueConsentRequest]);
 
 	const close = useCallback(() => {
 		if (mode === "required" || isBusy) return;
@@ -204,12 +223,14 @@ function AiConsentProvider({ children }: { children: ReactNode }) {
 						: "Nicht aktiv",
 			hasCurrentConsent: snapshot?.hasCurrentConsent ?? false,
 			requestAiConsent,
+			requestAiConsentDisclosure,
 			openAiConsentSettings,
 		}),
 		[
 			canQuery,
 			openAiConsentSettings,
 			requestAiConsent,
+			requestAiConsentDisclosure,
 			serverSnapshot,
 			snapshot?.hasCurrentConsent,
 		],
@@ -221,7 +242,9 @@ function AiConsentProvider({ children }: { children: ReactNode }) {
 			<AiConsentSheet
 				visible={visible}
 				mode={mode}
-				hasCurrentConsent={snapshot?.hasCurrentConsent ?? false}
+				hasCurrentConsent={
+					mode === "manage" && (snapshot?.hasCurrentConsent ?? false)
+				}
 				isBusy={isBusy}
 				errorMessage={errorMessage}
 				onAccept={handleAccept}
