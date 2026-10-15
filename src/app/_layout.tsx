@@ -27,6 +27,7 @@ import { AccessProvider } from "~/context/AccessContext";
 import { AiConsentProvider } from "~/context/AiConsentContext";
 import { AuthProvider } from "~/context/AuthContext";
 import { OnboardingProvider } from "~/context/OnboardingContext";
+import { ParentPrototypeRoot } from "~/features/parent-prototype/parent-prototype";
 import {
 	isPostHogConfigured,
 	postHogApiKey,
@@ -130,6 +131,9 @@ function MissingConfigurationScreen() {
 }
 
 export default function RootLayout() {
+	if (__DEV__ && process.env.EXPO_PUBLIC_PARENT_PROTOTYPE === "1") {
+		return <ParentPrototypeRoot />;
+	}
 	if (missingPublicRuntimeConfig.length > 0 || !convex) {
 		const missingConfigKeys =
 			missingPublicRuntimeConfig.length > 0
