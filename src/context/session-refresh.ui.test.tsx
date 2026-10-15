@@ -333,4 +333,24 @@ describe("session refresh across the app", () => {
 		await screen.rerender(<App />);
 		expect(screen.getByTestId("auth-bootstrap-mask")).toBeOnTheScreen();
 	});
+
+	test("explains a stalled backend login and clears the message after recovery", async () => {
+		jest.useFakeTimers();
+		mockAuthenticated = false;
+		const screen = await render(<App />);
+		expect(screen.getByTestId("auth-bootstrap-mask")).toBeOnTheScreen();
+		expect(screen.queryByText(/Verbindung/)).toBeNull();
+
+		await act(async () => jest.advanceTimersByTime(10_000));
+		expect(screen.getByText(/Verbindung/)).toBeOnTheScreen();
+		expect(
+			screen.getByTestId("auth-route-content", { includeHiddenElements: true })
+				.props.className,
+		).toContain("opacity-0");
+
+		mockAuthenticated = true;
+		await screen.rerender(<App />);
+		await waitFor(() => expectVisible(screen));
+		expect(screen.queryByText(/Verbindung/)).toBeNull();
+	});
 });
