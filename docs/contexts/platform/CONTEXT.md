@@ -30,6 +30,11 @@ TypeScript, and tests are separate sequential steps. A merge
 therefore checks the resulting `main` commit again under the same visible job
 name instead of skipping a PR-only job and repeating its commands elsewhere.
 
+Pull-request triggers cover every target branch, including stack parents. Do not
+restrict them to `main`: doing so leaves new commits in dependent PRs without CI
+or a current OTA compatibility report. The source and contributor trust gates
+still apply, and deployment/publication remain limited to pushes to `main`.
+
 Pull request checks require the author's GitHub association to be `OWNER`,
 `MEMBER`, or `COLLABORATOR`. Manual runs validate only. Trusted same-repository
 PRs also run production fingerprinting and OTA compatibility checks; Convex

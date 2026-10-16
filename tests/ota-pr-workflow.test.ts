@@ -1,8 +1,8 @@
 // @vitest-environment node
 import { spawnSync } from "node:child_process";
 import {
-	mkdtempSync,
 	mkdirSync,
+	mkdtempSync,
 	readFileSync,
 	rmSync,
 	writeFileSync,
@@ -149,6 +149,12 @@ const event = (eventName: string, association = "MEMBER", fork = false) => ({
 });
 
 describe("repository quality gates", () => {
+	it("starts CI for pull requests targeting stack parents as well as main", () => {
+		expect(workflow.on.pull_request.branches).toBeUndefined();
+		expect(workflow.on.pull_request["branches-ignore"]).toBeUndefined();
+		expect(workflow.on.pull_request.types).toContain("synchronize");
+	});
+
 	it("keeps every check in the shared CI job", () => {
 		const commands = workflow.jobs.checks.steps
 			.map((step: { run?: string }) => step.run)
