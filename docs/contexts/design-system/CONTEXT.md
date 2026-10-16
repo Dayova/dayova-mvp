@@ -33,8 +33,10 @@ unless the team explicitly supersedes this temporary model.
 `SearchField` in `src/components/ui/search-field.tsx` composes the existing
 `FieldControl` and `Input` with a decorative Hugeicons search glyph. It retains
 native input props, system text scaling and a named accessibility label. In
-exam-topic setup, suggestions use open action rows above a separate editable
-textarea; the search does not replace the scope with chips. See the
+exam-topic setup, search results use reversible `SelectionControl` checkboxes.
+Selected titles remain visible as removable, wrapping chips with named remove
+actions and minimum 44pt targets. A separate optional textarea collects additional
+topics and conditions; selections never change its contents. See the
 [topic-input contract](../product/adr/inline-topic-search-with-free-scope.md).
 
 All app switches must use `Switch` from `src/components/ui/switch`. Do not

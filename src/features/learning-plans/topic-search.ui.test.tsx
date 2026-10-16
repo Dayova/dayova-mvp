@@ -16,6 +16,9 @@ import {
 	type TopicSearchResult,
 } from "./topic-search";
 
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+);
 jest.mock("~/components/ui/icon", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
 	const Icon = (props: Record<string, unknown>) =>
@@ -47,15 +50,21 @@ function Setup({
 	busy?: boolean;
 }) {
 	const [topics, setTopics] = useState(initial);
+	const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
 	return (
 		<RequiredTopicsStep
 			subject="Mathematik"
 			searchTopics={searchTopics}
-			topics={topics}
-			onChangeTopics={setTopics}
+			additionalInfo={topics}
+			selectedTopics={selectedTopics}
+			onChangeSelectedTopics={setSelectedTopics}
+			onChangeAdditionalInfo={setTopics}
 			onContinue={onContinue}
 			isBusy={busy}
-			canContinue={!busy && isMeaningfulTopicDescription(topics)}
+			canContinue={
+				!busy &&
+				isMeaningfulTopicDescription([...selectedTopics, topics].join("\n"))
+			}
 			errorMessage={null}
 		/>
 	);
@@ -74,7 +83,7 @@ afterEach(() => {
 });
 
 describe("inline topic search with a free-text exam scope", () => {
-	test("shows result context and additional suggestions without another subject picker, and only appends the title", async () => {
+	test("shows result context and additional suggestions without another subject picker, and selects only the title without modifying additional information", async () => {
 		const search = jest.fn<SearchTopics>().mockResolvedValue({
 			topics: [
 				{
@@ -106,23 +115,22 @@ describe("inline topic search with a free-text exam scope", () => {
 		);
 		await debounce();
 		expect(screen.getAllByText("Weitere Vorschläge")).toHaveLength(1);
+		expect(screen.getByRole("checkbox", { name: "Bilanz" })).toHaveProp(
+			"accessibilityHint",
+			"Themenbereich: Wirtschaftskunde",
+		);
+		await fireEvent.press(screen.getByRole("checkbox", { name: "Bilanz" }));
 		expect(
-			screen.getByRole("button", { name: "Bilanz zur Themenliste hinzufügen" }),
-		).toHaveProp("accessibilityHint", "Themenbereich: Wirtschaftskunde");
-		await fireEvent.press(
-			screen.getByRole("button", { name: "Bilanz zur Themenliste hinzufügen" }),
-		);
-		expect(screen.getByLabelText("Prüfungsthemen")).toHaveDisplayValue(
-			"Inventur ohne Hilfsmittel\nBilanz",
-		);
+			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+		).toHaveDisplayValue("Inventur ohne Hilfsmittel");
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
 	});
 
 	test("keeps the same query scoped to the current name after renaming a personal subject", async () => {
 		const search = jest.fn<SearchTopics>().mockResolvedValue(reply("Bilanz"));
 		const props = {
-			topics: "Inventur",
-			onChangeTopics: jest.fn(),
+			selectedTopics: [],
+			onChangeSelectedTopics: jest.fn(),
 			searchTopics: search,
 			disabled: false,
 		};
@@ -152,18 +160,18 @@ describe("inline topic search with a free-text exam scope", () => {
 			<Setup searchTopics={search} initial="" onContinue={next} />,
 		);
 		await fireEvent.changeText(
-			screen.getByLabelText("Prüfungsthemen"),
+			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
 			longScope,
 		);
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
-		expect(screen.getByLabelText("Prüfungsthemen")).toHaveDisplayValue(
-			longScope,
-		);
+		expect(
+			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+		).toHaveDisplayValue(longScope);
 		expect(next).toHaveBeenCalledTimes(1);
 		expect(search).not.toHaveBeenCalled();
 	});
 
-	test("debounces only the search term and appends to the latest edited scope", async () => {
+	test("debounces only the search term and preserves the latest edited additional information", async () => {
 		const search = jest
 			.fn<SearchTopics>()
 			.mockResolvedValue(reply("Vektoren", "Geraden"));
@@ -176,49 +184,82 @@ describe("inline topic search with a free-text exam scope", () => {
 			query: "Gerad",
 			subject: "Mathematik",
 		});
-		expect(screen.getByLabelText("Prüfungsthemen")).toHaveDisplayValue(
-			longScope,
-		);
+		expect(
+			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+		).toHaveDisplayValue(longScope);
 		const revised = `${longScope}Nur Aufgaben ohne Taschenrechner`;
 		await fireEvent.changeText(
-			screen.getByLabelText("Prüfungsthemen"),
+			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
 			revised,
 		);
-		await fireEvent.press(
-			screen.getByRole("button", {
-				name: "Geraden zur Themenliste hinzufügen",
-			}),
-		);
-		expect(screen.getByLabelText("Prüfungsthemen")).toHaveDisplayValue(
-			`${revised}\nGeraden`,
-		);
+		await fireEvent.press(screen.getByRole("checkbox", { name: "Geraden" }));
+		expect(
+			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+		).toHaveDisplayValue(revised);
 		expect(screen.getByLabelText("Themen suchen")).toHaveDisplayValue("Gerad");
 	});
 
-	test("updates included results when the learner removes or edits text", async () => {
+	test("keeps selection separate from matching free text and allows removing via result or chip", async () => {
 		const search = jest.fn<SearchTopics>().mockResolvedValue(reply("Vektoren"));
 		const screen = await render(
-			<Setup searchTopics={search} initial="Vektoren" />,
+			<Setup searchTopics={search} initial="Vektoren ohne Hilfsmittel" />,
 		);
 		await fireEvent.changeText(screen.getByLabelText("Themen suchen"), "Vekt");
 		await debounce();
 		expect(
-			screen.getByRole("button", {
-				name: "Vektoren, bereits in deiner Themenliste",
-			}),
-		).toBeDisabled();
-		await fireEvent.changeText(
-			screen.getByLabelText("Prüfungsthemen"),
-			"Skalarprodukt",
-		);
+			screen.getByRole("checkbox", { name: "Vektoren" }),
+		).not.toBeChecked();
+		await fireEvent.press(screen.getByRole("checkbox", { name: "Vektoren" }));
+		expect(screen.getByRole("checkbox", { name: "Vektoren" })).toBeChecked();
+		expect(
+			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+		).toHaveDisplayValue("Vektoren ohne Hilfsmittel");
+		await fireEvent.press(screen.getByRole("checkbox", { name: "Vektoren" }));
+		expect(
+			screen.queryByRole("button", { name: "Vektoren entfernen" }),
+		).toBeNull();
+		await fireEvent.press(screen.getByRole("checkbox", { name: "Vektoren" }));
+		await fireEvent.changeText(screen.getByLabelText("Themen suchen"), "");
+		expect(
+			screen.getByRole("button", { name: "Vektoren entfernen" }),
+		).toBeOnTheScreen();
 		await fireEvent.press(
-			screen.getByRole("button", {
-				name: "Vektoren zur Themenliste hinzufügen",
-			}),
+			screen.getByRole("button", { name: "Vektoren entfernen" }),
 		);
-		expect(screen.getByLabelText("Prüfungsthemen")).toHaveDisplayValue(
-			"Skalarprodukt\nVektoren",
+		expect(screen.queryByText("Ausgewählte Themen (1)")).toBeNull();
+		expect(
+			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+		).toHaveDisplayValue("Vektoren ohne Hilfsmittel");
+	});
+	test("continues with selection alone and keeps selections across different searches", async () => {
+		const search = jest
+			.fn<SearchTopics>()
+			.mockResolvedValueOnce(reply("Bilanz"))
+			.mockResolvedValueOnce(reply("Inventur"));
+		const screen = await render(<Setup searchTopics={search} initial="" />);
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+		await fireEvent.changeText(
+			screen.getByLabelText("Themen suchen"),
+			"Bilanz",
 		);
+		await debounce();
+		await fireEvent.press(screen.getByRole("checkbox", { name: "Bilanz" }));
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
+		await fireEvent.changeText(
+			screen.getByLabelText("Themen suchen"),
+			"Inventur",
+		);
+		await debounce();
+		await fireEvent.press(screen.getByRole("checkbox", { name: "Inventur" }));
+		expect(
+			screen.getByRole("button", { name: "Bilanz entfernen" }),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByRole("button", { name: "Inventur entfernen" }),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+		).toHaveDisplayValue("");
 	});
 
 	test("ignores stale requests after changing a query or subject and reuses matching cache", async () => {
@@ -233,8 +274,8 @@ describe("inline topic search with a free-text exam scope", () => {
 			)
 			.mockResolvedValue(reply("Geraden"));
 		const props = {
-			topics: "",
-			onChangeTopics: jest.fn(),
+			selectedTopics: [],
+			onChangeSelectedTopics: jest.fn(),
 			searchTopics: search,
 			disabled: false,
 		};
@@ -274,7 +315,7 @@ describe("inline topic search with a free-text exam scope", () => {
 		expect(screen.queryByText("private provider detail")).toBeNull();
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
 		await fireEvent.changeText(
-			screen.getByLabelText("Prüfungsthemen"),
+			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
 			"Evolution",
 		);
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
@@ -287,9 +328,9 @@ describe("inline topic search with a free-text exam scope", () => {
 				"Keine passenden Vorschläge. Trage deine Themen unten direkt ein.",
 			),
 		).toBeOnTheScreen();
-		expect(screen.getByLabelText("Prüfungsthemen")).toHaveDisplayValue(
-			"Evolution",
-		);
+		expect(
+			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+		).toHaveDisplayValue("Evolution");
 	});
 
 	test("keeps an oversized search visible without querying or truncating it", async () => {
@@ -324,9 +365,7 @@ describe("inline topic search with a free-text exam scope", () => {
 		const screen = await render(<Setup searchTopics={search} />);
 		await fireEvent.changeText(screen.getByLabelText("Themen suchen"), "Thema");
 		await debounce();
-		expect(
-			screen.getAllByRole("button", { name: /zur Themenliste hinzufügen/ }),
-		).toHaveLength(5);
+		expect(screen.getAllByRole("checkbox")).toHaveLength(5);
 		expect(screen.queryByText("Thema 5")).toBeNull();
 		expect(
 			screen.getByText(
@@ -343,7 +382,7 @@ describe("inline topic search with a free-text exam scope", () => {
 			"editable",
 			false,
 		);
-		expect(screen.getByLabelText("Prüfungsthemen")).toHaveProp(
+		expect(screen.getByLabelText("Zusätzliche Themen und Hinweise")).toHaveProp(
 			"editable",
 			false,
 		);

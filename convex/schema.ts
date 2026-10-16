@@ -470,6 +470,8 @@ export default defineSchema({
 			),
 		),
 		topicDescription: v.string(),
+		topicItems: v.optional(v.array(v.string())),
+		topicAdditionalInfo: v.optional(v.string()),
 		teacherGuidance: v.optional(v.string()),
 		notes: v.optional(v.string()),
 		status: v.union(

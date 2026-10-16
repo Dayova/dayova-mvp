@@ -67,6 +67,7 @@ function EvidenceScreen() {
 	const insets = useSafeAreaInsets();
 	const [scenario, setScenario] = useState("after");
 	const [topics, setTopics] = useState("");
+	const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
 	const [subject, setSubject] = useState("Deutsch");
 	const [material, setMaterial] = useState(false);
 	const [notice, setNotice] = useState<string | null>(null);
@@ -83,6 +84,7 @@ function EvidenceScreen() {
 			Keyboard.dismiss();
 			attempts.current = 0;
 			setScenario(next);
+			setSelectedTopics([]);
 			setTopics(params.get("topics") ?? examples[next] ?? "");
 			setSubject(
 				params.get("subject") ??
@@ -180,7 +182,8 @@ function EvidenceScreen() {
 		[scenario],
 	);
 	const canContinue =
-		scenario !== "busy" && isMeaningfulTopicDescription(topics);
+		scenario !== "busy" &&
+		isMeaningfulTopicDescription([...selectedTopics, topics].join("\n"));
 	const props = {
 		topics,
 		canContinue,
@@ -240,6 +243,10 @@ function EvidenceScreen() {
 						<RequiredTopicsStep
 							key={generation}
 							{...props}
+							additionalInfo={topics}
+							onChangeAdditionalInfo={setTopics}
+							selectedTopics={selectedTopics}
+							onChangeSelectedTopics={setSelectedTopics}
 							subject={subject}
 							searchTopics={searchTopics}
 						/>

@@ -281,16 +281,20 @@ export function RequiredTopicsStep({
 	canContinue,
 	errorMessage,
 	isBusy,
-	onChangeTopics,
+	onChangeAdditionalInfo,
 	onContinue,
-	topics,
+	additionalInfo,
+	selectedTopics,
+	onChangeSelectedTopics,
 }: {
 	canContinue: boolean;
 	errorMessage: string | null;
 	isBusy: boolean;
-	onChangeTopics: (value: string) => void;
+	onChangeAdditionalInfo: (value: string) => void;
+	onChangeSelectedTopics: (value: string[]) => void;
 	onContinue: () => void;
-	topics: string;
+	additionalInfo: string;
+	selectedTopics: string[];
 	subject: string;
 	searchTopics: SearchTopics;
 }) {
@@ -303,28 +307,28 @@ export function RequiredTopicsStep({
 				Welche Themen kommen in der Prüfung dran?
 			</Text>
 			<Text className="mt-3 font-poppins text-body-3 text-secondary-text">
-				Schreibe oder füge deine Themenliste ein. Ergänze auch Unterpunkte und
-				Hinweise wie „ohne Hilfsmittel“.
+				Wähle passende Themen aus. Ergänze unten, was die Themenauswahl nicht
+				abdeckt.
 			</Text>
 			<TopicSearch
-				topics={topics}
+				selectedTopics={selectedTopics}
 				subject={subject}
-				onChangeTopics={onChangeTopics}
+				onChangeSelectedTopics={onChangeSelectedTopics}
 				searchTopics={searchTopics}
 				disabled={isBusy}
 			/>
 			<Text className="mt-6 font-poppins text-body-4 text-secondary-text">
-				Deine Themen und Hinweise
+				Zusätzliche Themen und Hinweise
 			</Text>
 			<Textarea
-				accessibilityLabel="Prüfungsthemen"
-				accessibilityHint="Füge deine ganze Liste ein oder bearbeite die übernommenen Begriffe."
+				accessibilityLabel="Zusätzliche Themen und Hinweise"
+				accessibilityHint="Optional. Ergänze Prüfungsbedingungen, Unterpunkte oder Themen, die du nicht gefunden hast."
 				accessibilityState={{ disabled: isBusy }}
 				className="mt-2 min-h-48 flex-none rounded-[24px] border border-border bg-card px-4 py-4"
-				value={topics}
-				onChangeText={onChangeTopics}
+				value={additionalInfo}
+				onChangeText={onChangeAdditionalInfo}
 				editable={!isBusy}
-				placeholder="Zum Beispiel: Lineare Funktionen, Steigung berechnen und den y-Achsenabschnitt bestimmen."
+				placeholder="Zum Beispiel: Ohne Hilfsmittel. Nur Kapitel 3. Auch Inventur und Belege."
 			/>
 
 			<SetupError message={errorMessage} />
