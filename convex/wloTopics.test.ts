@@ -27,6 +27,28 @@ describe("WLO topic search", () => {
 		).rejects.toThrow();
 		expect(fetcher).not.toHaveBeenCalled();
 	});
+	test.each([
+		{ query: "g".repeat(101), subject: "Deutsch" },
+		{ query: "Gedicht", subject: "D".repeat(101) },
+		{ query: "İ".repeat(100), subject: "Deutsch" },
+	])("rejects oversized input as an empty result without contacting WLO: %j", async (args) => {
+		const fetcher = vi.fn();
+		vi.stubGlobal("fetch", fetcher);
+		const t = convexTest(schema, modules).withIdentity({
+			subject: "topic-search-validation-test",
+		});
+		await expect(t.action(api.wloTopics.search, args)).resolves.toEqual({
+			topics: [],
+			truncated: false,
+		});
+		expect(fetcher).not.toHaveBeenCalled();
+	});
+	test("allows inputs at the inclusive search length limit", async () => {
+		const fetcher = vi.fn().mockResolvedValue(reply([]));
+		vi.stubGlobal("fetch", fetcher);
+		await searchWloTopics("g".repeat(100), "D".repeat(100));
+		expect(fetcher).toHaveBeenCalledTimes(1);
+	});
 	test("normalizes spelling, merges duplicate labels and excludes description-only and private matches", async () => {
 		const fetcher = vi
 			.fn()

@@ -132,8 +132,10 @@ export default function NewLearningPlanScreen() {
 			return "materialUpload";
 		return initialLearningPlanId ? "materialUpload" : "requiredTopics";
 	});
-	const [topicsInput, setTopicsInput] = useState<string | null>(
-		params.topicDescription ?? params.teacherGuidance ?? null,
+	const [topicsInput, setTopicsInput] = useState<string | null>(() =>
+		initialLearningPlanId
+			? null
+			: (params.topicDescription ?? params.teacherGuidance ?? null),
 	);
 	// Route params can be older than the saved draft; only actual input edits
 	// may overwrite its topics when pausing.
@@ -175,6 +177,7 @@ export default function NewLearningPlanScreen() {
 		isMeaningfulTopicDescription(topics);
 	const canContinueTopics =
 		canWrite &&
+		!isPlanSnapshotLoading &&
 		!isBusy &&
 		!openingUploadAction &&
 		isMeaningfulTopicDescription(topics);
@@ -769,7 +772,7 @@ export default function NewLearningPlanScreen() {
 							searchTopics={searchTopics}
 							canContinue={canContinueTopics}
 							errorMessage={errorMessage}
-							isBusy={isBusy}
+							isBusy={isBusy || isPlanSnapshotLoading}
 							onChangeTopics={(value) => {
 								hasEditedTopicsRef.current = true;
 								setTopicsInput(value);
@@ -783,7 +786,7 @@ export default function NewLearningPlanScreen() {
 							canContinue={canContinueUpload}
 							documents={snapshot?.documents ?? []}
 							errorMessage={errorMessage}
-							isBusy={isBusy}
+							isBusy={isBusy || isPlanSnapshotLoading}
 							isUploading={isUploading}
 							onContinue={continueToAnalysis}
 							onOpenUpload={() => setIsUploadSheetVisible(true)}

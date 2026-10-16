@@ -1,5 +1,41 @@
 # Inline exam-topic search — validation, 16 October 2026
 
+## Selective follow-up from PR #872
+
+Compared against #872 head `146098d2f06178772c67cb487c8efceda1019a4d`,
+after the earlier adapter baseline `c9a4c4e`. The branch now integrates
+`main` at `8b9b8af5` via merge `e6484c70`; it remains independent of #872.
+
+| Improvement | Treatment in #884 |
+| --- | --- |
+| Save edits before pausing; recover from failed saves without leaving | Retained through current `main`, including the close control, action gate, retry and invalid-edit protection. A rendered accounting-search regression also checks that appending Bilanz preserves the full existing scope when pausing. |
+| Saved draft versus old route text | Adapted from #872: resumed plans initialize from their snapshot rather than stale `topicDescription` or `teacherGuidance` route values. Tests check the displayed text and Continue mutation payload. |
+| Draft still loading | Adapted from #872: search, topic editor and Continue stay disabled until the snapshot is available, then restore the actual saved text and become usable. |
+| Oversized search input | Adapted from #872: authenticated requests over the bounds return an empty result without contacting WLO, rather than a misleading provider failure. Includes normalization expansion and the inclusive 100-character boundary. The existing UI retains its explicit long-query hint. |
+| Persisted `topicItems` and chip-boundary edits | Not adopted. #884 retains one authoritative editable string; no chip reconstruction or second persistence format is needed. Schema, personal-subject identity and the context resolver are unchanged. |
+| Accessible search error and shared SearchField | Already present in #884; no duplicate implementation needed. |
+| Native captures from #872 | Remain evidence of their named #872 revisions. They do not establish native acceptance for #884 or its newly integrated header. |
+
+Validation after adoption:
+
+- **All 139 Vitest files / 1,103 tests passed**, two workers, 105.28 seconds.
+- **62 rendered UI tests / five suites passed**, including creation flow,
+  topic search, setup steps, creation shell and Android inline calendar.
+- Focused provider/resolver/learning-plan backend run: **76 tests passed**.
+  Three new UI regressions and three oversized-input cases failed before their
+  fixes. No cases were removed or excluded.
+- TypeScript, Convex code generation/typecheck, targeted Biome and source ESLint
+  passed. ESLint does not cover the isolated evidence fixture; its integration
+  was checked by TypeScript and Biome. Its new required close callback explicitly
+  identifies the isolated test environment instead of pretending to save.
+- CodeRabbit CLI 0.7.5 reviewed the four changed implementation/test files with
+  **zero findings**; final test-label correction and merge integration were also
+  inspected manually. No runtime deployment or new native recording is claimed.
+
+The canonical decision record and DAY-517 include these reliability checks.
+The native acceptance limitations below still apply. Earlier media retain their
+exact revision and environment scope; none are relabelled as current-head proof.
+
 ## Native acceptance and timeout follow-up
 
 Test-tooling revision: `4b2866327f5fdab972354db03a52ee1c690c9acc`.

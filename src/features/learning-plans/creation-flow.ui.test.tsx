@@ -372,6 +372,104 @@ async function selectGalleryPhotos(
 }
 
 describe("exam creation across the topics boundary", () => {
+	test.each([
+		"topicDescription",
+		"teacherGuidance",
+	])("continues with saved topics instead of the stale %s route value", async (legacyParam) => {
+		const saved =
+			"Buchhaltung, Inventur, Belege, Inventar, Vermögen\nBilanz ohne Hilfsmittel";
+		mockParams = {
+			learningPlanId: "plan-1",
+			step: "topic",
+			subject: "Rechnungswesen",
+			[legacyParam]: "Alter Themenstand aus dem Link",
+		};
+		mockSnapshot = { plan: { topicDescription: saved }, documents: [] };
+		const screen = await render(<NewLearningPlanScreen />);
+		expect(screen.getByLabelText("Prüfungsthemen")).toHaveDisplayValue(saved);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(mockUpdateRequiredTopics).toHaveBeenCalledWith({
+			id: "plan-1",
+			topicDescription: saved,
+		});
+	});
+
+	test("waits for the saved draft before enabling its topic editor and search", async () => {
+		mockParams = {
+			learningPlanId: "plan-1",
+			step: "topic",
+			topicDescription: "Alter Themenstand aus dem Link",
+		};
+		const screen = await render(<NewLearningPlanScreen />);
+		expect(screen.getByLabelText("Prüfungsthemen")).toHaveProp(
+			"editable",
+			false,
+		);
+		expect(screen.getByLabelText("Themen suchen")).toHaveProp(
+			"editable",
+			false,
+		);
+		expect(
+			screen.getByRole("button", { name: "Weiter, wird geladen" }),
+		).toBeDisabled();
+		expect(mockUpdateRequiredTopics).not.toHaveBeenCalled();
+		mockSnapshot = {
+			plan: { topicDescription: "Genetik und Vererbung" },
+			documents: [],
+		};
+		await screen.rerender(<NewLearningPlanScreen />);
+		expect(screen.getByLabelText("Prüfungsthemen")).toHaveDisplayValue(
+			"Genetik und Vererbung",
+		);
+		expect(screen.getByLabelText("Prüfungsthemen")).toHaveProp(
+			"editable",
+			true,
+		);
+		expect(screen.getByLabelText("Themen suchen")).toHaveProp("editable", true);
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
+	});
+
+	test("saves an appended accounting suggestion with the full scope before pausing", async () => {
+		const original =
+			"Buchhaltung, Inventur, Belege, Inventar, Vermögen\nOhne Hilfsmittel";
+		mockParams = {
+			learningPlanId: "plan-1",
+			step: "topic",
+			subject: "Rechnungswesen",
+		};
+		mockSnapshot = { plan: { topicDescription: original }, documents: [] };
+		mockSearchTopics.mockResolvedValue({
+			topics: [{ id: "bilanz", title: "Bilanz" }],
+			truncated: false,
+		});
+		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.changeText(
+			screen.getByLabelText("Themen suchen"),
+			"Bilanz",
+		);
+		await waitFor(() =>
+			expect(
+				screen.getByRole("button", {
+					name: "Bilanz zur Themenliste hinzufügen",
+				}),
+			).toBeOnTheScreen(),
+		);
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: "Bilanz zur Themenliste hinzufügen",
+			}),
+		);
+		await act(() => mockProgress.onClose());
+		await act(() => mockPauseProps.onConfirm());
+		await waitFor(() =>
+			expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans"),
+		);
+		expect(mockUpdateRequiredTopics).toHaveBeenCalledWith({
+			id: "plan-1",
+			topicDescription: `${original}\nBilanz`,
+		});
+	});
+
 	test("saves appended search results with the full list and restores it on back navigation", async () => {
 		const original =
 			"Analytische Geometrie ohne Hilfsmittel\nVektoren und ihre Beträge\nSpiegeln an Ebenen und Achsen\nSkalarprodukt und Winkel";

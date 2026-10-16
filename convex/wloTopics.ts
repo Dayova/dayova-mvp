@@ -33,9 +33,8 @@ export type TopicSuggestion = {
 /** Ranks title matches using subject context without excluding other subjects. */
 export async function searchWloTopics(query: string, subject: string) {
 	const term = normalize(query).replace(/gedichtsanalyse/g, "gedichtanalyse");
-	if (term.length < 3) return { topics: [], truncated: false };
-	if (term.length > 100 || subject.length > 100)
-		throw new Error("Search too long");
+	if (term.length < 3 || term.length > 100 || subject.length > 100)
+		return { topics: [], truncated: false };
 	const subjects = resolveWloSubjectContext(subject).map(normalize);
 	const matches = new Map<string, TopicSuggestion>();
 	const controller = new AbortController();
