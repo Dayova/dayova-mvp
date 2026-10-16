@@ -62,15 +62,28 @@ appId: ${APP_ID}
     commands:
       - runFlow:
           when:
-            notVisible: Dismiss
+            platform: Android
           commands:
-            - tapOn: "(?s)(!, )?You must pass your PostHog project's api key[.]\\s*The client will be disabled[.]"
-      - assertVisible: Dismiss
-      # Keep the hit inside the label's upper area: iOS 27 can report a footer
-      # accessibility frame that includes the bottom safe-area inset.
-      - tapOn:
-          text: Dismiss
-          point: "50%,10%"
+            - tapOn:
+                containsChild:
+                  text: "(?s)(!, )?You must pass your PostHog project's api key[.]\\s*The client will be disabled[.]"
+                # Close this notification directly; the Android SDK 58 LogBox
+                # details screen can be blank. The close control is at its end.
+                point: "99%,50%"
+      - runFlow:
+          when:
+            platform: iOS
+          commands:
+            - runFlow:
+                when:
+                  notVisible: Dismiss
+                commands:
+                  - tapOn: "(?s)(!, )?You must pass your PostHog project's api key[.]\\s*The client will be disabled[.]"
+            - assertVisible: Dismiss
+            # Keep the hit inside the label's upper area, above the safe area.
+            - tapOn:
+                text: Dismiss
+                point: "50%,10%"
       - assertNotVisible: "(?s)(!, )?You must pass your PostHog project's api key[.]\\s*The client will be disabled[.]"
 # The welcome controls become accessible before their entrance animation settles.
 - waitForAnimationToEnd:
