@@ -1,0 +1,37 @@
+import "../src/global.css";
+import { useCallback, useState } from "react";
+import { Keyboard, Pressable, ScrollView, Text as NativeText, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { vars } from "nativewind";
+import { DayovaThemeProvider, useDayovaTheme } from "../src/lib/theme";
+import { DARK_THEME_VARIABLES } from "../src/lib/theme-variables";
+import { LearningPlanCreationProgressHeader } from "../src/features/learning-plans/creation-progress-header";
+import { RequiredTopicsStep } from "../src/features/learning-plans/learning-plan-setup-steps";
+import { RequiredTopicsStep as BeforeTopics } from "./before-steps";
+
+function Screen() {
+ const [before, setBefore] = useState(false);
+ const [offline, setOffline] = useState(false);
+ const [topics, setTopics] = useState("");
+ const { resolvedTheme, colors, setPreference } = useDayovaTheme();
+ const searchTopics = useCallback(async ({query}: {query: string; subject: string}) => {
+  if (offline) throw new Error("Controlled offline fixture");
+  return { topics: query.toLowerCase().includes("gedicht") ? [{id:"fixture-poetry",title:"Gedichtanalyse"},{id:"fixture-interpretation",title:"Gedichtinterpretation"}] : [], truncated:false };
+ }, [offline]);
+ const props = { canContinue: topics.trim().length > 0, errorMessage: null, isBusy:false, topics, onChangeTopics:setTopics, onContinue:()=>Keyboard.dismiss() };
+ return <View style={[{flex:1,backgroundColor:colors.background},vars(resolvedTheme === "dark" ? DARK_THEME_VARIABLES : {})]}>
+ <SafeAreaView style={{flex:1}}>
+ <View style={{flexDirection:"row",justifyContent:"space-around",padding:8,backgroundColor:colors.card}}>
+ {[["Vorher",()=>{setBefore(true);setTopics("");Keyboard.dismiss();}],["Nachher",()=>{setBefore(false);setTopics("");Keyboard.dismiss();}],[offline?"Online":"Offline",()=>{setOffline(!offline);Keyboard.dismiss();}],[resolvedTheme === "dark"?"Hell":"Dunkel",()=>{void setPreference(resolvedTheme === "dark"?"light":"dark");Keyboard.dismiss();}]] .map(([label, action])=><Pressable key={String(label)} accessibilityRole="button" onPress={action as ()=>void} style={{padding:8}}><NativeText style={{color:colors.text}}>{String(label)}</NativeText></Pressable>)}
+ </View>
+ <NativeText style={{color:colors.secondaryText,fontSize:11,textAlign:"center",paddingVertical:4}}>PR 872 · native component fixture · controlled responses</NativeText>
+ <View style={{paddingHorizontal:24,paddingTop:16,paddingBottom:24}}><LearningPlanCreationProgressHeader currentStep={4} onBack={()=>{setTopics("");Keyboard.dismiss();}} /></View>
+ <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{flexGrow:1,paddingHorizontal:24,paddingBottom:24}}>
+ {before?<BeforeTopics {...props}/>:<RequiredTopicsStep {...props} subject="Deutsch" searchTopics={searchTopics}/>}
+ </ScrollView>
+ </SafeAreaView>
+ </View>;
+}
+export default function Fixture(){return <GestureHandlerRootView style={{flex:1}}><SafeAreaProvider><KeyboardProvider><DayovaThemeProvider><Screen/></DayovaThemeProvider></KeyboardProvider></SafeAreaProvider></GestureHandlerRootView>;}

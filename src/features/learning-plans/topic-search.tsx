@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import { isMeaningfulTopicDescription } from "#convex/topicDescriptionValidation";
+import { ErrorMessage } from "~/components/ui/error-message";
 import { Check, Plus, X } from "~/components/ui/icon";
 import { SearchField } from "~/components/ui/search-field";
 import { ActionSurface } from "~/components/ui/surface";
@@ -125,13 +126,10 @@ export function TopicSearch({
 			) : null}
 			{term.length < 3 ? null : current?.error ? (
 				<View className="gap-2">
-					<Text
-						accessibilityRole="alert"
-						className="font-poppins text-body-3 text-secondary-text"
-					>
+					<ErrorMessage className="text-body-3">
 						Die Themensuche ist gerade nicht erreichbar. Du kannst dein Thema
 						selbst hinzufügen.
-					</Text>
+					</ErrorMessage>
 					<ActionSurface
 						accessibilityRole="button"
 						disabled={disabled}

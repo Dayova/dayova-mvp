@@ -128,6 +128,9 @@ describe("topic search", () => {
 			screen.getByLabelText("Thema suchen"),
 			"Gedicht",
 		);
+		const error = await screen.findByRole("alert");
+		expect(error).toHaveProp("accessibilityLiveRegion", "polite");
+		expect(error).toHaveProp("selectable", true);
 		await fireEvent.press(
 			await screen.findByRole("button", { name: "Erneut versuchen" }),
 		);
