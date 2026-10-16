@@ -3,7 +3,7 @@
 ## Source and scope
 
 - Integration base: `3eb4e5d29f8cb2771fb79825c3b447587c514740` (`origin/main`).
-- Branch: `codex/inline-exam-topic-search`, independent of Fabius' PR #872.
+- Branch: `codex/inline-exam-topic-search`, [PR #884](https://github.com/Dayova/dayova-mvp/pull/884), independent of Fabius' PR #872.
 - Provider adapter and shared search-field starting point: PR #872 revision
   `c9a4c4e41aafe71cc8f97004ad16ba01ba504226`, adapted to an authoritative free editor.
 - Selected direction and reasoning: [Notion decision-record draft](https://app.notion.com/p/3fb2e87228bf817a880dde6127a1996a).
@@ -34,8 +34,10 @@ being excluded from the final result.
 
 ## Remaining evidence and limitations
 
-- A full UI-suite run was started separately; its final result must be recorded
-  before treating it as green. The focused suite above is independently green.
+- The optional full UI-suite run was interrupted after prolonged runtime
+  (including an existing preparation-slot-editor suite taking 267.765 seconds).
+  It produced no final suite verdict and is not counted as green. The focused
+  suite above was independently rerun on the final component changes and passed.
 - Native visual acceptance is **not complete**. A separate read-only Android 16
   emulator and development client were started, but the client became
   unresponsive before the component preview was verified. Automatic execution
