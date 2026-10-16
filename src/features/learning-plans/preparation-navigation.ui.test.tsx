@@ -5,6 +5,7 @@ import LearningPlanAnalysisScreen from "~/app/(creation)/learning-plans/[planId]
 const mockRouter = { replace: jest.fn(), dismissTo: jest.fn() };
 const mockConsent = jest.fn(async () => true);
 const mockWork = jest.fn(async () => {});
+const mockTrackFeature = jest.fn();
 let mockSnapshot = {
 	plan: {
 		status: "draft",
@@ -14,6 +15,9 @@ let mockSnapshot = {
 	},
 };
 let mockProgress: { onClose: () => void };
+jest.mock("~/lib/use-feature-analytics", () => ({
+	useFeatureAnalytics: () => mockTrackFeature,
+}));
 jest.mock("convex/react", () => ({
 	useConvexAuth: () => ({ isAuthenticated: true }),
 	useQuery: () => mockSnapshot,
@@ -122,4 +126,36 @@ test("an already prepared plan resumes directly at review", async () => {
 		"/learning-plans/plan-1/review",
 	);
 	expect(mockWork).not.toHaveBeenCalled();
+	expect(mockTrackFeature).not.toHaveBeenCalled();
+});
+
+test("tracks automatic scope confirmation after successful preparation", async () => {
+	await render(<LearningPlanAnalysisScreen />);
+	await act(async () => {
+		jest.runAllTicks();
+	});
+	expect(mockTrackFeature.mock.calls).toEqual([
+		["learning_plan.scope_confirm", "attempted", "plan-1"],
+		["learning_plan.scope_confirm", "succeeded", "plan-1"],
+	]);
+	expect(mockRouter.replace).toHaveBeenCalledWith(
+		"/learning-plans/plan-1/review",
+	);
+});
+
+test("tracks scope confirmation failure and stops before preparing the diagnostic", async () => {
+	mockWork
+		.mockResolvedValueOnce(undefined)
+		.mockRejectedValueOnce(new Error("Scope confirmation failed"));
+	const screen = await render(<LearningPlanAnalysisScreen />);
+	await act(async () => {
+		jest.runAllTicks();
+	});
+	expect(mockTrackFeature.mock.calls).toEqual([
+		["learning_plan.scope_confirm", "attempted", "plan-1"],
+		["learning_plan.scope_confirm", "failed", "plan-1"],
+	]);
+	expect(mockWork).toHaveBeenCalledTimes(2);
+	expect(mockRouter.replace).not.toHaveBeenCalled();
+	expect(screen.getByText("Scope confirmation failed")).toBeTruthy();
 });

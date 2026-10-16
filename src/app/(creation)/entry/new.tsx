@@ -58,7 +58,7 @@ import {
 	MIN_EXAM_DURATION_MINUTES,
 	shiftEndTimeForStartChange,
 } from "~/lib/entry-time";
-import { getExamDatePickerRange } from "~/lib/exam-date";
+import { formatAccessibleExamDate } from "~/lib/exam-date";
 import {
 	dismissToOrReplace,
 	goBackOrReplace,
@@ -66,6 +66,7 @@ import {
 } from "~/lib/navigation";
 import { ROUTES } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { cn } from "~/lib/utils";
 
@@ -215,6 +216,7 @@ function StickyActionFooter({
 }
 
 export default function NewEntryScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const { colors } = useDayovaTheme();
@@ -459,7 +461,14 @@ export default function NewEntryScreen() {
 			: `${trimmedSubject} ${trimmedExamType}`;
 		let createdEntryId: Id<"dayEntries"> | null = null;
 
+		const interaction = isHomework
+			? "homework.create"
+			: savedExamIdRef.current
+				? "exam.update"
+				: "exam.create";
+
 		try {
+			trackFeature(interaction, "attempted");
 			setIsCreating(true);
 			setErrorMessage(null);
 			const entryFields = {
@@ -498,6 +507,7 @@ export default function NewEntryScreen() {
 				createdEntryId = await createDayEntry(entryFields);
 				if (!isHomework) savedExamIdRef.current = createdEntryId;
 			}
+			trackFeature(interaction, "succeeded", createdEntryId);
 			if (isHomework) {
 				void capture("homework_created", {
 					day_entry_id: createdEntryId,
@@ -514,6 +524,7 @@ export default function NewEntryScreen() {
 				});
 			}
 		} catch (error) {
+			trackFeature(interaction, "failed");
 			setErrorMessage(
 				getErrorMessage(error, "Der Eintrag konnte nicht gespeichert werden."),
 			);
@@ -601,10 +612,14 @@ export default function NewEntryScreen() {
 		});
 	};
 
-	const goToStep = useCallback((nextStep: EntryStep) => {
-		scrollViewRef.current?.scrollTo({ y: 0, animated: false });
-		setStep(nextStep);
-	}, []);
+	const goToStep = useCallback(
+		(nextStep: EntryStep) => {
+			scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+			trackFeature("entry.step_changed", "performed", undefined, nextStep);
+			setStep(nextStep);
+		},
+		[trackFeature],
+	);
 
 	const handleBack = useCallback(() => {
 		if (selectTarget) {
@@ -691,19 +706,12 @@ export default function NewEntryScreen() {
 					: pickerTarget === "plannedEndTime"
 						? plannedEndTime
 						: plannedDate;
-		const isExamDatePicker = !isHomework && pickerTarget === "plannedDate";
-		const examDateRange = isExamDatePicker
-			? getExamDatePickerRange({ selectedDate: plannedDate })
-			: null;
 
 		return (
 			<DateTimePickerSheet
-				display={isExamDatePicker ? "inline" : undefined}
 				visible
 				value={value}
 				mode={mode}
-				minimumDate={examDateRange?.minimumDate}
-				maximumDate={examDateRange?.maximumDate}
 				onChange={handlePickerChange}
 				onClose={closePicker}
 			/>
@@ -873,7 +881,7 @@ export default function NewEntryScreen() {
 							{step === "basics" ? (
 								<ExamDateSelector
 									selectedDate={plannedDate}
-									onOpen={() => openPicker("plannedDate")}
+									onSelect={(date) => setPlannedDate(startOfLocalDay(date))}
 								/>
 							) : step === "examType" ? (
 								<ExamTypePicker
@@ -959,7 +967,11 @@ export default function NewEntryScreen() {
 							{step === "basics" && isStartingLearningPlan ? (
 								<ActivityIndicator color="#FFFFFF" />
 							) : (
-								<Text>Weiter</Text>
+								<Text className="shrink text-center">
+									{step === "basics" && Platform.OS !== "android"
+										? `Weiter mit ${formatAccessibleExamDate(plannedDate)}`
+										: "Weiter"}
+								</Text>
 							)}
 						</Button>
 					</StickyActionFooter>

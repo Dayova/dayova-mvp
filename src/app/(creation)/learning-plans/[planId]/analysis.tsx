@@ -24,11 +24,13 @@ import {
 	goBackOrReplace,
 	useBackIntent,
 } from "~/lib/navigation";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
 
 export default function LearningPlanAnalysisScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const params = useLocalSearchParams<{ planId?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
@@ -89,7 +91,16 @@ export default function LearningPlanAnalysisScreen() {
 					if (!didCloseRef.current)
 						await generateKnowledgeQuestions({ learningPlanId: planId });
 				},
-				confirm: () => confirmScope({ learningPlanId: planId }),
+				confirm: async () => {
+					trackFeature("learning_plan.scope_confirm", "attempted", planId);
+					try {
+						await confirmScope({ learningPlanId: planId });
+						trackFeature("learning_plan.scope_confirm", "succeeded", planId);
+					} catch (error) {
+						trackFeature("learning_plan.scope_confirm", "failed", planId);
+						throw error;
+					}
+				},
 				prepare: () => prepareDiagnostic({ learningPlanId: planId }),
 			})
 				.then((completed) => {
@@ -115,6 +126,7 @@ export default function LearningPlanAnalysisScreen() {
 		retryAttempt,
 		router,
 		snapshot,
+		trackFeature,
 	]);
 
 	useEffect(() => {

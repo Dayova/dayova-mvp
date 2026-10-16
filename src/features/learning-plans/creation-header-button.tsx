@@ -1,4 +1,3 @@
-import { View } from "react-native";
 import { BackButton } from "~/components/ui/button";
 import { CloseButton } from "~/components/ui/close-button";
 
@@ -16,12 +15,10 @@ export function CreationHeaderButton({
 	return kind === "back" ? (
 		<BackButton onPress={onPress} disabled={disabled} />
 	) : (
-		<View className="h-12 w-12 items-center justify-center">
-			<CloseButton
-				onPress={onPress}
-				disabled={disabled}
-				accessibilityState={{ disabled }}
-			/>
-		</View>
+		<CloseButton
+			onPress={onPress}
+			disabled={disabled}
+			accessibilityHint="Verlässt die Lernplan-Erstellung."
+		/>
 	);
 }
