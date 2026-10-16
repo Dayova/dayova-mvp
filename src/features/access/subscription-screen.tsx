@@ -16,6 +16,7 @@ import { SupportContact } from "~/components/ui/support-contact";
 import { Text } from "~/components/ui/text";
 import { useAccess } from "~/context/AccessContext";
 import { useAuthSession } from "~/context/AuthContext";
+import { SubscriptionPlanCard } from "~/features/access/subscription-plan-card";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import { openExternalUrl } from "~/lib/open-external-url";
@@ -35,8 +36,6 @@ const WHITE = BRAND_COLORS.light1;
 const gradientFillStyle = StyleSheet.absoluteFill;
 // Fixed native design tokens keep Fabric descendants on this branded light
 // surface legible when the system theme changes.
-const primaryTextStyle = { color: BRAND_COLORS.text };
-const secondaryTextStyle = { color: BRAND_COLORS.secondaryText };
 const errorSurfaceStyle = { backgroundColor: BRAND_COLORS.surface };
 const errorTextStyle = { color: BRAND_COLORS.destructive };
 const onDarkActionTextStyle = { color: WHITE };
@@ -46,8 +45,6 @@ const subscribeActionStyle = {
 	backgroundColor: BRAND_COLORS.text,
 	borderColor: BRAND_COLORS.border,
 };
-const planGlassSurface = "rgba(255, 255, 255, 0.8)";
-const planGlassBorder = "rgba(255, 255, 255, 0.6)";
 const STORE_NAME = getStoreName(process.env.EXPO_OS);
 
 const getStoreApiKey = () =>
@@ -298,8 +295,9 @@ export function SubscriptionScreen() {
 						<Benefit>Auf allen Geräten mit deinem Dayova-Konto nutzbar</Benefit>
 					</View>
 
-					<View className="gap-3">
-						<PlanCard
+					<View className="gap-3" accessibilityRole="radiogroup">
+						<SubscriptionPlanCard
+							disabled={isLoadingPlans || isPurchasing || !annualPlan}
 							description={getPlanDescription(annualPlan, isLoadingPlans)}
 							label="Jährlich"
 							price={annualPlan?.price ?? "—"}
@@ -315,7 +313,8 @@ export function SubscriptionScreen() {
 								setSelectedBillingPeriod("annual");
 							}}
 						/>
-						<PlanCard
+						<SubscriptionPlanCard
+							disabled={isLoadingPlans || isPurchasing || !monthlyPlan}
 							description={getPlanDescription(monthlyPlan, isLoadingPlans)}
 							label="Monatlich"
 							price={monthlyPlan?.price ?? "—"}
@@ -462,74 +461,6 @@ function Benefit({ children }: { children: string }) {
 			</View>
 			<Text className="flex-1 text-body-4 text-white">{children}</Text>
 		</View>
-	);
-}
-
-function PlanCard({
-	description,
-	label,
-	onPress,
-	price,
-	selected,
-	testID,
-}: {
-	description: string;
-	label: string;
-	onPress: () => void;
-	price: string;
-	selected: boolean;
-	testID: string;
-}) {
-	return (
-		<Pressable
-			accessibilityLabel={`${label}, ${price}. ${description}`}
-			accessibilityRole="radio"
-			accessibilityState={{ checked: selected }}
-			className="rounded-3xl border px-5 py-4"
-			onPress={onPress}
-			testID={testID}
-			// Selection changes native glass border and shadow values at runtime.
-			style={{
-				backgroundColor: planGlassSurface,
-				borderColor: selected ? BRAND_COLORS.text : planGlassBorder,
-				borderWidth: 1,
-				boxShadow: selected
-					? "inset 0 1px 0 rgba(255, 255, 255, 0.64), 0 8px 20px rgba(9, 54, 78, 0.1)"
-					: "inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 6px 16px rgba(9, 54, 78, 0.08)",
-			}}
-		>
-			<View className="flex-row items-start">
-				<View className="flex-1 pr-3">
-					<Text className="font-semibold text-body-2" style={primaryTextStyle}>
-						{label}
-					</Text>
-					<Text className="mt-1 text-body-4" style={secondaryTextStyle}>
-						{description}
-					</Text>
-				</View>
-				<View className="items-end gap-2">
-					<Text className="font-semibold text-body-2" style={primaryTextStyle}>
-						{price}
-					</Text>
-					<View
-						accessible={false}
-						className="h-6 w-6 items-center justify-center rounded-full border"
-						// The selected radio state drives both native colors.
-						style={{
-							backgroundColor: selected
-								? BRAND_COLORS.text
-								: BRAND_COLORS.surface,
-							borderColor: selected ? BRAND_COLORS.text : BRAND_COLORS.border,
-						}}
-						testID={`${testID}-indicator`}
-					>
-						{selected ? (
-							<Check size={14} color={WHITE} strokeWidth={3} />
-						) : null}
-					</View>
-				</View>
-			</View>
-		</Pressable>
 	);
 }
 

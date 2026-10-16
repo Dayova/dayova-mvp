@@ -113,6 +113,17 @@ Card text remains theme text, with an accent fill and cyan border. Shared
 semantics and reduced motion; screens own immediate selected state. See the
 [selection decision](adr/answer-selection-colors.md).
 
+`useSelectionMotion` is the single motion contract for these controls and the
+subscription plan cards: 90ms press compression to 0.98, a 180ms selection
+transition, and a 240ms spring for the check and release. Animate presentation
+inside a stationary native touch target; commit selection only from `onPress`.
+Reduced motion assigns final values directly. The subscription cards retain
+their documented fixed-light glass surface, dark selected outline, and white
+check on a dark indicator. They share the interaction curve, reflow at larger
+text sizes, and disable selection while Store plans load or a purchase runs.
+Single-choice weekday and plan lists expose a radio group; independently
+toggleable learning days retain checkbox semantics.
+
 Typography uses Poppins only. Body text is Regular; headings, buttons, selected
 tabs, labels that need emphasis, and other highlighted text use SemiBold.
 Large numeric counters use `display-counter` 60/68. The supported content
