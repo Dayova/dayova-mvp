@@ -92,6 +92,8 @@ only centrally generated `validation_student_code`, `eas_update_id`,
 `eas_channel`, `eas_runtime_version`, and `eas_is_embedded_launch` shared
 context. The exact event-property pairs are:
 
+- `feature_interaction`: bounded `interaction`, `outcome`, and optional `entity_id`, `value`, and `screen`
+- `app_screen_viewed`: bounded `screen` selected from known route templates
 - `onboarding_completed`: `local_day_key`, `onboarding_version`
 - `homework_created`: `day_entry_id`, `planned_day_key`, `due_day_key`, `duration_minutes`
 - `exam_created`: `day_entry_id`, `planned_day_key`, `duration_minutes`, bounded `exam_type`
