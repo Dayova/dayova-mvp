@@ -3,6 +3,10 @@ import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import { SubscriptionScreen } from "./subscription-screen";
 
+jest.mock("~/lib/theme", () => ({
+	useDayovaTheme: () => ({ colors: { text: "#1A1A1A" } }),
+}));
+
 jest.mock("~/components/ui/icon", () => ({
 	ArrowLeft: () => null,
 	Check: () => null,

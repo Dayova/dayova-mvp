@@ -799,12 +799,7 @@ export default function LearningSessionContentScreen() {
 							fontSize: 16,
 							fontWeight: "600",
 						},
-						headerLeft: () => (
-							<BackButton
-								onPress={goBack}
-								className="h-11 min-h-11 w-11 min-w-11"
-							/>
-						),
+						headerLeft: () => <BackButton onPress={goBack} />,
 						headerRight: () =>
 							displayedRemainingSeconds !== null ? (
 								<Text
@@ -861,12 +856,7 @@ export default function LearningSessionContentScreen() {
 									fontSize: 16,
 									fontWeight: "600",
 								},
-								headerLeft: () => (
-									<BackButton
-										onPress={goBack}
-										className="h-11 min-h-11 w-11 min-w-11"
-									/>
-								),
+								headerLeft: () => <BackButton onPress={goBack} />,
 							}
 						: {
 								gestureEnabled: true,
