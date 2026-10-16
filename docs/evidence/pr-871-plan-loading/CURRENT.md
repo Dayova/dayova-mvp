@@ -1,14 +1,15 @@
-# Preparation flow capture: upload through review
+# Historical preparation flow capture: upload through review
 
-Layout note, 16 October 2026: this capture predates removal of the creation
-header. The implementation now shows only the preparation progress bar and a
-persistent **Später fortsetzen** footer. The media below does not verify this
-updated layout. The attempted Android visual check could not load the local
-project in the installed development client; iOS was not available on this host.
+Layout note, 17 October 2026: the iOS capture below predates removal of the
+creation header. Fresh Android recordings now verify the single preparation
+progress bar, persistent **Später fortsetzen** footer, automatic review handoff,
+and leaving for the saved-draft overview. See [current Android evidence and
+capture conditions](CAPTURE-2026-10-17.md). The updated layout has not been
+captured on iOS.
 
 Captured 15 October 2026 on iPhone 17 Pro / iOS 26.5, dark appearance,
-default text size, implementation commit `b73c36d6`. This supersedes the older
-animation for current behavior. The existing mathematics demo was uploaded to
+default text size, implementation commit `b73c36d6`. This superseded the older
+animation at that time. The existing mathematics demo was uploaded to
 the saved 29 October exam draft. The plan was left at review, unaccepted.
 
 `material-to-review-current.mp4` is a continuous, real-time 23-second excerpt
