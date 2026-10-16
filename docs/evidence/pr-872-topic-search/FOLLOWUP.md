@@ -23,8 +23,8 @@ After capture, `main` advanced to `8b9b8af5` with PR #869's creation header and
 pause-saving changes. The final integration retains those changes and sends
 `topicItems` on both Continue and pause. The captures above establish the named
 revisions, not a native test of that subsequent header integration. The merged
-route has 51 passing focused UI tests, including pause success, failure, invalid
-input, stale-route protection, and the topic-boundary regressions. The Mac run
+route has 52 passing focused UI tests, including pause success, failure, invalid
+input, stale-route protection, boundary-only pause edits, and the topic-boundary regressions. The Mac run
 must fetch and record the final head revision explicitly.
 
 The configured Convex target was confirmed as development. Functions from

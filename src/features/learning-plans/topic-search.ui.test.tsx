@@ -24,6 +24,7 @@ jest.mock("~/lib/theme", () => ({
 		colors: { text: "#111111", primary: "#00A0E6", secondaryText: "#697586" },
 	}),
 }));
+/** Exercises topic selection with React state and a controllable search adapter. */
 function Harness({
 	searchTopics,
 	initial = "",

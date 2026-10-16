@@ -321,6 +321,7 @@ afterEach(() => {
 	jest.restoreAllMocks();
 });
 
+/** Applies a mocked route replacement so tests can cross the exam/setup boundary. */
 function followReplacement() {
 	const destination = mockRouter.replace.mock.calls.at(-1)?.[0];
 	expect(typeof destination).toBe("string");
@@ -330,6 +331,7 @@ function followReplacement() {
 	return url.pathname;
 }
 
+/** Opens the gallery action in a material-upload draft with the supplied picker assets. */
 async function selectGalleryPhotos(
 	assets: NonNullable<
 		Awaited<ReturnType<typeof mockLaunchImageLibrary>>["assets"]
@@ -698,6 +700,38 @@ describe("exam creation across the topics boundary", () => {
 			expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans"),
 		);
 		expect(mockRouter.dismissTo).toHaveBeenCalledTimes(1);
+	});
+
+	test("persists changed topic boundaries on pause even when the description is unchanged", async () => {
+		const legacy = "Zellteilung\nMeiose";
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "topic",
+		};
+		mockSnapshot = { plan: { topicDescription: legacy }, documents: [] };
+		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.press(
+			screen.getByRole("button", { name: /Zellteilung\s+Meiose entfernen/ }),
+		);
+		for (const title of ["Zellteilung", "Meiose"]) {
+			await fireEvent.changeText(screen.getByLabelText("Thema suchen"), title);
+			await fireEvent.press(
+				screen.getByRole("button", {
+					name: `Eigenes Thema hinzufügen: ${title}`,
+				}),
+			);
+		}
+		await act(() => mockProgress.onClose());
+		await act(() => mockPauseProps.onConfirm());
+		expect(mockUpdateRequiredTopics).toHaveBeenCalledWith({
+			id: "plan-1",
+			topicDescription: legacy,
+			topicItems: ["Zellteilung", "Meiose"],
+		});
+		await waitFor(() =>
+			expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans"),
+		);
 	});
 
 	test("keeps edited topics and the pause sheet when saving fails", async () => {

@@ -695,7 +695,9 @@ export default function NewLearningPlanScreen() {
 			try {
 				if (
 					hasEditedTopicsRef.current &&
-					topics !== snapshot?.plan.topicDescription
+					(topics !== snapshot?.plan.topicDescription ||
+						JSON.stringify(selectedTopics) !==
+							JSON.stringify(snapshot?.plan.topicItems))
 				) {
 					if (!isMeaningfulTopicDescription(topics)) {
 						throw new Error(
