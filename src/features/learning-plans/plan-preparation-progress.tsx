@@ -24,6 +24,12 @@ export function PlanPreparationProgress({
 }) {
 	const { colors } = useDayovaTheme();
 	const reduceMotion = useReducedMotion();
+	const busy = !failed && stage < steps.length;
+	const status = failed
+		? "Vorbereitung unterbrochen"
+		: stage >= steps.length
+			? "Vorbereitung abgeschlossen"
+			: steps[stage];
 	return (
 		<View className="gap-8">
 			<View
@@ -35,22 +41,25 @@ export function PlanPreparationProgress({
 			</View>
 			<Text
 				accessibilityRole="header"
+				accessibilityLabel={`Dein Lernplan entsteht. ${status}`}
+				accessibilityLiveRegion="polite"
+				accessibilityState={{ busy }}
 				className="text-center font-poppins font-semibold text-heading-2 text-text"
 			>
 				Dein Lernplan entsteht
 			</Text>
 			<FlowProgressBar
+				accessible
 				className="h-3"
 				progress={stage / steps.length}
 				initialProgress={0}
 				accessibilityRole="progressbar"
 				accessibilityLabel="Lernplan vorbereiten"
 				accessibilityValue={{
-					text: failed
-						? "Vorbereitung unterbrochen"
-						: stage === 3
-							? "Vorbereitung abgeschlossen"
-							: steps[stage],
+					min: 0,
+					max: steps.length,
+					now: stage,
+					text: status,
 				}}
 			/>
 			<Surface className="gap-5 rounded-[28px] p-5">
