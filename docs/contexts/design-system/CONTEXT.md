@@ -328,8 +328,13 @@ bar second, and the checklist third. Completion advances automatically; a quiet
 ghost action, **Später fortsetzen**, remains in a persistent footer during
 processing and errors, outside the scrolling content so it stays reachable at
 large text sizes. Two progress bars compete for attention and overload this
-waiting surface. Form steps retain their creation header. Without that header,
-the preparation screen owns safe-area padding in its scroll view and footer.
+waiting surface: the upper bar describes the overall creation flow, while the
+remaining bar and checklist describe preparation. Showing both on one waiting
+screen adds competing progress contexts without another decision for the learner.
+Removing the upper bar and its two navigation buttons reduces visual load and
+keeps attention on preparation. Form steps retain their creation header. Without
+that header, the preparation screen owns safe-area padding in its scroll view
+and footer.
 Flower, heading, progress bar, and checklist form one vertically centered group
 in the available space above the footer. The scroll content grows to fill that
 space but can overflow vertically on small displays or at larger text sizes.
@@ -337,7 +342,11 @@ space but can overflow vertically on small displays or at larger text sizes.
 Leaving is not a server-side cancellation or rollback: an already dispatched
 analysis action or mutation may still finish and persist its result. The client
 stops dispatching subsequent preparation steps and ignores late navigation after
-exit. **Später fortsetzen** returns to Learning Plans with the saved, unaccepted
+exit. Back/close controls cannot reliably undo that server work; the explicit
+**Später fortsetzen** label describes leaving a saved draft without promising
+to pause or abort all processing. This is a reason to clarify the exit, not to
+trap the learner on the waiting screen.
+**Später fortsetzen** returns to Learning Plans with the saved, unaccepted
 draft intact; Android system back remains available. Errors also retain retry.
 Do not remove this explicit exit on iOS, where the back gesture is disabled.
 
