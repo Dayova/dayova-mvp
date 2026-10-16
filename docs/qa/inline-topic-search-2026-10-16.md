@@ -32,22 +32,48 @@ tests under parallel load. All affected tests passed serially, and the entire
 140-file suite then passed with two workers. This is not an unresolved failure
 being excluded from the final result.
 
+## Native evidence follow-up
+
+The follow-up requested by Jakob adds native before/after screenshots, a
+scenario gallery and four device recordings as GitHub attachments on
+[PR #884](https://github.com/Dayova/dayova-mvp/pull/884). See the
+[state matrix and reproduction](../evidence/pr884/README.md) and
+[full-timeline video observations](../evidence/pr884/video-observations.md).
+The product implementation is unchanged from `d126c3d4`.
+
+Follow-up validation: TypeScript, Biome on all five evidence scripts, Node
+syntax checks, and a prepare/restore smoke check passed. `index.ts` is restored
+exactly and the generated baseline is absent. The published gallery contains
+45 verified attachment URLs (40 original screenshots, one comparison and four
+recordings), with no local-path or uploading placeholders. A fresh CodeRabbit
+CLI attempt was rate/seat limited again; the staged evidence diff was manually
+reviewed for source provenance, anonymous content, truthful coverage, attachment
+mapping and isolation from the production entry.
+
+The captures use real PR components in an isolated Android entry. Controlled
+provider responses cover failure/latency states; live WLO scenes use the actual
+adapter through a loopback server. Material/back is local fixture state, not a
+database write. No production accounts or credentials appear in the media.
+
+**Native acceptance remains open:** scene switches/development refreshes can
+leave static text visually missing despite its presence in the native
+accessibility hierarchy. The raw evidence retains this finding. A full-route
+check with a matching native/release build is needed to determine whether it
+also occurs outside the fixture. Custom-subject catalog coverage remains
+limited, and vague/page-reference inputs are accepted without clarification.
+
 ## Remaining evidence and limitations
 
 - The optional full UI-suite run was interrupted after prolonged runtime
   (including an existing preparation-slot-editor suite taking 267.765 seconds).
   It produced no final suite verdict and is not counted as green. The focused
   suite above was independently rerun on the final component changes and passed.
-- Native visual acceptance is **not complete**. A separate read-only Android 16
-  emulator and development client were started, but the client became
-  unresponsive before the component preview was verified. Automatic execution
-  review rejected a subsequent combined app-control/bundle command with only
-  `blocked by policy` as its stated reason. The block was not bypassed. The
-  temporary fixture and entry changes were removed; the dedicated emulator and
-  Metro were stopped.
-- No new before/after native screenshots or recordings are claimed. Android
-  keyboard, font scaling, light/dark appearance and TalkBack remain unverified
-  for this implementation. iOS and VoiceOver were not available on this host.
+- The initial Android attempt failed before evidence capture. It is superseded
+  by the component captures above, including keyboard, light/dark, system text
+  scale and a smaller viewport. These do not establish full native acceptance.
+- iOS, TalkBack/VoiceOver, Clerk sign-in, personal-subject creation and an actual
+  persisted save/reopen journey are not covered by the new media. The reused
+  development binary is not a fresh native build of this lockfile.
 - CodeRabbit CLI **0.7.5** (valid CodeRabbit signature) was authenticated, but the
   review was rejected by its account review-capacity/seat limit. This is not a
   completed CodeRabbit review. The diff was manually inspected for scope,
