@@ -2,6 +2,7 @@ import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { Button } from "~/components/ui/button";
@@ -30,6 +31,7 @@ const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
 
 export default function LearningPlanAnalysisScreen() {
+	const insets = useSafeAreaInsets();
 	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const params = useLocalSearchParams<{ planId?: string }>();
@@ -144,17 +146,18 @@ export default function LearningPlanAnalysisScreen() {
 		);
 		return true;
 	};
-	// Gestures are disabled below; keep the explicit review replacement free of
-	// native removal prevention while retaining the Android back intent.
+	const leavePreparation = () => {
+		didCloseRef.current = true;
+		dismissToOrReplace(router, "/learning-plans");
+	};
+	// Leaving stops subsequent client steps, not an already running server request.
+	// Keep review replacement and the explicit resume-later action free of removal guards.
 	useBackIntent(true, goBack, { allowRouteRemoval: true });
 	useLearningPlanCreationProgress({
-		active: true,
+		active: false,
 		currentStep: LEARNING_PLAN_CREATION_STEPS.materialAnalysis,
 		onBack: goBack,
-		onClose: () => {
-			didCloseRef.current = true;
-			dismissToOrReplace(router, "/learning-plans");
-		},
+		onClose: leavePreparation,
 	});
 
 	return (
@@ -164,8 +167,9 @@ export default function LearningPlanAnalysisScreen() {
 				className="flex-1"
 				contentContainerStyle={{
 					paddingHorizontal: 32,
-					paddingTop: 0,
-					paddingBottom: 60,
+					// With the creation header hidden, this screen owns the top safe area.
+					paddingTop: insets.top + 28,
+					paddingBottom: 24,
 				}}
 				showsVerticalScrollIndicator={false}
 			>
@@ -198,6 +202,19 @@ export default function LearningPlanAnalysisScreen() {
 					) : null}
 				</View>
 			</ScrollView>
+			<View
+				className="w-full max-w-[480px] self-center px-8 pt-2"
+				// The persistent exit stays above the device's bottom safe area.
+				style={{ paddingBottom: Math.max(insets.bottom + 12, 20) }}
+			>
+				<Button
+					variant="ghost"
+					onPress={leavePreparation}
+					accessibilityHint="Kehrt zu deinen Lernplänen zurück. Dein Entwurf bleibt gespeichert."
+				>
+					<Text className="text-secondary-text">Später fortsetzen</Text>
+				</Button>
+			</View>
 		</View>
 	);
 }

@@ -1,4 +1,10 @@
-# Current preparation flow: upload through review
+# Preparation flow capture: upload through review
+
+Layout note, 16 October 2026: this capture predates removal of the creation
+header. The implementation now shows only the preparation progress bar and a
+persistent **Später fortsetzen** footer. The media below does not verify this
+updated layout. The attempted Android visual check could not load the local
+project in the installed development client; iOS was not available on this host.
 
 Captured 15 October 2026 on iPhone 17 Pro / iOS 26.5, dark appearance,
 default text size, implementation commit `b73c36d6`. This supersedes the older

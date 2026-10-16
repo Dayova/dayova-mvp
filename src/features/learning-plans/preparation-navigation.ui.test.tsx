@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, jest, test } from "@jest/globals";
-import { act, render } from "@testing-library/react-native";
+import { act, fireEvent, render } from "@testing-library/react-native";
 import LearningPlanAnalysisScreen from "~/app/(creation)/learning-plans/[planId]/analysis";
 
 const mockRouter = { replace: jest.fn(), dismissTo: jest.fn() };
@@ -14,7 +14,10 @@ let mockSnapshot = {
 		scopeConfirmedAt: undefined,
 	},
 };
-let mockProgress: { onClose: () => void };
+let mockProgress: { active: boolean; onClose: () => void };
+jest.mock("react-native-safe-area-context", () => ({
+	useSafeAreaInsets: () => ({ top: 59, bottom: 34, left: 0, right: 0 }),
+}));
 jest.mock("~/lib/use-feature-analytics", () => ({
 	useFeatureAnalytics: () => mockTrackFeature,
 }));
@@ -104,16 +107,20 @@ test.each([
 	mockSnapshot = { plan: { ...mockSnapshot.plan, status: "generated" } };
 	await screen.rerender(<LearningPlanAnalysisScreen />);
 	expect(mockRouter.replace).not.toHaveBeenCalled();
-	if (leave)
-		await act(async () => {
-			mockProgress.onClose();
-		});
+	expect(mockProgress.active).toBe(false);
+	if (leave) {
+		await fireEvent.press(screen.getByText("Später fortsetzen"));
+		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans");
+	}
 	// Resolving work is sufficient; no timer advance should be needed to navigate.
 	await act(async () => {
 		finish();
 	});
-	if (leave) expect(mockRouter.replace).not.toHaveBeenCalled();
-	else
+	if (leave) {
+		expect(mockRouter.replace).not.toHaveBeenCalled();
+		// The in-flight analysis can finish, but no confirmation/preparation follows.
+		expect(mockWork).toHaveBeenCalledTimes(1);
+	} else
 		expect(mockRouter.replace).toHaveBeenCalledWith(
 			"/learning-plans/plan-1/review",
 		);
@@ -158,4 +165,6 @@ test("tracks scope confirmation failure and stops before preparing the diagnosti
 	expect(mockWork).toHaveBeenCalledTimes(2);
 	expect(mockRouter.replace).not.toHaveBeenCalled();
 	expect(screen.getByText("Scope confirmation failed")).toBeTruthy();
+	await fireEvent.press(screen.getByText("Später fortsetzen"));
+	expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans");
 });

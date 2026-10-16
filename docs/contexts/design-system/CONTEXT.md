@@ -321,6 +321,23 @@ between weekdays and start time brings the profile flow to twelve steps.
 
 ## Learning-plan preparation
 
+The preparation screen hides the creation header, including its back/close
+controls and overall-flow progress bar, in every preparation stage. Its job is
+to explain the ongoing work: flower and heading first, one preparation progress
+bar second, and the checklist third. Completion advances automatically; a quiet
+ghost action, **Später fortsetzen**, remains in a persistent footer during
+processing and errors, outside the scrolling content so it stays reachable at
+large text sizes. Two progress bars compete for attention and overload this
+waiting surface. Form steps retain their creation header. Without that header,
+the preparation screen owns safe-area padding in its scroll view and footer.
+
+Leaving is not a server-side cancellation or rollback: an already dispatched
+analysis action or mutation may still finish and persist its result. The client
+stops dispatching subsequent preparation steps and ignores late navigation after
+exit. **Später fortsetzen** returns to Learning Plans with the saved, unaccepted
+draft intact; Android system back remains available. Errors also retain retry.
+Do not remove this explicit exit on iOS, where the back gesture is disabled.
+
 The temporary creation flow uses one preparation screen for material analysis,
 recognized scope, and diagnostic preparation. It skips the separate scope
 confirmation screen, automatically applies the recognized scope through the
