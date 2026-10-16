@@ -101,6 +101,7 @@ export default function NewLearningPlanScreen() {
 	const updateRequiredTopics = useMutation(
 		api.learningPlans.updateRequiredTopics,
 	);
+	const searchTopics = useAction(api.wloTopics.search);
 	const generateUploadUrl = useMutation(api.learningPlans.generateUploadUrl);
 	const registerUploadedDocument = useAction(
 		api.learningPlans.registerUploadedDocument,
@@ -703,6 +704,8 @@ export default function NewLearningPlanScreen() {
 				<View key={setupStep} className="flex-1">
 					{setupStep === "requiredTopics" ? (
 						<RequiredTopicsStep
+							subject={subject}
+							searchTopics={searchTopics}
 							canContinue={canContinueTopics}
 							errorMessage={errorMessage}
 							isBusy={isBusy}

@@ -17,6 +17,13 @@ const mockCreateEntry = jest.fn<() => Promise<string>>();
 const mockUpdateEntry = jest.fn<() => Promise<void>>();
 const mockGenerateUploadUrl = jest.fn<() => Promise<Record<string, unknown>>>();
 const mockRegisterUploadedDocument = jest.fn<() => Promise<void>>();
+const mockSearchTopics =
+	jest.fn<
+		() => Promise<{
+			topics: { id: string; title: string }[];
+			truncated: boolean;
+		}>
+	>();
 const mockCapture = jest.fn();
 const mockFetch =
 	jest.fn<
@@ -78,6 +85,12 @@ jest.mock("convex/react", () => ({
 	useAction: (reference: unknown) => {
 		const { getFunctionName } =
 			jest.requireActual<typeof import("convex/server")>("convex/server");
+		if (
+			getFunctionName(reference as Parameters<typeof getFunctionName>[0]) ===
+			"wloTopics:search"
+		) {
+			return mockSearchTopics;
+		}
 		return getFunctionName(
 			reference as Parameters<typeof getFunctionName>[0],
 		) === "learningPlans:registerUploadedDocument"
@@ -261,6 +274,10 @@ beforeEach(() => {
 		storageProvider: "r2",
 	});
 	mockRegisterUploadedDocument.mockResolvedValue(undefined);
+	mockSearchTopics.mockResolvedValue({
+		topics: [{ id: "geraden", title: "Geraden" }],
+		truncated: false,
+	});
 	mockFetch.mockResolvedValue({
 		headers: { forEach: jest.fn() },
 		ok: true,
@@ -318,6 +335,41 @@ async function selectGalleryPhotos(
 }
 
 describe("exam creation across the topics boundary", () => {
+	test("saves appended search results with the full list and restores it on back navigation", async () => {
+		const original =
+			"Analytische Geometrie ohne Hilfsmittel\nVektoren und ihre Beträge\nSpiegeln an Ebenen und Achsen\nSkalarprodukt und Winkel";
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "topic",
+			subject: "Mathematik",
+		};
+		mockSnapshot = { plan: { topicDescription: original }, documents: [] };
+		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.changeText(screen.getByLabelText("Themen suchen"), "Gerad");
+		await waitFor(() =>
+			expect(
+				screen.getByRole("button", {
+					name: "Geraden zur Themenliste hinzufügen",
+				}),
+			).toBeOnTheScreen(),
+		);
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: "Geraden zur Themenliste hinzufügen",
+			}),
+		);
+		const complete = `${original}\nGeraden`;
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(mockUpdateEntry).toHaveBeenCalledWith({
+			id: "plan-1",
+			topicDescription: complete,
+		});
+		await act(() => mockProgress.onBack());
+		expect(screen.getByLabelText("Prüfungsthemen")).toHaveDisplayValue(
+			complete,
+		);
+	});
 	test.each([
 		"available",
 		"missing",

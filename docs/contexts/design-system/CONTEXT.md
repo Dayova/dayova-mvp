@@ -30,6 +30,13 @@ unless the team explicitly supersedes this temporary model.
 
 ## Native controls
 
+`SearchField` in `src/components/ui/search-field.tsx` composes the existing
+`FieldControl` and `Input` with a decorative Hugeicons search glyph. It retains
+native input props, system text scaling and a named accessibility label. In
+exam-topic setup, suggestions use open action rows above a separate editable
+textarea; the search does not replace the scope with chips. See the
+[topic-input contract](../product/adr/inline-topic-search-with-free-scope.md).
+
 All app switches must use `Switch` from `src/components/ui/switch`. Do not
 import or use `Switch` from `react-native`, and do not render Expo UI switches
 directly from app screens.

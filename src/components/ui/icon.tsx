@@ -53,6 +53,7 @@ import {
 	RepeatIcon,
 	Route02Icon,
 	ScanImageIcon,
+	Search01Icon,
 	Settings01Icon,
 	SparklesIcon,
 	SquareLock02Icon,
@@ -94,6 +95,7 @@ export const Bulb = createIcon(BulbIcon);
 export const CalendarDays = createIcon(Calendar03Icon);
 export const Calculator = createIcon(Calculator01Icon);
 export const Check = createIcon(Tick02Icon);
+export const Search = createIcon(Search01Icon);
 export const Chemistry = createIcon(Chemistry01Icon);
 export const ChevronDown = createIcon(ArrowDown01Icon);
 export const CircleAlert = createIcon(AlertCircleIcon);

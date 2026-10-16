@@ -17,6 +17,8 @@ jest.mock("~/components/ui/icon", () => {
 		Clock3: Icon,
 		GraduationCap: Icon,
 		Plus: Icon,
+		Search: Icon,
+		Check: Icon,
 		PropertyEdit: Icon,
 		X: Icon,
 	};
@@ -39,6 +41,8 @@ describe("learning-plan setup steps", () => {
 		const onContinue = jest.fn();
 		const screen = await render(
 			<RequiredTopicsStep
+				subject="Mathematik"
+				searchTopics={async () => ({ topics: [], truncated: false })}
 				canContinue
 				errorMessage={null}
 				isBusy={false}
@@ -229,6 +233,8 @@ describe("learning-plan setup steps", () => {
 	test("disables the topic continuation until the answer is valid", async () => {
 		const screen = await render(
 			<RequiredTopicsStep
+				subject="Mathematik"
+				searchTopics={async () => ({ topics: [], truncated: false })}
 				canContinue={false}
 				errorMessage={null}
 				isBusy={false}
