@@ -586,6 +586,26 @@ describe("exam creation across the topics boundary", () => {
 		expect(mockUpdateRequiredTopics).not.toHaveBeenCalled();
 	});
 
+	test("does not overwrite newer saved topics from stale route params on pause", async () => {
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "topic",
+			topicDescription: "Alter Themenstand aus dem Link",
+		};
+		mockSnapshot = {
+			plan: { topicDescription: "Neue gespeicherte Prüfungsthemen" },
+			documents: [],
+		};
+		await render(<NewLearningPlanScreen />);
+		await act(() => mockProgress.onClose());
+		await act(() => mockPauseProps.onConfirm());
+		await waitFor(() =>
+			expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans"),
+		);
+		expect(mockUpdateRequiredTopics).not.toHaveBeenCalled();
+	});
+
 	test("keeps an invalid local edit rather than discarding it when pausing", async () => {
 		mockParams = {
 			learningPlanId: "plan-1",

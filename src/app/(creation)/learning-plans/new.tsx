@@ -132,6 +132,9 @@ export default function NewLearningPlanScreen() {
 	const [topicsInput, setTopicsInput] = useState<string | null>(
 		params.topicDescription ?? params.teacherGuidance ?? null,
 	);
+	// Route params can be older than the saved draft; only actual input edits
+	// may overwrite its topics when pausing.
+	const hasEditedTopicsRef = useRef(false);
 	const [isBusy, setIsBusy] = useState(false);
 	const [isUploading, setIsUploading] = useState(false);
 	const [isUploadSheetVisible, setIsUploadSheetVisible] = useState(false);
@@ -663,7 +666,7 @@ export default function NewLearningPlanScreen() {
 			setPauseErrorMessage(null);
 			try {
 				if (
-					topicsInput !== null &&
+					hasEditedTopicsRef.current &&
 					topics !== snapshot?.plan.topicDescription
 				) {
 					if (!isMeaningfulTopicDescription(topics)) {
@@ -755,7 +758,10 @@ export default function NewLearningPlanScreen() {
 							canContinue={canContinueTopics}
 							errorMessage={errorMessage}
 							isBusy={isBusy}
-							onChangeTopics={setTopicsInput}
+							onChangeTopics={(value) => {
+								hasEditedTopicsRef.current = true;
+								setTopicsInput(value);
+							}}
 							onContinue={() => void continueToMaterial()}
 							topics={topics}
 						/>

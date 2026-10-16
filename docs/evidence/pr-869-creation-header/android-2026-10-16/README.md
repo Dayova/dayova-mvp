@@ -115,10 +115,15 @@ retained sheet/error after a rejected save. The correction waits for the existin
 `updateRequiredTopics` mutation (which also updates the linked exam), prevents
 duplicate/pending exit actions and keeps the sheet and input on save failure.
 Unchanged topics do not cause a write. Invalid local edits stay available for
-correction instead of being discarded. The final focused run passed **37 UI
+correction instead of being discarded. A subsequent CodeRabbit review identified
+a stale-route case: a topic value in an old link must not overwrite newer saved
+topics just because the learner pauses. A regression test reproduced the write
+on `69bf99da`; pause now tracks actual input edits before writing.
+The final focused run passed **38 UI
 tests and 16 navigation/overview/routing unit tests**, plus TypeScript and
 targeted Biome/ESLint/diff checks. Independent standards/spec reviews found no
-remaining issue. This logic correction was verified through route component
+remaining issue; the final CodeRabbit CLI follow-up also completed with zero
+findings after the stale-route fix. This logic correction was verified through route component
 tests; the native captures above still show the unchanged control appearance
 and do not claim a fresh authenticated pause/resume run.
 
