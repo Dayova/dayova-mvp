@@ -109,6 +109,7 @@ test("keeps a compound title beside back when its complete parts fit", async () 
 			expect.objectContaining({ paddingHorizontal: 60 }),
 		]),
 	);
+	expect(screen.getByRole("header").props.children).toBe("Wissens-\ncheck");
 	expect(screen.getByRole("header").props.accessibilityLabel).toBe(
 		"Wissenscheck",
 	);
@@ -127,5 +128,15 @@ test("gives compound titles more room rather than fragmenting their parts", asyn
 	expect(screen.getByRole("header").props.style).toEqual(
 		expect.arrayContaining([expect.objectContaining({ paddingHorizontal: 0 })]),
 	);
-	expect(screen.getByRole("header").props.children).toBe("Wissens\ncheck");
+	expect(screen.getByRole("header").props.children).toBe("Wissens-\ncheck");
+});
+
+test("keeps an unbroken compound title free of a visible hyphen", async () => {
+	const screen = await render(
+		<ScreenHeader title={["Wissens", "check"]} onBack={() => {}} />,
+	);
+	expect(screen.getByRole("header").props.children).toBe("Wissens\u200bcheck");
+	expect(screen.getByRole("header").props.accessibilityLabel).toBe(
+		"Wissenscheck",
+	);
 });

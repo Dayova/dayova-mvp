@@ -130,9 +130,10 @@ Custom `ScreenHeader` titles remain complete. The shared header measures its
 side controls and keeps a centered inline title when it fits. A native text
 wrap, enlarged text, or compact viewport moves ordinary titles below the controls
 into a full-width row. A compound title may supply two complete parts: it keeps
-those parts beside Back when they fit, wrapping only at their boundary without a
-visible hyphen. If a part fragments or a timer needs the space, the header gives
-the two complete parts their own full-width row. Wissenscheck supplies “Wissens”
+those parts beside Back when they fit, wrapping only at their boundary with a
+discretionary hyphen that is visible only when the word breaks. If a part
+fragments or a timer needs the space, the header gives the two complete parts
+their own full-width row. Wissenscheck supplies “Wissens”
 and “check”; its accessible label remains the uninterrupted word.
 `titleClassName` customizes typography; the shared header owns side padding. Learning-session headers use the shared content-size padding
 and reserve timer space only when the timer is present. The session's question

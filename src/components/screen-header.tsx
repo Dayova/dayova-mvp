@@ -6,7 +6,7 @@ import { Text } from "~/components/ui/text";
 import { cn } from "~/lib/utils";
 
 type ScreenHeaderProps = {
-	/** Compound parts may wrap at their boundary without a visible hyphen. */
+	/** Compound parts may wrap at their boundary with a hyphen only when broken. */
 	title?: string | readonly [string, string];
 	onBack: () => void;
 	right?: ReactNode;
@@ -39,6 +39,7 @@ function ScreenHeaderLayout({
 	stackControls,
 }: ScreenHeaderProps & { stackControls: boolean }) {
 	const [titleNeedsOwnRow, setTitleNeedsOwnRow] = useState(false);
+	const [compoundWraps, setCompoundWraps] = useState(false);
 	const [backWidth, setBackWidth] = useState(48);
 	const [rightWidth, setRightWidth] = useState(0);
 	const titleParts = typeof title === "string" ? null : title;
@@ -95,15 +96,23 @@ function ScreenHeaderLayout({
 							lines.length === titleParts.length &&
 							lines.every(
 								(line, index) =>
-									line.text.replaceAll("\u200b", "").trim() ===
-									titleParts[index],
+									line.text
+										.replaceAll("\u200b", "")
+										.trim()
+										.replace(/-$/, "") === titleParts[index],
 							);
-						if (!stacked && lines.length > 1 && !completeParts) {
-							setTitleNeedsOwnRow(true);
+						if (!stacked && lines.length > 1) {
+							if (completeParts) {
+								setCompoundWraps(true);
+							} else {
+								setTitleNeedsOwnRow(true);
+							}
 						}
 					}}
 				>
-					{titleParts ? titleParts.join(stacked ? "\n" : "\u200b") : title}
+					{titleParts
+						? titleParts.join(stacked || compoundWraps ? "-\n" : "\u200b")
+						: title}
 				</Text>
 			) : null}
 			{!stacked ? (
