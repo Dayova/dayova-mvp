@@ -1096,7 +1096,7 @@ export default function LearningSessionContentScreen() {
 										? currentIndex < content.items.length - 1
 											? "Weiter"
 											: "Abgeben"
-										: "Antwort prüfen"
+										: "Beantworten"
 							}
 							onSecondary={() => void submitCurrentAnswer(true)}
 							onPrimary={() => void submitCurrentAnswer()}
