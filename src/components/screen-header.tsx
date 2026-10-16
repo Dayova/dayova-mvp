@@ -79,7 +79,7 @@ function ScreenHeaderLayout({
 			{title ? (
 				<Text
 					accessibilityRole="header"
-					accessibilityLabel={titleLabel}
+					accessibilityLabel={titleParts ? titleLabel : undefined}
 					className={cn(
 						"text-center font-poppins font-semibold text-body-2 text-text",
 						titleClassName,
