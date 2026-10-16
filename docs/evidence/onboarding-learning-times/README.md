@@ -15,11 +15,11 @@ Stand: 3. Oktober 2026. Folgeänderungen für PR #825.
 
 | Dauer | Tage ohne Auswahl |
 | --- | --- |
-| ![Dauer](dayova-real-duration.png) | ![Tage](dayova-real-days-empty.png) |
+| ![Dauer](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/onboarding-learning-times/dayova-real-duration.png?raw=true) | ![Tage](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/onboarding-learning-times/dayova-real-days-empty.png?raw=true) |
 
 | Lernfakt | Startzeit |
 | --- | --- |
-| ![Lernfakt](dayova-real-routine.png) | ![Startzeit](dayova-real-time.png) |
+| ![Lernfakt](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/onboarding-learning-times/dayova-real-routine.png?raw=true) | ![Startzeit](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/onboarding-learning-times/dayova-real-time.png?raw=true) |
 
 Die Aufnahmen stammen aus dem echten Router auf „Dayova Jakob Review iPhone“.
 Die zusätzlichen Nutzeraufnahmen unter `../onboarding-review-2026-10-03/`
