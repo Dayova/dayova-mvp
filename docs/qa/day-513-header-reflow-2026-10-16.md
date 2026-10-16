@@ -2,6 +2,33 @@
 
 Issue: [DAY-513](https://linear.app/dayova/issue/DAY-513). PR: [#880](https://github.com/Dayova/dayova-mvp/pull/880).
 
+## Latest follow-up: visible word-break hyphen
+
+The user now explicitly requests **Wissens- / check**. This supersedes the
+hyphen-free preference documented in the earlier run below. Implementation
+`569e51d34353538ee0b216d01db66d23a58b1484` adds an explicit hyphen/newline
+once native layout confirms a compound wrap. An unbroken title has no visible
+hyphen; its accessible label remains Wissenscheck. The first Android soft-hyphen
+probe did not display a hyphen and was excluded from the published evidence.
+The final implementation uses native wrap measurement instead of relying on
+platform-specific discretionary-hyphen rendering.
+
+Fresh Pixel 9 native captures confirm the visible hyphen at 360, 320 and about
+280 dp with 200 % font scale, and the unbroken title without a hyphen at about
+411 dp / standard font. At 360 dp the complete title stays beside Back; at
+320/280 dp it uses the full-width fallback so Wissens- stays complete. Tools-button
+overlays and unsettled keyboard captures were excluded. The published normal
+capture has a focused input with the keyboard dismissed. This is a header-only
+follow-up, not a repeated interaction/video matrix or new iOS claim. Source and
+capture hashes are recorded in the provenance manifest.
+
+`pnpm check` passes. All 511 UI tests in 99 suites pass, including 8 targeted
+header/auth tests. Unit/script code is unchanged; the next remote CI run executes
+the complete pipeline. The read-only AVD overlay and task-local servers/caffeinate
+were stopped after capture.
+
+## Earlier complete matrix and interaction evidence (before adding the hyphen)
+
 ## Decision and source
 
 Job: answer the current question. Hierarchy: question, input/choices and actions,

@@ -43,5 +43,16 @@
   "implementation_followup": {
     "commit": "610c08d0d9c843f483dcd56638d0b1f76237a696",
     "scope": "Restore previous accessibility-label behavior for plain string titles only; compound title labels and captured visual layouts unchanged. Captured after_commit and source hashes intentionally remain the actual native capture sources."
+  },
+  "hyphen_followup": {
+    "commit": "569e51d34353538ee0b216d01db66d23a58b1484",
+    "header_sha256": "8c70d96777624a25e7a9ea09654b796a4d5c5e55eb32e6436cc15c249d3b6732",
+    "scope": "Native Android header-only follow-up at 360/320/280 dp with font_scale=2 and about 411 dp at font_scale=1. Explicit hyphen plus newline after native compound wrap; no visible hyphen before wrapping. Existing interaction videos remain historical evidence from before this follow-up.",
+    "captures": {
+      "hyphen-360-max-after.png": "9e30d06cd580e92b76b35c368a38587f81906a2adc3cbded766f58e2aad0a526",
+      "hyphen-320-max-after.png": "e22d81f99a2d40230d3473f7088c3c21c0304d8fdf61ca13fbf1a5b93c6ce9c9",
+      "hyphen-280-max-after.png": "823617c78e5cc41c3554e8148c6cc7b36ffddf835f70cdabceff1a97cc8e5317",
+      "hyphen-normal-after.png": "f2f195f4e0285eed4905260d4df09515890f37083f823f8f5621feb2f716f4bc"
+    }
   }
 }
