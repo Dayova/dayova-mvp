@@ -32,11 +32,21 @@ appId: ${APP_ID}
           visible: 'Login|Reload'
           timeout: 60000
       # SDK 57 can show the developer menu even with onboarding disabled.
+      # Android dismisses this modal with Back; iOS exposes a Close control.
       - runFlow:
           when:
             visible: Reload
           commands:
-            - tapOn: Close
+            - runFlow:
+                when:
+                  platform: iOS
+                commands:
+                  - tapOn: Close
+            - runFlow:
+                when:
+                  platform: Android
+                commands:
+                  - back
 - extendedWaitUntil:
     visible:
       text: Login
