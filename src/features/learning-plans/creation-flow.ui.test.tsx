@@ -1,5 +1,13 @@
-import { beforeEach, describe, expect, jest, test } from "@jest/globals";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	jest,
+	test,
+} from "@jest/globals";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
+import { Platform } from "react-native";
 import NewEntryScreen from "~/app/(creation)/entry/new";
 import NewLearningPlanScreen from "~/app/(creation)/learning-plans/new";
 
@@ -291,6 +299,10 @@ beforeEach(() => {
 	};
 });
 
+afterEach(() => {
+	jest.restoreAllMocks();
+});
+
 function followReplacement() {
 	const destination = mockRouter.replace.mock.calls.at(-1)?.[0];
 	expect(typeof destination).toBe("string");
@@ -328,11 +340,27 @@ async function selectGalleryPhotos(
 }
 
 describe("exam creation across the topics boundary", () => {
-	test("carries an inline calendar selection into topics and back to the date step", async () => {
+	test.each([
+		{
+			platform: "ios" as const,
+			initialLabel: "Weiter mit 30. September 2026",
+			selectedLabel: "Weiter mit 2. November 2026",
+		},
+		{
+			platform: "android" as const,
+			initialLabel: "Weiter",
+			selectedLabel: "Weiter",
+		},
+	])("carries an inline calendar selection into topics and back on $platform", async ({
+		platform,
+		initialLabel,
+		selectedLabel,
+	}) => {
+		jest.replaceProperty(Platform, "OS", platform);
 		let screen = await render(<NewEntryScreen />);
 		expect(mockProgress.currentStep).toBe(2);
 		expect(
-			screen.getByRole("button", { name: "Weiter mit 30. September 2026" }),
+			screen.getByRole("button", { name: initialLabel }),
 		).toBeOnTheScreen();
 		await fireEvent(
 			screen.getByTestId("inline-calendar"),
@@ -340,7 +368,7 @@ describe("exam creation across the topics boundary", () => {
 			new Date(2026, 10, 2, 15, 30),
 		);
 		expect(
-			screen.getByRole("button", { name: "Weiter mit 2. November 2026" }),
+			screen.getByRole("button", { name: selectedLabel }),
 		).toBeOnTheScreen();
 		await fireEvent.press(
 			screen.getByRole("button", { name: /^Weiter(?: mit .+)?$/ }),
@@ -354,7 +382,7 @@ describe("exam creation across the topics boundary", () => {
 		await screen.unmount();
 		screen = await render(<NewEntryScreen />);
 		expect(
-			screen.getByRole("button", { name: "Weiter mit 2. November 2026" }),
+			screen.getByRole("button", { name: selectedLabel }),
 		).toBeOnTheScreen();
 		expect(screen.getByTestId("inline-calendar").props.value).toEqual(
 			new Date(2026, 10, 2),

@@ -948,7 +948,7 @@ export default function NewEntryScreen() {
 								<ActivityIndicator color="#FFFFFF" />
 							) : (
 								<Text className="shrink text-center">
-									{step === "basics"
+									{step === "basics" && Platform.OS !== "android"
 										? `Weiter mit ${formatAccessibleExamDate(plannedDate)}`
 										: "Weiter"}
 								</Text>

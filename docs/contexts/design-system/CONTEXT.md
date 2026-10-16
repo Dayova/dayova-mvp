@@ -52,7 +52,9 @@ from `src/components/ui/inline-date-picker` instead. It owns native inline
 rendering, theme, native sizing, and Android date-only timezone conversion.
 [DAY-515](https://linear.app/dayova/issue/DAY-515) defines the exam-date step: the
 calendar appears below the question, without a separate selected-date card. Day
-changes immediately update the Continue label ("Weiter mit 2. November 2026").
+changes immediately update the Continue label on iOS ("Weiter mit 2. November 2026").
+Android uses "Weiter" because its native Material calendar already displays the
+selected date prominently above the calendar grid.
 The creation progress header stays visible, and Continue advances to topics.
 
 ## Icons
