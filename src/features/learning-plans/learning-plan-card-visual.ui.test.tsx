@@ -2,6 +2,30 @@ import { describe, expect, jest, test } from "@jest/globals";
 import { render } from "@testing-library/react-native";
 import { LearningPlanCardVisual } from "./learning-plan-card-visual";
 
+jest.mock("react-native-reanimated", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	const Native =
+		jest.requireActual<typeof import("react-native")>("react-native");
+	return {
+		__esModule: true,
+		default: { View: Native.View },
+		useReducedMotion: () => true,
+		useAnimatedStyle: () => ({}),
+		useSharedValue: (initial: number) => {
+			const value = React.useRef(initial);
+			return React.useMemo(
+				() => ({
+					get: () => value.current,
+					set: (next: number) => {
+						value.current = next;
+					},
+				}),
+				[],
+			);
+		},
+	};
+});
+
 let mockShouldStackInlineContent = false;
 
 jest.mock("~/components/ui/portrait-content", () => ({
