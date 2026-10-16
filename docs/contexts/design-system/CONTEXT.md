@@ -131,7 +131,9 @@ side controls and keeps a centered inline title when it fits. A native text
 wrap, enlarged text, or compact viewport moves the title below the controls
 into a full-width row. `titleClassName` customizes typography; the shared header
 owns side padding. Learning-session headers use the shared content-size padding
-and reserve timer space only when the timer is present. See
+and reserve timer space only when the timer is present. The session's question
+and action areas share that padding; action pairs stack at enlarged/compact
+sizes so the expanded header does not leave task content unreachable. See
 [DAY-513](https://linear.app/dayova/issue/DAY-513).
 
 Light-mode pill buttons have exactly two visual appearances: the light-mode

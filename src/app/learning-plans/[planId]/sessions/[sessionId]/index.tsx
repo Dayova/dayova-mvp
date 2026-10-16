@@ -91,10 +91,21 @@ function ActionRow({
 	busyLabel?: string;
 	className?: string;
 }) {
+	const { shouldStackInlineContent } = useContentSizeLayout();
+	const actionClassName = cn(
+		"px-4",
+		shouldStackInlineContent ? "w-full" : "flex-1",
+	);
 	return (
-		<View className={cn("mt-8 flex-row gap-3", className)}>
+		<View
+			className={cn(
+				"mt-8 gap-3",
+				shouldStackInlineContent ? "flex-col" : "flex-row",
+				className,
+			)}
+		>
 			<Button
-				className="flex-1 px-4"
+				className={actionClassName}
 				disabled={isBusy}
 				variant="neutral"
 				onPress={onSecondary}
@@ -102,7 +113,7 @@ function ActionRow({
 				<Text>{secondaryLabel}</Text>
 			</Button>
 			<Button
-				className="flex-1 px-4"
+				className={actionClassName}
 				disabled={primaryDisabled || isBusy}
 				onPress={onPrimary}
 			>
@@ -963,7 +974,7 @@ export default function LearningSessionContentScreen() {
 				enabled={currentItem?.kind === "written"}
 				contentContainerStyle={{
 					flexGrow: 1,
-					paddingHorizontal: 32,
+					paddingHorizontal: horizontalPadding,
 					paddingBottom:
 						showQuestionActions || showFeedbackAction
 							? 24
@@ -1066,8 +1077,12 @@ export default function LearningSessionContentScreen() {
 			{showQuestionActions && content ? (
 				<KeyboardAvoidingView behavior="padding">
 					<View
-						className="border-border border-t-hairline bg-background px-8 pt-4"
-						style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+						className="border-border border-t-hairline bg-background pt-4"
+						// Safe-area and content-size padding are native runtime values.
+						style={{
+							paddingBottom: Math.max(insets.bottom, 16),
+							paddingHorizontal: horizontalPadding,
+						}}
 					>
 						<ActionRow
 							className="mt-0"
@@ -1095,8 +1110,12 @@ export default function LearningSessionContentScreen() {
 				</KeyboardAvoidingView>
 			) : showFeedbackAction ? (
 				<View
-					className="border-border border-t-hairline bg-background px-8 pt-4"
-					style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+					className="border-border border-t-hairline bg-background pt-4"
+					// Safe-area and content-size padding are native runtime values.
+					style={{
+						paddingBottom: Math.max(insets.bottom, 16),
+						paddingHorizontal: horizontalPadding,
+					}}
 				>
 					<ActionRow
 						className="mt-0"
