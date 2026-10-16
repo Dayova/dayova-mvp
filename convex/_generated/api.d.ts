@@ -74,6 +74,7 @@ import type * as topicDescriptionValidation from "../topicDescriptionValidation.
 import type * as userAnalytics from "../userAnalytics.js";
 import type * as users from "../users.js";
 import type * as validationAnalytics from "../validationAnalytics.js";
+import type * as wloSubjectContext from "../wloSubjectContext.js";
 import type * as wloTopics from "../wloTopics.js";
 
 import type {
@@ -149,6 +150,7 @@ declare const fullApi: ApiFromModules<{
   userAnalytics: typeof userAnalytics;
   users: typeof users;
   validationAnalytics: typeof validationAnalytics;
+  wloSubjectContext: typeof wloSubjectContext;
   wloTopics: typeof wloTopics;
 }>;
 

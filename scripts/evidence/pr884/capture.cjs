@@ -1,13 +1,16 @@
 const fs = require("node:fs");
 const path = require("node:path");
-const { execFileSync, spawn } = require("node:child_process");
+const { execFileSync, spawn, spawnSync } = require("node:child_process");
 const device = process.env.EVIDENCE_DEVICE || "emulator-5574";
 const output =
 	process.env.EVIDENCE_OUTPUT ||
 	path.join(process.env.TEMP, "dayova-pr884-evidence");
 fs.mkdirSync(output, { recursive: true });
 function adb(...args) {
-	return execFileSync("adb", ["-s", device, ...args], { encoding: "utf8" });
+	return execFileSync("adb", ["-s", device, ...args], {
+		encoding: "utf8",
+		timeout: 60_000,
+	});
 }
 function dump() {
 	adb("shell", "uiautomator", "dump", "/sdcard/pr884.xml");
@@ -191,7 +194,18 @@ async function main() {
 		child.unref();
 		console.log(`Recording ${value}; host PID ${child.pid}`);
 	} else if (command === "stop-record") {
-		const pid = adb("shell", "pidof", "screenrecord").trim();
+		// screenrecord may already have reached its time limit. Still pull the
+		// finalized recording; distinguish an absent PID from an adb failure.
+		const status = spawnSync(
+			"adb",
+			["-s", device, "shell", "pidof", "screenrecord"],
+			{ encoding: "utf8", timeout: 20_000 },
+		);
+		if (status.error || (status.status !== 0 && status.status !== 1))
+			throw (
+				status.error ?? new Error(status.stderr || "Cannot inspect recorder")
+			);
+		const pid = status.stdout.trim();
 		if (pid) adb("shell", "kill", "-2", pid);
 		await new Promise((resolve) => setTimeout(resolve, 700));
 		adb("pull", `/sdcard/${value}.mp4`, path.join(output, `${value}.mp4`));

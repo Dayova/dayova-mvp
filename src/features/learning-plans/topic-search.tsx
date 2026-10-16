@@ -12,7 +12,12 @@ import {
 } from "./topic-suggestions";
 
 export type TopicSearchResult = {
-	topics: { id: string; title: string }[];
+	topics: {
+		id: string;
+		title: string;
+		subjects?: string[];
+		isAdditional?: boolean;
+	}[];
 	truncated: boolean;
 };
 export type SearchTopics = (args: {
@@ -90,7 +95,7 @@ export function TopicSearch({
 				accessibilityLabel="Themen suchen"
 				accessibilityHint="Optional. Gewählte Vorschläge werden deiner Themenliste hinzugefügt."
 				accessibilityState={{ disabled }}
-				placeholder={`Thema in ${subject} suchen`}
+				placeholder="Thema suchen"
 				value={query}
 				onChangeText={setQuery}
 				editable={!disabled}
@@ -138,41 +143,58 @@ export function TopicSearch({
 							? "Passende Begriffe – ergänze nur, was bei dir drankommt."
 							: "Keine passenden Vorschläge. Trage deine Themen unten direkt ein."}
 					</Text>
-					{visible.map((topic) => {
+					{visible.map((topic, index) => {
 						const isIncluded = includesTopicSuggestion(topics, topic.title);
+						const context = topic.subjects?.join(" · ");
 						return (
-							<ActionSurface
-								key={topic.id}
-								accessibilityRole="button"
-								accessibilityLabel={
-									isIncluded
-										? `${topic.title}, bereits in deiner Themenliste`
-										: `${topic.title} zur Themenliste hinzufügen`
-								}
-								accessibilityState={{
-									disabled: disabled || isIncluded,
-									selected: isIncluded,
-								}}
-								disabled={disabled || isIncluded}
-								onPress={() =>
-									onChangeTopics(appendTopicSuggestion(topics, topic.title))
-								}
-								className="min-h-14 flex-row items-center gap-3 rounded-none bg-transparent py-3"
-							>
-								<Text className="flex-1 font-poppins text-body-3 text-text">
-									{topic.title}
-								</Text>
-								<View
-									accessible={false}
-									importantForAccessibility="no-hide-descendants"
+							<View key={topic.id}>
+								{topic.isAdditional && !visible[index - 1]?.isAdditional ? (
+									<Text className="mt-3 font-poppins text-body-4 text-secondary-text">
+										Weitere Vorschläge
+									</Text>
+								) : null}
+								<ActionSurface
+									accessibilityRole="button"
+									accessibilityLabel={
+										isIncluded
+											? `${topic.title}, bereits in deiner Themenliste`
+											: `${topic.title} zur Themenliste hinzufügen`
+									}
+									accessibilityHint={
+										context ? `Themenbereich: ${context}` : undefined
+									}
+									accessibilityState={{
+										disabled: disabled || isIncluded,
+										selected: isIncluded,
+									}}
+									disabled={disabled || isIncluded}
+									onPress={() =>
+										onChangeTopics(appendTopicSuggestion(topics, topic.title))
+									}
+									className="min-h-14 flex-row items-center gap-3 rounded-none bg-transparent py-3"
 								>
-									{isIncluded ? (
-										<Check size={20} color={colors.secondaryText} />
-									) : (
-										<Plus size={20} color={colors.secondaryText} />
-									)}
-								</View>
-							</ActionSurface>
+									<View className="flex-1 gap-1">
+										<Text className="font-poppins text-body-3 text-text">
+											{topic.title}
+										</Text>
+										{context ? (
+											<Text className="font-poppins text-body-4 text-secondary-text">
+												{context}
+											</Text>
+										) : null}
+									</View>
+									<View
+										accessible={false}
+										importantForAccessibility="no-hide-descendants"
+									>
+										{isIncluded ? (
+											<Check size={20} color={colors.secondaryText} />
+										) : (
+											<Plus size={20} color={colors.secondaryText} />
+										)}
+									</View>
+								</ActionSurface>
+							</View>
 						);
 					})}
 					{result.truncated || result.topics.length > MAX_VISIBLE_RESULTS ? (

@@ -2,6 +2,10 @@ import { v } from "convex/values";
 import { z } from "zod";
 import { action } from "./_generated/server";
 import { throwUserFacingError } from "./errors";
+import {
+	normalizeWloText as normalize,
+	resolveWloSubjectContext,
+} from "./wloSubjectContext";
 
 // WLO's public collection search is deprecated, but currently the verified
 // endpoint for topic search. Keep the provider boundary isolated for replacement.
@@ -19,28 +23,20 @@ const responseSchema = z.object({
 		}),
 	),
 });
-/** Normalizes provider labels and search terms for German text comparisons. */
-const normalize = (value: string) =>
-	value.trim().toLocaleLowerCase("de-DE").replace(/\s+/g, " ");
-const subjectAliases: Record<string, string[]> = {
-	mathe: ["mathematik"],
-	erdkunde: ["geografie", "geographie"],
-	geografie: ["geografie", "geographie"],
-	geographie: ["geografie", "geographie"],
-	sozialkunde: ["politik", "gesellschaftskunde", "politische bildung"],
-	politik: ["politik", "politische bildung"],
-	ethik: ["philosophie & ethik", "ethik"],
-	philosophie: ["philosophie & ethik", "philosophie"],
+export type TopicSuggestion = {
+	id: string;
+	title: string;
+	subjects: string[];
+	isAdditional: boolean;
 };
-export type TopicSuggestion = { id: string; title: string };
 
-/** Finds subject-matched editorial titles within an eight-second, five-page budget. */
+/** Ranks title matches using subject context without excluding other subjects. */
 export async function searchWloTopics(query: string, subject: string) {
 	const term = normalize(query).replace(/gedichtsanalyse/g, "gedichtanalyse");
 	if (term.length < 3) return { topics: [], truncated: false };
 	if (term.length > 100 || subject.length > 100)
 		throw new Error("Search too long");
-	const subjects = subjectAliases[normalize(subject)] ?? [normalize(subject)];
+	const subjects = resolveWloSubjectContext(subject).map(normalize);
 	const matches = new Map<string, TopicSuggestion>();
 	const controller = new AbortController();
 	const timeout = setTimeout(() => controller.abort(), 8000);
@@ -68,18 +64,36 @@ export async function searchWloTopics(query: string, subject: string) {
 					node.collection?.type !== "EDITORIAL"
 				)
 					continue;
-				if (
-					!(properties["ccm:taxonid_DISPLAYNAME"] ?? []).some((name) =>
-						subjects.includes(normalize(name)),
-					)
-				)
-					continue;
 				// Search also matches descriptions; only title matches make useful topic suggestions.
 				if (!normalize(title).includes(term)) continue;
 				if (/\bdemo\b|\bstartseite\b|^tools$|^materialien$/i.test(title))
 					continue;
 				if (subjects.includes(normalize(title))) continue;
-				matches.set(normalize(title), { id: node.ref.id, title });
+				const labels = (properties["ccm:taxonid_DISPLAYNAME"] ?? [])
+					.map((name) => name.trim())
+					.filter((name) => name.length > 0 && name.length <= 100);
+				const previous = matches.get(normalize(title));
+				const combined = [
+					...new Set([...(previous?.subjects ?? []), ...labels]),
+				]
+					.sort(
+						(a, b) =>
+							Number(subjects.includes(normalize(b))) -
+								Number(subjects.includes(normalize(a))) ||
+							a.localeCompare(b, "de"),
+					)
+					.slice(0, 3);
+				matches.set(normalize(title), {
+					id: previous?.id ?? node.ref.id,
+					title: previous?.title ?? title,
+					subjects: combined,
+					// Exact titles survive even a historical wrong subject. Unknown
+					// subjects have no inferred category and search all title matches.
+					isAdditional:
+						subjects.length > 0 &&
+						normalize(title) !== term &&
+						!combined.some((name) => subjects.includes(normalize(name))),
+				});
 			}
 			if (data.collections.length < PAGE_SIZE) break;
 			if (page === MAX_PAGES - 1) truncated = true;
@@ -88,11 +102,13 @@ export async function searchWloTopics(query: string, subject: string) {
 		clearTimeout(timeout);
 	}
 	const topics = [...matches.values()].sort((a, b) => {
-		/** Prefers exact titles, then prefixes, then other title matches. */
+		/** Exact titles first, then context matches, then other title matches. */
 		const rank = (title: string) =>
 			normalize(title) === term ? 0 : normalize(title).startsWith(term) ? 1 : 2;
 		return (
-			rank(a.title) - rank(b.title) || a.title.localeCompare(b.title, "de")
+			Number(a.isAdditional) - Number(b.isAdditional) ||
+			rank(a.title) - rank(b.title) ||
+			a.title.localeCompare(b.title, "de")
 		);
 	});
 	return {
@@ -105,7 +121,14 @@ export async function searchWloTopics(query: string, subject: string) {
 export const search = action({
 	args: { query: v.string(), subject: v.string() },
 	returns: v.object({
-		topics: v.array(v.object({ id: v.string(), title: v.string() })),
+		topics: v.array(
+			v.object({
+				id: v.string(),
+				title: v.string(),
+				subjects: v.array(v.string()),
+				isAdditional: v.boolean(),
+			}),
+		),
 		truncated: v.boolean(),
 	}),
 	handler: async (ctx, args) => {

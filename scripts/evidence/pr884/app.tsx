@@ -112,6 +112,25 @@ function EvidenceScreen() {
 	}, [setPreference]);
 	const searchTopics = useCallback<SearchTopics>(
 		async (args) => {
+			if (scenario === "controlled-context") {
+				return {
+					topics: [
+						{
+							id: "bio",
+							title: "Vorgänge in der Zelle",
+							subjects: ["Biologie"],
+							isAdditional: false,
+						},
+						{
+							id: "it",
+							title: "Zellen in Tabellen",
+							subjects: ["Informatik"],
+							isAdditional: true,
+						},
+					],
+					truncated: false,
+				};
+			}
 			if (
 				[
 					"after",

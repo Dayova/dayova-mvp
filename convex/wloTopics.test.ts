@@ -27,7 +27,7 @@ describe("WLO topic search", () => {
 		).rejects.toThrow();
 		expect(fetcher).not.toHaveBeenCalled();
 	});
-	test("normalizes the spelling variant and excludes other subjects and description-only matches", async () => {
+	test("normalizes spelling, merges duplicate labels and excludes description-only and private matches", async () => {
 		const fetcher = vi
 			.fn()
 			.mockResolvedValue(
@@ -40,12 +40,19 @@ describe("WLO topic search", () => {
 			);
 		vi.stubGlobal("fetch", fetcher);
 		expect(await searchWloTopics("Gedichtsanalyse", "Deutsch")).toEqual({
-			topics: [{ id: "Gedichtanalyse", title: "Gedichtanalyse" }],
+			topics: [
+				{
+					id: "Gedichtanalyse",
+					title: "Gedichtanalyse",
+					subjects: ["Deutsch", "Englisch"],
+					isAdditional: false,
+				},
+			],
 			truncated: false,
 		});
 		expect(String(fetcher.mock.calls[0][0])).toContain("query=gedichtanalyse");
 	});
-	test("filters after paging so a matching subject on a later page is retained", async () => {
+	test("ranks context matches from later pages ahead of additional title matches", async () => {
 		const fetcher = vi
 			.fn()
 			.mockResolvedValueOnce(
@@ -56,8 +63,8 @@ describe("WLO topic search", () => {
 			.mockResolvedValueOnce(reply([node("Klimazonen", "Geografie")]));
 		vi.stubGlobal("fetch", fetcher);
 		expect(
-			(await searchWloTopics("Klima", "Erdkunde")).topics.map((x) => x.title),
-		).toEqual(["Klimazonen"]);
+			(await searchWloTopics("Klima", "Erdkunde")).topics[0].title,
+		).toEqual("Klimazonen");
 		expect(String(fetcher.mock.calls[1][0])).toContain("skipCount=100");
 	});
 	test("caps broad searches and signals incomplete results", async () => {
@@ -83,12 +90,92 @@ describe("WLO topic search", () => {
 		);
 		await expect(searchWloTopics("Gedicht", "Deutsch")).rejects.toThrow();
 	});
-	test("does not query short inputs and never searches other subjects for custom subjects", async () => {
+	test("does not query short inputs and keeps title matches for unknown personal subjects", async () => {
 		const fetcher = vi.fn().mockResolvedValue(reply([node("Gedichtanalyse")]));
 		vi.stubGlobal("fetch", fetcher);
 		expect((await searchWloTopics("Ge", "Deutsch")).topics).toEqual([]);
 		expect(fetcher).not.toHaveBeenCalled();
-		expect((await searchWloTopics("Gedicht", "Mein Fach")).topics).toEqual([]);
+		expect((await searchWloTopics("Gedicht", "Mein Fach")).topics).toEqual([
+			{
+				id: "Gedichtanalyse",
+				title: "Gedichtanalyse",
+				subjects: ["Deutsch"],
+				isAdditional: false,
+			},
+		]);
+	});
+	test("finds accounting under both the personal name and the historical mathematics selection", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi
+				.fn()
+				.mockImplementation(async () =>
+					reply([
+						node("Bilanz", "Wirtschaftskunde"),
+						node("Handelsbilanz", "Wirtschaftskunde"),
+					]),
+				),
+		);
+		const own = await searchWloTopics("Bilanz", "Rechnungswesen");
+		expect(own.topics.map((topic) => topic.title)).toEqual([
+			"Bilanz",
+			"Handelsbilanz",
+		]);
+		expect(own.topics.every((topic) => !topic.isAdditional)).toBe(true);
+		const legacy = await searchWloTopics("Bilanz", "Mathematik");
+		expect(legacy.topics[0]).toMatchObject({
+			title: "Bilanz",
+			isAdditional: false,
+			subjects: ["Wirtschaftskunde"],
+		});
+		expect(legacy.topics[1].isAdditional).toBe(true);
+	});
+	test("uses course aliases for ambiguous terms and keeps clearly labelled alternatives", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi
+				.fn()
+				.mockImplementation(async () =>
+					reply([
+						node("Zellen in Tabellen", "Informatik"),
+						node("Vorgänge in der Zelle", "Biologie"),
+					]),
+				),
+		);
+		const biology = await searchWloTopics("Zelle", "Bio LK");
+		expect(biology.topics.map((topic) => topic.title)).toEqual([
+			"Vorgänge in der Zelle",
+			"Zellen in Tabellen",
+		]);
+		expect(biology.topics[1].isAdditional).toBe(true);
+		const computing = await searchWloTopics("Zelle", "Informatik");
+		expect(computing.topics[0].title).toBe("Zellen in Tabellen");
+	});
+	test("keeps relevant candidates without taxonomy metadata and exact matches ahead of contextual prefixes", async () => {
+		const missingLabels = node("Bilanzgleichung");
+		missingLabels.properties = { "ccm:taxonid_DISPLAYNAME": [] };
+		vi.stubGlobal(
+			"fetch",
+			vi
+				.fn()
+				.mockResolvedValue(
+					reply([
+						node("Bilanz", "Wirtschaftskunde"),
+						node("Bilanz berechnen", "Mathematik"),
+						missingLabels,
+					]),
+				),
+		);
+		const result = await searchWloTopics("Bilanz", "Mathe LK");
+		expect(result.topics.map((topic) => topic.title)).toEqual([
+			"Bilanz",
+			"Bilanz berechnen",
+			"Bilanzgleichung",
+		]);
+		expect(result.topics[2]).toMatchObject({
+			subjects: [],
+			isAdditional: true,
+		});
 	});
 	test("keeps real topics whose names contain demo", async () => {
 		vi.stubGlobal(

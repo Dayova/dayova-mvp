@@ -74,6 +74,77 @@ afterEach(() => {
 });
 
 describe("inline topic search with a free-text exam scope", () => {
+	test("shows result context and additional suggestions without another subject picker, and only appends the title", async () => {
+		const search = jest.fn<SearchTopics>().mockResolvedValue({
+			topics: [
+				{
+					id: "1",
+					title: "Bilanz",
+					subjects: ["Wirtschaftskunde"],
+					isAdditional: false,
+				},
+				{
+					id: "2",
+					title: "Handelsbilanz",
+					subjects: ["Wirtschaftskunde"],
+					isAdditional: true,
+				},
+			],
+			truncated: false,
+		});
+		const screen = await render(
+			<Setup searchTopics={search} initial="Inventur ohne Hilfsmittel" />,
+		);
+		expect(screen.getByLabelText("Themen suchen")).toHaveProp(
+			"placeholder",
+			"Thema suchen",
+		);
+		expect(screen.queryByRole("radiogroup")).toBeNull();
+		await fireEvent.changeText(
+			screen.getByLabelText("Themen suchen"),
+			"Bilanz",
+		);
+		await debounce();
+		expect(screen.getAllByText("Weitere Vorschläge")).toHaveLength(1);
+		expect(
+			screen.getByRole("button", { name: "Bilanz zur Themenliste hinzufügen" }),
+		).toHaveProp("accessibilityHint", "Themenbereich: Wirtschaftskunde");
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Bilanz zur Themenliste hinzufügen" }),
+		);
+		expect(screen.getByLabelText("Prüfungsthemen")).toHaveDisplayValue(
+			"Inventur ohne Hilfsmittel\nBilanz",
+		);
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
+	});
+
+	test("keeps the same query scoped to the current name after renaming a personal subject", async () => {
+		const search = jest.fn<SearchTopics>().mockResolvedValue(reply("Bilanz"));
+		const props = {
+			topics: "Inventur",
+			onChangeTopics: jest.fn(),
+			searchTopics: search,
+			disabled: false,
+		};
+		const screen = await render(
+			<TopicSearch {...props} subject="Rechnungswesen" />,
+		);
+		await fireEvent.changeText(
+			screen.getByLabelText("Themen suchen"),
+			"Bilanz",
+		);
+		await debounce();
+		await screen.rerender(
+			<TopicSearch {...props} subject="Mein Wirtschaftskurs" />,
+		);
+		expect(screen.queryByText("Bilanz")).toBeNull();
+		await debounce();
+		expect(search).toHaveBeenLastCalledWith({
+			query: "Bilanz",
+			subject: "Mein Wirtschaftskurs",
+		});
+	});
+
 	test("continues with a complete pasted list without searching", async () => {
 		const search = jest.fn<SearchTopics>();
 		const next = jest.fn();
