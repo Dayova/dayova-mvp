@@ -1,3 +1,7 @@
+## Current selection-and-notes correction — 17 October 2026
+
+[Real Pixel 9 before/after and chip-removal gallery](https://github.com/Dayova/dayova-mvp/pull/884#issuecomment-6226000485). Current product a844f7a1, preview 7b7d615d with startup fix #891. The selected topic stays visible after clearing search; the separate “Test ist ohne Hilfsmittel” text survives removal unchanged. No fixture. [Uploaded asset URLs and SHA-256](selection-attachments.json). No new video or native save/reopen, large-text or screen-reader acceptance.
+
 > **17 October 2026:** The galleries below show earlier revisions that appended selected titles to the editor. They are historical evidence. PR #884 now separates visible topic selections from additional information; see the [updated contract](../../contexts/product/adr/inline-topic-search-with-free-scope.md) and [latest QA section](../../qa/inline-topic-search-2026-10-16.md). Do not use earlier screenshots as acceptance of the new interaction.
 
 # PR #884: native review evidence
