@@ -4,8 +4,8 @@
 
 Opened Personal subjects from an empty QA account and tapped **Fach hinzufügen**. The original still image with the native keyboard open shows only the sheet title above the keyboard: input and actions are not visible. Entering the synthetic text `QA Review Latein` and dismissing the keyboard exposes the input and buttons again.
 
-![Native keyboard open](android-keyboard.png)
-![After keyboard dismissal](android-dismissed.png)
+![Native keyboard open](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-187-android-2026-09-24/android-keyboard.png?raw=true)
+![After keyboard dismissal](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-187-android-2026-09-24/android-dismissed.png?raw=true)
 
 This is **not a passed keyboard-layout acceptance**. It also does not prove successful creation, rename, linked-record propagation or error recovery. The subsequent save attempt selected an ambiguous duplicate text node and left the dialog open; no successful save is claimed.
 

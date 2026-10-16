@@ -22,6 +22,7 @@ import {
 	useBackIntent,
 } from "~/lib/navigation";
 import { ROUTES } from "~/lib/routes";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
@@ -33,6 +34,7 @@ const priorityLabel = {
 } as const;
 
 export default function LearningPlanScopeScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const params = useLocalSearchParams<{ planId?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
@@ -84,9 +86,12 @@ export default function LearningPlanScopeScreen() {
 		setIsBusy(true);
 		setErrorMessage(null);
 		try {
+			trackFeature("learning_plan.scope_confirm", "attempted", planId);
 			await confirmScope({ learningPlanId: planId });
+			trackFeature("learning_plan.scope_confirm", "succeeded", planId);
 			router.replace(planPath(planId, "generating"));
 		} catch (error) {
+			trackFeature("learning_plan.scope_confirm", "failed", planId);
 			setErrorMessage(
 				getErrorMessage(
 					error,
