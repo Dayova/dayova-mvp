@@ -938,7 +938,7 @@ export default function LearningSessionContentScreen() {
 					}}
 				>
 					<ScreenHeader
-						title={title}
+						title={title === "Wissenscheck" ? ["Wissens", "check"] : title}
 						onBack={goBack}
 						className="mb-0"
 						titleClassName="text-body-1"

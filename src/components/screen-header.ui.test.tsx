@@ -95,3 +95,37 @@ test("gives enlarged text the full title width without shrinking it", async () =
 	expect(screen.getByRole("header").props.maxFontSizeMultiplier).toBe(1.75);
 	expect(screen.getByRole("header").props.adjustsFontSizeToFit).toBeUndefined();
 });
+
+test("keeps a compound title beside back when its complete parts fit", async () => {
+	mockDimensions = { width: 320, height: 640, scale: 3, fontScale: 2 };
+	const screen = await render(
+		<ScreenHeader title={["Wissens", "check"]} onBack={() => {}} />,
+	);
+	await fireEvent(screen.getByRole("header"), "textLayout", {
+		nativeEvent: { lines: [{ text: "Wissens\u200b" }, { text: "check" }] },
+	});
+	expect(screen.getByRole("header").props.style).toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({ paddingHorizontal: 60 }),
+		]),
+	);
+	expect(screen.getByRole("header").props.accessibilityLabel).toBe(
+		"Wissenscheck",
+	);
+});
+
+test("gives compound titles more room rather than fragmenting their parts", async () => {
+	mockDimensions = { width: 280, height: 640, scale: 3, fontScale: 2 };
+	const screen = await render(
+		<ScreenHeader title={["Wissens", "check"]} onBack={() => {}} />,
+	);
+	await fireEvent(screen.getByRole("header"), "textLayout", {
+		nativeEvent: {
+			lines: [{ text: "Wisse" }, { text: "ns" }, { text: "check" }],
+		},
+	});
+	expect(screen.getByRole("header").props.style).toEqual(
+		expect.arrayContaining([expect.objectContaining({ paddingHorizontal: 0 })]),
+	);
+	expect(screen.getByRole("header").props.children).toBe("Wissens\ncheck");
+});

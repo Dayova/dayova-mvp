@@ -6,7 +6,8 @@ import { Text } from "~/components/ui/text";
 import { cn } from "~/lib/utils";
 
 type ScreenHeaderProps = {
-	title?: string;
+	/** Compound parts may wrap at their boundary without a visible hyphen. */
+	title?: string | readonly [string, string];
 	onBack: () => void;
 	right?: ReactNode;
 	showBack?: boolean;
@@ -40,7 +41,12 @@ function ScreenHeaderLayout({
 	const [titleNeedsOwnRow, setTitleNeedsOwnRow] = useState(false);
 	const [backWidth, setBackWidth] = useState(48);
 	const [rightWidth, setRightWidth] = useState(0);
-	const stacked = stackControls || titleNeedsOwnRow;
+	const titleParts = typeof title === "string" ? null : title;
+	const titleLabel = typeof title === "string" ? title : title?.join("");
+	// Complete compound parts can stay beside Back, even at enlarged sizes.
+	// A timer or native fragmentation still gets the full-width fallback.
+	const stacked =
+		(stackControls && (!titleParts || Boolean(right))) || titleNeedsOwnRow;
 	const hasControls = showBack || Boolean(right);
 	const sideWidth = Math.max(showBack ? backWidth : 0, right ? rightWidth : 0);
 	const titlePadding = stacked || sideWidth === 0 ? 0 : sideWidth + 12;
@@ -73,6 +79,7 @@ function ScreenHeaderLayout({
 			{title ? (
 				<Text
 					accessibilityRole="header"
+					accessibilityLabel={titleLabel}
 					className={cn(
 						"text-center font-poppins font-semibold text-body-2 text-text",
 						titleClassName,
@@ -82,12 +89,21 @@ function ScreenHeaderLayout({
 					// empty timer space or defeat the full-width fallback.
 					style={{ paddingHorizontal: titlePadding }}
 					onTextLayout={(event) => {
-						if (!stacked && event.nativeEvent.lines.length > 1) {
+						const lines = event.nativeEvent.lines;
+						const completeParts =
+							titleParts &&
+							lines.length === titleParts.length &&
+							lines.every(
+								(line, index) =>
+									line.text.replaceAll("\u200b", "").trim() ===
+									titleParts[index],
+							);
+						if (!stacked && lines.length > 1 && !completeParts) {
 							setTitleNeedsOwnRow(true);
 						}
 					}}
 				>
-					{title}
+					{titleParts ? titleParts.join(stacked ? "\n" : "\u200b") : title}
 				</Text>
 			) : null}
 			{!stacked ? (
