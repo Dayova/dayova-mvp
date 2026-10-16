@@ -136,6 +136,14 @@ and action areas share that padding; action pairs stack at enlarged/compact
 sizes so the expanded header does not leave task content unreachable. See
 [DAY-513](https://linear.app/dayova/issue/DAY-513).
 
+Learning-session actions stay pinned while their measured height uses at most
+40% of the available question area. Larger actions join the vertical content
+scroll; iOS keyboard height is deducted from that budget. Written questions and
+multiple-choice answers both remain scrollable. At compact/enlarged sizes, choice
+letters and selection indicators sit above the full-width answer text. Long
+German session-action labels have optional soft-hyphen breaks and centered
+wrapping, with unchanged accessible names and unrestricted system text scaling.
+
 Light-mode pill buttons have exactly two visual appearances: the light-mode
 gradient button and the black button using the primary text color `#1A1A1A`.
 There are no white pill buttons in the current light-mode design system. Both
