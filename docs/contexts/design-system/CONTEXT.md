@@ -330,6 +330,9 @@ processing and errors, outside the scrolling content so it stays reachable at
 large text sizes. Two progress bars compete for attention and overload this
 waiting surface. Form steps retain their creation header. Without that header,
 the preparation screen owns safe-area padding in its scroll view and footer.
+Flower, heading, progress bar, and checklist form one vertically centered group
+in the available space above the footer. The scroll content grows to fill that
+space but can overflow vertically on small displays or at larger text sizes.
 
 Leaving is not a server-side cancellation or rollback: an already dispatched
 analysis action or mutation may still finish and persist its result. The client

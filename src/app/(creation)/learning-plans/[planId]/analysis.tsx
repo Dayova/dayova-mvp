@@ -165,6 +165,7 @@ export default function LearningPlanAnalysisScreen() {
 			<Stack.Screen options={{ gestureEnabled: false }} />
 			<ScrollView
 				className="flex-1"
+				contentContainerClassName="grow justify-center"
 				contentContainerStyle={{
 					paddingHorizontal: 32,
 					// With the creation header hidden, this screen owns the top safe area.
