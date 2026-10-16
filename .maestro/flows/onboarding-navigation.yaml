@@ -21,6 +21,12 @@ tags:
 - tapOn:
     id: onboarding-name-input
 - inputText: A
+# Android's keyboard can cover the footer on compact emulator displays.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
 - assertVisible: 'Bitte gib deinen Namen ein\.'
 - assertVisible:
     text: Weiter
@@ -29,6 +35,11 @@ tags:
     id: onboarding-name-input
 - eraseText
 - inputText: Maestro
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
 - assertNotVisible: 'Bitte gib deinen Namen ein\.'
 - assertVisible:
     text: Weiter
