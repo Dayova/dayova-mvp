@@ -106,6 +106,41 @@ manifest remain in local scratch; the original MP4 is preserved here.
 
 ## Validation and limits
 
+### Pause/resume follow-up
+
+The review found that the saved-draft pause sheet promised retained edits, but
+its confirm callback navigated away without persisting locally edited topics.
+Two regression cases failed on `39992a9c`: no save call before exit, and no
+retained sheet/error after a rejected save. The correction waits for the existing
+`updateRequiredTopics` mutation (which also updates the linked exam), prevents
+duplicate/pending exit actions and keeps the sheet and input on save failure.
+Unchanged topics do not cause a write. Invalid local edits stay available for
+correction instead of being discarded. The final focused run passed **37 UI
+tests and 16 navigation/overview/routing unit tests**, plus TypeScript and
+targeted Biome/ESLint/diff checks. Independent standards/spec reviews found no
+remaining issue. This logic correction was verified through route component
+tests; the native captures above still show the unchanged control appearance
+and do not claim a fresh authenticated pause/resume run.
+
+| X pressed in… | Result | Persistence |
+| --- | --- | --- |
+| Initial exam form (type/subject/date) | Home, no confirmation | Unsaved form edits are not autosaved; an already saved exam is not deleted |
+| Topics before a plan draft exists | Saved exam detail, no confirmation | Saved exam remains; local topic edits are not automatically saved |
+| Topics/material on an existing draft | “Lernplan-Erstellung pausieren?” → “Weiter bearbeiten” or “Später fortsetzen” | Pause saves changed topics before exit; uploads remain stored; failure keeps the form open |
+| Material analysis / scope confirmation | Learning-plan overview, no pause sheet | The existing saved draft remains resumable; in-flight analysis must not navigate back into creation after X |
+
+History: [#242](https://github.com/Dayova/dayova-mvp/pull/242) was closed when its
+old setup-quiz architecture was superseded. Release-native resumption was merged
+through [#485](https://github.com/Dayova/dayova-mvp/pull/485) and
+[#489](https://github.com/Dayova/dayova-mvp/pull/489). It is still present in
+`learning-plans.tsx`: unaccepted drafts appear under **In Erstellung**, with
+**Lernplan-Erstellung fortsetzen** and the next incomplete step. This is an
+overview card/section, not a newly added global banner. The separate 24-hour
+reminder [DAY-189](https://linear.app/dayova/issue/DAY-189/remind-learners-to-resume-unfinished-learning-plan-creation)
+remains Todo.
+
+### Earlier control validation
+
 - Focused UI runs passed: 91 tests (shared controls, sheets, subscription,
   auth, creation header), then 104 tests (final controls/onboarding and creation
   flow/setup dispatch). Overlapping tests are not counted as distinct totals.
