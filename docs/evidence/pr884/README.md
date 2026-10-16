@@ -1,8 +1,61 @@
 # PR #884: native review evidence
 
+## Current follow-up: derived subject context
+
+Product source: `bf90d6390da34659ba61b6057d1319d7f93a0310`.
+[Current gallery: eight screenshots and one recording](https://github.com/Dayova/dayova-mvp/pull/884#issuecomment-6222821260).
+Files, stable GitHub asset URLs, timestamps and hashes are in
+[`context-attachments.json`](context-attachments.json). No media binaries are committed.
+
+Personal subjects keep their existing identity, ownership and persistence.
+The selected name supplies internal ranking hints; exact title matches remain
+available across subjects and unknown names do not create an invented category.
+There is no additional subject picker or mandatory mapping step. Only the chosen
+title is appended to the authoritative scope. Provider subject labels are display
+context, not part of the learner's saved scope.
+
+| Capture | Current case |
+| --- | --- |
+| 41 | Live Bilanz/Rechnungswesen now returns Bilanz and Handelsbilanz labelled Wirtschaftskunde. |
+| 42 | Explicit selection preserves Inventur and appends only Bilanz. |
+| 43 | Historical Mathematik/Bilanz retains the exact match and marks Handelsbilanz as an additional suggestion. |
+| 44 | Unknown personal name Mein Spezialfach still returns title matches. |
+| 45 | Mathe LK uses the internal mathematics context. |
+| 46 | Combined Wirtschaft und Recht supports the accounting search. |
+| 47 | Controlled ambiguous Zelle response demonstrates Biologie/Informatik labels and additional suggestions; not evidence that WLO currently supplies both titles. |
+| 48 | Live accounting results in dark appearance. |
+
+`context-accounting.mp4` covers accounting, explicit append, the historical
+mathematics selection and an unknown name. Its complete-timeline inspection is
+in [`video-observations.md`](video-observations.md#context-accountingmp4).
+The subject in the tiny footer and floating Tools control belong to the fixture
+and development client, not to the product flow.
+
+The captures use the same dedicated read-only Android emulator and reused APK
+described below. Its initially installed older client crashed in native worklets
+before capture; reinstalling the already verified APK allowed the new captures.
+This is not a new native build. The larger-font attempt restarted the fixture
+into its default state and later hung in device control; those attempted images
+are excluded and do not establish current large-font acceptance. Earlier static
+text rendering findings remain open; this recording does not prove a fix.
+iOS, screen readers, actual personal-subject creation and persisted save/reopen
+remain outside this isolated evidence.
+
+After preparing the isolated entry and starting the same local adapter/Metro
+below, reproduce with `node scripts/evidence/pr884/context-run.cjs`.
+For six read-only development-action checks with synthetic CLI identity, run
+`node scripts/evidence/pr884/live-context.mjs <output.json>`.
+The checked report is [`live-context.json`](live-context.json); it establishes
+provider behavior through the authenticated action, not Clerk sign-in or student
+validation. The script pins the development deployment explicitly.
+
+## Initial gallery: historical source and coverage
+
 Product source: `d126c3d4d84427aa8dea2769b54c443e5fc45f62`.
 Before source: `3eb4e5d29f8cb2771fb79825c3b447587c514740`.
-The follow-up adds evidence tooling and documentation; product code is unchanged.
+That first evidence follow-up changed tooling and documentation only. Its media
+predates the subject-context change above; its empty Rechnungswesen search is
+historical, not the current result.
 
 Screenshots and recordings are uploaded as GitHub attachments on
 [PR #884](https://github.com/Dayova/dayova-mvp/pull/884), rather than tracked as

@@ -1,12 +1,62 @@
 # Inline exam-topic search — validation, 16 October 2026
 
+## Subject-context follow-up
+
+Product commit: `bf90d6390da34659ba61b6057d1319d7f93a0310`.
+The central name-to-context resolver recognizes explicit aliases/course markers
+and combinations of known areas. Context ranks editorial title matches instead
+of excluding other subjects. Exact titles survive a wrong historical subject;
+unknown personal names search without invented context. Personal-subject schema,
+IDs, ownership, creation, rename/delete and reuse are unchanged. The UI shows
+bounded provider labels and additional suggestions, without a new subject picker.
+
+Checks on this change:
+
+- 28 focused backend/resolver tests passed; three focused UI suites / 46 tests
+  passed. Coverage includes aliases, combined/unknown names, accounting under
+  both subjects, ambiguous terms, name/cache changes and title-only append.
+- The broad two-worker run had 137/141 files and 1,094/1,099 tests passing; five
+  existing Expo config checks hit wall-clock limits. Serial reruns passed those
+  cases. A second complete one-worker run had 140/141 files and 1,098/1,099 tests
+  passing, with only the unchanged iOS privacy config timing out at 15 seconds.
+  After stopping the dedicated test services, that exact test passed in 8.53
+  seconds. No test thresholds, exclusions or unrelated config files were edited.
+  **A single all-green full-suite run is not claimed.**
+- Final TypeScript, Biome on all ten changed source/evidence files, changed-code
+  ESLint, Node syntax checks and whitespace checks passed. Production `index.ts`
+  is restored and the generated evidence baseline is absent.
+- Convex code generation and deployment to **development** kindred-canary-599
+  passed. Six real action calls with synthetic CLI identity passed; see
+  [the response report](../evidence/pr884/live-context.json). Bilanz is found for
+  Rechnungswesen, Mathematik, a combined subject and an unknown name; Mathe LK
+  returns mathematics topics. This does not prove Clerk sign-in.
+- CodeRabbit CLI 0.7.5 has a valid CodeRabbit signature and completed the final
+  staged/uncommitted review of all twelve changed files with **zero findings**.
+  An earlier review correctly flagged the temporary fixture entry; it was restored
+  before this clean review and is not part of either commit.
+- Eight current Android screenshots and a complete-timeline inspected 115.93s
+  recording are in the [new gallery](https://github.com/Dayova/dayova-mvp/pull/884#issuecomment-6222821260).
+  Earlier captures remain clearly labelled with their historical product source.
+
+Current limitations: the reused development APK is not a fresh native build;
+large-font rechecking lost fixture state and hung in device control. iOS,
+screen readers, actual subject creation and persisted save/reopen remain open.
+Earlier native rendering findings are not declared fixed. Keep the PR in Draft.
+
+The decision record under Product, DAY-517, DAY-465, DAY-491 and the single
+[open hypothesis](https://app.notion.com/p/3fb2e87228bf81018a0fe1b14eb9b409)
+are reconciled with this scope. This version remains Julius' preferred validation
+template; no student validation or production release is inferred from these checks.
+
+## Initial implementation and first evidence round
+
 ## Source and scope
 
 - Integration base: `3eb4e5d29f8cb2771fb79825c3b447587c514740` (`origin/main`).
 - Branch: `codex/inline-exam-topic-search`, [PR #884](https://github.com/Dayova/dayova-mvp/pull/884), independent of Fabius' PR #872.
 - Provider adapter and shared search-field starting point: PR #872 revision
   `c9a4c4e41aafe71cc8f97004ad16ba01ba504226`, adapted to an authoritative free editor.
-- Selected direction and reasoning: [Notion decision-record draft](https://app.notion.com/p/3fb2e87228bf817a880dde6127a1996a).
+- Selected direction and reasoning: [Notion decision record under Product](https://app.notion.com/p/3fb2e87228bf817a880dde6127a1996a).
 - Student validation: [DAY-517](https://linear.app/dayova/issue/DAY-517).
 
 ## Passed checks

@@ -1,5 +1,35 @@
 # Recording inspection: PR #884
 
+## context-accounting.mp4
+
+Subject-context product source: `bf90d6390da34659ba61b6057d1319d7f93a0310`.
+All eight full-timeline contact sheets, the manifest, frame index and coverage
+statement were inspected using `inspect-video-evidence`.
+
+> Coverage: 115.93-second video; 116 full-timeline frames sampled at 1 fps (1-second interval); 8 contact sheet(s); no audio stream.
+
+- 00:00–00:25: Rechnungswesen fixture with Inventur already in the editor.
+- 00:26–00:33: keyboard, Bilanz query and loading.
+- 00:34–00:47: live Bilanz and Handelsbilanz suggestions with Wirtschaftskunde
+  labels. The editor retains Inventur; Continue remains available.
+- 00:48–01:00: explicit selection appends Bilanz on a second line; the result
+  indicates inclusion. No taxonomy label is appended.
+- 01:01–01:20: fixture switches to Mathematik, query and loading.
+- 01:21–01:27: exact Bilanz match remains available; Handelsbilanz appears under
+  Weitere Vorschläge. This is fixture configuration, not a second product picker.
+- 01:28–01:48: unknown-name fixture, query and loading.
+- 01:49–01:55: unknown Mein Spezialfach still returns the two labelled titles.
+
+These are sampled observations, not frame-by-frame exclusion of shorter defects
+or a measurement of production search latency. There is no audio and no
+transcription. The capture calls the actual adapter through the local fixture
+server; a separate report covers the deployed development action. Neither proves
+Clerk sign-in, subject creation, database persistence or learner benefit. Earlier
+rendering findings are retained, not declared fixed by this recording.
+Asset URL and SHA-256 are in `context-attachments.json`.
+
+## Initial recordings (historical product source)
+
 All four original Android recordings were inspected across their complete
 timelines using `inspect-video-evidence`. Every full-timeline contact sheet was
 read, alongside the generated manifest, frame index and coverage statement.

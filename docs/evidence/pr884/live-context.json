@@ -1,0 +1,203 @@
+{
+  "capturedAt": "2026-10-16T18:57:58.396Z",
+  "deployment": "kindred-canary-599",
+  "authentication": "synthetic CLI identity, not Clerk sign-in",
+  "results": [
+    {
+      "subject": "Rechnungswesen",
+      "query": "Bilanz",
+      "result": {
+        "topics": [
+          {
+            "id": "1703edd6-950e-4762-bbc2-9df8db21abbd",
+            "isAdditional": false,
+            "subjects": [
+              "Wirtschaftskunde"
+            ],
+            "title": "Bilanz"
+          },
+          {
+            "id": "9a2fb47e-c33e-4e96-9faa-c02197964b99",
+            "isAdditional": false,
+            "subjects": [
+              "Wirtschaftskunde"
+            ],
+            "title": "Handelsbilanz"
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "subject": "Mathematik",
+      "query": "Bilanz",
+      "result": {
+        "topics": [
+          {
+            "id": "1703edd6-950e-4762-bbc2-9df8db21abbd",
+            "isAdditional": false,
+            "subjects": [
+              "Wirtschaftskunde"
+            ],
+            "title": "Bilanz"
+          },
+          {
+            "id": "9a2fb47e-c33e-4e96-9faa-c02197964b99",
+            "isAdditional": true,
+            "subjects": [
+              "Wirtschaftskunde"
+            ],
+            "title": "Handelsbilanz"
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "subject": "Mathe LK",
+      "query": "Vektor",
+      "result": {
+        "topics": [
+          {
+            "id": "7adc858d-3941-44aa-846e-e0eb9b28b3aa",
+            "isAdditional": false,
+            "subjects": [
+              "Mathematik"
+            ],
+            "title": "Vektoren"
+          },
+          {
+            "id": "03bcc5d2-fdd1-4839-a98b-389fe00302ce",
+            "isAdditional": false,
+            "subjects": [
+              "Mathematik"
+            ],
+            "title": "Vektorprodukt"
+          },
+          {
+            "id": "2b4c089d-47d8-4f94-a20a-ba903ddceead",
+            "isAdditional": false,
+            "subjects": [
+              "Mathematik"
+            ],
+            "title": "Vektorrechnung"
+          },
+          {
+            "id": "29c7e960-2c03-4e26-b914-2004d95cc7ed",
+            "isAdditional": false,
+            "subjects": [
+              "Mathematik"
+            ],
+            "title": "Addition und Subtraktion von Vektoren"
+          },
+          {
+            "id": "434b3438-9408-42bf-9a19-b404bbe8f855",
+            "isAdditional": false,
+            "subjects": [
+              "Mathematik"
+            ],
+            "title": "Betrag eines Vektors"
+          },
+          {
+            "id": "b52087e6-a5c6-4b21-942b-bb63519444b1",
+            "isAdditional": false,
+            "subjects": [
+              "Mathematik"
+            ],
+            "title": "Winkel zwischen Vektoren, Geraden, Ebenen"
+          },
+          {
+            "id": "cc628d88-613b-425c-b36f-a5dee54d169d",
+            "isAdditional": true,
+            "subjects": [],
+            "title": "EduBreakOut Vektoren"
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "subject": "Wirtschaft und Recht",
+      "query": "Bilanz",
+      "result": {
+        "topics": [
+          {
+            "id": "1703edd6-950e-4762-bbc2-9df8db21abbd",
+            "isAdditional": false,
+            "subjects": [
+              "Wirtschaftskunde"
+            ],
+            "title": "Bilanz"
+          },
+          {
+            "id": "9a2fb47e-c33e-4e96-9faa-c02197964b99",
+            "isAdditional": false,
+            "subjects": [
+              "Wirtschaftskunde"
+            ],
+            "title": "Handelsbilanz"
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "subject": "Mein Spezialfach",
+      "query": "Bilanz",
+      "result": {
+        "topics": [
+          {
+            "id": "1703edd6-950e-4762-bbc2-9df8db21abbd",
+            "isAdditional": false,
+            "subjects": [
+              "Wirtschaftskunde"
+            ],
+            "title": "Bilanz"
+          },
+          {
+            "id": "9a2fb47e-c33e-4e96-9faa-c02197964b99",
+            "isAdditional": false,
+            "subjects": [
+              "Wirtschaftskunde"
+            ],
+            "title": "Handelsbilanz"
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "subject": "Biologie",
+      "query": "Zelle",
+      "result": {
+        "topics": [
+          {
+            "id": "8d49837a-e33a-4aff-84b5-2f4f4432c6b3",
+            "isAdditional": false,
+            "subjects": [
+              "Biologie"
+            ],
+            "title": "Eukaryotische Zelle"
+          },
+          {
+            "id": "20f042ef-8e54-4d4c-bf0a-f65c794de91b",
+            "isAdditional": false,
+            "subjects": [
+              "Biologie"
+            ],
+            "title": "Prokaryotische Zelle"
+          },
+          {
+            "id": "c1893399-8b3c-4e62-9de6-1dddf864c88c",
+            "isAdditional": false,
+            "subjects": [
+              "Biologie"
+            ],
+            "title": "Vorgänge in der Zelle"
+          }
+        ],
+        "truncated": false
+      }
+    }
+  ]
+}
