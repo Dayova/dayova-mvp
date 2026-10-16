@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
+import { Button } from "~/components/ui/button";
 import { ArrowRight } from "~/components/ui/icon";
 import { ListRow } from "~/components/ui/list-row";
 import { Surface } from "~/components/ui/surface";
@@ -37,20 +38,35 @@ function SettingsRow({
 }) {
 	const Icon = icon;
 	const { colors } = useDayovaTheme();
+	if (destructive) {
+		return (
+			<View className="m-3 gap-2">
+				<Button
+					ref={buttonRef}
+					variant="destructive"
+					accessibilityLabel={accessibilityLabel ?? label}
+					accessibilityState={{ busy, disabled: disabled || busy }}
+					disabled={disabled || busy}
+					onPress={onPress}
+				>
+					{busy ? <ActivityIndicator color={colors.dangerAction} /> : null}
+					<Text className="shrink text-center">{label}</Text>
+				</Button>
+				{description ? (
+					<Text className="text-body-4 text-secondary-text">{description}</Text>
+				) : null}
+			</View>
+		);
+	}
+
 	return (
 		<ListRow
 			ref={buttonRef}
 			accessibilityLabel={accessibilityLabel}
-			icon={
-				<Icon
-					size={22}
-					color={destructive ? colors.destructive : colors.text}
-					strokeWidth={2}
-				/>
-			}
+			icon={<Icon size={22} color={colors.text} strokeWidth={2} />}
 			label={label}
 			description={description}
-			tone={destructive ? "destructive" : "default"}
+			tone="default"
 			onPress={onPress}
 			disabled={disabled}
 			accessibilityState={{

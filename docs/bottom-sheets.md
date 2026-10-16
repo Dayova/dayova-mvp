@@ -13,8 +13,9 @@ subject and exam-type selector.
   Short information, confirmation and option sheets must not reserve empty space.
 - Content scrolls by default, including the heading, so long titles and large
   system text cannot consume a fixed header and make the body unreachable.
-  At font scales of 1.5 or more, the close control gets its own row so long
-  headings retain the full text width. Only the native date/time wheel opts out
+  At every text size, the close control gets its own right-aligned row,
+  followed by 20pt to a full-width title and 12pt to supporting copy.
+  Hidden close controls reserve no empty row; content follows at 24pt. Only the native date/time wheel opts out
   of the surrounding scroll view.
 - Shared `Input` fields automatically use Gorhom's keyboard-aware input while
   they are inside `DayovaSheetFrame`. Use `onOpening` to focus
@@ -33,6 +34,9 @@ subject and exam-type selector.
 - Action descriptions wrap completely; compact widths and enlarged text stack
   tile menus and confirmation buttons. Theme tokens and existing button semantics
   remain shared with the app.
+- Confirmation actions follow the [general popup rule](contexts/design-system/CONTEXT.md#general-popup-and-destructive-action-rule):
+  outlined Cancel on the left, equal-size red outlined/tinted Delete on the right;
+  primary confirmations retain the primary gradient. Large text may stack.
 - This contract is tracked in [DAY-470](https://linear.app/dayova/issue/DAY-470).
   It supersedes DAY-392's fixed `medium` sizing while retaining long-content access.
 - `visible` is controlled state. A close followed immediately by a reopen is a

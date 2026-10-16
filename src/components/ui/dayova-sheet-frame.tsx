@@ -337,7 +337,6 @@ function DayovaSheetFrame({
 
 	const canShowCloseButton = showCloseButton && dismissible;
 	const hasHeader = Boolean(title || description || canShowCloseButton);
-	const hasSeparateCloseRow = fontScale >= 1.5 && canShowCloseButton;
 	const actions = useMemo(
 		() =>
 			footer ? (
@@ -392,42 +391,36 @@ function DayovaSheetFrame({
 				) : null}
 				{hasHeader ? (
 					<View className="mb-6 gap-3" testID="dayova-sheet-header">
-						{hasSeparateCloseRow ? (
-							<View className="self-end">
+						{canShowCloseButton ? (
+							<View
+								className={cn("self-end", (title || description) && "mb-2")}
+								testID="dayova-sheet-close-row"
+							>
 								<CloseButton
 									accessibilityLabel={closeAccessibilityLabel}
 									onPress={dismiss}
 								/>
 							</View>
 						) : null}
-						<View className="min-h-10 flex-row items-start gap-4">
-							{title ? (
-								<View
-									ref={initialFocusRef}
-									accessible
-									accessibilityLabel={accessibleTitle}
+						{title ? (
+							<View
+								ref={initialFocusRef}
+								accessible
+								accessibilityLabel={accessibleTitle}
+								accessibilityRole="header"
+								className="w-full"
+								collapsable={false}
+								testID="dayova-sheet-title-row"
+							>
+								<Text
+									accessible={false}
 									accessibilityRole="header"
-									className="min-w-0 flex-1"
-									collapsable={false}
+									className="font-poppins font-semibold text-body-1 text-text"
 								>
-									<Text
-										accessible={false}
-										accessibilityRole="header"
-										className="pt-1 font-poppins font-semibold text-body-1 text-text"
-									>
-										{title}
-									</Text>
-								</View>
-							) : (
-								<View className="flex-1" />
-							)}
-							{canShowCloseButton && !hasSeparateCloseRow ? (
-								<CloseButton
-									accessibilityLabel={closeAccessibilityLabel}
-									onPress={dismiss}
-								/>
-							) : null}
-						</View>
+									{title}
+								</Text>
+							</View>
+						) : null}
 						{description ? (
 							<Text className="font-poppins text-body-3 text-secondary-text">
 								{description}

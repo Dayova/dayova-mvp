@@ -629,4 +629,45 @@ describe("DayovaSheetFrame", () => {
 			mockSheetHarness.dismiss.mock.invocationCallOrder[0],
 		);
 	});
+
+	test.each([
+		1, 2,
+	])("places close control above full-width title at font scale %s", async (fontScale) => {
+		mockWindowDimensions.fontScale = fontScale;
+		const screen = await render(
+			<DayovaSheetFrame
+				visible
+				onClose={jest.fn()}
+				title="Was möchtest du planen?"
+				description="Wähle deine nächste Aufgabe aus."
+			/>,
+		);
+		const title = screen.getByRole("header", {
+			name: "Was möchtest du planen?",
+		});
+		expect(screen.getByTestId("dayova-sheet-title-row")).toBe(title);
+		expect(screen.getByTestId("dayova-sheet-title-row").props.className).toBe(
+			"w-full",
+		);
+		expect(screen.getByTestId("dayova-sheet-close-row")).not.toContainElement(
+			title,
+		);
+	});
+	test.each([
+		{ dismissible: false },
+		{ showCloseButton: false },
+	])("does not reserve an empty close row for %j", async (props) => {
+		const screen = await render(
+			<DayovaSheetFrame
+				visible
+				onClose={jest.fn()}
+				title="Bitte warten"
+				{...props}
+			/>,
+		);
+		expect(screen.queryByTestId("dayova-sheet-close-row")).toBeNull();
+		expect(
+			screen.getByRole("header", { name: "Bitte warten" }),
+		).toBeOnTheScreen();
+	});
 });
