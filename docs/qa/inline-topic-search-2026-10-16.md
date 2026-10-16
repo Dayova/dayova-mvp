@@ -1,3 +1,23 @@
+## Interaction correction — 17 October 2026
+
+Product revision: `a844f7a1aa69fb302725460457873b2924c1b7ea` (PR #884). Pixel preview: `7b7d615d`, combining that change with the separate startup fix from #891. The preview adds no subject changes.
+
+The append-to-text model below is historical. Current behavior: reversible topic checkboxes, removable visible selections across queries, and an independent optional additional-information editor. Selecting or removing topics never modifies that editor. `topicItems` and `topicAdditionalInfo` are stored separately, and their validated projection feeds existing plan/AI/calendar consumers. Legacy lists remain intact as free text. See the updated [input contract](../contexts/product/adr/inline-topic-search-with-free-scope.md).
+
+Validation:
+
+- Full Vitest run: **139 files / 1,111 tests passed**, two workers, 110.84s.
+- Focused UI: **63 tests passed** in topic search, setup and creation flow. Includes reversible selection, selection-only continuation, persistent chips across queries, unchanged notes, saved metadata beating stale routes, and JSON boundaries through unsaved back navigation.
+- Backend: real mutations and snapshots round-trip selection/notes and synchronize the calendar projection. Mismatched projections fail before writing; legacy edits clear stale selection metadata.
+- Final route parser guard: **9 focused tests passed** after rejecting empty and duplicate route titles. Existing scope strings remain the fallback for invalid metadata.
+- TypeScript, targeted Biome and applicable ESLint passed. ESLint reports only ignored generated/evidence files, not source failures.
+- CodeRabbit reviewed all 20 changed files after staging the new module. Two evidence-harness findings were confirmed and fixed (reset selection between scenarios; allow selection-only Continue). A route-parser finding was confirmed and fixed. Final residual comments were checked manually: the 17 October date matches this task's client date and explicit correction; empty draft creation is intentional, while start/updateRequiredTopics/updateBasics already assert meaningful scope before saving a completed topics step. Neither requires a code change.
+- Development Convex deployment `kindred-canary-599` succeeded. No production deployment or backfill. Optional schema fields keep old records valid.
+
+Native evidence remains revision-specific. The earlier Pixel smoke check proved the prior interaction could open and search; it does not prove this correction. Current iOS, VoiceOver, TalkBack, large text and complete new-model save/reopen acceptance are not established by the automated tests. PR remains Draft. The current Pixel render is recorded separately when the device is unlocked.
+
+---
+
 # Inline exam-topic search — validation, 16 October 2026
 
 ## Selective follow-up from PR #872

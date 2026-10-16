@@ -1,3 +1,5 @@
+> **17 October 2026:** The galleries below show earlier revisions that appended selected titles to the editor. They are historical evidence. PR #884 now separates visible topic selections from additional information; see the [updated contract](../../contexts/product/adr/inline-topic-search-with-free-scope.md) and [latest QA section](../../qa/inline-topic-search-2026-10-16.md). Do not use earlier screenshots as acceptance of the new interaction.
+
 # PR #884: native review evidence
 
 ## Latest native-build and acceptance follow-up
