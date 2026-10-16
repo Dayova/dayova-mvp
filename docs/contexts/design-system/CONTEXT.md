@@ -318,3 +318,11 @@ are empty; example selections belong only in historical screenshot evidence.
 
 The duration explanation adapts to the chosen value; an additional explanation
 between weekdays and start time brings the profile flow to twelve steps.
+
+## Topic search
+
+Use the shared `SearchField` for inline search: it composes `FieldControl`,
+`Input`, and the semantic Hugeicons search icon. Learning-plan topic selection
+places wrapping, removable chips directly below this field without a separate
+selection heading. Results use quiet rows with trailing add/check indicators;
+the existing primary button remains the forward action.

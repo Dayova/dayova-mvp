@@ -61,7 +61,10 @@ const mockLaunchImageLibrary =
 	>();
 const mockAvailability = { status: "available" };
 let mockSnapshot:
-	| { plan: { topicDescription: string }; documents: never[] }
+	| {
+			plan: { topicDescription: string; topicItems?: string[] };
+			documents: never[];
+	  }
 	| undefined;
 let mockPauseVisible = false;
 let mockPauseProps: {
@@ -318,6 +321,7 @@ afterEach(() => {
 	jest.restoreAllMocks();
 });
 
+/** Applies a mocked route replacement so tests can cross the exam/setup boundary. */
 function followReplacement() {
 	const destination = mockRouter.replace.mock.calls.at(-1)?.[0];
 	expect(typeof destination).toBe("string");
@@ -327,6 +331,7 @@ function followReplacement() {
 	return url.pathname;
 }
 
+/** Opens the gallery action in a material-upload draft with the supplied picker assets. */
 async function selectGalleryPhotos(
 	assets: NonNullable<
 		Awaited<ReturnType<typeof mockLaunchImageLibrary>>["assets"]
@@ -355,6 +360,71 @@ async function selectGalleryPhotos(
 }
 
 describe("exam creation across the topics boundary", () => {
+	test("restores separate selections after remount and removes only the added topic", async () => {
+		const legacy = "  Zellteilung\r\n\r\n    Mitose\n    Mitose  \n";
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "topic",
+			topicDescription: `${legacy}\nMeiose`,
+		};
+		mockSnapshot = {
+			plan: {
+				topicDescription: `${legacy}\nMeiose`,
+				topicItems: [legacy, "Meiose"],
+			},
+			documents: [],
+		};
+		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Meiose entfernen" }),
+		);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(mockUpdateRequiredTopics).toHaveBeenLastCalledWith({
+			id: "plan-1",
+			topicDescription: legacy,
+			topicItems: [legacy],
+		});
+	});
+
+	test.each([
+		"route",
+		"snapshot",
+	])("preserves a multiline %s draft when adding, removing, continuing, and returning", async (source) => {
+		const legacy = "  Zellteilung\r\n\r\n    Mitose\n    Mitose  \n";
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "topic",
+			...(source === "route" ? { topicDescription: legacy } : {}),
+		};
+		mockSnapshot = { plan: { topicDescription: legacy }, documents: [] };
+		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.changeText(screen.getByLabelText("Thema suchen"), "Meiose");
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Eigenes Thema hinzufügen: Meiose" }),
+		);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(mockUpdateRequiredTopics).toHaveBeenLastCalledWith({
+			id: "plan-1",
+			topicDescription: `${legacy}\nMeiose`,
+			topicItems: [legacy, "Meiose"],
+		});
+		await act(() => mockProgress.onBack());
+		expect(
+			screen.getByRole("button", { name: "Meiose entfernen" }),
+		).toBeOnTheScreen();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Meiose entfernen" }),
+		);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(mockUpdateRequiredTopics).toHaveBeenLastCalledWith({
+			id: "plan-1",
+			topicDescription: legacy,
+			topicItems: [legacy],
+		});
+	});
+
 	test.each([
 		{
 			platform: "ios" as const,
@@ -429,8 +499,13 @@ describe("exam creation across the topics boundary", () => {
 		screen = await render(<NewLearningPlanScreen />);
 		expect(mockProgress.currentStep).toBe(3);
 		await fireEvent.changeText(
-			screen.getByLabelText("Prüfungsthemen"),
+			screen.getByLabelText("Thema suchen"),
 			"Zellteilung und Mitose",
+		);
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: "Eigenes Thema hinzufügen: Zellteilung und Mitose",
+			}),
 		);
 		await act(() => mockProgress.onBack());
 		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
@@ -595,9 +670,17 @@ describe("exam creation across the topics boundary", () => {
 				}),
 		);
 		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Zellteilung und Mitose entfernen" }),
+		);
 		await fireEvent.changeText(
-			screen.getByLabelText("Prüfungsthemen"),
+			screen.getByLabelText("Thema suchen"),
 			"Genetik und Vererbung",
+		);
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: "Eigenes Thema hinzufügen: Genetik und Vererbung",
+			}),
 		);
 		await act(() => mockProgress.onClose());
 		await act(() => {
@@ -608,6 +691,7 @@ describe("exam creation across the topics boundary", () => {
 		expect(mockUpdateRequiredTopics).toHaveBeenCalledWith({
 			id: "plan-1",
 			topicDescription: "Genetik und Vererbung",
+			topicItems: ["Genetik und Vererbung"],
 		});
 		expect(mockPauseProps.isBusy).toBe(true);
 		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
@@ -616,6 +700,38 @@ describe("exam creation across the topics boundary", () => {
 			expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans"),
 		);
 		expect(mockRouter.dismissTo).toHaveBeenCalledTimes(1);
+	});
+
+	test("persists changed topic boundaries on pause even when the description is unchanged", async () => {
+		const legacy = "Zellteilung\nMeiose";
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "topic",
+		};
+		mockSnapshot = { plan: { topicDescription: legacy }, documents: [] };
+		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.press(
+			screen.getByRole("button", { name: /Zellteilung\s+Meiose entfernen/ }),
+		);
+		for (const title of ["Zellteilung", "Meiose"]) {
+			await fireEvent.changeText(screen.getByLabelText("Thema suchen"), title);
+			await fireEvent.press(
+				screen.getByRole("button", {
+					name: `Eigenes Thema hinzufügen: ${title}`,
+				}),
+			);
+		}
+		await act(() => mockProgress.onClose());
+		await act(() => mockPauseProps.onConfirm());
+		expect(mockUpdateRequiredTopics).toHaveBeenCalledWith({
+			id: "plan-1",
+			topicDescription: legacy,
+			topicItems: ["Zellteilung", "Meiose"],
+		});
+		await waitFor(() =>
+			expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans"),
+		);
 	});
 
 	test("keeps edited topics and the pause sheet when saving fails", async () => {
@@ -632,19 +748,26 @@ describe("exam creation across the topics boundary", () => {
 			new Error("Speichern fehlgeschlagen"),
 		);
 		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Zellteilung und Mitose entfernen" }),
+		);
 		await fireEvent.changeText(
-			screen.getByLabelText("Prüfungsthemen"),
+			screen.getByLabelText("Thema suchen"),
 			"Genetik und Vererbung",
+		);
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: "Eigenes Thema hinzufügen: Genetik und Vererbung",
+			}),
 		);
 		await act(() => mockProgress.onClose());
 		await act(() => mockPauseProps.onConfirm());
 		await waitFor(() => expect(mockPauseProps.errorMessage).toBeTruthy());
 		expect(mockPauseVisible).toBe(true);
 		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
-		expect(screen.getByLabelText("Prüfungsthemen")).toHaveProp(
-			"value",
-			"Genetik und Vererbung",
-		);
+		expect(
+			screen.getByRole("button", { name: "Genetik und Vererbung entfernen" }),
+		).toBeOnTheScreen();
 		await act(() => mockPauseProps.onConfirm());
 		await waitFor(() =>
 			expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans"),
@@ -702,14 +825,20 @@ describe("exam creation across the topics boundary", () => {
 			documents: [],
 		};
 		const screen = await render(<NewLearningPlanScreen />);
-		await fireEvent.changeText(screen.getByLabelText("Prüfungsthemen"), "");
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Zellteilung und Mitose entfernen" }),
+		);
 		await act(() => mockProgress.onBack());
 		await act(() => mockPauseProps.onConfirm());
 		await waitFor(() => expect(mockPauseProps.errorMessage).toBeTruthy());
 		expect(mockPauseVisible).toBe(true);
 		expect(mockUpdateRequiredTopics).not.toHaveBeenCalled();
 		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
-		expect(screen.getByLabelText("Prüfungsthemen")).toHaveProp("value", "");
+		expect(
+			screen.queryByRole("button", {
+				name: "Zellteilung und Mitose entfernen",
+			}),
+		).toBeNull();
 	});
 
 	test("uploads gallery photos without library-wide permission", async () => {

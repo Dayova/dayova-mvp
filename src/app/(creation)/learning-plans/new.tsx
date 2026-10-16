@@ -75,6 +75,7 @@ type PendingUploadRequest = {
 	action: PendingUploadAction;
 };
 
+/** Collects and saves exam topics before school-material upload, preserving resumable drafts. */
 export default function NewLearningPlanScreen() {
 	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
@@ -97,6 +98,7 @@ export default function NewLearningPlanScreen() {
 	const { user } = useAuthSession();
 	const { capture } = useValidationAnalytics();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
+	const searchTopics = useAction(api.wloTopics.search);
 	const createDraftPlan = useMutation(api.learningPlans.createDraft);
 	const updateRequiredTopics = useMutation(
 		api.learningPlans.updateRequiredTopics,
@@ -131,11 +133,12 @@ export default function NewLearningPlanScreen() {
 			return "materialUpload";
 		return initialLearningPlanId ? "materialUpload" : "requiredTopics";
 	});
-	const [topicsInput, setTopicsInput] = useState<string | null>(
-		params.topicDescription ?? params.teacherGuidance ?? null,
-	);
-	// Route params can be older than the saved draft; only actual input edits
-	// may overwrite its topics when pausing.
+	const [topicsInput, setTopicsInput] = useState<string[] | null>(() => {
+		if (initialLearningPlanId) return null;
+		const initial = params.topicDescription ?? params.teacherGuidance;
+		return initial == null ? null : initial ? [initial] : [];
+	});
+	// Only actual edits may overwrite a saved draft while pausing.
 	const hasEditedTopicsRef = useRef(false);
 	const [isBusy, setIsBusy] = useState(false);
 	const [isUploading, setIsUploading] = useState(false);
@@ -161,7 +164,17 @@ export default function NewLearningPlanScreen() {
 			: "skip",
 	) ?? null) as LearningPlanSnapshot | null;
 	const canWrite = Boolean(user && isConvexAuthenticated);
-	const topics = topicsInput ?? snapshot?.plan.topicDescription ?? "";
+	// Only explicit metadata defines boundaries; unmarked legacy text stays intact.
+	const savedTopics =
+		snapshot?.plan.topicDescription ??
+		params.topicDescription ??
+		params.teacherGuidance ??
+		"";
+	const selectedTopics =
+		topicsInput ??
+		snapshot?.plan.topicItems ??
+		(savedTopics ? [savedTopics] : []);
+	const topics = selectedTopics.join("\n");
 	const hasSchoolMaterial = Boolean(
 		snapshot?.documents.some((document) => document.sourceKind === "school"),
 	);
@@ -174,6 +187,7 @@ export default function NewLearningPlanScreen() {
 		isMeaningfulTopicDescription(topics);
 	const canContinueTopics =
 		canWrite &&
+		!isPlanSnapshotLoading &&
 		!isBusy &&
 		!openingUploadAction &&
 		isMeaningfulTopicDescription(topics);
@@ -202,6 +216,7 @@ export default function NewLearningPlanScreen() {
 		}
 	}, [params.errorMessage, params.step]);
 
+	/** Creates the draft with explicit topic boundaries before its first material upload. */
 	const ensurePlan = async (
 		topicDescription = params.topicDescription ?? "",
 	) => {
@@ -223,6 +238,7 @@ export default function NewLearningPlanScreen() {
 				examDateLabel,
 				durationMinutes,
 				topicDescription,
+				topicItems: selectedTopics,
 				notes: "",
 			}),
 		);
@@ -563,6 +579,7 @@ export default function NewLearningPlanScreen() {
 		runUploadAction(request.action);
 	};
 
+	/** Saves the selected topic items before advancing to material upload. */
 	const continueToMaterial = async () => {
 		if (!canContinueTopics) return;
 
@@ -575,6 +592,7 @@ export default function NewLearningPlanScreen() {
 						updateRequiredTopics({
 							id: learningPlanId,
 							topicDescription: topics,
+							topicItems: selectedTopics,
 						}),
 					);
 				} else {
@@ -668,6 +686,7 @@ export default function NewLearningPlanScreen() {
 		setIsPauseConfirmationVisible(true);
 	};
 
+	/** Saves actual topic edits before leaving, retaining the draft if saving fails. */
 	const pauseCreation = async () => {
 		if (!learningPlanId) return;
 		await topicActionGateRef.current.run(async () => {
@@ -676,7 +695,9 @@ export default function NewLearningPlanScreen() {
 			try {
 				if (
 					hasEditedTopicsRef.current &&
-					topics !== snapshot?.plan.topicDescription
+					(topics !== snapshot?.plan.topicDescription ||
+						JSON.stringify(selectedTopics) !==
+							JSON.stringify(snapshot?.plan.topicItems))
 				) {
 					if (!isMeaningfulTopicDescription(topics)) {
 						throw new Error(
@@ -687,6 +708,7 @@ export default function NewLearningPlanScreen() {
 						updateRequiredTopics({
 							id: learningPlanId,
 							topicDescription: topics,
+							topicItems: selectedTopics,
 						}),
 					);
 				}
@@ -764,15 +786,17 @@ export default function NewLearningPlanScreen() {
 				<View key={setupStep} className="flex-1">
 					{setupStep === "requiredTopics" ? (
 						<RequiredTopicsStep
+							subject={snapshot?.plan.subject ?? subject}
+							searchTopics={searchTopics}
 							canContinue={canContinueTopics}
 							errorMessage={errorMessage}
-							isBusy={isBusy}
+							isBusy={isBusy || isPlanSnapshotLoading}
 							onChangeTopics={(value) => {
 								hasEditedTopicsRef.current = true;
 								setTopicsInput(value);
 							}}
 							onContinue={() => void continueToMaterial()}
-							topics={topics}
+							topics={selectedTopics}
 						/>
 					) : (
 						<MaterialUploadStep
@@ -780,7 +804,7 @@ export default function NewLearningPlanScreen() {
 							canContinue={canContinueUpload}
 							documents={snapshot?.documents ?? []}
 							errorMessage={errorMessage}
-							isBusy={isBusy}
+							isBusy={isBusy || isPlanSnapshotLoading}
 							isUploading={isUploading}
 							onContinue={continueToAnalysis}
 							onOpenUpload={() => setIsUploadSheetVisible(true)}

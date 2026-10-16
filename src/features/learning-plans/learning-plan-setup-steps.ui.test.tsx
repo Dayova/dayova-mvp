@@ -17,6 +17,8 @@ jest.mock("~/components/ui/icon", () => {
 		Clock3: Icon,
 		GraduationCap: Icon,
 		Plus: Icon,
+		Search: Icon,
+		Check: Icon,
 		PropertyEdit: Icon,
 		X: Icon,
 	};
@@ -39,35 +41,39 @@ describe("learning-plan setup steps", () => {
 		const onContinue = jest.fn();
 		const screen = await render(
 			<RequiredTopicsStep
+				subject="Mathematik"
+				searchTopics={async () => ({ topics: [], truncated: false })}
 				canContinue
 				errorMessage={null}
 				isBusy={false}
 				onChangeTopics={onChangeTopics}
 				onContinue={onContinue}
-				topics="Lineare Gleichungen und Funktionen"
+				topics={["Lineare Gleichungen und Funktionen"]}
 			/>,
 		);
 
 		expect(
 			screen.getByText("Welche Themen kommen in der Prüfung dran?"),
 		).toBeOnTheScreen();
-		expect(screen.getByLabelText("Prüfungsthemen")).toHaveDisplayValue(
-			"Lineare Gleichungen und Funktionen",
-		);
-		expect(screen.getByLabelText("Prüfungsthemen").props.className).toContain(
-			"border-border",
-		);
-		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
-
+		expect(
+			screen.getByRole("button", {
+				name: "Lineare Gleichungen und Funktionen entfernen",
+			}),
+		).toBeOnTheScreen();
 		await fireEvent.changeText(
-			screen.getByLabelText("Prüfungsthemen"),
-			"Lineare Funktionen, Steigung und Achsenabschnitt",
+			screen.getByLabelText("Thema suchen"),
+			"Steigung",
 		);
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: "Eigenes Thema hinzufügen: Steigung",
+			}),
+		);
+		expect(onChangeTopics).toHaveBeenCalledWith([
+			"Lineare Gleichungen und Funktionen",
+			"Steigung",
+		]);
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
-
-		expect(onChangeTopics).toHaveBeenCalledWith(
-			"Lineare Funktionen, Steigung und Achsenabschnitt",
-		);
 		expect(onContinue).toHaveBeenCalledTimes(1);
 	});
 
@@ -229,16 +235,20 @@ describe("learning-plan setup steps", () => {
 	test("disables the topic continuation until the answer is valid", async () => {
 		const screen = await render(
 			<RequiredTopicsStep
+				subject="Mathematik"
+				searchTopics={async () => ({ topics: [], truncated: false })}
 				canContinue={false}
 				errorMessage={null}
 				isBusy={false}
 				onChangeTopics={jest.fn()}
 				onContinue={jest.fn()}
-				topics="Mathe"
+				topics={["Mathe"]}
 			/>,
 		);
 
-		expect(screen.getByLabelText("Prüfungsthemen")).toHaveDisplayValue("Mathe");
+		expect(
+			screen.getByRole("button", { name: "Mathe entfernen" }),
+		).toBeOnTheScreen();
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
 	});
 });

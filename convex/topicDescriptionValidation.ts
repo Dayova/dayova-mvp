@@ -1,7 +1,7 @@
 import { throwUserFacingError } from "./errors";
 
-const MIN_TOPIC_DESCRIPTION_CHARS = 12;
-const MIN_MEANINGFUL_WORDS = 2;
+const MIN_TOPIC_DESCRIPTION_CHARS = 3;
+const MIN_MEANINGFUL_WORDS = 1;
 
 const placeholderWords = new Set([
 	"asdf",
@@ -18,6 +18,7 @@ const placeholderWords = new Set([
 	"nichts",
 	"mathe",
 	"mathematik",
+	"mathematiktest",
 	"arbeit",
 	"prufung",
 	"klausur",
@@ -36,12 +37,14 @@ const placeholderWords = new Set([
 	"fur",
 ]);
 
+/** Normalizes case and diacritics only for meaningful-word validation. */
 const normalizeTopicWord = (word: string) =>
 	word
 		.toLowerCase()
 		.normalize("NFKD")
 		.replace(/[\u0300-\u036f]/g, "");
 
+/** Rejects generic placeholders and repeated characters as concrete topic words. */
 const isMeaningfulTopicWord = (word: string) => {
 	const normalized = normalizeTopicWord(word);
 	if (normalized.length < 3) return false;
@@ -52,6 +55,7 @@ const isMeaningfulTopicWord = (word: string) => {
 	return true;
 };
 
+/** Accepts concrete topic names while rejecting short or placeholder-only input. */
 export const isMeaningfulTopicDescription = (value: string) => {
 	const trimmed = value.trim();
 	if (trimmed.length < MIN_TOPIC_DESCRIPTION_CHARS) return false;
@@ -65,8 +69,25 @@ export const isMeaningfulTopicDescription = (value: string) => {
 	return uniqueMeaningfulWords.size >= MIN_MEANINGFUL_WORDS;
 };
 
+/** Throws a learner-facing error when no concrete topic can be identified. */
 export const assertMeaningfulTopicDescription = (value: string) => {
 	if (!isMeaningfulTopicDescription(value)) {
 		throwUserFacingError("Beschreibe das Prüfungsthema bitte genauer.");
+	}
+};
+
+/** Ensures explicit item boundaries describe exactly the saved text. */
+export const assertTopicItemsMatchDescription = (
+	description: string,
+	items?: string[],
+) => {
+	if (
+		items &&
+		(items.some((item) => item.length === 0) ||
+			items.join("\n") !== description)
+	) {
+		throwUserFacingError(
+			"Die Themenauswahl passt nicht zur Beschreibung. Bitte versuche es erneut.",
+		);
 	}
 };
