@@ -37,9 +37,8 @@ export type TopicSuggestion = { id: string; title: string };
 /** Finds subject-matched editorial titles within an eight-second, five-page budget. */
 export async function searchWloTopics(query: string, subject: string) {
 	const term = normalize(query).replace(/gedichtsanalyse/g, "gedichtanalyse");
-	if (term.length < 3) return { topics: [], truncated: false };
-	if (term.length > 100 || subject.length > 100)
-		throw new Error("Search too long");
+	if (term.length < 3 || term.length > 100 || subject.length > 100)
+		return { topics: [], truncated: false };
 	const subjects = subjectAliases[normalize(subject)] ?? [normalize(subject)];
 	const matches = new Map<string, TopicSuggestion>();
 	const controller = new AbortController();
