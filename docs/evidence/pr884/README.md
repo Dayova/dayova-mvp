@@ -1,5 +1,15 @@
 # PR #884: native review evidence
 
+## Latest native-build and acceptance follow-up
+
+The [QA acceptance matrix](../../qa/inline-topic-search-2026-10-16.md#native-acceptance-disposition)
+records the fresh Pixel/Android builds, successful current-source iOS build,
+all-green 1,099-test run and current-head CI. Pixel installation and regular
+registration/login startup are confirmed. The signed-in Android journey remains
+blocked at development-client loading; EAS Simulator is not enabled for Dayova.
+VoiceOver on a physical iPhone was explicitly deferred by Jakob. No new
+full-route screenshots or recordings are presented as passed evidence.
+
 ## Current follow-up: derived subject context
 
 Product source: `bf90d6390da34659ba61b6057d1319d7f93a0310`.

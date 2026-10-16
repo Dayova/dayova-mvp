@@ -42,11 +42,39 @@ test timeout, product behavior, test exclusion or mocked configuration was added
   private QR code to open it himself. No rejection was bypassed; installation
   success alone is not counted as an authenticated native journey.
 
-Full signed-in Android/iOS, subject creation, persisted save/reopen, current
-large-font and screen-reader acceptance are still being checked. Keep Draft
-until their actual evidence is recorded. Earlier galleries retain their stated
-fixture and native-binary limitations; this follow-up does not retroactively
-upgrade their provenance.
+### Native acceptance disposition
+
+Jakob opened the private QR code himself. A read-only screenshot of his Pixel
+then showed the complete regular registration/login screen with visible text;
+Metro reported the regular 8,146-module Android bundle and Clerk development
+keys. The phone screenshot stays private. This establishes installation and
+startup, not sign-in, subject creation or saved data.
+
+| Check | Result / remaining work |
+| --- | --- |
+| Complete unit/integration suite and current-head CI | Passed. All 1,099 tests locally; GitHub/EAS lint, typecheck, tests, native fingerprints, OTA gates and report freshness green at revision `5a6c9834f3e8b527c565fe05b042008d0fe69927`. |
+| Pixel 9, fresh ARM64 development client, regular app entry | Installed and registration/login screen visibly loaded. Metro must remain available while Jakob tests. |
+| Matching iOS native build | Built successfully with the existing `development-simulator` profile: [EAS build d4d9232e](https://expo.dev/accounts/dayova/projects/dayova/builds/d4d9232e-e4e7-4410-9c4c-1a2c00382809), source `5a6c9834f3e8b527c565fe05b042008d0fe69927`, Expo 57 / React Native 0.86.3. Build success is not simulator acceptance. |
+| iOS simulator journey | Blocked before a simulator session was created: the authenticated EAS CLI reports “EAS Simulator isn't available on dayova yet — it's coming soon.” No iOS screenshot or runtime pass is claimed. The ready build can be installed on an available iOS simulator. |
+| Signed-in Android journey, create Rechnungswesen, search/append Bilanz, save/back/reopen | Open. A fresh x86_64 client built successfully and installed on the dedicated read-only emulator, but project loading did not reach the app UI. An initial native error was `Unable to load script`; the later native log records `DebugServerException`, HTTP 504 / `Gateway Timeout` while downloading the development bundle. Network reachability and Metro status were checked. This is a development-bundle delivery failure, not proof of a topic-search defect or pass. |
+| Keyboard, current large font, small viewport, dark appearance, TalkBack | Open on the full route. Installed TalkBack and configured screen dimensions are prerequisites, not acceptance evidence. Older component captures keep their original scope. |
+| Physical iPhone / VoiceOver | Explicitly deferred by Jakob: “Zunächst nur die übrigen Prüfungen abschließen.” Still open; this does not waive the other checks. |
+
+The x86_64 debug APK SHA-256 is
+`ababa4950be6f1fffea3a6621fc3d7b6df76d043826e6372b51896957f4ad61d`.
+It is distinct from the ARM64 APK installed on the Pixel. Both builds use the
+regular product entry, not the isolated evidence fixture. No synthetic account
+credentials, session tokens, personal-phone screenshots or media binaries are
+committed.
+
+Automatic approval review rejected restarting the owned test emulator with more
+memory and a subsequent attempt to connect it to a separate local test server;
+only “blocked by policy” was returned. Neither rejected action was executed or
+bypassed. The iOS service restriction and Android startup problem prevent a
+complete native acceptance in this environment. Keep Draft until the remaining
+full-route evidence is recorded. Earlier galleries retain their stated fixture
+and native-binary limitations; the successful builds do not retroactively
+upgrade their provenance or resolve earlier rendering findings.
 
 ## Subject-context follow-up
 
