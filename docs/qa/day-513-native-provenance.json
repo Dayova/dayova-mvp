@@ -1,6 +1,6 @@
 {
   "before_commit": "3eb4e5d29f8cb2771fb79825c3b447587c514740",
-  "after_commit": "e81d3d1ae63b3d57d6302ebf06be491a8627cdb2",
+  "after_commit": "970db3568cfadabd98f0e22aadd3c0882f4bd519",
   "files": {
     "before": {
       "src/components/screen-header.tsx": "fb451313ef3629fbd2769d010887958e284cf6c4fe4518cc6e59b6e92aa9ea2a",
@@ -8,8 +8,42 @@
     },
     "after": {
       "src/components/screen-header.tsx": "2aaec204eca6902deb75ec8a642ab21377bc5f0f09f0a3dff5b5dee4da35199e",
-      "src/app/learning-plans/[planId]/sessions/[sessionId]/index.tsx": "d4a155edfeeb3c0806b6b5cb25b63c4e8bdee69ded40015571afb768eb9e1027"
+      "src/app/learning-plans/[planId]/sessions/[sessionId]/index.tsx": "bf711270e1fb9d95fdc98084f6c96c8ea31568912b6e56e421c219289286a3fd",
+      "src/features/learning-plans/session-content-layout.tsx": "ea2d2ee8e819aa55b195eb9b3dc9e2bc14bb05e0bac6b6ce39713c9c7c24fca6",
+      "src/features/learning-plans/choice-list.tsx": "c1140c1d1e95f6a74305f8fc738c09afdb8fff4572df682dbb153812afc87bf5"
     }
   },
-  "fixture": "original full learning-session screen; frozen synthetic question; authentication, Convex operations, navigation destination, analytics and haptics stubbed; real native UI and layout"
+  "fixture": "full native learning-session screen; frozen synthetic written and multiple-choice questions; auth/Convex/navigation destination/analytics/haptics stubbed; real fonts, controls, choices, keyboard and native layout; explicit delayed keyboard dismissal for closed-keyboard captures",
+  "evidence_sets": {
+    "ios_closed_keyboard_and_maximum_scroll": {
+      "commit": "6b1af104093ad5d50cd02089730290a843edc571",
+      "files": {
+        "src/components/screen-header.tsx": "2aaec204eca6902deb75ec8a642ab21377bc5f0f09f0a3dff5b5dee4da35199e",
+        "src/app/learning-plans/[planId]/sessions/[sessionId]/index.tsx": "bf711270e1fb9d95fdc98084f6c96c8ea31568912b6e56e421c219289286a3fd",
+        "src/features/learning-plans/session-content-layout.tsx": "b73913c7fdd71f18b05f90df88710330ce096e19bb423cce9dd4502016befce5",
+        "src/features/learning-plans/choice-list.tsx": "c1140c1d1e95f6a74305f8fc738c09afdb8fff4572df682dbb153812afc87bf5"
+      },
+      "note": "Closed-keyboard layout unchanged by 970db356; maximum-size footer already inline."
+    },
+    "android_final": {
+      "commit": "970db3568cfadabd98f0e22aadd3c0882f4bd519",
+      "files": {
+        "src/components/screen-header.tsx": "2aaec204eca6902deb75ec8a642ab21377bc5f0f09f0a3dff5b5dee4da35199e",
+        "src/app/learning-plans/[planId]/sessions/[sessionId]/index.tsx": "bf711270e1fb9d95fdc98084f6c96c8ea31568912b6e56e421c219289286a3fd",
+        "src/features/learning-plans/session-content-layout.tsx": "ea2d2ee8e819aa55b195eb9b3dc9e2bc14bb05e0bac6b6ce39713c9c7c24fca6",
+        "src/features/learning-plans/choice-list.tsx": "c1140c1d1e95f6a74305f8fc738c09afdb8fff4572df682dbb153812afc87bf5"
+      }
+    },
+    "ios_final_keyboard_probe": {
+      "commit": "970db3568cfadabd98f0e22aadd3c0882f4bd519",
+      "capture": "ios-current-written-after.png",
+      "note": "Default text size, visible software keyboard; native iPhone17Pro capture after allowing the scenario to settle."
+    },
+    "historical_android_moderate": {
+      "commit": "e81d3d1a",
+      "attachment": "https://github.com/user-attachments/assets/6f0ad1c2-889d-4bfd-b1a3-1dfb016911f5",
+      "note": "Existing 115% comparison, retained and explicitly labelled historical; later settled ordinary-size geometry unchanged."
+    }
+  },
+  "excluded": "Unsettled, blank or System UI ANR captures and incomplete Android recording are excluded from published evidence. Mini focused input had no software keyboard."
 }

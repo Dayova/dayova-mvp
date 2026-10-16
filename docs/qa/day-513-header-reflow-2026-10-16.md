@@ -2,119 +2,141 @@
 
 Issue: [DAY-513](https://linear.app/dayova/issue/DAY-513).
 
-## Source and method
+## Decision and source
 
-Before is `main` at `3eb4e5d29f8cb2771fb79825c3b447587c514740`;
-after is implementation commit `e81d3d1a` on `codex/wissenscheck-header-reflow`.
-The PR's later documentation commit does not change the captured UI.
+Job: answer the current question. Hierarchy: question, answer/input and actions,
+then navigation/progress. Primary action: **Beantworten**, retaining the approved
+copy and normal-size pill layout. At extreme sizes, oversized fixed actions must
+stop displacing the question; unavoidable action-word breaks must be intentional.
 
-Both sides render the original full learning-session screen from those snapshots
-inside the same Expo 57 / React Native 0.86.3 native development client. The
-fixture freezes one written DEA question from the report and a ten-minute Praxis
-session. Authentication, Convex operations, analytics, haptics, and the navigation
-destination are stubbed. Fonts, theme providers, safe areas, keyboard controller,
-header, timer, question, input, footer and native layout are real app components.
-Unused destination/choice components are omitted from the fixture bundle.
+Before is `main` at `3eb4e5d29f8cb2771fb79825c3b447587c514740`.
+Current UI commit is `970db356` on `codex/wissenscheck-header-reflow`.
+Android captures use that commit. iOS captures and videos use `6b1af104`;
+the only later UI delta is keyboard placement (automatic header offset on iOS,
+and moving Android actions into the scroll when the keyboard is visible).
+The captured closed-keyboard iOS layout is unchanged.
+Later evidence/documentation commits do not change the captured UI. File hashes
+are in `day-513-native-provenance.json`.
 
-The screenshots are native device captures. Comparison PNGs only add labels and
-place equally scaled captures side by side; there is no retouching of app pixels.
-The before and after sides use the same question, device, system size and theme.
-Timer captures use the same settling procedure; the countdown continues during
-native gestures and captures.
+Both sides use the original complete learning-session screen in Expo 57 / React
+Native 0.86.3 native development clients. Authentication, Convex operations,
+analytics, haptics and navigation destinations are stubbed. The synthetic DEA
+question is frozen. Fonts, theme providers, keyboard controller, safe areas,
+header, timer, question, input, choices, selection controls and buttons are real.
+Scenario controls reset the fixture and dismiss the native keyboard after mount
+for matched closed-keyboard comparisons. Keyboard-open checks opt out of that
+dismissal. No production-account persistence or server evaluation is established.
+
+All screenshots are native captures. Comparison PNGs only add source labels and
+place equally scaled captures side by side. App pixels are not retouched.
+
+## Layout behavior
+
+- Shared headers measure their controls and give wrapping titles a complete row.
+- Standard action labels remain **Beantworten**. Centered labels use optional
+  German soft-hyphen breaks only when necessary; accessible names retain the
+  original words. Body and controls keep full system text scaling.
+- Actions stay pinned when their measured height uses at most 40% of the usable
+  question area. Larger actions join the content scroll. iOS keyboard height is
+  deducted from that budget. Android edge-to-edge windows can remain full height
+  behind the keyboard: while it is visible, actions join the scroll. Pinned iOS
+  actions use the keyboard controller’s automatic offset for the nested header.
+- Multiple-choice content can scroll. At compact/enlarged sizes, choice letters
+  and selection indicators sit above the full-width answer text.
+- Normal-size written/feedback overscroll behavior is preserved.
+
+## Verification
+
+`pnpm check` passed (Biome, ESLint, TypeScript). Full `pnpm test` passed:
+138 Vitest files / 1,068 tests, 18 script tests, 99 Jest suites / 508 tests (1,594 tests total).
+The measured-layout regression covers footer growth,
+keyboard appearance/dismissal, and returning to a larger viewport.
+The Android keyboard regression was run red against `6b1af104`, then green
+with the fix. The original four header tests remain red against the original header.
+
+Standards review: **0 findings**. Spec review: **0 findings**. Independent agents
+reviewed the entire follow-up, including the new layout component and test.
+CodeRabbit CLI completed a review of the committed follow-up and raised two
+suggestions. The missing keyboard/header offset was valid and fixed in
+`970db356`. The proposed content-wrapper flex change was not adopted: native
+maximum-size written and multiple-choice recordings traverse the whole question,
+all choices and the footer without clipping, and the independent Standards
+review found no reproducible issue. Remote CodeRabbit skips draft PRs.
+
+Full `pnpm format:check` has two known, unchanged baseline failures:
+`scripts/publish-production-ota.mjs` and
+`src/features/learning-plans/use-prepare-session-content.ui.test.tsx`.
+Changed TypeScript files pass Biome.
 
 ## Native matrix
 
-| Device | Settings | Evidence / result |
+| Device | Settings | Result |
 | --- | --- | --- |
-| iPhone 17 Pro, iOS 26.5, 1206×2622 | Default Dynamic Type (`large`) | Before/after; full title fits |
-| Same | `extra-large` Dynamic Type | Before truncates to `Wissensch…`; after shows `Wissenscheck` |
-| Same | Maximum accessibility Dynamic Type (`accessibility-extra-extra-extra-large`) | Before splits title/words and creates very tall half-width actions; after full title in its own row and stacked full-width actions |
-| Same | Maximum size, timed Praxis | Before/after; after timer in controls row, title below |
-| Same | Maximum size, dark appearance | After screenshot; title and controls visible |
-| Pixel 9 AVD, Android API 36, 1080×2424 | Density 420 (≈411 dp), font scale 1.0 / 1.15 / 2.0 | Before/after at each setting |
-| Same | Density 540 (320 dp), font scale 1.0 / 2.0 | Compact and combined display/text sizing before/after |
-| Same | Density 540, font scale 2.0, timed Praxis | Before/after; full title below controls |
-| Same | Combined maximum settings, dark appearance | After screenshot |
+| iPhone 17 Pro, iOS 26.5, 1206×2622 | Default (`large`) and moderate (`extra-large`) Dynamic Type | Matched before/after; full title, original single-line buttons; moderate body/action geometry matches baseline |
+| Same | Maximum accessibility Dynamic Type (`accessibility-extra-extra-extra-large`) | Full title; readable question viewport; input and centered Beant-/worten actions reached by native scroll |
+| Same | Maximum, timed Praxis and dark appearance | Full title and timer, native screenshots |
+| Same | Maximum, multiple choice | All four choices traversed, D selected, Beantworten reached, native back reaches fixture destination |
 
-Android runs in a temporary writable overlay over the existing Pixel AVD's
-read-only userdata. The installed client in that disposable overlay is EAS build
-`115ecf95-94a3-4628-9504-96d03c8abc12`; the iOS client is build
-`9efabeef-8d3b-41cd-8c81-b186bb57ed34`. No original emulator account or app data is
-replaced. Both clients load the same captured JavaScript snapshots.
+| iPhone 13 mini, iOS 26.5, approximately 375×812 logical points | Default and maximum Dynamic Type; maximum timed Praxis | Complete header; normal actions unchanged; maximum actions reached by native scroll |
+| Same | Maximum, pending evaluation | Both complete actions reachable; spinner and centered Analysiere label wrap without clipping |
+| Pixel 9 AVD, Android API 36, 1080×2424 | Density 420 (about 411 dp), font scale 1.0 / 2.0 | Matched native before/after; full title; normal single-line Beantworten |
+| Same | Density 540 (320 dp), font scale 1.0 | Native screenshot: full title, original labels, vertically arranged actions |
+| Same | 320 dp + font scale 2.0 + actual software keyboard | Native hierarchy places session-actions inside session-scroll; actions reached by native swipes; tapping Weiß ich nicht shows the pending evaluation state |
 
-Android checks also exercise font scale 2.0 together with the 320 dp viewport.
-The after title remains complete at that combination.
+Android's final moderate-size comparison, combined maximum display/text, timer,
+and dark-mode captures were blank or covered by a System UI ANR. The final
+multiple-choice selection/back recording stalled before selection could be
+established. These captures and the incomplete recording are excluded. A retry
+with conservative software graphics was blocked by insufficient host disk space.
+The successful default, maximum-font, compact-display and keyboard/action captures
+remain usable; no full current combined-size matrix or Android animation claim
+is made.
+Android keyboard/action/pending-state evidence is provided as native screenshots;
+the complete choice-selection and back interaction is established by the iOS video.
+The mini's focused-input check did not show a software keyboard, so it is not
+counted as keyboard-open verification.
 
-The native back action is pressed by Maestro after two actual scroll gestures at
-maximum text size. Maestro confirms the title is visible and the back callback
-reaches the fixture's “Zurück zum Lernplan” destination. This establishes native
-gesture/callback behavior, not real server persistence or full navigation wiring.
-
-The original action label **Beantworten** is preserved. The rejected
-“Antwort prüfen” copy change is removed; the current PR media replaces those
-historical captures. Normal-size action labels fit on one line. At the largest
-iOS accessibility text size, button labels can wrap while retaining the full
-system font scale; the header title has its own full-width row.
-
-## Automated verification
-
-- `pnpm check`: pass (Biome lint, ESLint, TypeScript).
-- Full `pnpm test`: 138 Vitest files / 1,068 tests; 18 script tests; 98 Jest suites / 506 tests, all passed.
-- Shared content-size layout unit tests: 6 passed.
-- The four new header tests fail against the original header and pass with the fix.
-- Local CodeRabbit CLI review of all PR changes: 0 findings.
-- Independent Standards review: 0 code findings. Independent Spec review: 0 code findings; iOS Display Zoom remains an explicitly untested acceptance boundary.
-- Full `pnpm format:check` encounters pre-existing formatting errors in
-  `scripts/publish-production-ota.mjs` and
-  `src/features/learning-plans/use-prepare-session-content.ui.test.tsx`.
-  Those files are unchanged by this PR; changed TypeScript files pass Biome.
+The iOS client is EAS build `9efabeef-8d3b-41cd-8c81-b186bb57ed34`.
+The Android client is build `115ecf95-94a3-4628-9504-96d03c8abc12`.
+Android uses a temporary writable overlay over the original Pixel AVD's read-only
+userdata. Original accounts and app data are preserved.
 
 ## Video observations and coverage
 
-`ios-comparison.mp4` (current Beantworten captures):
+`ios-maximum-written-scroll.mp4`:
 
-- 00:00–00:03: baseline moderate text, truncated header.
-- 00:03.5–00:05: corrected header, existing autofocus/keyboard appears and is dismissed.
-- 00:05–00:10.5: corrected moderate layout with the original single-line Beantworten action.
-- 00:11–00:17.5: maximum Dynamic Type; full-width title and stacked actions. Beantworten wraps within the long word at this extreme size.
-- 00:18–end: timed Praxis, complete title below timer/back controls.
+- 00:00–00:00.5: fixture keyboard dismissal and scroll reset settle.
+- 00:00.5–00:02.5: complete header and question at maximum text size.
+- 00:03–00:06.5: native scroll traverses the question and answer field.
+- 00:07–00:09: both complete, centered actions are reachable.
+- 00:09.5: native back reaches “Zurück zum Lernplan” (fixture destination).
 
-Coverage: 24.59-second video; 50 full-timeline frames sampled at 2 fps (0.5-second interval); 4 contact sheet(s); no audio stream.
+Coverage: 9.92-second video; 20 full-timeline frames sampled at 2 fps (0.5-second interval); 2 contact sheet(s); no audio stream.
 
-All four complete-timeline contact sheets were visually inspected.
+`ios-maximum-choice-scroll.mp4`:
 
-`android-interaction.mp4` (current Beantworten captures):
+- 00:00–00:07: full header remains visible while question is scrolled.
+- 00:07.5–00:19: choices A through D pass through the full-width reading area.
+- 00:19.5: D becomes visibly selected.
+- 00:21.5–00:23: complete Beantworten action is visible below the choices.
+- 00:23.5: native back reaches the fixture destination.
 
-- 00:00–00:02.5: complete title and stacked controls at 200% text / 320 dp.
-- 00:03–00:04.5: native gestures scroll the written question until the answer input is visible.
-- 00:05–00:11: scrolled state remains usable with the header and actions fixed.
-- 00:11.5–00:13.5: native back press; final frame shows the fixture destination “Zurück zum Lernplan”.
+Coverage: 23.85-second video; 50 full-timeline frames sampled at 2 fps (0.5-second interval); 4 contact sheet(s); no audio stream.
 
-Coverage: 13.93-second video; 28 full-timeline frames sampled at 2 fps (0.5-second interval); 2 contact sheet(s); no audio stream.
-
-Both complete-timeline contact sheets were visually inspected.
-
-`android-comparison.mp4` (current Beantworten captures):
-
-- 00:00–00:02.5: baseline at 115% text; truncated title.
-- 00:03–00:04: corrected title with existing input autofocus/keyboard transition.
-- 00:04.5–00:10.5: corrected moderate layout with original single-line Beantworten action.
-- 00:11–00:14: baseline after 200% text / 320 dp change; title breaks into four lines. Android recreates the fixture activity when density changes.
-- 00:14.5–00:17: after timed-Praxis transition and keyboard dismissal.
-- 00:17.5–end: complete Praxis title below timer/back controls; stacked actions and visible countdown.
-
-Coverage: 23.54-second video; 47 full-timeline frames sampled at 2 fps (0.5-second interval); 3 contact sheet(s); no audio stream.
-
-All three complete-timeline contact sheets were visually inspected. Each recording
-is silent; no audio transcription was applicable. Sampling establishes the visible
-settled states and scrolling, not smooth animation or complete accessibility behavior.
+Every complete-timeline contact sheet for these videos was visually inspected.
+No audio transcription was applicable. Sampling verifies settled states and
+reachability, not frame-perfect animation smoothness.
 
 ## Remaining bounds
 
-These are native fixture checks, not an end-to-end production-account test.
-Physical devices, tablets, landscape, iOS Display Zoom, VoiceOver/TalkBack speech,
-answer evaluation and the full completion flow were not exercised natively.
-Multiple-choice content has a pre-existing separate scrolling restriction; this
-written-question fixture does not certify every question type at extreme sizes.
-The shared heading multiplier remains the existing 1.75 policy; body and button
-text retain unrestricted system scaling.
+Dayova uses Poppins Regular/SemiBold, rather than arbitrary system font families.
+These checks exercise system text/display sizes with those actual app fonts.
+Semantic headings retain the existing shared 1.75 scaling curve; body, controls
+and supporting text remain uncapped. At the largest setting, long question words
+can still require native line wrapping.
+
+These are native fixture checks, not a production-account end-to-end test.
+Physical devices, tablets, landscape, spoken VoiceOver/TalkBack, server answer
+evaluation and the full completion flow are outside this evidence. iOS Display
+Zoom could not be selected in the available simulator Settings surface; it
+remains a physical-device verification boundary.
