@@ -37,12 +37,14 @@ const placeholderWords = new Set([
 	"fur",
 ]);
 
+/** Normalizes case and diacritics only for meaningful-word validation. */
 const normalizeTopicWord = (word: string) =>
 	word
 		.toLowerCase()
 		.normalize("NFKD")
 		.replace(/[\u0300-\u036f]/g, "");
 
+/** Rejects generic placeholders and repeated characters as concrete topic words. */
 const isMeaningfulTopicWord = (word: string) => {
 	const normalized = normalizeTopicWord(word);
 	if (normalized.length < 3) return false;
@@ -67,6 +69,7 @@ export const isMeaningfulTopicDescription = (value: string) => {
 	return uniqueMeaningfulWords.size >= MIN_MEANINGFUL_WORDS;
 };
 
+/** Throws a learner-facing error when no concrete topic can be identified. */
 export const assertMeaningfulTopicDescription = (value: string) => {
 	if (!isMeaningfulTopicDescription(value)) {
 		throwUserFacingError("Beschreibe das Prüfungsthema bitte genauer.");

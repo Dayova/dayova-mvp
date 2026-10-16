@@ -277,6 +277,7 @@ type CreateLearningPlanArgs = {
 	notes?: string;
 };
 
+/** Creates a resumable plan and mirrors its topic text onto the owned exam entry. */
 const createLearningPlan = async (
 	ctx: MutationCtx,
 	args: CreateLearningPlanArgs,
@@ -380,6 +381,7 @@ const publicQuestion = (
 		: {}),
 });
 
+/** Clears derived scope and content when the plan's source exam evidence changes. */
 const invalidateDerivedExamEvidence = async (
 	ctx: MutationCtx,
 	learningPlanId: Id<"learningPlans">,
@@ -700,6 +702,7 @@ export const updateBasics = mutation({
 	},
 });
 
+/** Saves required topics and their boundaries while invalidating stale derived evidence. */
 export const updateRequiredTopics = mutation({
 	args: {
 		id: v.id("learningPlans"),

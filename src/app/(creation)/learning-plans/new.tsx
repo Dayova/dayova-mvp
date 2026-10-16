@@ -75,6 +75,7 @@ type PendingUploadRequest = {
 	action: PendingUploadAction;
 };
 
+/** Collects and saves exam topics before school-material upload, preserving resumable drafts. */
 export default function NewLearningPlanScreen() {
 	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
@@ -215,6 +216,7 @@ export default function NewLearningPlanScreen() {
 		}
 	}, [params.errorMessage, params.step]);
 
+	/** Creates the draft with explicit topic boundaries before its first material upload. */
 	const ensurePlan = async (
 		topicDescription = params.topicDescription ?? "",
 	) => {
@@ -577,6 +579,7 @@ export default function NewLearningPlanScreen() {
 		runUploadAction(request.action);
 	};
 
+	/** Saves the selected topic items before advancing to material upload. */
 	const continueToMaterial = async () => {
 		if (!canContinueTopics) return;
 
@@ -683,6 +686,7 @@ export default function NewLearningPlanScreen() {
 		setIsPauseConfirmationVisible(true);
 	};
 
+	/** Saves actual topic edits before leaving, retaining the draft if saving fails. */
 	const pauseCreation = async () => {
 		if (!learningPlanId) return;
 		await topicActionGateRef.current.run(async () => {

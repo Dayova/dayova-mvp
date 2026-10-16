@@ -76,6 +76,7 @@ export function TopicSearch({
 		};
 	}, [key, term, subject, searchTopics, disabled]);
 	const current = state.key === key ? state : undefined;
+	/** Appends one new item without rewriting any existing legacy description. */
 	const add = (title: string) => {
 		if (!selected.some((value) => keyOf(value) === keyOf(title)))
 			onChangeTopics([...selected, title]);
