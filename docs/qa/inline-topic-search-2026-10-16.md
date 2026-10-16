@@ -1,5 +1,53 @@
 # Inline exam-topic search — validation, 16 October 2026
 
+## Native acceptance and timeout follow-up
+
+Test-tooling revision: `4b2866327f5fdab972354db03a52ee1c690c9acc`.
+Product components remain at the subject-context implementation below.
+
+The timeout was reproduced with the complete two-worker suite (1,098/1,099
+passing) and then with just
+`pnpm exec vitest run tests/ota-safety.test.ts -t 'honors the explicit Watchman opt-in' --maxWorkers=1`.
+The latter took 12.33 seconds against its five-second limit. A timing probe
+measured 7.49 seconds inside the real Metro `require`, with normal process exit
+shortly after; a stuck child process was not observed.
+
+Configuration integration checks now use asynchronous child processes bounded
+to 25 seconds, with a 30-second test budget. The five iOS assertions are kept
+in one suite: each real development/production Expo introspection runs once in
+bounded setup, directly through the installed Expo CLI instead of `npx`.
+The two variants have separate processes and rebuilt Jiti caches. No global
+test timeout, product behavior, test exclusion or mocked configuration was added.
+
+- Complete Vitest run: **139 files / all 1,099 tests passed**, two workers,
+  145.21 seconds. Three iOS files became one; no test cases were removed.
+- Final TypeScript and whitespace checks passed. After a small readability-only
+  change, both changed suites passed again: **34 tests**, 8.04 seconds.
+- An intermediate full run during native compilation had two different
+  five-second timeouts in unchanged OTA-report/diagnostic tests. The all-green
+  run above was performed after compilation finished; those tests were neither
+  changed nor excluded.
+- A fresh **arm64-v8a** Android development client was built from this checkout's
+  lockfile and regular product entry, then installed successfully on Jakob's
+  Pixel 9. App/package version: 1.0.5 / `com.dayova.dev`. APK SHA-256:
+  `5ed5f6910cd5db667bc71280c9714a55a11f21d968f139e86cb1b4065fc7239c`.
+  This is a development client loading PR code from Metro, not a self-contained
+  release APK. The separate production app was not replaced.
+- The initial standalone release attempt stopped at the existing release-env
+  guard because local development lacked store/legal configuration. A proposed
+  development-only iOS build profile also failed config evaluation and was
+  removed; existing build profiles and release guards are unchanged.
+- Automated opening of the installed app by deep link was rejected by the
+  automatic approval review (no detailed reason returned). Jakob received a
+  private QR code to open it himself. No rejection was bypassed; installation
+  success alone is not counted as an authenticated native journey.
+
+Full signed-in Android/iOS, subject creation, persisted save/reopen, current
+large-font and screen-reader acceptance are still being checked. Keep Draft
+until their actual evidence is recorded. Earlier galleries retain their stated
+fixture and native-binary limitations; this follow-up does not retroactively
+upgrade their provenance.
+
 ## Subject-context follow-up
 
 Product commit: `bf90d6390da34659ba61b6057d1319d7f93a0310`.
