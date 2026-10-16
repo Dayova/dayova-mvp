@@ -61,14 +61,13 @@ const findPosixOnlyScripts = (scripts: Record<string, string>) =>
 		.map(([name]) => name);
 
 describe("package scripts", () => {
-	it.each(developmentExpoScripts)(
-		"sets APP_VARIANT portably for %s",
-		(scriptName) => {
-			expect(packageJson.scripts[scriptName]).toMatch(
-				/^cross-env APP_VARIANT=development expo /,
-			);
-		},
-	);
+	it.each(
+		developmentExpoScripts,
+	)("sets APP_VARIANT portably for %s", (scriptName) => {
+		expect(packageJson.scripts[scriptName]).toMatch(
+			/^cross-env APP_VARIANT=development expo /,
+		);
+	});
 
 	it("sets APP_VARIANT portably for unused-code analysis", () => {
 		expect(packageJson.scripts["check:unused"]).toBe(

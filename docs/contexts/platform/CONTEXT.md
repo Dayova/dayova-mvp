@@ -31,10 +31,24 @@ therefore checks the resulting `main` commit again under the same visible job
 name instead of skipping a PR-only job and repeating its commands elsewhere.
 
 Pull request checks require the author's GitHub association to be `OWNER`,
-`MEMBER`, or `COLLABORATOR`. Manual runs validate only. Production fingerprinting,
-Convex deployment, and OTA work remain restricted to pushes to `main`.
+`MEMBER`, or `COLLABORATOR`. Manual runs validate only. Trusted same-repository
+PRs also run production fingerprinting and OTA compatibility checks; Convex
+deployment and OTA publication remain restricted to pushes to `main`.
 Both Convex deployment and OTA checks depend on successful `checks`; OTA
 publication also requires successful fingerprinting, deployment, and OTA safety.
+
+Biome owns general linting and formatting for application/backend source, root
+configuration, tests, ESLint rules, scripts, plugins, and local modules. Its
+coverage fixtures must reject invalid code in each of these locations. Generated
+Convex files and installer-owned `skills-lock.json` remain excluded; repository
+skill validation checks the latter.
+
+ESLint owns the React Hooks/Compiler, Dayova UI, and Convex rules. The UI rules
+use syntax-only parsing; Convex retains TypeScript project services because its
+query and explicit-table rules require type information. Keep the integration
+fixtures green when changing either boundary, and retain the independent full
+TypeScript check. Knip remains the unused-code/dependency gate. Replacing an
+engine requires proving equivalent coverage for its specialized rules first.
 
 ## Release Environment
 

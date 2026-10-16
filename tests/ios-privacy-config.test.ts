@@ -48,9 +48,10 @@ describe("iOS privacy purpose strings", () => {
 		for (const key of REQUIRED_IOS_PRIVACY_KEYS) {
 			const appConfigValue = finalInfoPlist[key];
 
-			expect(appConfigValue, `${key} missing from final Expo iOS config`).toEqual(
-				expect.any(String),
-			);
+			expect(
+				appConfigValue,
+				`${key} missing from final Expo iOS config`,
+			).toEqual(expect.any(String));
 
 			if (nativeInfoPlistExists) {
 				const nativeValue = readNativeInfoPlistValue(key);
@@ -62,7 +63,10 @@ describe("iOS privacy purpose strings", () => {
 		}
 
 		for (const key of REMOVED_IOS_PRIVACY_KEYS) {
-			expect(finalInfoPlist[key], `${key} should not be requested`).toBeUndefined();
+			expect(
+				finalInfoPlist[key],
+				`${key} should not be requested`,
+			).toBeUndefined();
 		}
 	}, 15_000);
 });
