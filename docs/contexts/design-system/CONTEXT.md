@@ -138,7 +138,10 @@ sizes so the expanded header does not leave task content unreachable. See
 
 Learning-session actions stay pinned while their measured height uses at most
 40% of the available question area. Larger actions join the vertical content
-scroll; iOS keyboard height is deducted from that budget. Written questions and
+scroll; iOS keyboard height is deducted from that budget, and pinned actions
+measure their screen position below the header. On Android, actions always join
+the content scroll while the keyboard is visible, following the shared keyboard
+contract rather than relying on window resizing. Written questions and
 multiple-choice answers both remain scrollable. At compact/enlarged sizes, choice
 letters and selection indicators sit above the full-width answer text. Long
 German session-action labels have optional soft-hyphen breaks and centered

@@ -6,6 +6,7 @@ import {
 	useKeyboardState,
 } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { shouldUseKeyboardStickyActions } from "~/components/ui/keyboard-safe-scroll";
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
 
 /** Keep actions pinned only while they leave most of the question area readable. */
@@ -30,11 +31,14 @@ export function SessionContentLayout({
 	const keyboardHeight = useKeyboardState((state) =>
 		state.isVisible ? state.height : 0,
 	);
-	// iOS adds keyboard padding inside this area; Android resizes the window.
+	const canPinAboveKeyboard = shouldUseKeyboardStickyActions(Platform.OS);
+	// Android's edge-to-edge window can stay full height behind the IME.
+	// Follow the shared keyboard contract: only iOS pins actions above it.
 	const readableHeight =
-		availableHeight - (Platform.OS === "ios" ? keyboardHeight : 0);
+		availableHeight - (canPinAboveKeyboard ? keyboardHeight : 0);
 	const scrollActions =
-		availableHeight > 0 && footerHeight > readableHeight * 0.4;
+		(!canPinAboveKeyboard && keyboardHeight > 0) ||
+		(availableHeight > 0 && footerHeight > readableHeight * 0.4);
 	const actions = footer ? (
 		<View
 			testID="session-actions"
@@ -78,7 +82,7 @@ export function SessionContentLayout({
 				{scrollActions ? actions : null}
 			</KeyboardSafeScrollView>
 			{!scrollActions && actions ? (
-				<KeyboardAvoidingView behavior="padding">
+				<KeyboardAvoidingView automaticOffset behavior="padding">
 					{actions}
 				</KeyboardAvoidingView>
 			) : null}
