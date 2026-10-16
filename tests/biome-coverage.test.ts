@@ -1,8 +1,8 @@
 // @vitest-environment node
 import { spawnSync } from "node:child_process";
 import {
-	mkdtempSync,
 	mkdirSync,
+	mkdtempSync,
 	readFileSync,
 	rmSync,
 	writeFileSync,
@@ -31,15 +31,17 @@ function lint(filePath: string, input: string) {
 	writeFileSync(path, input);
 	const result = spawnSync(
 		process.execPath,
-		[biome, "lint", filePath, "--reporter=json"],
+		// Unlike Biome's experimental JSON reporter, RDJSON escapes Windows paths.
+		[biome, "lint", filePath, "--reporter=rdjson"],
 		{ cwd: workspace, encoding: "utf8", timeout: 10_000 },
 	);
 	expect(result.error).toBeUndefined();
 	expect(result.status, result.stderr).toBe(1);
 	expect(result.stdout, result.stderr).not.toBe("");
-	return JSON.parse(result.stdout) as {
-		diagnostics: { category: string }[];
+	const report = JSON.parse(result.stdout) as {
+		diagnostics: { code: { value: string } }[];
 	};
+	return report.diagnostics.map(({ code }) => code.value);
 }
 
 describe("Biome file coverage", () => {
@@ -55,11 +57,7 @@ describe("Biome file coverage", () => {
 		"jest.config.cjs",
 		"vitest.config.ts",
 	])("checks JavaScript/TypeScript in %s", (filePath) => {
-		expect(lint(filePath, "debugger;").diagnostics).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({ category: "lint/suspicious/noDebugger" }),
-			]),
-		);
+		expect(lint(filePath, "debugger;")).toContain("lint/suspicious/noDebugger");
 	});
 
 	it.each([
@@ -67,14 +65,8 @@ describe("Biome file coverage", () => {
 		"eas.json",
 		".vscode/extensions.json",
 	])("checks JSON configuration in %s", (filePath) => {
-		expect(
-			lint(filePath, '{ "example": 1, "example": 2 }').diagnostics,
-		).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					category: "lint/suspicious/noDuplicateObjectKeys",
-				}),
-			]),
+		expect(lint(filePath, '{ "example": 1, "example": 2 }')).toContain(
+			"lint/suspicious/noDuplicateObjectKeys",
 		);
 	});
 });
