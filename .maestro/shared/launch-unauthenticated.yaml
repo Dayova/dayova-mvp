@@ -17,11 +17,10 @@ appId: ${APP_ID}
           visible: Development Build
           timeout: 60000
       - openLink:
-          # iOS reads the inner server URL; keep the outer flag for Android compatibility.
+          # SDK 58's launch contract disables developer onboarding and overlays.
           link: >-
-            ${'exp+dayova://expo-development-client/?url=' +
-            encodeURIComponent(DEV_SERVER_URL + (DEV_SERVER_URL.indexOf('?') == -1 ? '?' : '&') +
-            'disableOnboarding=1') + '&disableOnboarding=1'}
+            ${'exp+dayova://?__expo_url=' + encodeURIComponent(DEV_SERVER_URL) +
+            '&__expo_disable_onboarding=1&__expo_disable_fab=1&__expo_disable_auto_launch=1'}
       # iOS can require confirmation on the first custom-scheme launch.
       - runFlow:
           when:
@@ -31,7 +30,7 @@ appId: ${APP_ID}
       - extendedWaitUntil:
           visible: 'Login|Reload'
           timeout: 60000
-      # SDK 57 can show the developer menu even with onboarding disabled.
+      # Dismiss a developer menu if the client still presents one.
       # Android dismisses this modal with Back; iOS exposes a Close control.
       - runFlow:
           when:
