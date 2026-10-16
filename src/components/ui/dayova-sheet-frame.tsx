@@ -31,9 +31,9 @@ import {
 	useWindowDimensions,
 	View,
 } from "react-native";
-import { CloseButton } from "~/components/ui/close-button";
 import { InputComponentContext } from "~/components/ui/input";
 import { useSheetAccessibility } from "~/components/ui/sheet-accessibility";
+import { SheetCloseButton } from "~/components/ui/sheet-close-button";
 import { useSheetSafeAreaInsets } from "~/components/ui/sheet-safe-area";
 import { Text } from "~/components/ui/text";
 import { getContentSizeLayout } from "~/lib/content-size-layout";
@@ -394,7 +394,7 @@ function DayovaSheetFrame({
 					<View className="mb-6 gap-3" testID="dayova-sheet-header">
 						{hasSeparateCloseRow ? (
 							<View className="self-end">
-								<CloseButton
+								<SheetCloseButton
 									accessibilityLabel={closeAccessibilityLabel}
 									onPress={dismiss}
 								/>
@@ -422,7 +422,7 @@ function DayovaSheetFrame({
 								<View className="flex-1" />
 							)}
 							{canShowCloseButton && !hasSeparateCloseRow ? (
-								<CloseButton
+								<SheetCloseButton
 									accessibilityLabel={closeAccessibilityLabel}
 									onPress={dismiss}
 								/>

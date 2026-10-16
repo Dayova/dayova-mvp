@@ -70,10 +70,10 @@ jest.mock("~/components/ui/text", () => {
 	};
 });
 
-jest.mock("~/components/ui/close-button", () => {
+jest.mock("~/components/ui/sheet-close-button", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
 	return {
-		CloseButton: (props: Record<string, unknown>) =>
+		SheetCloseButton: (props: Record<string, unknown>) =>
 			React.createElement("CloseButton", props),
 	};
 });
