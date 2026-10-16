@@ -1,5 +1,10 @@
 # Learning-plan creation header validation
 
+For the 16 October Android/app-wide navigation-control follow-up, see
+[DAY-523 capture notes, comparisons and recordings](android-2026-10-16/README.md).
+The iOS captures and validation notes below describe the original 14 October
+implementation; they are retained as historical evidence.
+
 Captured on 14 October 2026 in the iPhone 17 Pro simulator, iOS 26.5,
 dark appearance, 1206 × 2622 pixels. Updated UI: commit `cbaf534a`.
 The PNGs are unmodified simulator captures.
