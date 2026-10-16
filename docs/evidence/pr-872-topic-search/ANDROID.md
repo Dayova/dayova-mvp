@@ -6,24 +6,23 @@ production-component fixtures with controlled search responses, clearly labeled
 in every capture. They do not establish Clerk authentication, a deployed Convex
 action, live WLO responses, or complete route navigation.
 
-The original recovered iPhone captures and recording in [README.md](README.md)
-are preserved separately, including their original limitations.
+The original recovered iPhone captures and recording remain historical PR evidence with their original limitations.
 
 ## Before / after
 
 | Before — manual topics | After — searchable topics |
 | --- | --- |
-| ![Manual topic textarea](android-before-light.png) | ![Search suggestions](android-results-light.png) |
+| ![Manual topic textarea](https://github.com/user-attachments/assets/66c059fd-315a-4cc4-ae62-79b1ac009014) | ![Search suggestions](https://github.com/user-attachments/assets/7e21eacf-2444-4c77-8858-32490035aa4f) |
 
 | Selected topic | Provider failure with recovery |
 | --- | --- |
-| ![Selected topic chip and enabled Continue](android-selected-light.png) | ![Provider error, retry, and custom-entry fallback](android-offline-light.png) |
+| ![Selected topic chip and enabled Continue](https://github.com/user-attachments/assets/c2b70a63-d6e1-43ee-a772-ff44350d69f3) | ![Provider error, retry, and custom-entry fallback](https://github.com/user-attachments/assets/bfee8b2b-2583-475a-b2b7-1a35199048ad) |
 
 | Dark search with keyboard | Dark selected topic with keyboard |
 | --- | --- |
-| ![Dark search results](android-results-dark.png) | ![Dark selected topic](android-selected-dark.png) |
+| ![Dark search results](https://github.com/user-attachments/assets/65340aff-e91a-4bd3-baaa-9cc0bc387b3e) | ![Dark selected topic](https://github.com/user-attachments/assets/8f6cf5b3-830f-423c-a747-682f9e5a79ea) |
 
-![Dark search at font scale 1.5](android-large-text-dark.png)
+![Dark search at font scale 1.5](https://github.com/user-attachments/assets/e7ab3fe6-368f-40fc-b878-f1339ad8f0f6)
 
 The 1.5 font-scale capture shows complete wrapping of the custom-topic action
 and visible search results. The fixture's separate control strip and developer
@@ -34,7 +33,7 @@ the query. The default font scale was restored afterward.
 
 ## Recording and timeline coverage
 
-[Watch the continuous before/after interaction](android-before-after.mp4).
+[Watch the continuous before/after interaction](https://github.com/user-attachments/assets/3a5b10ae-fdc8-4614-96d6-83401dae3895).
 
 This is the first 48.5 seconds of an 81.37-second device recording, resized to
 720×1600 for playback. Time is not accelerated; no stages are stitched together.
@@ -54,8 +53,7 @@ Coverage: 81.37-second video; 81 full-timeline frames sampled at 1 fps (1-second
 
 Coverage: 48.51-second video; 49 full-timeline frames sampled at 1 fps (1-second interval); 4 contact sheet(s); no audio stream.
 
-All six source sheets and all four export sheets were inspected. The four export
-contact sheets are retained under [inspection](inspection). No audio stream;
+All six source sheets and all four export sheets were inspected. The export contact sheets were inspected locally and are not source artifacts. No audio stream;
 transcription is not applicable. One-second sampling establishes the sequence,
 not frame-by-frame smoothness or sub-second timing. Screenrecord uses variable
 frame rate, so this is not evidence of animation frame rate.
@@ -97,3 +95,5 @@ Authenticated end-to-end validation, a live provider request from the app,
 physical devices, and manual VoiceOver/TalkBack remain outstanding. The fixture
 comparison complements the original iOS evidence; it does not satisfy an
 actual-route base/head recording requirement.
+
+Media are hosted in the [PR evidence comment](https://github.com/Dayova/dayova-mvp/pull/872#issuecomment-6222750851); screenshots, recordings, and contact sheets are excluded from the source tree.

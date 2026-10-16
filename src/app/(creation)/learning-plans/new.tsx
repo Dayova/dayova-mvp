@@ -137,11 +137,16 @@ export default function NewLearningPlanScreen() {
 		const initial = params.topicDescription ?? params.teacherGuidance;
 		return initial == null ? null : initial ? [initial] : [];
 	});
+	// Only actual edits may overwrite a saved draft while pausing.
+	const hasEditedTopicsRef = useRef(false);
 	const [isBusy, setIsBusy] = useState(false);
 	const [isUploading, setIsUploading] = useState(false);
 	const [isUploadSheetVisible, setIsUploadSheetVisible] = useState(false);
 	const [isPauseConfirmationVisible, setIsPauseConfirmationVisible] =
 		useState(false);
+	const [pauseErrorMessage, setPauseErrorMessage] = useState<string | null>(
+		null,
+	);
 	const pendingUploadRequestRef = useRef<PendingUploadRequest | null>(null);
 	const topicActionGateRef = useRef(createAsyncActionGate());
 	const [openingUploadAction, setOpeningUploadAction] =
@@ -673,7 +678,51 @@ export default function NewLearningPlanScreen() {
 		return true;
 	};
 
+	const openPauseConfirmation = () => {
+		setPauseErrorMessage(null);
+		setIsPauseConfirmationVisible(true);
+	};
+
+	const pauseCreation = async () => {
+		if (!learningPlanId) return;
+		await topicActionGateRef.current.run(async () => {
+			setIsBusy(true);
+			setPauseErrorMessage(null);
+			try {
+				if (
+					hasEditedTopicsRef.current &&
+					topics !== snapshot?.plan.topicDescription
+				) {
+					if (!isMeaningfulTopicDescription(topics)) {
+						throw new Error(
+							"Bitte ergänze gültige Prüfungsthemen, bevor du pausierst.",
+						);
+					}
+					await retryOnceAfterAuthResume(() =>
+						updateRequiredTopics({
+							id: learningPlanId,
+							topicDescription: topics,
+							topicItems: selectedTopics,
+						}),
+					);
+				}
+				setIsPauseConfirmationVisible(false);
+				dismissToOrReplace(router, ROUTES.learningPlans);
+			} catch (error) {
+				setPauseErrorMessage(
+					getErrorMessage(
+						error,
+						"Deine Änderungen konnten nicht gespeichert werden. Bitte versuche es erneut.",
+					),
+				);
+			} finally {
+				setIsBusy(false);
+			}
+		});
+	};
+
 	const goBack = () => {
+		if (isBusy || topicActionGateRef.current.isRunning) return true;
 		const intent = getLearningPlanCreationBackIntent({
 			step: setupStep,
 			hasSavedDraft: Boolean(learningPlanId),
@@ -687,7 +736,7 @@ export default function NewLearningPlanScreen() {
 			return true;
 		}
 		if (intent.kind === "confirmPause") {
-			setIsPauseConfirmationVisible(true);
+			openPauseConfirmation();
 			return true;
 		}
 		return exitCreation();
@@ -698,6 +747,18 @@ export default function NewLearningPlanScreen() {
 		active: true,
 		currentStep: currentProgressStep,
 		onBack: goBack,
+		onClose: () => {
+			if (isBusy || topicActionGateRef.current.isRunning) return;
+			if (learningPlanId) {
+				openPauseConfirmation();
+				return;
+			}
+			dismissToOrReplace(
+				router,
+				examDayEntryId ? `/entry/${examDayEntryId}` : ROUTES.learningPlans,
+			);
+		},
+		closeDisabled: isBusy,
 	});
 
 	const continueToAnalysis = () => {
@@ -724,7 +785,10 @@ export default function NewLearningPlanScreen() {
 							canContinue={canContinueTopics}
 							errorMessage={errorMessage}
 							isBusy={isBusy || isPlanSnapshotLoading}
-							onChangeTopics={setTopicsInput}
+							onChangeTopics={(value) => {
+								hasEditedTopicsRef.current = true;
+								setTopicsInput(value);
+							}}
 							onContinue={() => void continueToMaterial()}
 							topics={selectedTopics}
 						/>
@@ -812,11 +876,10 @@ export default function NewLearningPlanScreen() {
 				cancelLabel="Weiter bearbeiten"
 				confirmLabel="Später fortsetzen"
 				confirmTone="primary"
+				isBusy={isBusy}
+				errorMessage={pauseErrorMessage}
 				onClose={() => setIsPauseConfirmationVisible(false)}
-				onConfirm={() => {
-					setIsPauseConfirmationVisible(false);
-					dismissToOrReplace(router, ROUTES.learningPlans);
-				}}
+				onConfirm={() => void pauseCreation()}
 			/>
 		</Screen>
 	);

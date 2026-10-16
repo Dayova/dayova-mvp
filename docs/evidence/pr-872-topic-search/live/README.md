@@ -37,15 +37,15 @@ not backend revision equivalence with the frontend commit.
 
 ## Media and timestamps
 
-[WLO selection and custom-entry recovery](android-search-and-fallback.mp4):
+[WLO selection and custom-entry recovery](https://github.com/user-attachments/assets/5260a5c4-bd0b-427a-9cbd-aa9efc408aec):
 0s result; 1s selected chip; 17–22s typing `Aufbau` and loading; 23s search error;
-46s both selected items. [Result screenshot](android-live-results.png) and
-[search-error screenshot](android-live-error.png) are unretouched native captures.
+46s both selected items. [Result screenshot](https://github.com/user-attachments/assets/0c554e13-5c60-4131-a941-1f0db676d7e4) and
+[search-error screenshot](https://github.com/user-attachments/assets/3d9b9258-a5bb-429e-9eeb-f00cf36d2180) are unretouched native captures.
 
-[Save, return, remove, and save again](android-save-and-return.mp4):
+[Save, return, remove, and save again](https://github.com/user-attachments/assets/ac3aebf3-a71d-4537-8576-41b48ef21bf7):
 0s material step; 0.5–7.5s both chips after Back; 8s custom chip removed;
 13–15.5s saving; 16s material step; 19s one WLO chip after returning again.
-[Returned selection screenshot](android-live-returned.png).
+[Returned selection screenshot](https://github.com/user-attachments/assets/ca93bed7-a909-48a4-86d4-f1bb494ac45c).
 
 Each clip is a continuous real-time excerpt, starting at source time zero, with
 only its static tail removed. They are separate recordings, not a stitched flow.
@@ -63,7 +63,7 @@ Coverage: 22.34-second video; 45 full-timeline frames sampled at 2 fps (0.5-seco
 
 All ten source contact sheets and seven exported contact sheets were inspected,
 with individual frames around error, custom selection, material navigation, and
-return. Export contact sheets are retained in `inspection/`. No transcription
+return. Export contact sheets were inspected locally. No transcription
 applies. Sampling establishes the sequence, not frame-by-frame smoothness or
 sub-second timing. The navigation recording uses variable frame timing; its
 requested recorder time limit was 45 seconds, while its final media duration was
@@ -77,3 +77,7 @@ VoiceOver/TalkBack checks, cold-restart draft recovery, or native multiline lega
 draft coverage. The exact legacy-text preservation regression is covered by the
 rendered route/snapshot tests, which failed before the fix and passed afterward.
 The older fixture comparison remains documented in [ANDROID.md](../ANDROID.md).
+
+Media are hosted in the [PR evidence comment](https://github.com/Dayova/dayova-mvp/pull/872#issuecomment-6222750851); screenshots, recordings, and contact sheets are excluded from the source tree.
+
+The follow-up [actual base/head and TalkBack check](../FOLLOWUP.md) supersedes the outstanding base and Android-control checks listed above. iOS and VoiceOver remain pending.
