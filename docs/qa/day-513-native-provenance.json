@@ -1,0 +1,15 @@
+{
+  "before_commit": "3eb4e5d29f8cb2771fb79825c3b447587c514740",
+  "after_commit": "10dc6579c78f85efd1698aa8dc997f575af3e05f",
+  "files": {
+    "before": {
+      "src/components/screen-header.tsx": "fb451313ef3629fbd2769d010887958e284cf6c4fe4518cc6e59b6e92aa9ea2a",
+      "src/app/learning-plans/[planId]/sessions/[sessionId]/index.tsx": "5ebd79e3897ca2f570b496656604982d409f145cd373849de128de4aeaf702fc"
+    },
+    "after": {
+      "src/components/screen-header.tsx": "2aaec204eca6902deb75ec8a642ab21377bc5f0f09f0a3dff5b5dee4da35199e",
+      "src/app/learning-plans/[planId]/sessions/[sessionId]/index.tsx": "6c5ce4469826550ac5b60db62d95b2f9e4c5dc73980f2295c39ea719b31bc981"
+    }
+  },
+  "fixture": "original full learning-session screen; frozen synthetic question; authentication, Convex operations, navigation destination, analytics and haptics stubbed; real native UI and layout"
+}
