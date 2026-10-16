@@ -4,10 +4,10 @@ Updated on 14 October 2026 using an isolated iPhone 17 Pro simulator running iOS
 
 These native previews use the production `LearningPlanCreationProgressHeader`, `ExamDateSelector`, `InlineDatePicker`, theme, text, and button components. The progress header is the existing version on this PR's branch. The authenticated route is not mounted in the temporary fixture; route state and navigation are tested separately. The fixture and temporary entry point are removed after capture.
 
-- Light appearance: 14 October 2026 selected; progress is visible at 40%, the separate date card is absent, and the button reads “Weiter mit 14. Oktober 2026”.
-- Dark appearance: 2 November 2026 selected; the progress header remains visible, the six-row calendar fits, and the button reads “Weiter mit 2. November 2026”.
+- `ios-light.png`: 14 October 2026 selected; progress is visible at 40%, the separate date card is absent, and the button reads “Weiter mit 14. Oktober 2026”.
+- `ios-dark-selected-date.png`: 2 November 2026 selected; the progress header remains visible, the six-row calendar fits, and the button reads “Weiter mit 2. November 2026”.
 
-Screenshots were removed from the repository after visual validation. Preview dates were fixture values. Interaction tests verify that a calendar change updates the button, that Continue carries the new date into topics, and that returning preserves it. Screenshots are not evidence of physical taps or authenticated route navigation. The available simulator renders native calendar labels in English; the wrapper passes `de-DE`, as does the existing sheet picker.
+Dates in the screenshots are fixture values. Interaction tests verify that a calendar change updates the button, that Continue carries the new date into topics, and that returning preserves it. Screenshots are not evidence of physical taps or authenticated route navigation. The available simulator renders native calendar labels in English; the wrapper passes `de-DE`, as does the existing sheet picker.
 
 Validation for this revision:
 
