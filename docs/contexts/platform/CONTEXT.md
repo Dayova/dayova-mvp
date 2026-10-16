@@ -130,8 +130,10 @@ Keep the root `typescript` dependency aliased to Microsoft's
 need the TypeScript 6 JavaScript API. It exports that API and `tsc6`; the native
 alias owns `tsc`, avoiding executable conflicts. Preserve both aliases when
 upgrading dependencies, and verify lint, both tsconfigs, Expo config loading,
-and a frozen install. See [README](../../../README.md#typescript-tooling) for
-commands, editor setup, and timing comparisons.
+and a frozen install. The decision and compatibility rationale live in the
+[Notion developer handbook](https://www.notion.so/3dc2e87228bf818a9547f588e2cf0386).
+See [README](../../../README.md#typescript-tooling) for commands, editor setup,
+and timing comparisons.
 
 ## Package Manager Toolchain
 
