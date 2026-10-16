@@ -26,10 +26,13 @@ const mockRouter = {
 	canGoBack: () => true,
 };
 const mockCreateEntry = jest.fn<() => Promise<string>>();
-const mockUpdateEntry = jest.fn<() => Promise<void>>();
-const mockUpdateRequiredTopics = jest.fn<() => Promise<void>>();
+const mockUpdateEntry =
+	jest.fn<(_args: Record<string, unknown>) => Promise<void>>();
+const mockUpdateRequiredTopics =
+	jest.fn<(_args: Record<string, unknown>) => Promise<void>>();
 const mockGenerateUploadUrl = jest.fn<() => Promise<Record<string, unknown>>>();
-const mockRegisterUploadedDocument = jest.fn<() => Promise<void>>();
+const mockRegisterUploadedDocument =
+	jest.fn<(_args: Record<string, unknown>) => Promise<void>>();
 const mockCapture = jest.fn();
 const mockFetch =
 	jest.fn<
@@ -149,7 +152,7 @@ jest.mock("expo-file-system", () => ({
 
 		open() {
 			return {
-				readBytes: (length: number) => {
+				readBytesSync: (length: number) => {
 					const file = mockFiles[this.uri];
 					if (file?.readError) throw new Error(file.readError);
 					return Uint8Array.from(

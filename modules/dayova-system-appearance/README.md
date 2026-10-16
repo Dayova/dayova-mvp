@@ -15,7 +15,7 @@ again.
 | --- | --- |
 | Status | Active compatibility workaround |
 | Scope | Dayova iOS application only |
-| Current native baseline | Expo SDK 57, React Native 0.86, module target iOS 16.4 |
+| Current dependency baseline | Expo SDK 58, React Native 0.88, module target iOS 16.4 |
 | Review trigger | Every Expo SDK, React Native, or minimum-iOS upgrade |
 | Exit condition | React Native's public appearance API passes the complete Dayova iOS validation matrix without this module |
 | Decision record | [`docs/contexts/mobile-app/adr/0001-use-local-ios-system-appearance-bridge.md`](../../docs/contexts/mobile-app/adr/0001-use-local-ios-system-appearance-bridge.md) |
@@ -311,10 +311,17 @@ podspec, Expo configuration, and installed packages.
 After changing native code, rebuild the native app. Reloading Metro is not
 enough, and the module is not available in Expo Go.
 
-The module podspec targets iOS 16.4 to match Expo SDK 57's support baseline.
-The generated Dayova application currently targets iOS 17 because
-`@clerk/expo` independently requires and writes iOS 17 during prebuild. The
-module does not cause that app-wide minimum.
+The module podspec retains iOS 16.4, also supported by Expo SDK 58. The previous
+SDK 57 application targeted iOS 17 because Clerk's native package raised the
+generated app minimum. Clerk 4's JS authentication package no longer includes
+that native pod. Verify the generated application target on every upgrade;
+the local module does not raise the app-wide minimum.
+
+The installed React Native 0.88 source still declares
+`RCTUseKeyWindowForSystemStyle` in `React/CoreModules/RCTAppearance.h` and
+implements key-window resolution plus `RCTUserInterfaceStyleDidChangeNotification`
+handling in `RCTAppearance.mm`. This source audit preserves the bridge contract;
+it does not replace the Debug/Release runtime matrix below.
 
 ## Known limitations and risks
 
@@ -333,10 +340,10 @@ module does not cause that app-wide minimum.
   snapshot shield during app-switcher transitions. It is intentionally kept
   until React acknowledges a resumed commit; a native timeout or immediate
   activation removal would reintroduce the stale-theme race.
-- **Runtime coverage:** The module compiles with an iOS 16.4 deployment target,
-  but the app's Clerk dependency currently prevents an end-to-end iOS 16.4
-  launch. Compatibility at that OS floor is therefore compile-validated, not
-  runtime-validated.
+- **Runtime coverage:** The module targets iOS 16.4. Prior SDK 57 validation at
+  that floor covered compilation only because Clerk raised the application
+  minimum to iOS 17. SDK 58 still requires native builds and a documented
+  runtime matrix; dependency or source audits alone do not establish OS coverage.
 - **No Android implementation:** The observed defect and workaround are iOS
   specific. Android continues to use the standard React Native hook.
 
@@ -495,7 +502,7 @@ behavior, not part of this workaround.
 | [`index.ts`](./index.ts) | Exposes the local module's TypeScript entry point. |
 | [`src/lib/system-color-scheme.ios.ts`](../../src/lib/system-color-scheme.ios.ts) | Application adapter that turns the native getter/event into a React hook. |
 | [`src/lib/ios-appearance-module.test.ts`](../../src/lib/ios-appearance-module.test.ts) | Guards deployment-target and API-availability invariants. |
-| [`patches/expo-updates@57.0.21.patch`](../../patches/expo-updates@57.0.21.patch) | Keeps Expo Updates' Release-only deferred splash and root on the active window appearance. |
+| [`patches/expo-updates@58.0.17.patch`](../../patches/expo-updates@58.0.17.patch) | Keeps Expo Updates' Release-only deferred splash and root on the active window appearance. |
 
 ## Primary references
 

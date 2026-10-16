@@ -5,7 +5,7 @@ import {
 	ActivityIndicator,
 	Keyboard,
 	Pressable,
-	type TextInput,
+	type TextInputInstance,
 	View,
 } from "react-native";
 import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
@@ -66,7 +66,7 @@ export default function PersonalSubjectsScreen() {
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [isBusy, setIsBusy] = useState(false);
 	const actionGateRef = useRef(createAsyncActionGate());
-	const renameInputRef = useRef<TextInput>(null);
+	const renameInputRef = useRef<TextInputInstance>(null);
 
 	const startRename = (subject: EditingSubject) => {
 		setErrorMessage(null);

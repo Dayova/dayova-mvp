@@ -4,6 +4,7 @@ import {
 	type NativeSyntheticEvent,
 	Pressable,
 	ScrollView,
+	type ScrollViewInstance,
 	type TextStyle,
 	View,
 	type ViewStyle,
@@ -209,7 +210,7 @@ function TimetableWeekEditor({
 	onOpenDayPicker,
 	onOpenSubjectPicker,
 }: TimetableWeekEditorProps) {
-	const lessonPagerRef = useRef<ScrollView>(null);
+	const lessonPagerRef = useRef<ScrollViewInstance>(null);
 	const shouldAnimateLessonScrollRef = useRef(false);
 	const [lessonPagerWidth, setLessonPagerWidth] = useState(0);
 	const [lessonIndexByDay, setLessonIndexByDay] = useState<

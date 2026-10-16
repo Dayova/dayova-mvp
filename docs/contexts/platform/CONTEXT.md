@@ -105,6 +105,30 @@ Do not add optional public envs to the required release-key list unless the app
 cannot function without them. The analytics client must stay disabled gracefully
 when the PostHog key is absent.
 
+## SDK 58 runtime boundary
+
+The SDK 58 / React Native 0.88 upgrade uses app/runtime `1.0.6` on both platforms.
+Keep the distributed SDK 57 baseline immutable; this graph requires new native
+binaries and must not be published to runtime `1.0.5`. Patch ownership and upstream
+removals are documented in `patches/README.md`. The SDK upgrade retains the CI
+quality gates introduced by #846; it does not replace that tooling change.
+
+`jest-expo` 58 uses Jest 30 transforms, environments and watch plugins. Keep the
+root Jest, globals and types on 30 even while Expo's version recommendation still
+lists Jest 29. Only `jest` and `@types/jest` are excluded from that recommendation;
+the full UI suite and dependency peer checks remain required.
+
+Clerk 4 supports SDK 58 and exposes `__experimental_disableNativeClientSync`.
+Dayova's custom JS authentication uses that provider option instead of mutating
+the TurboModule registry. Do not enable native sync without introducing Clerk
+native auth components and verifying session ownership on both platforms.
+
+SDK 58 Router's `repeat()` injects a child source when a parent-targeted action
+has no source. The nested-stack integration test reproduces the resulting blocked
+replacement. `useBackIntent` disables prevention explicitly and dispatches the
+original action through the root ref, preserving its target/source. Recheck this
+workaround when Router changes; retain protection if another guard cancels removal.
+
 ## Validation Analytics Runtime Contract
 
 Every allowed custom event receives `analytics_schema_version` and may receive
