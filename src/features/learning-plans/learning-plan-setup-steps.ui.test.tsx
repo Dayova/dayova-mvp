@@ -48,7 +48,7 @@ describe("learning-plan setup steps", () => {
 				isBusy={false}
 				onChangeTopics={onChangeTopics}
 				onContinue={onContinue}
-				topics="Lineare Gleichungen und Funktionen"
+				topics={["Lineare Gleichungen und Funktionen"]}
 			/>,
 		);
 
@@ -69,9 +69,10 @@ describe("learning-plan setup steps", () => {
 				name: "Eigenes Thema hinzufügen: Steigung",
 			}),
 		);
-		expect(onChangeTopics).toHaveBeenCalledWith(
-			"Lineare Gleichungen und Funktionen\nSteigung",
-		);
+		expect(onChangeTopics).toHaveBeenCalledWith([
+			"Lineare Gleichungen und Funktionen",
+			"Steigung",
+		]);
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		expect(onContinue).toHaveBeenCalledTimes(1);
 	});
@@ -241,7 +242,7 @@ describe("learning-plan setup steps", () => {
 				isBusy={false}
 				onChangeTopics={jest.fn()}
 				onContinue={jest.fn()}
-				topics="Mathe"
+				topics={["Mathe"]}
 			/>,
 		);
 

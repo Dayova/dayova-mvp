@@ -5,6 +5,7 @@ import { Search } from "~/components/ui/icon";
 import { Input } from "~/components/ui/input";
 import { useDayovaTheme } from "~/lib/theme";
 
+/** Renders the shared search control with a decorative icon and labeled input. */
 export function SearchField({
 	accessibilityLabel = "Suchen",
 	placeholder = "Suchen",

@@ -319,6 +319,42 @@ async function selectGalleryPhotos(
 
 describe("exam creation across the topics boundary", () => {
 	test.each([
+		"route",
+		"snapshot",
+	])("preserves a multiline %s draft when adding, removing, continuing, and returning", async (source) => {
+		const legacy = "  Zellteilung\r\n\r\n    Mitose\n    Mitose  \n";
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "topic",
+			...(source === "route" ? { topicDescription: legacy } : {}),
+		};
+		mockSnapshot = { plan: { topicDescription: legacy }, documents: [] };
+		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.changeText(screen.getByLabelText("Thema suchen"), "Meiose");
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Eigenes Thema hinzufügen: Meiose" }),
+		);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(mockUpdateEntry).toHaveBeenLastCalledWith({
+			id: "plan-1",
+			topicDescription: `${legacy}\nMeiose`,
+		});
+		await act(() => mockProgress.onBack());
+		expect(
+			screen.getByRole("button", { name: "Meiose entfernen" }),
+		).toBeOnTheScreen();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Meiose entfernen" }),
+		);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(mockUpdateEntry).toHaveBeenLastCalledWith({
+			id: "plan-1",
+			topicDescription: legacy,
+		});
+	});
+
+	test.each([
 		"available",
 		"missing",
 		"occupied",

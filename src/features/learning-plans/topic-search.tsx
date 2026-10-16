@@ -16,8 +16,10 @@ export type SearchTopics = (args: {
 	query: string;
 	subject: string;
 }) => Promise<TopicSearchResult>;
+/** Compares topic names without changing their stored spelling or whitespace. */
 const keyOf = (text: string) => text.trim().toLocaleLowerCase("de-DE");
 
+/** Edits explicit topic items; a legacy description stays intact in one item. */
 export function TopicSearch({
 	topics,
 	subject,
@@ -25,9 +27,9 @@ export function TopicSearch({
 	searchTopics,
 	disabled,
 }: {
-	topics: string;
+	topics: string[];
 	subject: string;
-	onChangeTopics: (value: string) => void;
+	onChangeTopics: (value: string[]) => void;
 	searchTopics: SearchTopics;
 	disabled: boolean;
 }) {
@@ -44,15 +46,7 @@ export function TopicSearch({
 	);
 	const term = query.trim();
 	const key = JSON.stringify([subject, term, retry]);
-	// New selections are newline-separated; legacy free text remains one intact item.
-	const selected = [
-		...new Set(
-			topics
-				.split("\n")
-				.map((value) => value.trim())
-				.filter(Boolean),
-		),
-	];
+	const selected = topics;
 	const canAdd =
 		isMeaningfulTopicDescription(term) &&
 		!selected.some((value) => keyOf(value) === keyOf(term));
@@ -84,7 +78,7 @@ export function TopicSearch({
 	const current = state.key === key ? state : undefined;
 	const add = (title: string) => {
 		if (!selected.some((value) => keyOf(value) === keyOf(title)))
-			onChangeTopics([...selected, title].join("\n"));
+			onChangeTopics([...selected, title]);
 		setQuery("");
 	};
 	return (
@@ -109,9 +103,7 @@ export function TopicSearch({
 								accessibilityLabel={`${title} entfernen`}
 								disabled={disabled}
 								onPress={() =>
-									onChangeTopics(
-										selected.filter((_, i) => i !== index).join("\n"),
-									)
+									onChangeTopics(selected.filter((_, i) => i !== index))
 								}
 								className="min-h-12 max-w-full flex-row items-center gap-2 rounded-full border border-border px-4 py-3"
 							>

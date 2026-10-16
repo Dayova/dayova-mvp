@@ -31,7 +31,7 @@ function Harness({
 	searchTopics: SearchTopics;
 	initial?: string;
 }) {
-	const [topics, setTopics] = useState(initial);
+	const [topics, setTopics] = useState(initial ? [initial] : []);
 	return (
 		<TopicSearch
 			topics={topics}

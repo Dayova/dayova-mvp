@@ -53,6 +53,7 @@ const isMeaningfulTopicWord = (word: string) => {
 	return true;
 };
 
+/** Accepts concrete topic names while rejecting short or placeholder-only input. */
 export const isMeaningfulTopicDescription = (value: string) => {
 	const trimmed = value.trim();
 	if (trimmed.length < MIN_TOPIC_DESCRIPTION_CHARS) return false;

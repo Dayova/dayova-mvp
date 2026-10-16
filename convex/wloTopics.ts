@@ -19,6 +19,7 @@ const responseSchema = z.object({
 		}),
 	),
 });
+/** Normalizes provider labels and search terms for German text comparisons. */
 const normalize = (value: string) =>
 	value.trim().toLocaleLowerCase("de-DE").replace(/\s+/g, " ");
 const subjectAliases: Record<string, string[]> = {
@@ -33,6 +34,7 @@ const subjectAliases: Record<string, string[]> = {
 };
 export type TopicSuggestion = { id: string; title: string };
 
+/** Finds subject-matched editorial titles within an eight-second, five-page budget. */
 export async function searchWloTopics(query: string, subject: string) {
 	const term = normalize(query).replace(/gedichtsanalyse/g, "gedichtanalyse");
 	if (term.length < 3) return { topics: [], truncated: false };
@@ -86,6 +88,7 @@ export async function searchWloTopics(query: string, subject: string) {
 		clearTimeout(timeout);
 	}
 	const topics = [...matches.values()].sort((a, b) => {
+		/** Prefers exact titles, then prefixes, then other title matches. */
 		const rank = (title: string) =>
 			normalize(title) === term ? 0 : normalize(title).startsWith(term) ? 1 : 2;
 		return (
@@ -98,6 +101,7 @@ export async function searchWloTopics(query: string, subject: string) {
 	};
 }
 
+/** Exposes WLO suggestions to signed-in learners with a recoverable provider error. */
 export const search = action({
 	args: { query: v.string(), subject: v.string() },
 	returns: v.object({

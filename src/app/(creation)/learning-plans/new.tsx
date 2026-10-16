@@ -130,9 +130,10 @@ export default function NewLearningPlanScreen() {
 			return "materialUpload";
 		return initialLearningPlanId ? "materialUpload" : "requiredTopics";
 	});
-	const [topicsInput, setTopicsInput] = useState<string | null>(
-		params.topicDescription ?? params.teacherGuidance ?? null,
-	);
+	const [topicsInput, setTopicsInput] = useState<string[] | null>(() => {
+		const initial = params.topicDescription ?? params.teacherGuidance;
+		return initial == null ? null : initial ? [initial] : [];
+	});
 	const [isBusy, setIsBusy] = useState(false);
 	const [isUploading, setIsUploading] = useState(false);
 	const [isUploadSheetVisible, setIsUploadSheetVisible] = useState(false);
@@ -154,7 +155,10 @@ export default function NewLearningPlanScreen() {
 			: "skip",
 	) ?? null) as LearningPlanSnapshot | null;
 	const canWrite = Boolean(user && isConvexAuthenticated);
-	const topics = topicsInput ?? snapshot?.plan.topicDescription ?? "";
+	// Persisted text has no format marker: never infer item boundaries from newlines.
+	const savedTopics = snapshot?.plan.topicDescription ?? "";
+	const selectedTopics = topicsInput ?? (savedTopics ? [savedTopics] : []);
+	const topics = selectedTopics.join("\n");
 	const hasSchoolMaterial = Boolean(
 		snapshot?.documents.some((document) => document.sourceKind === "school"),
 	);
@@ -702,7 +706,7 @@ export default function NewLearningPlanScreen() {
 							isBusy={isBusy}
 							onChangeTopics={setTopicsInput}
 							onContinue={() => void continueToMaterial()}
-							topics={topics}
+							topics={selectedTopics}
 						/>
 					) : (
 						<MaterialUploadStep

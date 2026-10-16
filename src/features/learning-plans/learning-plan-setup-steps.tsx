@@ -274,6 +274,7 @@ export function MaterialUploadStep({
 	);
 }
 
+/** Collects topic selections and preserves legacy free text as a single item. */
 export function RequiredTopicsStep({
 	subject,
 	searchTopics,
@@ -287,9 +288,9 @@ export function RequiredTopicsStep({
 	canContinue: boolean;
 	errorMessage: string | null;
 	isBusy: boolean;
-	onChangeTopics: (value: string) => void;
+	onChangeTopics: (value: string[]) => void;
 	onContinue: () => void;
-	topics: string;
+	topics: string[];
 	subject: string;
 	searchTopics: SearchTopics;
 }) {
