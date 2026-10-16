@@ -1,7 +1,8 @@
-import { execFileSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { parse } from "yaml";
 import { describe, expect, it } from "vitest";
 import {
@@ -11,6 +12,7 @@ import {
 } from "../scripts/ota-safety.mjs";
 
 const require = createRequire(import.meta.url);
+const execFileAsync = promisify(execFile);
 const projectRoot = fileURLToPath(new URL("..", import.meta.url));
 const iosFingerprint = "1111111111111111111111111111111111111111";
 const androidFingerprint = "2222222222222222222222222222222222222222";
@@ -457,19 +459,20 @@ describe("production release configuration", () => {
 		}
 	});
 
-	it("resolves the patched SDK 57 production binary behind runtime 1.0.5", () => {
+	it("resolves the patched SDK 57 production binary behind runtime 1.0.5", async () => {
 		const expoCliPath = require.resolve("expo/bin/cli");
-		const resolvedConfig = JSON.parse(
-			execFileSync(
-				process.execPath,
-				[expoCliPath, "config", "--type", "public", "--json"],
-				{
-					cwd: projectRoot,
-					encoding: "utf8",
-					env: { ...process.env, APP_VARIANT: "production" },
-				},
-			),
+		const { stdout } = await execFileAsync(
+			process.execPath,
+			[expoCliPath, "config", "--type", "public", "--json"],
+			{
+				cwd: projectRoot,
+				encoding: "utf8",
+				timeout: 25_000,
+				windowsHide: true,
+				env: { ...process.env, APP_VARIANT: "production" },
+			},
 		);
+		const resolvedConfig = JSON.parse(stdout);
 		const packageJson = JSON.parse(
 			readFileSync(new URL("../package.json", import.meta.url), "utf8"),
 		);
@@ -487,7 +490,7 @@ describe("production release configuration", () => {
 			},
 		});
 		expect(packageJson.version).toBe(resolvedConfig.version);
-	});
+	}, 30_000);
 
 	it("uses the EAS production fingerprint job as the gate input", () => {
 		const workflow = parse(
@@ -567,11 +570,11 @@ describe("production release configuration", () => {
 		);
 	});
 
-	it("honors the explicit Watchman opt-in for local release exports", () => {
+	it("honors the explicit Watchman opt-in for local release exports", async () => {
 		const metroConfigPath = fileURLToPath(
 			new URL("../metro.config.js", import.meta.url),
 		);
-		const useWatchman = execFileSync(
+		const { stdout } = await execFileAsync(
 			process.execPath,
 			[
 				"-e",
@@ -580,6 +583,8 @@ describe("production release configuration", () => {
 			{
 				cwd: projectRoot,
 				encoding: "utf8",
+				timeout: 25_000,
+				windowsHide: true,
 				env: {
 					...process.env,
 					APP_VARIANT: "development",
@@ -587,8 +592,9 @@ describe("production release configuration", () => {
 					NODE_ENV: "test",
 				},
 			},
-		).trim();
+		);
+		const useWatchman = stdout.trim();
 
 		expect(useWatchman.split(/\r?\n/).at(-1)).toBe("true");
-	});
+	}, 30_000);
 });
