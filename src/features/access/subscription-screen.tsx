@@ -10,8 +10,8 @@ import {
 	View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Button } from "~/components/ui/button";
-import { ArrowLeft, Check } from "~/components/ui/icon";
+import { BackButton, Button } from "~/components/ui/button";
+import { Check } from "~/components/ui/icon";
 import { SupportContact } from "~/components/ui/support-contact";
 import { Text } from "~/components/ui/text";
 import { useAccess } from "~/context/AccessContext";
@@ -264,20 +264,10 @@ export function SubscriptionScreen() {
 				}}
 			>
 				<View className="px-7 pt-4">
-					<Pressable
+					<BackButton
 						accessibilityHint="Kehrt zur vorherigen Seite zurück."
-						accessibilityLabel="Zurück"
-						accessibilityRole="button"
-						className="h-12 w-12 items-center justify-center rounded-full bg-white active:opacity-80"
-						hitSlop={8}
 						onPress={goBack}
-					>
-						<ArrowLeft
-							size={21}
-							color={BRAND_COLORS.primaryStrong}
-							strokeWidth={2.4}
-						/>
-					</Pressable>
+					/>
 
 					<View className="gap-3 pt-5 pb-6" testID="subscription-page-intro">
 						<Text

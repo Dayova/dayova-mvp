@@ -205,6 +205,9 @@ function EvidenceScreen() {
 				>
 					<LearningPlanCreationProgressHeader
 						currentStep={material ? 3.5 : 3}
+						onClose={() =>
+							setNotice("Isolierter Testaufbau: kein Lernplan gespeichert.")
+						}
 						onBack={() => {
 							setMaterial(false);
 							setNotice(null);

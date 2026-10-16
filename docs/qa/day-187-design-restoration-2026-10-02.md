@@ -122,9 +122,9 @@ and absence of the separate personal-subject heading. No exam or subject saved.
 
 Fresh still-image evidence:
 
-- [Exam type selected](day-187-exam-selection-2026-10-02/exam-type-after.png)
-- [Add exam type with keyboard](day-187-exam-selection-2026-10-02/exam-add-after.png)
-- [Subject selection](day-187-exam-selection-2026-10-02/exam-subject-after.png)
+- [Exam type selected](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/qa/day-187-exam-selection-2026-10-02/exam-type-after.png?raw=true)
+- [Add exam type with keyboard](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/qa/day-187-exam-selection-2026-10-02/exam-add-after.png?raw=true)
+- [Subject selection](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/qa/day-187-exam-selection-2026-10-02/exam-subject-after.png?raw=true)
 
 The subject screenshot shows the top of the list, not a populated personal-subject
 catalog. Pending personal selections and the continuous list are additionally

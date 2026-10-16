@@ -54,7 +54,15 @@ App screens that collect a date or time in one interaction must use
 `DateTimePickerSheet` from `src/components/ui/date-time-picker-sheet`. Do not
 import the underlying Expo UI picker directly from a screen. The wrapper owns
 platform display normalization, German locale, safe-area handling, and native
-presentation.
+presentation. Dedicated date steps with a persistent calendar use `InlineDatePicker`
+from `src/components/ui/inline-date-picker` instead. It owns native inline
+rendering, theme, native sizing, and Android date-only timezone conversion.
+[DAY-515](https://linear.app/dayova/issue/DAY-515) defines the exam-date step: the
+calendar appears below the question, without a separate selected-date card. Day
+changes immediately update the Continue label on iOS ("Weiter mit 2. November 2026").
+Android uses "Weiter" because its native Material calendar already displays the
+selected date prominently above the calendar grid.
+The creation progress header stays visible, and Continue advances to topics.
 
 ## Icons
 
@@ -247,8 +255,25 @@ lives in `src/lib/theme.ts`. Theme preference handling lives in
 `src/lib/theme-preference.ts`; settings should expose the existing light,
 system, and dark options rather than introducing another toggle model.
 
-Icon-only close controls for sheets and modal chrome use the shared `CloseButton`
-component: path 2 background (`#D7DCE3`) with path 3 icon (`#8A8D92`).
+Back and close navigation controls share `NavigationIconButton` through
+`BackButton` and `CloseButton`: 48pt circles, card background, semantic border,
+and a 20pt theme-text Hugeicon with 2.4 stroke. Both use the shared Button's
+pressed, disabled, web-focus and accessibility behavior, with 8pt hit slop.
+This includes sheet/modal close controls, password reset and subscription back
+navigation. Contextual labels and existing navigation/confirmation behavior
+remain with the caller. Content-removal X actions are not navigation controls.
+This supersedes the smaller path-2/path-3 close treatment per Jakob's
+16 October direction ([DAY-523](https://linear.app/dayova/issue/DAY-523/unify-app-wide-back-and-close-navigation-controls)).
+
+The learning-plan creation header is a scoped exception, per the 14 October
+2026 user direction: both back and close use native SwiftUI buttons through
+Expo UI, with Apple's `glass` button style on iOS 26+ and `bordered` on older
+iOS versions. The native control owns interaction and accessibility, while
+Dayova's Hugeicons remain the button content. Android and web retain the shared
+BackButton/CloseButton controls, now with matching geometry and appearance.
+Keep native glass scoped to the creation header. The creation progress
+bar is 16pt tall, centered beside the 48pt button hosts. This keeps the bar
+compact while preserving comfortable button tap areas.
 
 ## Notes
 

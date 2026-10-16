@@ -58,8 +58,12 @@ import {
 	MIN_EXAM_DURATION_MINUTES,
 	shiftEndTimeForStartChange,
 } from "~/lib/entry-time";
-import { getExamDatePickerRange } from "~/lib/exam-date";
-import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
+import { formatAccessibleExamDate } from "~/lib/exam-date";
+import {
+	dismissToOrReplace,
+	goBackOrReplace,
+	useBackIntent,
+} from "~/lib/navigation";
 import { ROUTES } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
 import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
@@ -666,7 +670,8 @@ export default function NewEntryScreen() {
 		active: !isHomework,
 		currentStep: getExamEntryCreationProgress(step),
 		onBack: runBackIntent,
-		title: "Prüfung eintragen",
+		onClose: () => dismissToOrReplace(router, ROUTES.home),
+		closeDisabled: isStartingLearningPlan || isCreating,
 	});
 
 	const scrollToFocusedField = useCallback((offsetY: number) => {
@@ -701,19 +706,12 @@ export default function NewEntryScreen() {
 					: pickerTarget === "plannedEndTime"
 						? plannedEndTime
 						: plannedDate;
-		const isExamDatePicker = !isHomework && pickerTarget === "plannedDate";
-		const examDateRange = isExamDatePicker
-			? getExamDatePickerRange({ selectedDate: plannedDate })
-			: null;
 
 		return (
 			<DateTimePickerSheet
-				display={isExamDatePicker ? "inline" : undefined}
 				visible
 				value={value}
 				mode={mode}
-				minimumDate={examDateRange?.minimumDate}
-				maximumDate={examDateRange?.maximumDate}
 				onChange={handlePickerChange}
 				onClose={closePicker}
 			/>
@@ -883,7 +881,7 @@ export default function NewEntryScreen() {
 							{step === "basics" ? (
 								<ExamDateSelector
 									selectedDate={plannedDate}
-									onOpen={() => openPicker("plannedDate")}
+									onSelect={(date) => setPlannedDate(startOfLocalDay(date))}
 								/>
 							) : step === "examType" ? (
 								<ExamTypePicker
@@ -969,7 +967,11 @@ export default function NewEntryScreen() {
 							{step === "basics" && isStartingLearningPlan ? (
 								<ActivityIndicator color="#FFFFFF" />
 							) : (
-								<Text>Weiter</Text>
+								<Text className="shrink text-center">
+									{step === "basics" && Platform.OS !== "android"
+										? `Weiter mit ${formatAccessibleExamDate(plannedDate)}`
+										: "Weiter"}
+								</Text>
 							)}
 						</Button>
 					</StickyActionFooter>
