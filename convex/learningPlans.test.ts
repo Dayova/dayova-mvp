@@ -2176,3 +2176,97 @@ test("generated plan sessions reject malformed control characters without replac
 		expectedOutcome: "Schüler kennt Lösungsansätze.",
 	});
 });
+
+test("persists topic boundaries across snapshots without changing legacy text", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const id = await createPlan(t);
+	const legacy = "  Zellteilung\r\n\r\n    Mitose\n    Mitose  \n";
+	await t.mutation(api.learningPlans.updateRequiredTopics, {
+		id,
+		topicDescription: `${legacy}\nMeiose`,
+		topicItems: [legacy, "Meiose"],
+	});
+	let snapshot = await t.query(api.learningPlans.getSnapshot, { id });
+	expect(snapshot?.plan.topicItems).toEqual([legacy, "Meiose"]);
+	await t.mutation(api.learningPlans.updateRequiredTopics, {
+		id,
+		topicDescription: legacy,
+		topicItems: [legacy],
+	});
+	snapshot = await t.query(api.learningPlans.getSnapshot, { id });
+	expect(snapshot?.plan.topicDescription).toBe(legacy);
+	expect(snapshot?.plan.topicItems).toEqual([legacy]);
+	await t.mutation(api.learningPlans.updateBasics, {
+		id,
+		topicDescription: legacy,
+		notes: "Notiz",
+	});
+	snapshot = await t.query(api.learningPlans.getSnapshot, { id });
+	expect(snapshot?.plan.topicDescription).toBe(legacy);
+	expect(snapshot?.plan.topicItems).toEqual([legacy]);
+	const entry = await t.run(
+		async (ctx) => (await ctx.db.get("learningPlans", id))?.examDayEntryId,
+	);
+	expect(
+		await t.run(async (ctx) =>
+			entry ? (await ctx.db.get("dayEntries", entry))?.topicDescription : null,
+		),
+	).toBe(legacy);
+});
+
+test("validates new topic boundaries and clears them after legacy text edits", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const id = await createPlan(t);
+	await expect(
+		t.mutation(api.learningPlans.updateRequiredTopics, {
+			id,
+			topicDescription: "Zellteilung",
+			topicItems: ["Meiose"],
+		}),
+	).rejects.toThrow();
+	await t.mutation(api.learningPlans.updateRequiredTopics, {
+		id,
+		topicDescription: "Zellteilung\nMeiose",
+		topicItems: ["Zellteilung", "Meiose"],
+	});
+	await t.mutation(api.learningPlans.updateRequiredTopics, {
+		id,
+		topicDescription: "Zellteilung\nMeiose",
+	});
+	expect(
+		(await t.query(api.learningPlans.getSnapshot, { id }))?.plan.topicItems,
+	).toEqual(["Zellteilung", "Meiose"]);
+	await t.mutation(api.learningPlans.updateBasics, {
+		id,
+		topicDescription: "Neue Beschreibung der Zellteilung",
+	});
+	expect(
+		(await t.query(api.learningPlans.getSnapshot, { id }))?.plan.topicItems,
+	).toBeUndefined();
+});
+
+test("creates a draft with durable topic selections", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const examDayEntryId = await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-10-23",
+		title: "Biologie Klassenarbeit",
+		kind: "Leistungskontrolle",
+		plannedDateLabel: "23. Oktober 2026",
+		durationMinutes: 45,
+		examTypeLabel: "Klassenarbeit",
+	});
+	const topicItems = ["  Zellteilung\r\n    Mitose  ", "Meiose"];
+	const id = await t.mutation(api.learningPlans.createDraft, {
+		examDayEntryId,
+		subject: "Biologie",
+		examTypeLabel: "Klassenarbeit",
+		examDateKey: "2026-10-23",
+		examDateLabel: "23. Oktober 2026",
+		durationMinutes: 45,
+		topicDescription: topicItems.join("\n"),
+		topicItems,
+	});
+	const snapshot = await t.query(api.learningPlans.getSnapshot, { id });
+	expect(snapshot?.plan.topicItems).toEqual(topicItems);
+	expect(snapshot?.plan.topicDescription).toBe(topicItems.join("\n"));
+});

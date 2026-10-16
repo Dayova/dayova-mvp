@@ -133,6 +133,7 @@ export default function NewLearningPlanScreen() {
 		return initialLearningPlanId ? "materialUpload" : "requiredTopics";
 	});
 	const [topicsInput, setTopicsInput] = useState<string[] | null>(() => {
+		if (initialLearningPlanId) return null;
 		const initial = params.topicDescription ?? params.teacherGuidance;
 		return initial == null ? null : initial ? [initial] : [];
 	});
@@ -157,9 +158,16 @@ export default function NewLearningPlanScreen() {
 			: "skip",
 	) ?? null) as LearningPlanSnapshot | null;
 	const canWrite = Boolean(user && isConvexAuthenticated);
-	// Persisted text has no format marker: never infer item boundaries from newlines.
-	const savedTopics = snapshot?.plan.topicDescription ?? "";
-	const selectedTopics = topicsInput ?? (savedTopics ? [savedTopics] : []);
+	// Only explicit metadata defines boundaries; unmarked legacy text stays intact.
+	const savedTopics =
+		snapshot?.plan.topicDescription ??
+		params.topicDescription ??
+		params.teacherGuidance ??
+		"";
+	const selectedTopics =
+		topicsInput ??
+		snapshot?.plan.topicItems ??
+		(savedTopics ? [savedTopics] : []);
 	const topics = selectedTopics.join("\n");
 	const hasSchoolMaterial = Boolean(
 		snapshot?.documents.some((document) => document.sourceKind === "school"),
@@ -173,6 +181,7 @@ export default function NewLearningPlanScreen() {
 		isMeaningfulTopicDescription(topics);
 	const canContinueTopics =
 		canWrite &&
+		!isPlanSnapshotLoading &&
 		!isBusy &&
 		!openingUploadAction &&
 		isMeaningfulTopicDescription(topics);
@@ -222,6 +231,7 @@ export default function NewLearningPlanScreen() {
 				examDateLabel,
 				durationMinutes,
 				topicDescription,
+				topicItems: selectedTopics,
 				notes: "",
 			}),
 		);
@@ -574,6 +584,7 @@ export default function NewLearningPlanScreen() {
 						updateRequiredTopics({
 							id: learningPlanId,
 							topicDescription: topics,
+							topicItems: selectedTopics,
 						}),
 					);
 				} else {
@@ -712,7 +723,7 @@ export default function NewLearningPlanScreen() {
 							searchTopics={searchTopics}
 							canContinue={canContinueTopics}
 							errorMessage={errorMessage}
-							isBusy={isBusy}
+							isBusy={isBusy || isPlanSnapshotLoading}
 							onChangeTopics={setTopicsInput}
 							onContinue={() => void continueToMaterial()}
 							topics={selectedTopics}
@@ -723,7 +734,7 @@ export default function NewLearningPlanScreen() {
 							canContinue={canContinueUpload}
 							documents={snapshot?.documents ?? []}
 							errorMessage={errorMessage}
-							isBusy={isBusy}
+							isBusy={isBusy || isPlanSnapshotLoading}
 							isUploading={isUploading}
 							onContinue={continueToAnalysis}
 							onOpenUpload={() => setIsUploadSheetVisible(true)}

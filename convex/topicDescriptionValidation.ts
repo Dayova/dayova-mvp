@@ -72,3 +72,19 @@ export const assertMeaningfulTopicDescription = (value: string) => {
 		throwUserFacingError("Beschreibe das Prüfungsthema bitte genauer.");
 	}
 };
+
+/** Ensures explicit item boundaries describe exactly the saved text. */
+export const assertTopicItemsMatchDescription = (
+	description: string,
+	items?: string[],
+) => {
+	if (
+		items &&
+		(items.some((item) => item.length === 0) ||
+			items.join("\n") !== description)
+	) {
+		throwUserFacingError(
+			"Die Themenauswahl passt nicht zur Beschreibung. Bitte versuche es erneut.",
+		);
+	}
+};

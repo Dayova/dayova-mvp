@@ -56,7 +56,10 @@ const mockLaunchImageLibrary =
 	>();
 const mockAvailability = { status: "available" };
 let mockSnapshot:
-	| { plan: { topicDescription: string }; documents: never[] }
+	| {
+			plan: { topicDescription: string; topicItems?: string[] };
+			documents: never[];
+	  }
 	| undefined;
 let mockPauseVisible = false;
 jest.mock("convex/react", () => ({
@@ -340,6 +343,33 @@ async function selectGalleryPhotos(
 }
 
 describe("exam creation across the topics boundary", () => {
+	test("restores separate selections after remount and removes only the added topic", async () => {
+		const legacy = "  Zellteilung\r\n\r\n    Mitose\n    Mitose  \n";
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "topic",
+			topicDescription: `${legacy}\nMeiose`,
+		};
+		mockSnapshot = {
+			plan: {
+				topicDescription: `${legacy}\nMeiose`,
+				topicItems: [legacy, "Meiose"],
+			},
+			documents: [],
+		};
+		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Meiose entfernen" }),
+		);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(mockUpdateEntry).toHaveBeenLastCalledWith({
+			id: "plan-1",
+			topicDescription: legacy,
+			topicItems: [legacy],
+		});
+	});
+
 	test.each([
 		"route",
 		"snapshot",
@@ -361,6 +391,7 @@ describe("exam creation across the topics boundary", () => {
 		expect(mockUpdateEntry).toHaveBeenLastCalledWith({
 			id: "plan-1",
 			topicDescription: `${legacy}\nMeiose`,
+			topicItems: [legacy, "Meiose"],
 		});
 		await act(() => mockProgress.onBack());
 		expect(
@@ -373,6 +404,7 @@ describe("exam creation across the topics boundary", () => {
 		expect(mockUpdateEntry).toHaveBeenLastCalledWith({
 			id: "plan-1",
 			topicDescription: legacy,
+			topicItems: [legacy],
 		});
 	});
 
