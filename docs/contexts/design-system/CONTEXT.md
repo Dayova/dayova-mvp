@@ -248,8 +248,25 @@ lives in `src/lib/theme.ts`. Theme preference handling lives in
 `src/lib/theme-preference.ts`; settings should expose the existing light,
 system, and dark options rather than introducing another toggle model.
 
-Icon-only close controls for sheets and modal chrome use the shared `CloseButton`
-component: path 2 background (`#D7DCE3`) with path 3 icon (`#8A8D92`).
+Back and close navigation controls share `NavigationIconButton` through
+`BackButton` and `CloseButton`: 48pt circles, card background, semantic border,
+and a 20pt theme-text Hugeicon with 2.4 stroke. Both use the shared Button's
+pressed, disabled, web-focus and accessibility behavior, with 8pt hit slop.
+This includes sheet/modal close controls, password reset and subscription back
+navigation. Contextual labels and existing navigation/confirmation behavior
+remain with the caller. Content-removal X actions are not navigation controls.
+This supersedes the smaller path-2/path-3 close treatment per Jakob's
+16 October direction ([DAY-523](https://linear.app/dayova/issue/DAY-523/unify-app-wide-back-and-close-navigation-controls)).
+
+The learning-plan creation header is a scoped exception, per the 14 October
+2026 user direction: both back and close use native SwiftUI buttons through
+Expo UI, with Apple's `glass` button style on iOS 26+ and `bordered` on older
+iOS versions. The native control owns interaction and accessibility, while
+Dayova's Hugeicons remain the button content. Android and web retain the shared
+BackButton/CloseButton controls, now with matching geometry and appearance.
+Keep native glass scoped to the creation header. The creation progress
+bar is 16pt tall, centered beside the 48pt button hosts. This keeps the bar
+compact while preserving comfortable button tap areas.
 
 ## Notes
 

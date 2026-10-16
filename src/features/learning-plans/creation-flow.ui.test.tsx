@@ -12,7 +12,11 @@ import NewEntryScreen from "~/app/(creation)/entry/new";
 import NewLearningPlanScreen from "~/app/(creation)/learning-plans/new";
 
 let mockParams: Record<string, string> = {};
-let mockProgress: { currentStep: number; onBack: () => void };
+let mockProgress: {
+	currentStep: number;
+	onBack: () => void;
+	onClose: () => void;
+};
 const mockRouter = {
 	replace: jest.fn(),
 	push: jest.fn(),
@@ -23,6 +27,7 @@ const mockRouter = {
 };
 const mockCreateEntry = jest.fn<() => Promise<string>>();
 const mockUpdateEntry = jest.fn<() => Promise<void>>();
+const mockUpdateRequiredTopics = jest.fn<() => Promise<void>>();
 const mockGenerateUploadUrl = jest.fn<() => Promise<Record<string, unknown>>>();
 const mockRegisterUploadedDocument = jest.fn<() => Promise<void>>();
 const mockCapture = jest.fn();
@@ -59,6 +64,11 @@ let mockSnapshot:
 	| { plan: { topicDescription: string }; documents: never[] }
 	| undefined;
 let mockPauseVisible = false;
+let mockPauseProps: {
+	onConfirm: () => void;
+	isBusy?: boolean;
+	errorMessage?: string | null;
+};
 jest.mock("convex/react", () => ({
 	useConvexAuth: () => ({ isAuthenticated: true }),
 	useQueries: () => ({
@@ -78,6 +88,9 @@ jest.mock("convex/react", () => ({
 			reference as Parameters<typeof getFunctionName>[0],
 		);
 		if (functionName === "dayEntries:create") return mockCreateEntry;
+		if (functionName === "learningPlans:updateRequiredTopics") {
+			return mockUpdateRequiredTopics;
+		}
 		if (functionName === "learningPlans:generateUploadUrl") {
 			return mockGenerateUploadUrl;
 		}
@@ -230,8 +243,9 @@ jest.mock("~/components/ui/action-sheet", () => {
 	};
 });
 jest.mock("~/components/ui/confirmation-sheet", () => ({
-	ConfirmationSheet: ({ visible }: { visible: boolean }) => {
-		mockPauseVisible = visible;
+	ConfirmationSheet: (props: typeof mockPauseProps & { visible: boolean }) => {
+		mockPauseVisible = props.visible;
+		mockPauseProps = props;
 		return null;
 	},
 }));
@@ -272,6 +286,7 @@ beforeEach(() => {
 	};
 	mockCreateEntry.mockResolvedValue("exam-1");
 	mockUpdateEntry.mockResolvedValue(undefined);
+	mockUpdateRequiredTopics.mockResolvedValue(undefined);
 	mockGenerateUploadUrl.mockResolvedValue({
 		uploadUrl: "https://upload.dayova.test/material",
 		uploadToken: "upload-token",
@@ -523,6 +538,178 @@ describe("exam creation across the topics boundary", () => {
 		expect(mockPauseVisible).toBe(true);
 		expect(mockRouter.replace).not.toHaveBeenCalled();
 		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+	});
+
+	test("closes exam setup from a later step without stepping backward", async () => {
+		await render(<NewEntryScreen />);
+		expect(mockProgress.currentStep).toBe(2);
+		await act(() => mockProgress.onClose());
+		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/home");
+		expect(mockProgress.currentStep).toBe(2);
+	});
+
+	test("closes unsaved topics to the saved exam instead of reopening the date step", async () => {
+		mockParams = {
+			examDayEntryId: "exam-1",
+			fromExamEntry: "true",
+			step: "topic",
+		};
+		await render(<NewLearningPlanScreen />);
+		await act(() => mockProgress.onClose());
+		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/entry/exam-1");
+		expect(mockRouter.replace).not.toHaveBeenCalled();
+	});
+
+	test("confirms pausing when closing directly from material upload", async () => {
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "material",
+		};
+		mockSnapshot = {
+			plan: { topicDescription: "Zellteilung und Mitose" },
+			documents: [],
+		};
+		await render(<NewLearningPlanScreen />);
+		await act(() => mockProgress.onClose());
+		expect(mockPauseVisible).toBe(true);
+		expect(mockRouter.setParams).not.toHaveBeenCalled();
+		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+	});
+
+	test("saves edited draft topics before confirming pause and leaving", async () => {
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "topic",
+		};
+		mockSnapshot = {
+			plan: { topicDescription: "Zellteilung und Mitose" },
+			documents: [],
+		};
+		let finishSave!: () => void;
+		mockUpdateRequiredTopics.mockImplementationOnce(
+			() =>
+				new Promise<void>((resolve) => {
+					finishSave = resolve;
+				}),
+		);
+		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.changeText(
+			screen.getByLabelText("Prüfungsthemen"),
+			"Genetik und Vererbung",
+		);
+		await act(() => mockProgress.onClose());
+		await act(() => {
+			mockPauseProps.onConfirm();
+			mockPauseProps.onConfirm();
+		});
+		expect(mockUpdateRequiredTopics).toHaveBeenCalledTimes(1);
+		expect(mockUpdateRequiredTopics).toHaveBeenCalledWith({
+			id: "plan-1",
+			topicDescription: "Genetik und Vererbung",
+		});
+		expect(mockPauseProps.isBusy).toBe(true);
+		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+		await act(() => finishSave());
+		await waitFor(() =>
+			expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans"),
+		);
+		expect(mockRouter.dismissTo).toHaveBeenCalledTimes(1);
+	});
+
+	test("keeps edited topics and the pause sheet when saving fails", async () => {
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "topic",
+		};
+		mockSnapshot = {
+			plan: { topicDescription: "Zellteilung und Mitose" },
+			documents: [],
+		};
+		mockUpdateRequiredTopics.mockRejectedValueOnce(
+			new Error("Speichern fehlgeschlagen"),
+		);
+		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.changeText(
+			screen.getByLabelText("Prüfungsthemen"),
+			"Genetik und Vererbung",
+		);
+		await act(() => mockProgress.onClose());
+		await act(() => mockPauseProps.onConfirm());
+		await waitFor(() => expect(mockPauseProps.errorMessage).toBeTruthy());
+		expect(mockPauseVisible).toBe(true);
+		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+		expect(screen.getByLabelText("Prüfungsthemen")).toHaveProp(
+			"value",
+			"Genetik und Vererbung",
+		);
+		await act(() => mockPauseProps.onConfirm());
+		await waitFor(() =>
+			expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans"),
+		);
+		expect(mockUpdateRequiredTopics).toHaveBeenCalledTimes(2);
+	});
+
+	test("pauses an unchanged draft without rewriting its saved topics", async () => {
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "material",
+		};
+		mockSnapshot = {
+			plan: { topicDescription: "Zellteilung und Mitose" },
+			documents: [],
+		};
+		await render(<NewLearningPlanScreen />);
+		await act(() => mockProgress.onClose());
+		await act(() => mockPauseProps.onConfirm());
+		await waitFor(() =>
+			expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans"),
+		);
+		expect(mockUpdateRequiredTopics).not.toHaveBeenCalled();
+	});
+
+	test("does not overwrite newer saved topics from stale route params on pause", async () => {
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "topic",
+			topicDescription: "Alter Themenstand aus dem Link",
+		};
+		mockSnapshot = {
+			plan: { topicDescription: "Neue gespeicherte Prüfungsthemen" },
+			documents: [],
+		};
+		await render(<NewLearningPlanScreen />);
+		await act(() => mockProgress.onClose());
+		await act(() => mockPauseProps.onConfirm());
+		await waitFor(() =>
+			expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans"),
+		);
+		expect(mockUpdateRequiredTopics).not.toHaveBeenCalled();
+	});
+
+	test("keeps an invalid local edit rather than discarding it when pausing", async () => {
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "topic",
+		};
+		mockSnapshot = {
+			plan: { topicDescription: "Zellteilung und Mitose" },
+			documents: [],
+		};
+		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.changeText(screen.getByLabelText("Prüfungsthemen"), "");
+		await act(() => mockProgress.onBack());
+		await act(() => mockPauseProps.onConfirm());
+		await waitFor(() => expect(mockPauseProps.errorMessage).toBeTruthy());
+		expect(mockPauseVisible).toBe(true);
+		expect(mockUpdateRequiredTopics).not.toHaveBeenCalled();
+		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+		expect(screen.getByLabelText("Prüfungsthemen")).toHaveProp("value", "");
 	});
 
 	test("uploads gallery photos without library-wide permission", async () => {

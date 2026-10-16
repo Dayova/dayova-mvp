@@ -38,6 +38,7 @@ export default function LearningPlanAnalysisScreen() {
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [retryAttempt, setRetryAttempt] = useState(0);
 	const didStartRef = useRef(false);
+	const didCloseRef = useRef(false);
 
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
@@ -46,7 +47,7 @@ export default function LearningPlanAnalysisScreen() {
 
 	useEffect(() => {
 		void retryAttempt;
-		if (!planId || !snapshot) return;
+		if (!planId || !snapshot || didCloseRef.current) return;
 
 		if (
 			snapshot.plan.status === "generated" &&
@@ -74,6 +75,7 @@ export default function LearningPlanAnalysisScreen() {
 			setErrorMessage(null);
 			void requestAiConsent()
 				.then((allowed) => {
+					if (didCloseRef.current) return null;
 					if (!allowed) {
 						didStartRef.current = false;
 						dismissToOrReplace(router, learningPlanMaterialPath(planId));
@@ -82,6 +84,7 @@ export default function LearningPlanAnalysisScreen() {
 					return generateKnowledgeQuestions({ learningPlanId: planId });
 				})
 				.catch((error: unknown) => {
+					if (didCloseRef.current) return;
 					const message = getErrorMessage(
 						error,
 						"Deine Unterlagen konnten nicht zuverlässig analysiert werden.",
@@ -118,6 +121,10 @@ export default function LearningPlanAnalysisScreen() {
 		active: true,
 		currentStep: LEARNING_PLAN_CREATION_STEPS.materialAnalysis,
 		onBack: goBack,
+		onClose: () => {
+			didCloseRef.current = true;
+			dismissToOrReplace(router, "/learning-plans");
+		},
 	});
 
 	return (
