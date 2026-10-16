@@ -2983,7 +2983,8 @@ function OtpCodeInput({
 				autoCorrect={false}
 				autoCapitalize="none"
 				caretHidden
-				className="absolute inset-0 opacity-[0.01]"
+				// Keep the input above the native opacity cutoff so taps can restore focus.
+				className="absolute inset-0 opacity-[0.02]"
 				maxLength={CODE_LENGTH}
 				selectionColor="transparent"
 			/>
