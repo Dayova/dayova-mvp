@@ -45,14 +45,14 @@ appId: ${APP_ID}
 - assertVisible: Registrierung
 # Disabling analytics intentionally produces this SDK warning in development.
 # Its LogBox banner can cover bottom actions. Dismiss only this exact warning;
-# Other error messages are not matched by this condition.
+# iOS can prefix the accessibility label with "!, ". No other warning is matched.
 - runFlow:
     when:
       true: ${typeof DEV_SERVER_URL != 'undefined' && DEV_SERVER_URL != ''}
-      visible: "You must pass your PostHog project's api key[.] The client will be disabled[.]"
+      visible: "(!, )?You must pass your PostHog project's api key[.] The client will be disabled[.]"
     commands:
-      - tapOn: "You must pass your PostHog project's api key[.] The client will be disabled[.]"
-      - assertVisible: "You must pass your PostHog project's api key[.] The client will be disabled[.]"
+      - tapOn: "(!, )?You must pass your PostHog project's api key[.] The client will be disabled[.]"
+      - assertVisible: "(!, )?You must pass your PostHog project's api key[.] The client will be disabled[.]"
       - tapOn: Dismiss
 # The welcome controls become accessible before their entrance animation settles.
 - waitForAnimationToEnd:
