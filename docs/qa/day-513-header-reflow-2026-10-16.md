@@ -5,7 +5,7 @@ Issue: [DAY-513](https://linear.app/dayova/issue/DAY-513).
 ## Source and method
 
 Before is `main` at `3eb4e5d29f8cb2771fb79825c3b447587c514740`;
-after is implementation commit `10dc6579` on `codex/wissenscheck-header-reflow`.
+after is implementation commit `e81d3d1a` on `codex/wissenscheck-header-reflow`.
 The PR's later documentation commit does not change the captured UI.
 
 Both sides render the original full learning-session screen from those snapshots
@@ -28,7 +28,7 @@ native gestures and captures.
 | --- | --- | --- |
 | iPhone 17 Pro, iOS 26.5, 1206×2622 | Default Dynamic Type (`large`) | Before/after; full title fits |
 | Same | `extra-large` Dynamic Type | Before truncates to `Wissensch…`; after shows `Wissenscheck` |
-| Same | Maximum accessibility Dynamic Type (`accessibility-extra-extra-extra-large`) | Before splits title/words and creates very tall half-width actions; after full title in its own row and stacked actions with natural word wrapping |
+| Same | Maximum accessibility Dynamic Type (`accessibility-extra-extra-extra-large`) | Before splits title/words and creates very tall half-width actions; after full title in its own row and stacked full-width actions |
 | Same | Maximum size, timed Praxis | Before/after; after timer in controls row, title below |
 | Same | Maximum size, dark appearance | After screenshot; title and controls visible |
 | Pixel 9 AVD, Android API 36, 1080×2424 | Density 420 (≈411 dp), font scale 1.0 / 1.15 / 2.0 | Before/after at each setting |
@@ -50,13 +50,20 @@ maximum text size. Maestro confirms the title is visible and the back callback
 reaches the fixture's “Zurück zum Lernplan” destination. This establishes native
 gesture/callback behavior, not real server persistence or full navigation wiring.
 
+The original action label **Beantworten** is preserved. The rejected
+“Antwort prüfen” copy change is removed; the current PR media replaces those
+historical captures. Normal-size action labels fit on one line. At the largest
+iOS accessibility text size, button labels can wrap while retaining the full
+system font scale; the header title has its own full-width row.
+
 ## Automated verification
 
 - `pnpm check`: pass (Biome lint, ESLint, TypeScript).
-- Header regression tests plus existing session completion flow: 7 passed.
+- Full `pnpm test`: 138 Vitest files / 1,068 tests; 18 script tests; 98 Jest suites / 506 tests, all passed.
 - Shared content-size layout unit tests: 6 passed.
 - The four new header tests fail against the original header and pass with the fix.
-- Independent Standards review: 0 findings. Independent Spec review: 0 findings.
+- Local CodeRabbit CLI review of all PR changes: 0 findings.
+- Independent Standards review: 0 code findings. Independent Spec review: 0 code findings; iOS Display Zoom remains an explicitly untested acceptance boundary.
 - Full `pnpm format:check` encounters pre-existing formatting errors in
   `scripts/publish-production-ota.mjs` and
   `src/features/learning-plans/use-prepare-session-content.ui.test.tsx`.
@@ -64,40 +71,39 @@ gesture/callback behavior, not real server persistence or full navigation wiring
 
 ## Video observations and coverage
 
-`ios-comparison.mp4`:
+`ios-comparison.mp4` (current Beantworten captures):
 
-- 00:00–00:02.5: baseline moderate text, truncated header.
-- 00:03–00:04: after screen mounts with the existing input autofocus/keyboard.
-- 00:04.5–00:08: full title after keyboard dismissal.
-- 00:08.5–00:12: maximum Dynamic Type; full-width title and stacked actions.
-- 00:12.5–end: timed Praxis, timer counts down in the controls row.
+- 00:00–00:03: baseline moderate text, truncated header.
+- 00:03.5–00:05: corrected header, existing autofocus/keyboard appears and is dismissed.
+- 00:05–00:10.5: corrected moderate layout with the original single-line Beantworten action.
+- 00:11–00:17.5: maximum Dynamic Type; full-width title and stacked actions. Beantworten wraps within the long word at this extreme size.
+- 00:18–end: timed Praxis, complete title below timer/back controls.
 
-Coverage: 19.09-second video; 40 full-timeline frames sampled at 2 fps (0.5-second interval); 3 contact sheet(s); no audio stream.
+Coverage: 24.59-second video; 50 full-timeline frames sampled at 2 fps (0.5-second interval); 4 contact sheet(s); no audio stream.
 
-All three complete-timeline contact sheets were visually inspected.
+All four complete-timeline contact sheets were visually inspected.
 
-`android-interaction.mp4`: 00:00–00:02.5 shows the complete title and stacked
-controls at 200% text / 320 dp; 00:03–00:04.5 scrolls the written question until
-the answer input is visible; the remaining timeline holds the scrolled state.
-Back-callback verification is covered separately by the iOS Maestro run.
+`android-interaction.mp4` (current Beantworten captures):
 
-Coverage: 11.24-second video; 22 full-timeline frames sampled at 2 fps (0.5-second interval); 2 contact sheet(s); no audio stream.
+- 00:00–00:02.5: complete title and stacked controls at 200% text / 320 dp.
+- 00:03–00:04.5: native gestures scroll the written question until the answer input is visible.
+- 00:05–00:11: scrolled state remains usable with the header and actions fixed.
+- 00:11.5–00:13.5: native back press; final frame shows the fixture destination “Zurück zum Lernplan”.
 
-Both complete-timeline contact sheets were visually inspected. Sampling
-supports the settled layouts and visible countdown; it is not a frame-by-frame
-animation or performance measurement. No speech transcription was applicable.
+Coverage: 13.93-second video; 28 full-timeline frames sampled at 2 fps (0.5-second interval); 2 contact sheet(s); no audio stream.
 
-`android-comparison.mp4`:
+Both complete-timeline contact sheets were visually inspected.
 
-- 00:00–00:02: baseline at 115% text; truncated title.
-- 00:03–00:04: after screen mounts with the existing input autofocus/keyboard.
-- 00:05–00:10: corrected moderate-size layout.
-- 00:11–00:18: baseline at 200% text / 320 dp; title split across four lines.
-- 00:19–00:20: after transition and keyboard dismissal at combined maximum sizing.
-- 00:21–00:24: complete full-width title and stacked actions at combined maximum sizing.
-- 00:25–end: timed Praxis, complete title below the controls and visible countdown.
+`android-comparison.mp4` (current Beantworten captures):
 
-Coverage: 32.61-second video; 33 full-timeline frames sampled at 1 fps (1-second interval); 3 contact sheet(s); no audio stream.
+- 00:00–00:02.5: baseline at 115% text; truncated title.
+- 00:03–00:04: corrected title with existing input autofocus/keyboard transition.
+- 00:04.5–00:10.5: corrected moderate layout with original single-line Beantworten action.
+- 00:11–00:14: baseline after 200% text / 320 dp change; title breaks into four lines. Android recreates the fixture activity when density changes.
+- 00:14.5–00:17: after timed-Praxis transition and keyboard dismissal.
+- 00:17.5–end: complete Praxis title below timer/back controls; stacked actions and visible countdown.
+
+Coverage: 23.54-second video; 47 full-timeline frames sampled at 2 fps (0.5-second interval); 3 contact sheet(s); no audio stream.
 
 All three complete-timeline contact sheets were visually inspected. Each recording
 is silent; no audio transcription was applicable. Sampling establishes the visible
