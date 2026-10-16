@@ -1,5 +1,13 @@
-import { beforeEach, describe, expect, jest, test } from "@jest/globals";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	jest,
+	test,
+} from "@jest/globals";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
+import { Platform } from "react-native";
 import NewEntryScreen from "~/app/(creation)/entry/new";
 import NewLearningPlanScreen from "~/app/(creation)/learning-plans/new";
 
@@ -230,6 +238,16 @@ jest.mock("~/components/ui/confirmation-sheet", () => ({
 jest.mock("~/components/ui/date-time-picker-sheet", () => ({
 	DateTimePickerSheet: () => null,
 }));
+jest.mock("~/components/ui/inline-date-picker", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	return {
+		InlineDatePicker: (props: Record<string, unknown>) =>
+			React.createElement("InlineDatePicker", {
+				...props,
+				testID: "inline-calendar",
+			}),
+	};
+});
 jest.mock("~/components/ui/select-sheet", () => ({ SelectSheet: () => null }));
 jest.mock("~/components/ui/dayova-sheet-frame", () => ({
 	DayovaSheetFrame: () => null,
@@ -279,6 +297,10 @@ beforeEach(() => {
 		examTypeLabel: "Klassenarbeit",
 		dayKey: "2026-09-30",
 	};
+});
+
+afterEach(() => {
+	jest.restoreAllMocks();
 });
 
 function followReplacement() {
@@ -355,6 +377,55 @@ describe("exam creation across the topics boundary", () => {
 	});
 
 	test.each([
+		{
+			platform: "ios" as const,
+			initialLabel: "Weiter mit 30. September 2026",
+			selectedLabel: "Weiter mit 2. November 2026",
+		},
+		{
+			platform: "android" as const,
+			initialLabel: "Weiter",
+			selectedLabel: "Weiter",
+		},
+	])("carries an inline calendar selection into topics and back on $platform", async ({
+		platform,
+		initialLabel,
+		selectedLabel,
+	}) => {
+		jest.replaceProperty(Platform, "OS", platform);
+		let screen = await render(<NewEntryScreen />);
+		expect(mockProgress.currentStep).toBe(2);
+		expect(
+			screen.getByRole("button", { name: initialLabel }),
+		).toBeOnTheScreen();
+		await fireEvent(
+			screen.getByTestId("inline-calendar"),
+			"change",
+			new Date(2026, 10, 2, 15, 30),
+		);
+		expect(
+			screen.getByRole("button", { name: selectedLabel }),
+		).toBeOnTheScreen();
+		await fireEvent.press(
+			screen.getByRole("button", { name: /^Weiter(?: mit .+)?$/ }),
+		);
+		expect(followReplacement()).toBe("/learning-plans/new");
+		expect(mockParams.examDateKey).toBe("2026-11-02");
+		await screen.unmount();
+		screen = await render(<NewLearningPlanScreen />);
+		await act(() => mockProgress.onBack());
+		expect(followReplacement()).toBe("/entry/new");
+		await screen.unmount();
+		screen = await render(<NewEntryScreen />);
+		expect(
+			screen.getByRole("button", { name: selectedLabel }),
+		).toBeOnTheScreen();
+		expect(screen.getByTestId("inline-calendar").props.value).toEqual(
+			new Date(2026, 10, 2),
+		);
+	});
+
+	test.each([
 		"available",
 		"missing",
 		"occupied",
@@ -362,14 +433,18 @@ describe("exam creation across the topics boundary", () => {
 		mockAvailability.status = status;
 		const screen = await render(<NewEntryScreen />);
 		expect(screen.queryByText("Ist genug Lernzeit eingeplant?")).toBeNull();
-		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(
+			screen.getByRole("button", { name: /^Weiter(?: mit .+)?$/ }),
+		);
 		expect(followReplacement()).toBe("/learning-plans/new");
 	});
 
 	test("returns from topics to the date and can continue again with the same exam", async () => {
 		let screen = await render(<NewEntryScreen />);
 		expect(mockProgress.currentStep).toBe(2);
-		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(
+			screen.getByRole("button", { name: /^Weiter(?: mit .+)?$/ }),
+		);
 		expect(followReplacement()).toBe("/learning-plans/new");
 		await screen.unmount();
 		screen = await render(<NewLearningPlanScreen />);
@@ -392,7 +467,9 @@ describe("exam creation across the topics boundary", () => {
 		expect(
 			screen.getByText("Wann findet die Prüfung statt?"),
 		).toBeOnTheScreen();
-		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(
+			screen.getByRole("button", { name: /^Weiter(?: mit .+)?$/ }),
+		);
 		expect(followReplacement()).toBe("/learning-plans/new");
 		expect(mockParams).toMatchObject({
 			subject: "Biologie",
@@ -409,7 +486,9 @@ describe("exam creation across the topics boundary", () => {
 		mockParams.subject = "Debattieren";
 		mockParams.subjectIsOneTime = "true";
 		let screen = await render(<NewEntryScreen />);
-		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(
+			screen.getByRole("button", { name: /^Weiter(?: mit .+)?$/ }),
+		);
 		expect(followReplacement()).toBe("/learning-plans/new");
 		expect(mockParams.subjectIsOneTime).toBe("true");
 		await screen.unmount();
@@ -431,14 +510,20 @@ describe("exam creation across the topics boundary", () => {
 		await act(() => mockProgress.onBack());
 		expect(mockProgress.currentStep).toBe(1.5);
 		await fireEvent.press(screen.getByRole("radio", { name: "Chemie" }));
-		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(
+			screen.getByRole("button", { name: /^Weiter(?: mit .+)?$/ }),
+		);
 		mockUpdateEntry.mockRejectedValueOnce(
 			new Error("Speichern fehlgeschlagen"),
 		);
-		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(
+			screen.getByRole("button", { name: /^Weiter(?: mit .+)?$/ }),
+		);
 		expect(screen.getByText("Speichern fehlgeschlagen")).toBeOnTheScreen();
 		expect(mockRouter.replace).not.toHaveBeenCalled();
-		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(
+			screen.getByRole("button", { name: /^Weiter(?: mit .+)?$/ }),
+		);
 		expect(mockUpdateEntry).toHaveBeenLastCalledWith(
 			expect.objectContaining({
 				id: "exam-1",

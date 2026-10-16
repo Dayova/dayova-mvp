@@ -52,6 +52,7 @@ import { logDiagnosticError } from "~/lib/diagnostics";
 import { dismissToOrReplace, useBackIntent } from "~/lib/navigation";
 import { triggerSuccessHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { cn } from "~/lib/utils";
 
@@ -118,6 +119,7 @@ function ActionRow({
 }
 
 export default function LearningSessionContentScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const params = useLocalSearchParams<{
@@ -392,8 +394,11 @@ export default function LearningSessionContentScreen() {
 		setErrorMessage(null);
 		try {
 			if (!(await requestAiConsent())) return;
+			trackFeature("learning_session.retry", "attempted", sessionId);
 			await prepareSessionContent({ sessionId });
+			trackFeature("learning_session.retry", "succeeded", sessionId);
 		} catch (error) {
+			trackFeature("learning_session.retry", "failed", sessionId);
 			setErrorMessage(
 				getErrorMessage(
 					error,
@@ -522,6 +527,7 @@ export default function LearningSessionContentScreen() {
 
 	const repeatCurrentQuestion = () => {
 		if (!currentItem || isBusy) return;
+		trackFeature("learning_session.question_repeated", "performed", sessionId);
 		resetItemState();
 		setRepeatingItemId(currentItem.id);
 		setErrorMessage(null);
@@ -635,6 +641,7 @@ export default function LearningSessionContentScreen() {
 		setIsBusy(true);
 		setErrorMessage(null);
 		try {
+			trackFeature("learning_session.continue", "attempted", sessionId);
 			await recordCompletedOutcome();
 			const extension = await extendSessionContent({
 				sessionId: content.session.id,
@@ -644,9 +651,11 @@ export default function LearningSessionContentScreen() {
 			setRetryStartedAt(Date.now());
 			setCurrentIndex(extension.firstNewItemIndex);
 			setCompletionPhase(null);
+			trackFeature("learning_session.continue", "succeeded", sessionId);
 			setIsContinuation(true);
 			didAutoFinishRef.current = false;
 		} catch (error) {
+			trackFeature("learning_session.continue", "failed", sessionId);
 			setErrorMessage(
 				getErrorMessage(
 					error,
@@ -660,6 +669,7 @@ export default function LearningSessionContentScreen() {
 
 	const continueTheory = () => {
 		if (!content || isBusy) return;
+		trackFeature("learning_session.theory_next", "performed", sessionId);
 		runTheoryTopicPrimaryAction({
 			currentIndex: theoryTopicPosition.topicIndex,
 			total: theoryTopicPosition.total,
@@ -686,6 +696,7 @@ export default function LearningSessionContentScreen() {
 
 	const showPreviousTheoryTopic = () => {
 		if (isBusy || theoryTopicPosition.previousSessionIndex === null) return;
+		trackFeature("learning_session.theory_previous", "performed", sessionId);
 		setErrorMessage(null);
 		setCurrentIndex(theoryTopicPosition.previousSessionIndex);
 	};
@@ -693,6 +704,10 @@ export default function LearningSessionContentScreen() {
 	const submitCurrentAnswer = async (submitAsUnknown = false) => {
 		if (!currentItem || isBusy) return;
 
+		const answerInteraction = submitAsUnknown
+			? "learning_session.answer_unknown"
+			: "learning_session.answer";
+		let didComplete = false;
 		setIsBusy(true);
 		setErrorMessage(null);
 		try {
@@ -707,6 +722,7 @@ export default function LearningSessionContentScreen() {
 			) {
 				return;
 			}
+			trackFeature(answerInteraction, "attempted", sessionId);
 			const attempt =
 				currentItem.kind === "multipleChoice"
 					? await submitAnswer({
@@ -728,25 +744,28 @@ export default function LearningSessionContentScreen() {
 				resetItemState();
 				if (currentIndex < content.items.length - 1) {
 					setCurrentIndex((value) => value + 1);
-					return;
+				} else {
+					setCompletionPhase("rehearsal");
 				}
-				setCompletionPhase("rehearsal");
-				return;
-			}
-			if (isPreTheoryQuestion) {
+			} else if (isPreTheoryQuestion) {
 				if (advancedPreTheoryQuestionItemIdRef.current !== currentItem.id) {
 					advancedPreTheoryQuestionItemIdRef.current = currentItem.id;
 					advancePastCurrentItem();
 				}
-				return;
+			} else {
+				setLocalAttempt(attempt as SessionAnswerAttempt);
 			}
-			setLocalAttempt(attempt as SessionAnswerAttempt);
+			didComplete = true;
 		} catch (error) {
+			trackFeature(answerInteraction, "failed", sessionId);
 			setErrorMessage(
 				getErrorMessage(error, "Die Antwort konnte nicht gespeichert werden."),
 			);
 		} finally {
 			setIsBusy(false);
+		}
+		if (didComplete) {
+			trackFeature(answerInteraction, "succeeded", sessionId);
 		}
 	};
 
