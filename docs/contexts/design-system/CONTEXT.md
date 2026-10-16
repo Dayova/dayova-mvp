@@ -318,3 +318,61 @@ are empty; example selections belong only in historical screenshot evidence.
 
 The duration explanation adapts to the chosen value; an additional explanation
 between weekdays and start time brings the profile flow to twelve steps.
+
+## Learning-plan preparation
+
+The preparation screen hides the creation header, including its back/close
+controls and overall-flow progress bar, in every preparation stage. Its job is
+to explain the ongoing work: flower and heading first, one preparation progress
+bar second, and the checklist third. Completion advances automatically; a quiet
+ghost action, **Später fortsetzen**, remains in a persistent footer during
+processing and errors, outside the scrolling content so it stays reachable at
+large text sizes. Two progress bars compete for attention and overload this
+waiting surface: the upper bar describes the overall creation flow, while the
+remaining bar and checklist describe preparation. Showing both on one waiting
+screen adds competing progress contexts without another decision for the learner.
+Removing the upper bar and its two navigation buttons reduces visual load and
+keeps attention on preparation. Form steps retain their creation header. Without
+that header, the preparation screen owns safe-area padding in its scroll view
+and footer.
+Flower, heading, progress bar, and checklist form one vertically centered group
+in the available space above the footer. The scroll content grows to fill that
+space but can overflow vertically on small displays or at larger text sizes.
+
+Leaving is not a server-side cancellation or rollback: an already dispatched
+analysis action or mutation may still finish and persist its result. The client
+stops dispatching subsequent preparation steps and ignores late navigation after
+exit. Back/close controls cannot reliably undo that server work; the explicit
+**Später fortsetzen** label describes leaving a saved draft without promising
+to pause or abort all processing. This is a reason to clarify the exit, not to
+trap the learner on the waiting screen.
+**Später fortsetzen** returns to Learning Plans with the saved, unaccepted
+draft intact; Android system back remains available. Errors also retain retry.
+Do not remove this explicit exit on iOS, where the back gesture is disabled.
+
+The temporary creation flow uses one preparation screen for material analysis,
+recognized scope, and diagnostic preparation. It skips the separate scope
+confirmation screen, automatically applies the recognized scope through the
+existing mutation, and continues to review after preparation. Existing scope and
+generating links redirect to analysis so saved links remain resumable. To restore
+manual confirmation, restore its route and the analysis-to-scope transition
+together; the backend confirmation requirement remains in place.
+
+The screen places a compact Dayova flower above a heading, animated shared
+`FlowProgressBar`, and a three-step checklist. Visual stages use an estimated
+completion time, divided into thirds. The estimate starts at 15 seconds and
+adapts to the median of the last five successful full runs in the current app
+session (samples bounded to 1–60 seconds). Failed, cancelled, and resumed runs do
+not train the estimate. This is a presentation estimate, not measured backend
+phase completion or a guaranteed ETA.
+
+Actual readiness always wins: there are no minimum stage durations or completion
+holds. If work finishes in eight seconds, navigation starts at eight seconds,
+even when a remaining visual stage must be skipped. The final item stays active
+if processing exceeds the estimate. Backend requests remain sequential; errors
+and cancellation stop visual advancement and subsequent requests. Resumed work
+skips completed stages. Errors remain on the screen with a retry action.
+
+Pending items are numbered, the active item shows an indicator, and completed
+visual stages use the shared Hugeicons check on cyan with `onPrimary`. Reduced
+motion retains static stage indicators.
