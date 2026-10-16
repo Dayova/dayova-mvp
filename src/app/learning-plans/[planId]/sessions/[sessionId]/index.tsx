@@ -20,6 +20,7 @@ import { BackButton, Button } from "~/components/ui/button";
 import { ErrorMessage } from "~/components/ui/error-message";
 import { Timer } from "~/components/ui/icon";
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAiConsent } from "~/context/AiConsentContext";
@@ -122,6 +123,7 @@ export default function LearningSessionContentScreen() {
 	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
+	const { horizontalPadding } = useContentSizeLayout();
 	const params = useLocalSearchParams<{
 		planId?: string;
 		returnTo?: string;
@@ -896,14 +898,17 @@ export default function LearningSessionContentScreen() {
 			<ThemedStatusBar />
 			{!completionPhase ? (
 				<View
-					className="px-8"
-					style={{ paddingTop: Math.max(insets.top + 8, 24) }}
+					// Safe-area and content-size padding depend on native device settings.
+					style={{
+						paddingHorizontal: horizontalPadding,
+						paddingTop: Math.max(insets.top + 8, 24),
+					}}
 				>
 					<ScreenHeader
 						title={title}
 						onBack={goBack}
 						className="mb-0"
-						titleClassName="px-24 text-center font-poppins font-semibold text-body-1 text-text"
+						titleClassName="text-body-1"
 						right={
 							displayedRemainingSeconds !== null ? (
 								<View

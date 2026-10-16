@@ -126,6 +126,14 @@ variant or `accessibilityRole="header"`; the primitive owns the documented
 large-title scaling curve. Do not reproduce `maxFontSizeMultiplier` values in
 individual screens. Non-heading text keeps unrestricted system scaling.
 
+Custom `ScreenHeader` titles remain complete. The shared header measures its
+side controls and keeps a centered inline title when it fits. A native text
+wrap, enlarged text, or compact viewport moves the title below the controls
+into a full-width row. `titleClassName` customizes typography; the shared header
+owns side padding. Learning-session headers use the shared content-size padding
+and reserve timer space only when the timer is present. See
+[DAY-513](https://linear.app/dayova/issue/DAY-513).
+
 Light-mode pill buttons have exactly two visual appearances: the light-mode
 gradient button and the black button using the primary text color `#1A1A1A`.
 There are no white pill buttons in the current light-mode design system. Both
