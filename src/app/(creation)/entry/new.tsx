@@ -239,6 +239,8 @@ export default function NewEntryScreen() {
 		examDayEntryId?: string;
 		durationMinutes?: string;
 		topicDescription?: string;
+		topicItems?: string;
+		topicAdditionalInfo?: string;
 	}>();
 	const entryType: EntryType = params.type === "exam" ? "exam" : "homework";
 	const isHomework = entryType === "homework";
@@ -595,6 +597,12 @@ export default function NewEntryScreen() {
 					["examDateLabel", formatDate(plannedDate)],
 					["durationMinutes", `${scheduledDurationMinutes}`],
 					["topicDescription", params.topicDescription ?? ""],
+					...(params.topicItems !== undefined
+						? [["topicItems", params.topicItems] as const]
+						: []),
+					...(params.topicAdditionalInfo !== undefined
+						? [["topicAdditionalInfo", params.topicAdditionalInfo] as const]
+						: []),
 				]
 					.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
 					.join("&");

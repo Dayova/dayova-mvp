@@ -32,6 +32,7 @@ import type * as diagnosticReadiness from "../diagnosticReadiness.js";
 import type * as entitlements from "../entitlements.js";
 import type * as env from "../env.js";
 import type * as errors from "../errors.js";
+import type * as examTopicInput from "../examTopicInput.js";
 import type * as fileStorage from "../fileStorage.js";
 import type * as generatedGermanText from "../generatedGermanText.js";
 import type * as generatedGermanTextRepair from "../generatedGermanTextRepair.js";
@@ -108,6 +109,7 @@ declare const fullApi: ApiFromModules<{
   entitlements: typeof entitlements;
   env: typeof env;
   errors: typeof errors;
+  examTopicInput: typeof examTopicInput;
   fileStorage: typeof fileStorage;
   generatedGermanText: typeof generatedGermanText;
   generatedGermanTextRepair: typeof generatedGermanTextRepair;

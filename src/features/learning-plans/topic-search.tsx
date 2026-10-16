@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
+import { topicTitleKey } from "#convex/examTopicInput";
 import { ErrorMessage } from "~/components/ui/error-message";
-import { Check, Plus } from "~/components/ui/icon";
+import { X } from "~/components/ui/icon";
 import { SearchField } from "~/components/ui/search-field";
+import {
+	SelectionControl,
+	SelectionIndicator,
+} from "~/components/ui/selection-control";
 import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { useDayovaTheme } from "~/lib/theme";
-import {
-	appendTopicSuggestion,
-	includesTopicSuggestion,
-} from "./topic-suggestions";
 
 export type TopicSearchResult = {
 	topics: {
@@ -27,17 +28,17 @@ export type SearchTopics = (args: {
 
 const MAX_VISIBLE_RESULTS = 5;
 
-/** Optional inline search; the separate free-text editor remains authoritative. */
+/** Search selections remain distinct from the learner's additional free text. */
 export function TopicSearch({
-	topics,
+	selectedTopics,
 	subject,
-	onChangeTopics,
+	onChangeSelectedTopics,
 	searchTopics,
 	disabled,
 }: {
-	topics: string;
+	selectedTopics: string[];
 	subject: string;
-	onChangeTopics: (value: string) => void;
+	onChangeSelectedTopics: (value: string[]) => void;
 	searchTopics: SearchTopics;
 	disabled: boolean;
 }) {
@@ -93,7 +94,7 @@ export function TopicSearch({
 		<View className="mt-6 gap-3">
 			<SearchField
 				accessibilityLabel="Themen suchen"
-				accessibilityHint="Optional. Gewählte Vorschläge werden deiner Themenliste hinzugefügt."
+				accessibilityHint="Optional. Wähle passende Themen aus oder trage fehlende Themen unten ein."
 				accessibilityState={{ disabled }}
 				placeholder="Thema suchen"
 				value={query}
@@ -140,11 +141,13 @@ export function TopicSearch({
 						className="font-poppins text-body-4 text-secondary-text"
 					>
 						{visible.length
-							? "Passende Begriffe – ergänze nur, was bei dir drankommt."
+							? "Wähle nur Themen aus, die bei dir drankommen."
 							: "Keine passenden Vorschläge. Trage deine Themen unten direkt ein."}
 					</Text>
 					{visible.map((topic, index) => {
-						const isIncluded = includesTopicSuggestion(topics, topic.title);
+						const isIncluded = selectedTopics.some(
+							(title) => topicTitleKey(title) === topicTitleKey(topic.title),
+						);
 						const context = topic.subjects?.join(" · ");
 						return (
 							<View key={topic.id}>
@@ -153,25 +156,27 @@ export function TopicSearch({
 										Weitere Vorschläge
 									</Text>
 								) : null}
-								<ActionSurface
-									accessibilityRole="button"
-									accessibilityLabel={
-										isIncluded
-											? `${topic.title}, bereits in deiner Themenliste`
-											: `${topic.title} zur Themenliste hinzufügen`
-									}
+								<SelectionControl
+									accessibilityRole="checkbox"
+									accessibilityLabel={topic.title}
 									accessibilityHint={
 										context ? `Themenbereich: ${context}` : undefined
 									}
-									accessibilityState={{
-										disabled: disabled || isIncluded,
-										selected: isIncluded,
-									}}
-									disabled={disabled || isIncluded}
+									selected={isIncluded}
+									disabled={disabled}
 									onPress={() =>
-										onChangeTopics(appendTopicSuggestion(topics, topic.title))
+										onChangeSelectedTopics(
+											isIncluded
+												? selectedTopics.filter(
+														(title) =>
+															topicTitleKey(title) !==
+															topicTitleKey(topic.title),
+													)
+												: [...selectedTopics, topic.title],
+										)
 									}
-									className="min-h-14 flex-row items-center gap-3 rounded-none bg-transparent py-3"
+									className="mt-2"
+									contentClassName="min-h-14 flex-row items-center gap-3 rounded-2xl px-4 py-3"
 								>
 									<View className="flex-1 gap-1">
 										<Text className="font-poppins text-body-3 text-text">
@@ -183,17 +188,8 @@ export function TopicSearch({
 											</Text>
 										) : null}
 									</View>
-									<View
-										accessible={false}
-										importantForAccessibility="no-hide-descendants"
-									>
-										{isIncluded ? (
-											<Check size={20} color={colors.secondaryText} />
-										) : (
-											<Plus size={20} color={colors.secondaryText} />
-										)}
-									</View>
-								</ActionSurface>
+									<SelectionIndicator checkColor={colors.onPrimary} />
+								</SelectionControl>
 							</View>
 						);
 					})}
@@ -203,6 +199,45 @@ export function TopicSearch({
 							zu finden.
 						</Text>
 					) : null}
+				</View>
+			) : null}
+			{selectedTopics.length > 0 ? (
+				<View className="mt-3 gap-2">
+					<Text
+						accessibilityRole="header"
+						className="font-poppins font-semibold text-body-3 text-text"
+					>
+						Ausgewählte Themen ({selectedTopics.length})
+					</Text>
+					<View className="flex-row flex-wrap gap-2">
+						{selectedTopics.map((title) => (
+							<ActionSurface
+								key={topicTitleKey(title)}
+								accessibilityRole="button"
+								accessibilityLabel={`${title} entfernen`}
+								disabled={disabled}
+								accessibilityState={{ disabled }}
+								onPress={() =>
+									onChangeSelectedTopics(
+										selectedTopics.filter(
+											(item) => topicTitleKey(item) !== topicTitleKey(title),
+										),
+									)
+								}
+								className="min-h-12 max-w-full flex-row items-center gap-2 rounded-full border border-primary bg-accent px-4 py-2"
+							>
+								<Text className="shrink font-poppins text-body-3 text-text">
+									{title}
+								</Text>
+								<View
+									accessible={false}
+									importantForAccessibility="no-hide-descendants"
+								>
+									<X size={16} color={colors.text} />
+								</View>
+							</ActionSurface>
+						))}
+					</View>
 				</View>
 			) : null}
 		</View>

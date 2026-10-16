@@ -8,6 +8,12 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import {
+	composeExamTopicDescription,
+	type ExamTopicInput,
+	parseTopicItemsParam,
+	readExamTopicInput,
+} from "#convex/examTopicInput";
 import { isMeaningfulTopicDescription } from "#convex/topicDescriptionValidation";
 import {
 	ActionSheet,
@@ -90,6 +96,8 @@ export default function NewLearningPlanScreen() {
 		examDateLabel?: string;
 		durationMinutes?: string;
 		topicDescription?: string;
+		topicItems?: string;
+		topicAdditionalInfo?: string;
 		teacherGuidance?: string;
 		fromExamEntry?: string;
 		errorMessage?: string;
@@ -132,10 +140,13 @@ export default function NewLearningPlanScreen() {
 			return "materialUpload";
 		return initialLearningPlanId ? "materialUpload" : "requiredTopics";
 	});
-	const [topicsInput, setTopicsInput] = useState<string | null>(() =>
+	const [topicInput, setTopicInput] = useState<ExamTopicInput | null>(() =>
 		initialLearningPlanId
 			? null
-			: (params.topicDescription ?? params.teacherGuidance ?? null),
+			: readExamTopicInput({
+					...params,
+					topicItems: parseTopicItemsParam(params.topicItems),
+				}),
 	);
 	// Route params can be older than the saved draft; only actual input edits
 	// may overwrite its topics when pausing.
@@ -164,7 +175,8 @@ export default function NewLearningPlanScreen() {
 			: "skip",
 	) ?? null) as LearningPlanSnapshot | null;
 	const canWrite = Boolean(user && isConvexAuthenticated);
-	const topics = topicsInput ?? snapshot?.plan.topicDescription ?? "";
+	const input = topicInput ?? readExamTopicInput(snapshot?.plan ?? {});
+	const topics = composeExamTopicDescription(input);
 	const hasSchoolMaterial = Boolean(
 		snapshot?.documents.some((document) => document.sourceKind === "school"),
 	);
@@ -227,6 +239,7 @@ export default function NewLearningPlanScreen() {
 				examDateLabel,
 				durationMinutes,
 				topicDescription,
+				...input,
 				notes: "",
 			}),
 		);
@@ -579,6 +592,7 @@ export default function NewLearningPlanScreen() {
 						updateRequiredTopics({
 							id: learningPlanId,
 							topicDescription: topics,
+							...input,
 						}),
 					);
 				} else {
@@ -588,6 +602,8 @@ export default function NewLearningPlanScreen() {
 					errorMessage: undefined,
 					step: "material",
 					topicDescription: topics,
+					topicItems: JSON.stringify(input.topicItems),
+					topicAdditionalInfo: input.topicAdditionalInfo,
 				});
 				setSetupStep("materialUpload");
 			} catch (error) {
@@ -646,6 +662,7 @@ export default function NewLearningPlanScreen() {
 					examDateKey,
 					durationMinutes,
 					topicDescription: topics,
+					...input,
 				}),
 			);
 			return true;
@@ -680,7 +697,9 @@ export default function NewLearningPlanScreen() {
 			try {
 				if (
 					hasEditedTopicsRef.current &&
-					topics !== snapshot?.plan.topicDescription
+					(topics !== snapshot?.plan.topicDescription ||
+						JSON.stringify(input) !==
+							JSON.stringify(readExamTopicInput(snapshot?.plan ?? {})))
 				) {
 					if (!isMeaningfulTopicDescription(topics)) {
 						throw new Error(
@@ -691,6 +710,7 @@ export default function NewLearningPlanScreen() {
 						updateRequiredTopics({
 							id: learningPlanId,
 							topicDescription: topics,
+							...input,
 						}),
 					);
 				}
@@ -773,12 +793,17 @@ export default function NewLearningPlanScreen() {
 							canContinue={canContinueTopics}
 							errorMessage={errorMessage}
 							isBusy={isBusy || isPlanSnapshotLoading}
-							onChangeTopics={(value) => {
+							onChangeAdditionalInfo={(value) => {
 								hasEditedTopicsRef.current = true;
-								setTopicsInput(value);
+								setTopicInput({ ...input, topicAdditionalInfo: value });
 							}}
 							onContinue={() => void continueToMaterial()}
-							topics={topics}
+							additionalInfo={input.topicAdditionalInfo}
+							selectedTopics={input.topicItems}
+							onChangeSelectedTopics={(value) => {
+								hasEditedTopicsRef.current = true;
+								setTopicInput({ ...input, topicItems: value });
+							}}
 						/>
 					) : (
 						<MaterialUploadStep

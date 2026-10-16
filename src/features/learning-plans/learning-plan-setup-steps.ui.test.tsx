@@ -6,6 +6,9 @@ import {
 	RequiredTopicsStep,
 } from "./learning-plan-setup-steps";
 
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+);
 jest.mock("~/components/ui/icon", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
 	const Icon = (props: Record<string, unknown>) =>
@@ -46,25 +49,27 @@ describe("learning-plan setup steps", () => {
 				canContinue
 				errorMessage={null}
 				isBusy={false}
-				onChangeTopics={onChangeTopics}
+				onChangeAdditionalInfo={onChangeTopics}
+				selectedTopics={[]}
+				onChangeSelectedTopics={jest.fn()}
 				onContinue={onContinue}
-				topics="Lineare Gleichungen und Funktionen"
+				additionalInfo="Lineare Gleichungen und Funktionen"
 			/>,
 		);
 
 		expect(
 			screen.getByText("Welche Themen kommen in der Prüfung dran?"),
 		).toBeOnTheScreen();
-		expect(screen.getByLabelText("Prüfungsthemen")).toHaveDisplayValue(
-			"Lineare Gleichungen und Funktionen",
-		);
-		expect(screen.getByLabelText("Prüfungsthemen").props.className).toContain(
-			"border-border",
-		);
+		expect(
+			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+		).toHaveDisplayValue("Lineare Gleichungen und Funktionen");
+		expect(
+			screen.getByLabelText("Zusätzliche Themen und Hinweise").props.className,
+		).toContain("border-border");
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
 
 		await fireEvent.changeText(
-			screen.getByLabelText("Prüfungsthemen"),
+			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
 			"Lineare Funktionen, Steigung und Achsenabschnitt",
 		);
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
@@ -238,13 +243,17 @@ describe("learning-plan setup steps", () => {
 				canContinue={false}
 				errorMessage={null}
 				isBusy={false}
-				onChangeTopics={jest.fn()}
+				onChangeAdditionalInfo={jest.fn()}
+				selectedTopics={[]}
+				onChangeSelectedTopics={jest.fn()}
 				onContinue={jest.fn()}
-				topics="Mathe"
+				additionalInfo="Mathe"
 			/>,
 		);
 
-		expect(screen.getByLabelText("Prüfungsthemen")).toHaveDisplayValue("Mathe");
+		expect(
+			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+		).toHaveDisplayValue("Mathe");
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
 	});
 });
