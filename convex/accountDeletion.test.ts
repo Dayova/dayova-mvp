@@ -107,6 +107,18 @@ test("keeps a completed request opaque when no user row existed", async () => {
 			requestId: accepted.requestId,
 		}),
 	).toMatchObject({ done: true });
+	await backend.mutation(internal.accountDeletion.advanceRequestStage, {
+		requestId: accepted.requestId,
+		expectedStage: "deleteData",
+		nextStage: "deleteNotion",
+	});
+	await backend.run(async (ctx) => {
+		const request = await ctx.db.query("accountDeletionRequests").unique();
+		if (request)
+			await ctx.db.patch("accountDeletionRequests", request._id, {
+				crmDeletionVerified: true,
+			});
+	});
 	expect(
 		await backend.mutation(internal.accountDeletion.completeRequest, {
 			requestId: accepted.requestId,
@@ -259,6 +271,18 @@ test("deletes account data in bounded internal batches and preserves other users
 		done = result.done;
 		batches += 1;
 	}
+	await backend.mutation(internal.accountDeletion.advanceRequestStage, {
+		requestId: accepted.requestId,
+		expectedStage: "deleteData",
+		nextStage: "deleteNotion",
+	});
+	await backend.run(async (ctx) => {
+		const request = await ctx.db.query("accountDeletionRequests").unique();
+		if (request)
+			await ctx.db.patch("accountDeletionRequests", request._id, {
+				crmDeletionVerified: true,
+			});
+	});
 	await backend.mutation(internal.accountDeletion.completeRequest, {
 		requestId: accepted.requestId,
 	});
