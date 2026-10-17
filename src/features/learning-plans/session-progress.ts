@@ -2,7 +2,7 @@ import type { SessionPhase } from "./types";
 
 export const CONTINUE_LEARNING_MINUTES = 10;
 // Keep the persisted suffix stable for sessions created by earlier app versions.
-export const PAIRED_THEORY_QUESTION_SUFFIX = ":paired-practice";
+const PAIRED_THEORY_QUESTION_SUFFIX = ":paired-practice";
 
 export function getLearningSessionTimerDurationSeconds({
 	phase,
