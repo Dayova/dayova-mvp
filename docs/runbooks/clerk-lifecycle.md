@@ -2,6 +2,8 @@
 
 Execution: [DAY-528](https://linear.app/dayova/issue/DAY-528).
 Depends on the server-authoritative deletion pipeline in PR #661 / DAY-358.
+Native GitHub stack #810: `main -> #661 -> #748 -> #895`. PR #748 is the
+direct base and preserves background AI usage while respecting deletion guards.
 
 ## Ownership and behavior
 
