@@ -2,7 +2,7 @@
 
 Captured on 2026-09-22 from source commit `58c045d` on a dedicated iPad Pro 11-inch (M4), iOS 26.4 simulator, using the development client and local Metro server.
 
-![Corrected welcome screen](after-ipad-portrait.png)
+![Corrected welcome screen](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-402-ipad-overlap/after-ipad-portrait.png?raw=true)
 
 The portrait still shows separated decorative rows and the unchanged central logo and sign-in actions. The floating Tools control is development-client UI, not production artwork.
 

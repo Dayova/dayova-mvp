@@ -10,7 +10,7 @@ jest.mock("react-native-reanimated", () => {
 		__esModule: true,
 		default: { View: Native.View },
 		useReducedMotion: () => true,
-		useAnimatedStyle: () => ({}),
+		useAnimatedStyle: (factory: () => unknown) => factory(),
 		useSharedValue: (initial: number) => {
 			const value = React.useRef(initial);
 			return React.useMemo(
