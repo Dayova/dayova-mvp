@@ -4,6 +4,8 @@ on:
   pull_request:
     branches:
       - main
+      # Upper layers in native GitHub stacks target another scoped branch.
+      - codex/**
     types:
       - opened
       - ready_for_review
