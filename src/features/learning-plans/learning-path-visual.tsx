@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect } from "react";
-import { Pressable, View, type ViewStyle } from "react-native";
+import { View, type ViewStyle } from "react-native";
 import Animated, {
 	cancelAnimation,
 	Easing,
@@ -10,6 +10,7 @@ import Animated, {
 	withTiming,
 } from "react-native-reanimated";
 import Svg, { Path } from "react-native-svg";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import {
 	Check,
 	Dumbbell,
@@ -520,7 +521,7 @@ function ScreenPathNode({
 	} satisfies LearningPathArtworkNode;
 
 	return (
-		<Pressable
+		<FeedbackPressable
 			accessibilityLabel={`${title}, ${
 				isDiagnosticLearningPlanSession(session)
 					? "Wissenscheck"
@@ -547,7 +548,7 @@ function ScreenPathNode({
 				node={node}
 				selected={selected}
 			/>
-		</Pressable>
+		</FeedbackPressable>
 	);
 }
 

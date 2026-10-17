@@ -326,3 +326,106 @@ Use the shared `SearchField` for inline search: it composes `FieldControl`,
 places wrapping, removable chips directly below this field without a separate
 selection heading. Results use quiet rows with trailing add/check indicators;
 the existing primary button remains the forward action.
+
+## Press feedback
+
+Shared Buttons (including icons and links) and custom actions use
+`FeedbackPressable`: 90 ms press compression to 97%, followed by a damped
+return. Small/icon Buttons and compact add, close and notification controls use
+92% so their compression remains visible on small surfaces. Shared feedback
+controls also select 92% automatically for measured surfaces up to 96 × 64 dp;
+larger surfaces use 97%, and explicit press scales remain authoritative. Layout
+callbacks are forwarded unchanged. The detached notched-card action uses its
+visible circle size for the same rule. Short taps complete
+the 90 ms compression before springing back; release never cancels the inward
+motion prematurely. Disabling, unmounting or reduced motion invalidates pending
+animation callbacks. Animation starts in the touch handler so fast taps are not lost to state
+batching; action dispatch never waits for animation. Opacity-based controls use
+`FeedbackTouchableOpacity`, preserving their existing active opacity.
+Coverage includes shared ActionSurface/FieldTrigger/sheets, dashboard cards,
+learning-plan cards and theory disclosures, settings, learning times, timetable,
+notifications, access screens, and plain authentication/onboarding actions.
+Existing active colors, labels, handlers, and caller styles remain intact.
+Shared selection rows and pills retain `SelectionControl` as their single press
+animation, including in auth, learning-time and timetable flows. Do not wrap
+these controls in `FeedbackPressable`.
+Calendar selection, learning-path breathing and analytics flips stay on child
+views; their outer controls now provide independent press feedback. Native
+controls retain system feedback. The notched card's invisible hit target drives
+the shared press motion on its visible action circle, keeping the hit area fixed.
+Both interactive brand titles also use the shared press control.
+Caller transforms take precedence so existing animations are not replaced.
+The simple transform runs with React Native Animated's native driver on native
+platforms; it adds no dependency and does not migrate existing Reanimated code.
+Reduced motion disables scaling, including when the preference changes during
+an interaction. Until the preference is available, controls remain static.
+Selection rows invoke the existing safe iOS selection haptic only when choosing
+an unselected option. Buttons do not add automatic haptics: existing success and
+native-control feedback must not be duplicated.
+
+Tracked in [DAY-508](https://linear.app/dayova/issue/DAY-508).
+
+The October 2026 source audit traced interactive call sites across 80 TSX files,
+including shared wrappers and dynamic calendar controls. Remaining raw press
+controls are the shared feedback and selection implementations and the
+notched-card hit target. Native tabs,
+switches and pickers retain platform feedback; static onboarding artwork is not
+interactive. This is source coverage, not a claim of visual QA on every screen.
+
+## Learning-plan preparation
+
+The preparation screen hides the creation header, including its back/close
+controls and overall-flow progress bar, in every preparation stage. Its job is
+to explain the ongoing work: flower and heading first, one preparation progress
+bar second, and the checklist third. Completion advances automatically; a quiet
+ghost action, **Später fortsetzen**, remains in a persistent footer during
+processing and errors, outside the scrolling content so it stays reachable at
+large text sizes. Two progress bars compete for attention and overload this
+waiting surface: the upper bar describes the overall creation flow, while the
+remaining bar and checklist describe preparation. Showing both on one waiting
+screen adds competing progress contexts without another decision for the learner.
+Removing the upper bar and its two navigation buttons reduces visual load and
+keeps attention on preparation. Form steps retain their creation header. Without
+that header, the preparation screen owns safe-area padding in its scroll view
+and footer.
+Flower, heading, progress bar, and checklist form one vertically centered group
+in the available space above the footer. The scroll content grows to fill that
+space but can overflow vertically on small displays or at larger text sizes.
+
+Leaving is not a server-side cancellation or rollback: an already dispatched
+analysis action or mutation may still finish and persist its result. The client
+stops dispatching subsequent preparation steps and ignores late navigation after
+exit. Back/close controls cannot reliably undo that server work; the explicit
+**Später fortsetzen** label describes leaving a saved draft without promising
+to pause or abort all processing. This is a reason to clarify the exit, not to
+trap the learner on the waiting screen.
+**Später fortsetzen** returns to Learning Plans with the saved, unaccepted
+draft intact; Android system back remains available. Errors also retain retry.
+Do not remove this explicit exit on iOS, where the back gesture is disabled.
+
+The temporary creation flow uses one preparation screen for material analysis,
+recognized scope, and diagnostic preparation. It skips the separate scope
+confirmation screen, automatically applies the recognized scope through the
+existing mutation, and continues to review after preparation. Existing scope and
+generating links redirect to analysis so saved links remain resumable. To restore
+manual confirmation, restore its route and the analysis-to-scope transition
+together; the backend confirmation requirement remains in place.
+
+The screen places a compact Dayova flower above a heading, animated shared
+`FlowProgressBar`, and a three-step checklist. Visual stages use an estimated
+completion time, divided into thirds. The estimate starts at 15 seconds and
+adapts to the median of the last five successful full runs in the current app
+session (samples bounded to 1–60 seconds). Failed, cancelled, and resumed runs do
+not train the estimate. This is a presentation estimate, not measured backend
+phase completion or a guaranteed ETA.
+
+Actual readiness always wins: there are no minimum stage durations or completion
+holds. If work finishes in eight seconds, navigation starts at eight seconds,
+even when a remaining visual stage must be skipped. The final item stays active
+if processing exceeds the estimate. Backend requests remain sequential; errors
+and cancellation stop visual advancement and subsequent requests. Resumed work
+skips completed stages. Errors remain on the screen with a retry action.
+
+Pending items are numbered, the active item shows an indicator, and completed
+visual stages use the shared Hugeicons check on cyan with `onPrimary`. Reduced
+motion retains static stage indicators.

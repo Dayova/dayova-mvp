@@ -2,13 +2,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
 	type NativeScrollEvent,
 	type NativeSyntheticEvent,
-	Pressable,
 	ScrollView,
 	type TextStyle,
 	View,
 	type ViewStyle,
 } from "react-native";
 import { Button } from "~/components/ui/button";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import {
 	BookOpen,
 	CalendarDays,
@@ -70,7 +70,7 @@ function TimeButton({
 			<Text className="mb-1 font-poppins text-body-5 text-secondary-text">
 				{label}
 			</Text>
-			<Pressable
+			<FeedbackPressable
 				accessibilityLabel={`${label}: ${value}`}
 				accessibilityRole="button"
 				className="h-12 flex-row items-center justify-between rounded-2xl bg-muted px-4 active:opacity-75"
@@ -83,7 +83,7 @@ function TimeButton({
 					{value}
 				</Text>
 				<Clock3 size={17} color={colors.secondaryText} strokeWidth={2} />
-			</Pressable>
+			</FeedbackPressable>
 		</View>
 	);
 }
@@ -121,7 +121,7 @@ function LessonEditorCard({
 					{position}. Stunde
 				</Text>
 				<View className="flex-row gap-2">
-					<Pressable
+					<FeedbackPressable
 						accessibilityLabel={`Wochentag für ${lessonLabel} ändern. Aktuell ${weekday.label}`}
 						accessibilityRole="button"
 						hitSlop={4}
@@ -136,8 +136,8 @@ function LessonEditorCard({
 						<Text className="font-poppins font-semibold text-body-4 text-secondary-text">
 							{weekday.shortLabel}
 						</Text>
-					</Pressable>
-					<Pressable
+					</FeedbackPressable>
+					<FeedbackPressable
 						accessibilityLabel={`${lessonLabel} entfernen`}
 						accessibilityRole="button"
 						hitSlop={4}
@@ -145,11 +145,11 @@ function LessonEditorCard({
 						onPress={onRemove}
 					>
 						<Trash2 size={18} color={colors.wrong} strokeWidth={2} />
-					</Pressable>
+					</FeedbackPressable>
 				</View>
 			</View>
 
-			<Pressable
+			<FeedbackPressable
 				accessibilityLabel={
 					lesson.subject
 						? `Unterrichtsfach ändern. Aktuell ${lesson.subject}`
@@ -170,7 +170,7 @@ function LessonEditorCard({
 					{lesson.subject || "Fach auswählen"}
 				</Text>
 				<ChevronDown size={18} color={colors.secondaryText} strokeWidth={2} />
-			</Pressable>
+			</FeedbackPressable>
 			<View className="mt-3 h-14 justify-center rounded-2xl bg-muted px-4">
 				<Input
 					accessibilityLabel="Raum, optional"
