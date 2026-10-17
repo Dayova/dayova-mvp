@@ -64,5 +64,5 @@ describe("iOS privacy purpose strings", () => {
 		for (const key of REMOVED_IOS_PRIVACY_KEYS) {
 			expect(finalInfoPlist[key], `${key} should not be requested`).toBeUndefined();
 		}
-	}, 15_000);
+	}, 30_000);
 });

@@ -12,6 +12,8 @@ import { cn } from "~/lib/utils";
 type ConfirmationActionLayout = "inline" | "stacked";
 
 type ConfirmationSheetProps = {
+	children?: ReactNode;
+	confirmDisabled?: boolean;
 	visible: boolean;
 	title: ReactNode;
 	description: ReactNode;
@@ -30,6 +32,8 @@ type ConfirmationSheetProps = {
 };
 
 function ConfirmationPresentation({
+	children,
+	confirmDisabled = false,
 	visible,
 	title,
 	description,
@@ -61,9 +65,9 @@ function ConfirmationPresentation({
 				isBusy ? `${confirmLabel}, wird ausgeführt` : confirmLabel
 			}
 			accessibilityLiveRegion={isBusy ? "polite" : undefined}
-			accessibilityState={{ busy: isBusy, disabled: isBusy }}
+			accessibilityState={{ busy: isBusy, disabled: isBusy || confirmDisabled }}
 			className={actionLayout === "stacked" ? "w-full" : "flex-1"}
-			disabled={isBusy}
+			disabled={isBusy || confirmDisabled}
 			onPress={onConfirm}
 			variant={
 				confirmTone === "destructive"
@@ -124,6 +128,7 @@ function ConfirmationPresentation({
 				<Text className="font-poppins text-body-3 text-secondary-text">
 					{description}
 				</Text>
+				{children}
 				{error}
 				{actions}
 			</View>
@@ -147,6 +152,7 @@ function ConfirmationPresentation({
 					{description}
 				</Text>
 			) : null}
+			{children}
 			{error}
 			{scrollable ? null : actions}
 		</DayovaSheetFrame>

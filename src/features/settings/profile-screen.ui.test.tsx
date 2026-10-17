@@ -47,12 +47,16 @@ jest.mock("~/components/ui/confirmation-sheet", () => {
 	} = jest.requireActual<typeof import("react-native")>("react-native");
 	return {
 		ConfirmationSheet: ({
+			children,
+			confirmDisabled,
 			confirmLabel,
 			description,
 			onConfirm,
 			title,
 			visible,
 		}: {
+			children?: ReactNode;
+			confirmDisabled?: boolean;
 			confirmLabel: string;
 			description: ReactNode;
 			onConfirm: () => void;
@@ -65,9 +69,14 @@ jest.mock("~/components/ui/confirmation-sheet", () => {
 						null,
 						React.createElement(NativeText, null, title),
 						React.createElement(NativeText, null, description),
+						children,
 						React.createElement(
 							NativePressable,
-							{ accessibilityRole: "button", onPress: onConfirm },
+							{
+								accessibilityRole: "button",
+								onPress: onConfirm,
+								disabled: confirmDisabled,
+							},
 							React.createElement(NativeText, null, confirmLabel),
 						),
 					)
@@ -187,7 +196,14 @@ describe("ProfileScreen account management", () => {
 			.at(-1);
 		if (!confirmationButton) throw new Error("Confirmation button is missing.");
 		await fireEvent.press(confirmationButton);
+		expect(mockDeleteAccount).not.toHaveBeenCalled();
+		await fireEvent.changeText(
+			screen.getByLabelText("Aktuelles Passwort zur Bestätigung"),
+			"test-password",
+		);
+		await fireEvent.press(confirmationButton);
 		await waitFor(() => expect(mockDeleteAccount).toHaveBeenCalledTimes(1));
+		expect(mockDeleteAccount).toHaveBeenCalledWith("test-password");
 		expect(mockReplace).not.toHaveBeenCalled();
 	});
 

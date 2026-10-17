@@ -176,6 +176,7 @@ export const syncMyEntitlement = action({
 		if (!identity) {
 			throwUserFacingError("Nicht authentifiziert.");
 		}
+		await ctx.runQuery(internal.accountDeletion.assertOwnerAccountActive, {});
 
 		const result = await fetchSubscriberSnapshot(
 			identity.subject,
