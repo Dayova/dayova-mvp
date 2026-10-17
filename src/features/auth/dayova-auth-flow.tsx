@@ -2971,7 +2971,7 @@ function OtpCodeInput({
 				autoCorrect={false}
 				autoCapitalize="none"
 				caretHidden
-				className="absolute inset-0 opacity-[0.01]"
+				className="absolute inset-0 text-transparent"
 				maxLength={CODE_LENGTH}
 				selectionColor="transparent"
 			/>
