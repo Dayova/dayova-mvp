@@ -1,3 +1,32 @@
+## CI test-environment fix — 17 October 2026
+
+The CI run for `269084cb` passed lint, typecheck, all 139 Vitest files and the
+additional Node suites, but failed to load `intro-upload-artwork.ui.test.tsx`.
+Its real import chain reaches `learning-plan-setup-steps` → `topic-search` →
+`selection-control` → native Reanimated/Worklets. Jest has no native Worklets
+runtime, so the import threw `Cannot read properties of undefined (reading
+'loadUnpackers')`. The suite now uses the existing selection Reanimated mock,
+matching the other consumers. Product code, assertions and timeouts are unchanged.
+
+Validation of this fix:
+
+- The existing artwork suite reproduced the exact CI import failure before the
+  fix; all **3 tests passed** afterward. No test was removed or skipped.
+- Complete `pnpm test`: **139 Vitest files / 1,111 tests**, **18 additional Node
+  tests** (Metro cache/watcher, Android autolinking, skill catalog), and **101
+  Jest suites / 535 UI tests**, all passed.
+- Full `pnpm lint`, `pnpm typecheck` and whitespace checks passed. CodeRabbit
+  reviewed the test change with **zero findings**.
+- The first local full run used default parallelism and hit the existing
+  five-second limit in three OTA integration cases. The complete successful
+  rerun used `VITEST_MAX_WORKERS=2`; no test timeout was increased. Vitest took
+  95.09s and Jest took 81.792s.
+- Local pnpm commands used `--config.verify-deps-before-run=false` because the
+  shared dependency directory's patch metadata differs from this checkout.
+  This command-only override avoids reinstalling dependencies used by the
+  running Pixel preview; no repository config or lockfile was changed. The
+  remote CI result must be checked separately with its fresh install.
+
 ## Interaction correction — 17 October 2026
 
 Product revision: `a844f7a1aa69fb302725460457873b2924c1b7ea` (PR #884). Pixel preview: `7b7d615d`, combining that change with the separate startup fix from #891. The preview adds no subject changes.
