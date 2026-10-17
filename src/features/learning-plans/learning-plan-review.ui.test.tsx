@@ -1,5 +1,5 @@
 import { beforeEach, expect, jest, test } from "@jest/globals";
-import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import Review from "~/app/learning-plans/[planId]/review";
 
 const mockRouter = { replace: jest.fn() };
@@ -52,7 +52,16 @@ jest.mock("~/components/ui/text", () => {
 jest.mock("~/components/ui/button", () => {
 	const { Pressable } =
 		jest.requireActual<typeof import("react-native")>("react-native");
-	return { Button: Pressable, BackButton: () => null };
+	const React = jest.requireActual<typeof import("react")>("react");
+	return {
+		Button: Pressable,
+		BackButton: (props: Record<string, unknown>) =>
+			React.createElement(Pressable, {
+				...props,
+				accessibilityRole: "button",
+				accessibilityLabel: "Zurück",
+			}),
+	};
 });
 beforeEach(() => {
 	mockRouter.replace.mockClear();
@@ -74,4 +83,39 @@ test("reopening an already accepted plan resumes its learning path", async () =>
 	mockStatus = "accepted";
 	await render(<Review />);
 	expect(mockRouter.replace).toHaveBeenCalledWith("/learning-plans/plan_1");
+});
+
+test.each([
+	false,
+	true,
+])("stays outside creation after Back during acceptance; unmounted=%s", async (unmount) => {
+	let finish!: (id: string) => void;
+	mockAccept.mockImplementationOnce(
+		() =>
+			new Promise<string>((resolve) => {
+				finish = resolve;
+			}),
+	);
+	const screen = await render(<Review />);
+	await fireEvent.press(screen.getByText("Jetzt starten"));
+	await fireEvent.press(screen.getByRole("button", { name: "Zurück" }));
+	expect(mockRouter.replace).toHaveBeenLastCalledWith("/learning-plans");
+	if (unmount) await screen.unmount();
+	await act(() => finish("diagnostic_1"));
+	expect(mockRouter.replace).toHaveBeenLastCalledWith("/learning-plans");
+});
+
+test("does not navigate after native back unmounts a pending review", async () => {
+	let finish!: (id: string) => void;
+	mockAccept.mockImplementationOnce(
+		() =>
+			new Promise<string>((resolve) => {
+				finish = resolve;
+			}),
+	);
+	const screen = await render(<Review />);
+	await fireEvent.press(screen.getByText("Jetzt starten"));
+	await screen.unmount();
+	await act(() => finish("diagnostic_1"));
+	expect(mockRouter.replace).not.toHaveBeenCalled();
 });

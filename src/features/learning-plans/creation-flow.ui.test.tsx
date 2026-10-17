@@ -540,12 +540,49 @@ describe("exam creation across the topics boundary", () => {
 		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
 	});
 
-	test("closes exam setup from a later step without stepping backward", async () => {
+	test.each([
+		"examType",
+		"examDetails",
+		"basics",
+	])("closes exam setup from %s without stepping backward", async (step) => {
+		mockParams.step = step;
 		await render(<NewEntryScreen />);
-		expect(mockProgress.currentStep).toBe(2);
+		const originalStep = mockProgress.currentStep;
 		await act(() => mockProgress.onClose());
 		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/home");
+		expect(mockProgress.currentStep).toBe(originalStep);
+	});
+
+	test("backs through date, subject and exam type before leaving", async () => {
+		await render(<NewEntryScreen />);
 		expect(mockProgress.currentStep).toBe(2);
+		await act(() => mockProgress.onBack());
+		expect(mockProgress.currentStep).toBe(1.5);
+		await act(() => mockProgress.onBack());
+		expect(mockProgress.currentStep).toBe(1);
+		await act(() => mockProgress.onBack());
+		expect(mockRouter.back).toHaveBeenCalledTimes(1);
+	});
+
+	test("backs from material to topics without pausing or leaving the draft", async () => {
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "material",
+		};
+		mockSnapshot = {
+			plan: { topicDescription: "Zellteilung und Mitose" },
+			documents: [],
+		};
+		const screen = await render(<NewLearningPlanScreen />);
+		await act(() => mockProgress.onBack());
+		expect(screen.getByLabelText("Prüfungsthemen")).toHaveProp(
+			"value",
+			"Zellteilung und Mitose",
+		);
+		expect(mockPauseVisible).toBe(false);
+		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+		expect(mockRouter.replace).not.toHaveBeenCalled();
 	});
 
 	test("closes unsaved topics to the saved exam instead of reopening the date step", async () => {

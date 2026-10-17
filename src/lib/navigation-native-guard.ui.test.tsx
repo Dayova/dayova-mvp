@@ -72,6 +72,12 @@ function Exam() {
 			<Text>{step === 2 ? "Subject step" : "Exam type step"}</Text>
 			<Button title="Header back" onPress={back} />
 			<Button
+				title="Close flow"
+				onPress={() =>
+					navigation.getParent()?.dispatch(StackActions.popTo("Home"))
+				}
+			/>
+			<Button
 				title="Replace flow"
 				onPress={() =>
 					navigation.getParent()?.dispatch(StackActions.replace("Home"))
@@ -110,6 +116,13 @@ function App() {
 }
 
 describe("native back protection across nested stacks", () => {
+	test("closes the whole flow while an internal step protects native back", async () => {
+		await render(<App />);
+		await fireEvent.press(screen.getByText("Close flow"));
+		expect(screen.getByText("Home destination")).toBeTruthy();
+		expect(screen.queryByText("Subject step")).toBeNull();
+	});
+
 	test("permits a deliberate replacement while native back is protected", async () => {
 		await render(<App />);
 		await fireEvent.press(screen.getByText("Replace flow"));

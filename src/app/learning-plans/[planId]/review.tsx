@@ -28,10 +28,26 @@ export default function LearningPlanReviewScreen() {
 	const legacyAccept = useMutation(api.learningPlans.acceptPlan);
 	const [busy, setBusy] = useState(false);
 	const acceptingRef = useRef(false);
+	// Saving may finish after header/native Back has already left this screen.
+	const didLeaveRef = useRef(false);
+	useEffect(() => {
+		didLeaveRef.current = false;
+		return () => {
+			didLeaveRef.current = true;
+		};
+	}, []);
+	const leaveReview = () => {
+		didLeaveRef.current = true;
+		router.replace("/learning-plans");
+	};
 	const [error, setError] = useState<string | null>(null);
 	const [editing, setEditing] = useState(false);
 	useEffect(() => {
-		if (snapshot?.plan.status === "accepted" && !acceptingRef.current)
+		if (
+			snapshot?.plan.status === "accepted" &&
+			!acceptingRef.current &&
+			!didLeaveRef.current
+		)
 			router.replace(`/learning-plans/${id}`);
 	}, [snapshot?.plan.status, id, router]);
 	const commit = async (slot?: PreparationSlot, openPlan = false) => {
@@ -51,6 +67,7 @@ export default function LearningPlanReviewScreen() {
 				});
 			else await legacyAccept({ learningPlanId: id });
 			trackFeature("learning_plan.accept", "succeeded", id);
+			if (didLeaveRef.current) return;
 			router.replace(
 				slot || openPlan || !sessionId
 					? `/learning-plans/${id}`
@@ -59,6 +76,7 @@ export default function LearningPlanReviewScreen() {
 		} catch (cause) {
 			trackFeature("learning_plan.accept", "failed", id);
 			acceptingRef.current = false;
+			if (didLeaveRef.current) return;
 			setError(
 				getErrorMessage(
 					cause,
@@ -66,7 +84,7 @@ export default function LearningPlanReviewScreen() {
 				),
 			);
 		} finally {
-			setBusy(false);
+			if (!didLeaveRef.current) setBusy(false);
 		}
 	};
 	const now = berlinNow();
@@ -78,7 +96,7 @@ export default function LearningPlanReviewScreen() {
 	return (
 		<Screen>
 			<ScreenScroll contentContainerStyle={{ flexGrow: 1 }} includeTopSafeArea>
-				<BackButton onPress={() => router.replace("/learning-plans")} />
+				<BackButton onPress={leaveReview} />
 				<View className="flex-1 items-center justify-center gap-5 py-10">
 					<View className="h-20 w-20 items-center justify-center rounded-full bg-system-subtle">
 						<Time04 size={34} color="#00A0E6" />
