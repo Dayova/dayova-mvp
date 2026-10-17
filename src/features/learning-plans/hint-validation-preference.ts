@@ -1,4 +1,5 @@
 import { applicationId } from "expo-application";
+import Constants from "expo-constants";
 import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
 import { Platform } from "react-native";
@@ -6,7 +7,9 @@ import { Platform } from "react-native";
 export type HintVariant = "inline" | "extra";
 export const isHintValidationAvailable =
 	__DEV__ ||
+	Constants.expoConfig?.extra?.internalHintValidation === true ||
 	applicationId === "com.dayova.dev" ||
+	applicationId === "com.dayova.validation" ||
 	applicationId === "de.dayova.app-dev";
 const STORAGE_KEY = "dayova.hint-validation.variant.v1";
 
