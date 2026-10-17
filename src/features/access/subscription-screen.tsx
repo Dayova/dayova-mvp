@@ -2,16 +2,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-	ActivityIndicator,
-	Pressable,
-	ScrollView,
-	StyleSheet,
-	View,
-} from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Button } from "~/components/ui/button";
-import { ArrowLeft, Check } from "~/components/ui/icon";
+import { BackButton, Button } from "~/components/ui/button";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
+import { Check } from "~/components/ui/icon";
 import { SupportContact } from "~/components/ui/support-contact";
 import { Text } from "~/components/ui/text";
 import { useAccess } from "~/context/AccessContext";
@@ -264,20 +259,10 @@ export function SubscriptionScreen() {
 				}}
 			>
 				<View className="px-7 pt-4">
-					<Pressable
+					<BackButton
 						accessibilityHint="Kehrt zur vorherigen Seite zurück."
-						accessibilityLabel="Zurück"
-						accessibilityRole="button"
-						className="h-12 w-12 items-center justify-center rounded-full bg-white active:opacity-80"
-						hitSlop={8}
 						onPress={goBack}
-					>
-						<ArrowLeft
-							size={21}
-							color={BRAND_COLORS.primaryStrong}
-							strokeWidth={2.4}
-						/>
-					</Pressable>
+					/>
 
 					<View className="gap-3 pt-5 pb-6" testID="subscription-page-intro">
 						<Text
@@ -397,7 +382,7 @@ export function SubscriptionScreen() {
 						24 Stunden vor Ablauf in {STORE_NAME} kündigst.
 					</Text>
 
-					<Pressable
+					<FeedbackPressable
 						accessibilityRole="button"
 						accessibilityState={{
 							busy: isPurchasing,
@@ -412,12 +397,12 @@ export function SubscriptionScreen() {
 						<Text className="text-body-4 text-white underline">
 							Käufe wiederherstellen
 						</Text>
-					</Pressable>
+					</FeedbackPressable>
 
 					<View className="flex-row flex-wrap justify-center gap-x-4 gap-y-2 px-2 pt-5">
 						<SupportContact context="Abonnement">
 							{({ onPress, busy, buttonRef }) => (
-								<Pressable
+								<FeedbackPressable
 									ref={buttonRef}
 									accessibilityLabel="Support"
 									accessibilityRole="button"
@@ -429,7 +414,7 @@ export function SubscriptionScreen() {
 									<Text className="text-body-4 text-white underline">
 										Support
 									</Text>
-								</Pressable>
+								</FeedbackPressable>
 							)}
 						</SupportContact>
 						<LegalLink
@@ -481,7 +466,7 @@ function PlanCard({
 	testID: string;
 }) {
 	return (
-		<Pressable
+		<FeedbackPressable
 			accessibilityLabel={`${label}, ${price}. ${description}`}
 			accessibilityRole="radio"
 			accessibilityState={{ checked: selected }}
@@ -529,7 +514,7 @@ function PlanCard({
 					</View>
 				</View>
 			</View>
-		</Pressable>
+		</FeedbackPressable>
 	);
 }
 
@@ -543,13 +528,13 @@ function LegalLink({
 	url?: string;
 }) {
 	return (
-		<Pressable
+		<FeedbackPressable
 			accessibilityRole="link"
 			disabled={!url}
 			hitSlop={8}
 			onPress={() => void onOpen(url)}
 		>
 			<Text className="text-body-4 text-white underline">{label}</Text>
-		</Pressable>
+		</FeedbackPressable>
 	);
 }
