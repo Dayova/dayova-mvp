@@ -29,6 +29,7 @@ import type * as dashboardNextStep from "../dashboardNextStep.js";
 import type * as dayEntries from "../dayEntries.js";
 import type * as dayKeyVariants from "../dayKeyVariants.js";
 import type * as diagnosticReadiness from "../diagnosticReadiness.js";
+import type * as entitlementAdmin from "../entitlementAdmin.js";
 import type * as entitlements from "../entitlements.js";
 import type * as env from "../env.js";
 import type * as errors from "../errors.js";
@@ -103,6 +104,7 @@ declare const fullApi: ApiFromModules<{
   dayEntries: typeof dayEntries;
   dayKeyVariants: typeof dayKeyVariants;
   diagnosticReadiness: typeof diagnosticReadiness;
+  entitlementAdmin: typeof entitlementAdmin;
   entitlements: typeof entitlements;
   env: typeof env;
   errors: typeof errors;
