@@ -48,3 +48,15 @@ All six full-timeline contact sheets inspected. Sampling establishes the states 
 ## Follow-up: uniform topic suggestion rows
 
 Removed the provider heading from successful topic results. The custom topic now uses its entered title with the subtitle “Eigenes Thema” in the same shared selection row as catalog suggestions. All topic choices share one 8-point gap container; text can still wrap for long titles and accessibility sizes. Subject labels and ranking remain unchanged. Existing topic/search-flow suite: 20 tests passed; TypeScript and changed-file Biome/ESLint checks passed. Reviewed selection identity, exact-match deduplication, pending/error custom choices and spacing.
+
+## Follow-up: horizontal selection chips
+
+Topic and hint selections now share a single horizontal ScrollView. Appending a choice reveals the end after native content layout, using animated scrolling unless reduced motion is enabled. Removing choices and content resizing do not deliberately reset the scroll position. Chip text can wrap within the measured viewport width; full labels and remove actions remain accessible. Existing saved data is unchanged. Reviewed row mounting, append/removal behavior, long labels, reduced motion and the two callers.
+
+Thirty existing UI tests across topic search, hint validation and setup steps passed. TypeScript, changed-file Biome and ESLint passed. No backend changes.
+
+Native check: normal signed-in iPhone 17 Pro app with development backend. The existing Lineare Abhängigkeit selection was saved and restored before reload. At 9.8–10.0 seconds, adding Lineare Funktionen visibly shifts the chip row horizontally; at 15 seconds, a third selection is visible at the end without creating a second row. At 21 seconds a gesture attempt removed the middle chip; subsequent automated drag/scroll attempts did not establish manual swipe acceptance. This limitation remains explicit rather than claiming a successful gesture check. The capture contains simulator black-edge artifacts; frames were not altered. Additional selections used for inspection remain unsaved in the open editor.
+
+Coverage: 53.47-second video; 53 full-timeline frames sampled at 1 fps (1-second interval); 4 contact sheet(s); 20 additional frames from 00:00:09.000 to 00:00:11.000 at 10 fps; no audio stream.
+
+All four full-timeline sheets and both focused sheets inspected. The 9–11-second interval was additionally sampled at 10 fps to resolve the slide. No audio. This confirms the observed transition, not physical-device smoothness, Android, assistive-technology or native reduced-motion acceptance.

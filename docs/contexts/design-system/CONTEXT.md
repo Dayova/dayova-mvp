@@ -34,8 +34,11 @@ unless the team explicitly supersedes this temporary model.
 `FieldControl` and `Input` with a decorative Hugeicons search glyph. It retains
 native input props, system text scaling and a named accessibility label. In
 exam-topic setup, search results use reversible `SelectionControl` checkboxes.
-Selected titles remain visible as removable, wrapping chips with named remove
-actions and minimum 44pt targets. The entered nonblank title is immediately
+Selected topics and hints use one horizontally scrollable row of removable chips
+with named remove actions and minimum 44pt targets. Newly appended choices slide
+into view after layout; reduced motion reveals them without animation. Removal
+and resizing do not force a scroll. Long chip labels wrap within the row width
+so the full text and remove action remain reachable. The entered nonblank title is immediately
 selectable below the input using the same checkbox row, merging exact catalog
 matches without duplicate choices. A separate optional textarea is presented
 for exam conditions and special instructions; existing free text stays editable

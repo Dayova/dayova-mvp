@@ -6,7 +6,11 @@ import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { appendExamHint, getExamHintExamples } from "./exam-hint-examples";
-import { SearchSelectionChip, SearchSuggestion } from "./search-selection";
+import {
+	SearchSelectionChip,
+	SearchSelectionRow,
+	SearchSuggestion,
+} from "./search-selection";
 
 const hintKey = (value: string) =>
 	value
@@ -61,7 +65,10 @@ export function ExamHintsEditor({
 				accessibilityState={{ disabled }}
 			/>
 			{selections.length > 0 ? (
-				<View className="mt-1 flex-row flex-wrap gap-2">
+				<SearchSelectionRow
+					count={selections.length}
+					label="Ausgewählte Hinweise"
+				>
 					{selections.map((item) => (
 						<SearchSelectionChip
 							key={`${item.index}:${item.text}`}
@@ -70,7 +77,7 @@ export function ExamHintsEditor({
 							onRemove={() => remove(item.index)}
 						/>
 					))}
-				</View>
+				</SearchSelectionRow>
 			) : null}
 			{examples.length > 0 ? (
 				<View className="mt-1 gap-2">

@@ -10,7 +10,11 @@ import { ErrorMessage } from "~/components/ui/error-message";
 import { SearchField } from "~/components/ui/search-field";
 import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
-import { SearchSelectionChip, SearchSuggestion } from "./search-selection";
+import {
+	SearchSelectionChip,
+	SearchSelectionRow,
+	SearchSuggestion,
+} from "./search-selection";
 
 export type TopicSearchResult = {
 	topics: {
@@ -224,7 +228,10 @@ export function TopicSearch({
 				editable={!disabled}
 			/>
 			{selectedTopics.length > 0 ? (
-				<View className="mt-1 flex-row flex-wrap gap-2">
+				<SearchSelectionRow
+					count={selectedTopics.length}
+					label="Ausgewählte Themen"
+				>
 					{selectedTopics.map((title) => (
 						<SearchSelectionChip
 							key={topicTitleKey(title)}
@@ -239,7 +246,7 @@ export function TopicSearch({
 							}
 						/>
 					))}
-				</View>
+				</SearchSelectionRow>
 			) : null}
 			{term.length > 100 ? (
 				<Text className="font-poppins text-body-3 text-secondary-text">
