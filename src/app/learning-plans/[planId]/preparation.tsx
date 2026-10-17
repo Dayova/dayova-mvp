@@ -1,7 +1,7 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -13,6 +13,7 @@ import {
 	timeMinutes,
 } from "#convex/preparationSchedule";
 import { Button } from "~/components/ui/button";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import { Pencil, Plus, Time04 } from "~/components/ui/icon";
 import {
 	PortraitContent,
@@ -191,7 +192,7 @@ export default function PreparationScreen() {
 									</Text>
 								) : null}
 								{days.map((slot) => (
-									<Pressable
+									<FeedbackPressable
 										key={slot.id}
 										disabled={slot.locked}
 										accessibilityRole="button"
@@ -225,7 +226,7 @@ export default function PreparationScreen() {
 										{!slot.locked ? (
 											<Pencil size={20} className="text-text" />
 										) : null}
-									</Pressable>
+									</FeedbackPressable>
 								))}
 							</View>
 						))}
