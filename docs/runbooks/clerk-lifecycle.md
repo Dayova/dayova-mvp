@@ -61,6 +61,11 @@ CRM cleanup never archives a page or changes access in the app.
    `CLERK_WEBHOOK_INSTANCE_ID` and the existing `CLERK_JWT_ISSUER_DOMAIN` on the
    intended deployment. The signing secret is the endpoint's `whsec_...` secret,
    not a Clerk API secret. Development must use the development Clerk instance.
+   Verify the issuer equals Clerk's JWT `iss` and the issuer prefix in existing
+   Convex `tokenIdentifier` values exactly, with no whitespace or trailing slash.
+   Do not normalize identity keys independently in lifecycle or reconciliation:
+   all three paths must use the same issuer. Stop activation if this preflight
+   differs; do not rewrite existing identities to make it pass.
 3. Configure the Clerk endpoint to the deployment's `.convex.site/clerk-webhook`
    URL and subscribe to the three `user.*` events above. Test valid delivery,
    invalid signature/instance rejection and a verified primary-email change.

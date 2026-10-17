@@ -1,5 +1,34 @@
 # DAY-528 validation — 17 October 2026
 
+## Stack refresh after main merged PR #857
+
+Main advanced to `110d166e` after the previous successful stack checks. Its
+interaction-feedback change conflicted with #661's Paywall imports. Merge
+`ab9fddd349179b12730dfeeb0d1e94a822b526f5` preserves both the new feedback controls
+and secure account-deletion password/keyboard handling. The merged parent passed
+repository lint/TypeScript, **142 Vitest files / 1,098 tests**, and **103 Jest
+suites / 541 tests**. Two additional NativeWind runtime regression cases then
+verified class padding and explicit styles on both animated control variants
+(15 tests in that suite); TypeScript and changed-file lint passed again.
+CodeRabbit's integration review requested this style verification; it passed
+without changing the controls. The added tests were reviewed manually.
+
+All #748 and #895 commits were rebased without conflict; `git range-diff` shows
+every replayed commit unchanged. The refreshed direct base #748 is
+`2c185b5e94d15c8306a26427415bf4492e13d1a7`. Native stack #810 and all PR identities
+remain unchanged. Earlier commit hashes/checks below describe the prior stack.
+The refreshed top layer passed repository lint/TypeScript and the complete
+**145-file / 1,121-test Vitest suite** before the final evidence-only commit.
+Fresh remote checks must cover the new heads; no previous green check substitutes
+for them. Production lifecycle activation still follows protected merge/deploy.
+
+The remaining PR review note requested issuer/key consistency verification. A
+read-only production preflight confirmed a canonical issuer without a trailing
+slash/whitespace and **77/77 existing user identity prefixes matching exactly**.
+The Clerk configuration and retained-contact rehearsal above verify the matching
+development instance. No identity keys were normalized or rewritten. The runbook
+now explicitly requires this issuer preflight before activation/config changes.
+
 ## Current integrated stack
 
 Native stack #810 remains `main -> #661 -> #748 -> #895`.
