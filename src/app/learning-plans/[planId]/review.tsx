@@ -12,9 +12,12 @@ import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { PreparationSlotEditor } from "~/features/learning-plans/preparation-slot-editor";
 import { getErrorMessage } from "~/features/learning-plans/utils";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
+
 export default function LearningPlanReviewScreen() {
 	const { planId } = useLocalSearchParams<{ planId: string }>();
 	const id = planId as Id<"learningPlans">;
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const { isAuthenticated } = useConvexAuth();
 	const snapshot = useQuery(
@@ -37,6 +40,7 @@ export default function LearningPlanReviewScreen() {
 		acceptingRef.current = true;
 		setError(null);
 		try {
+			trackFeature("learning_plan.accept", "attempted", id);
 			let sessionId = snapshot.sessions[0]?.id;
 			if (snapshot.plan.preparationState)
 				sessionId = await accept({
@@ -46,12 +50,14 @@ export default function LearningPlanReviewScreen() {
 						: undefined,
 				});
 			else await legacyAccept({ learningPlanId: id });
+			trackFeature("learning_plan.accept", "succeeded", id);
 			router.replace(
 				slot || openPlan || !sessionId
 					? `/learning-plans/${id}`
 					: `/learning-plans/${id}/sessions/${sessionId}`,
 			);
 		} catch (cause) {
+			trackFeature("learning_plan.accept", "failed", id);
 			acceptingRef.current = false;
 			setError(
 				getErrorMessage(

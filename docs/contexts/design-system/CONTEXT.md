@@ -47,7 +47,15 @@ App screens that collect a date or time in one interaction must use
 `DateTimePickerSheet` from `src/components/ui/date-time-picker-sheet`. Do not
 import the underlying Expo UI picker directly from a screen. The wrapper owns
 platform display normalization, German locale, safe-area handling, and native
-presentation.
+presentation. Dedicated date steps with a persistent calendar use `InlineDatePicker`
+from `src/components/ui/inline-date-picker` instead. It owns native inline
+rendering, theme, native sizing, and Android date-only timezone conversion.
+[DAY-515](https://linear.app/dayova/issue/DAY-515) defines the exam-date step: the
+calendar appears below the question, without a separate selected-date card. Day
+changes immediately update the Continue label on iOS ("Weiter mit 2. November 2026").
+Android uses "Weiter" because its native Material calendar already displays the
+selected date prominently above the calendar grid.
+The creation progress header stays visible, and Continue advances to topics.
 
 ## Icons
 
@@ -104,11 +112,14 @@ Use `onPrimary` for solid selected pills, tabs, their checkmarks, and equivalent
 compact controls. Do not reuse `surface` or theme-dependent primary text as an
 implicit foreground token.
 
-Exam/subject and learning-session answer selection instead use the shared
-`selection` gradient (`#006699` → `#0077AA`) with white indicators and answer
-letters (minimum 4.97:1 contrast); answer rows match the
-exam/subject accent fill, primary selected label, border, and shadow-free treatment. See the [code-facing decision](adr/answer-selection-colors.md)
-and its linked native comparison and canonical Notion rationale.
+Exam/subject, answer and other branded selections use the same vertical
+`primaryInteractive` gradient (`#00A0E6` → `#4FD8FF`) as primary buttons.
+The `selection` token aliases that gradient. Selected letters, checkmarks and
+pill labels use fixed `onPrimary` for readable contrast in both themes.
+Card text remains theme text, with an accent fill and cyan border. Shared
+`SelectionControl` owns press feedback, interruptible transitions, radio/checkbox
+semantics and reduced motion; screens own immediate selected state. See the
+[selection decision](adr/answer-selection-colors.md).
 
 Typography uses Poppins only. Body text is Regular; headings, buttons, selected
 tabs, labels that need emphasis, and other highlighted text use SemiBold.
@@ -193,7 +204,7 @@ acknowledges a real transition without becoming recurring friction.
 
 Exam-type and subject selection share `SelectionOptionRow`: identical card
 geometry, icon treatment, radio checked semantics and a selection-gradient check
-indicator with a white check, as specified in the
+indicator with a white (`#FFFFFF`) check, as specified in the
 [selection color decision](adr/answer-selection-colors.md). The subject catalog
 is one continuous list, without a
 separate personal-subject heading. Adding a subject always saves it for reuse;
@@ -237,8 +248,25 @@ lives in `src/lib/theme.ts`. Theme preference handling lives in
 `src/lib/theme-preference.ts`; settings should expose the existing light,
 system, and dark options rather than introducing another toggle model.
 
-Icon-only close controls for sheets and modal chrome use the shared `CloseButton`
-component: path 2 background (`#D7DCE3`) with path 3 icon (`#8A8D92`).
+Back and close navigation controls share `NavigationIconButton` through
+`BackButton` and `CloseButton`: 48pt circles, card background, semantic border,
+and a 20pt theme-text Hugeicon with 2.4 stroke. Both use the shared Button's
+pressed, disabled, web-focus and accessibility behavior, with 8pt hit slop.
+This includes sheet/modal close controls, password reset and subscription back
+navigation. Contextual labels and existing navigation/confirmation behavior
+remain with the caller. Content-removal X actions are not navigation controls.
+This supersedes the smaller path-2/path-3 close treatment per Jakob's
+16 October direction ([DAY-523](https://linear.app/dayova/issue/DAY-523/unify-app-wide-back-and-close-navigation-controls)).
+
+The learning-plan creation header is a scoped exception, per the 14 October
+2026 user direction: both back and close use native SwiftUI buttons through
+Expo UI, with Apple's `glass` button style on iOS 26+ and `bordered` on older
+iOS versions. The native control owns interaction and accessibility, while
+Dayova's Hugeicons remain the button content. Android and web retain the shared
+BackButton/CloseButton controls, now with matching geometry and appearance.
+Keep native glass scoped to the creation header. The creation progress
+bar is 16pt tall, centered beside the 48pt button hosts. This keeps the bar
+compact while preserving comfortable button tap areas.
 
 ## Notes
 
@@ -278,15 +306,11 @@ and their compatibility rules belong to PR #813. The ring uses compact min/h
 labels, independently of the allowed values. Continue confirms the displayed
 initial value; merely opening the page does not save it.
 
-Per the 3 October 2026 user direction and MVP Login 18 reference, selected
-weekday pills use the shared `selection` gradient with white text, following the
-[selection-color ADR](adr/answer-selection-colors.md). The
-[canonical color decision](https://app.notion.com/p/3da2e87228bf8173b2adddaab6e3f5e6)
-records darker blue as the viable alternative when white foregrounds are an
-explicit product requirement. The October direction applies that alternative
-here; the earlier preference for dark foregrounds on solid cyan is historical
-rationale, not approval of white on the brighter action-button gradient.
-This remains scoped to selected weekday pills. Their accessible checkbox state
+The 5 October 2026 user correction supersedes the darker selected weekday
+palette: weekday pills now use the primary-action gradient and `onPrimary`
+text through `SelectionControl`, following the
+[selection-color ADR](adr/answer-selection-colors.md).
+Their accessible checkbox state
 is retained; the visual checkmark is omitted. Weekday pills retain the original
 48-point minimum height and semibold body-3
 type, arranged 2/2/2/1 with wrapping for larger content sizes. Initial answers
@@ -307,3 +331,106 @@ keeps its existing score-dependent presentation. No new haptics or navigation
 delays are introduced. Reduced motion omits the accent entirely; ordinary
 rerenders and color updates do not replay it. See
 [DAY-510](https://linear.app/dayova/issue/DAY-510).
+
+## Press feedback
+
+Shared Buttons (including icons and links) and custom actions use
+`FeedbackPressable`: 90 ms press compression to 97%, followed by a damped
+return. Small/icon Buttons and compact add, close and notification controls use
+92% so their compression remains visible on small surfaces. Shared feedback
+controls also select 92% automatically for measured surfaces up to 96 × 64 dp;
+larger surfaces use 97%, and explicit press scales remain authoritative. Layout
+callbacks are forwarded unchanged. The detached notched-card action uses its
+visible circle size for the same rule. Short taps complete
+the 90 ms compression before springing back; release never cancels the inward
+motion prematurely. Disabling, unmounting or reduced motion invalidates pending
+animation callbacks. Animation starts in the touch handler so fast taps are not lost to state
+batching; action dispatch never waits for animation. Opacity-based controls use
+`FeedbackTouchableOpacity`, preserving their existing active opacity.
+Coverage includes shared ActionSurface/FieldTrigger/sheets, dashboard cards,
+learning-plan cards and theory disclosures, settings, learning times, timetable,
+notifications, access screens, and plain authentication/onboarding actions.
+Existing active colors, labels, handlers, and caller styles remain intact.
+Shared selection rows and pills retain `SelectionControl` as their single press
+animation, including in auth, learning-time and timetable flows. Do not wrap
+these controls in `FeedbackPressable`.
+Calendar selection, learning-path breathing and analytics flips stay on child
+views; their outer controls now provide independent press feedback. Native
+controls retain system feedback. The notched card's invisible hit target drives
+the shared press motion on its visible action circle, keeping the hit area fixed.
+Both interactive brand titles also use the shared press control.
+Caller transforms take precedence so existing animations are not replaced.
+The simple transform runs with React Native Animated's native driver on native
+platforms; it adds no dependency and does not migrate existing Reanimated code.
+Reduced motion disables scaling, including when the preference changes during
+an interaction. Until the preference is available, controls remain static.
+Selection rows invoke the existing safe iOS selection haptic only when choosing
+an unselected option. Buttons do not add automatic haptics: existing success and
+native-control feedback must not be duplicated.
+
+Tracked in [DAY-508](https://linear.app/dayova/issue/DAY-508).
+
+The October 2026 source audit traced interactive call sites across 80 TSX files,
+including shared wrappers and dynamic calendar controls. Remaining raw press
+controls are the shared feedback and selection implementations and the
+notched-card hit target. Native tabs,
+switches and pickers retain platform feedback; static onboarding artwork is not
+interactive. This is source coverage, not a claim of visual QA on every screen.
+
+## Learning-plan preparation
+
+The preparation screen hides the creation header, including its back/close
+controls and overall-flow progress bar, in every preparation stage. Its job is
+to explain the ongoing work: flower and heading first, one preparation progress
+bar second, and the checklist third. Completion advances automatically; a quiet
+ghost action, **Später fortsetzen**, remains in a persistent footer during
+processing and errors, outside the scrolling content so it stays reachable at
+large text sizes. Two progress bars compete for attention and overload this
+waiting surface: the upper bar describes the overall creation flow, while the
+remaining bar and checklist describe preparation. Showing both on one waiting
+screen adds competing progress contexts without another decision for the learner.
+Removing the upper bar and its two navigation buttons reduces visual load and
+keeps attention on preparation. Form steps retain their creation header. Without
+that header, the preparation screen owns safe-area padding in its scroll view
+and footer.
+Flower, heading, progress bar, and checklist form one vertically centered group
+in the available space above the footer. The scroll content grows to fill that
+space but can overflow vertically on small displays or at larger text sizes.
+
+Leaving is not a server-side cancellation or rollback: an already dispatched
+analysis action or mutation may still finish and persist its result. The client
+stops dispatching subsequent preparation steps and ignores late navigation after
+exit. Back/close controls cannot reliably undo that server work; the explicit
+**Später fortsetzen** label describes leaving a saved draft without promising
+to pause or abort all processing. This is a reason to clarify the exit, not to
+trap the learner on the waiting screen.
+**Später fortsetzen** returns to Learning Plans with the saved, unaccepted
+draft intact; Android system back remains available. Errors also retain retry.
+Do not remove this explicit exit on iOS, where the back gesture is disabled.
+
+The temporary creation flow uses one preparation screen for material analysis,
+recognized scope, and diagnostic preparation. It skips the separate scope
+confirmation screen, automatically applies the recognized scope through the
+existing mutation, and continues to review after preparation. Existing scope and
+generating links redirect to analysis so saved links remain resumable. To restore
+manual confirmation, restore its route and the analysis-to-scope transition
+together; the backend confirmation requirement remains in place.
+
+The screen places a compact Dayova flower above a heading, animated shared
+`FlowProgressBar`, and a three-step checklist. Visual stages use an estimated
+completion time, divided into thirds. The estimate starts at 15 seconds and
+adapts to the median of the last five successful full runs in the current app
+session (samples bounded to 1–60 seconds). Failed, cancelled, and resumed runs do
+not train the estimate. This is a presentation estimate, not measured backend
+phase completion or a guaranteed ETA.
+
+Actual readiness always wins: there are no minimum stage durations or completion
+holds. If work finishes in eight seconds, navigation starts at eight seconds,
+even when a remaining visual stage must be skipped. The final item stays active
+if processing exceeds the estimate. Backend requests remain sequential; errors
+and cancellation stop visual advancement and subsequent requests. Resumed work
+skips completed stages. Errors remain on the screen with a retry action.
+
+Pending items are numbered, the active item shows an indicator, and completed
+visual stages use the shared Hugeicons check on cyan with `onPrimary`. Reduced
+motion retains static stage indicators.

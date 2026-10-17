@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import Animated, {
 	Easing,
 	ReduceMotion,
@@ -9,6 +9,7 @@ import Animated, {
 	useSharedValue,
 	withTiming,
 } from "react-native-reanimated";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import { Computer, Moon, Sun } from "~/components/ui/icon";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
@@ -62,7 +63,7 @@ export function ThemePreferenceToggle({
 				/>
 			</Animated.View>
 			{THEME_OPTIONS.map((option, index) => (
-				<Pressable
+				<FeedbackPressable
 					key={option.value}
 					accessibilityLabel={option.accessibilityLabel}
 					accessibilityRole="radio"
@@ -80,7 +81,7 @@ export function ThemePreferenceToggle({
 						index={index}
 						selectionPosition={selectionPosition}
 					/>
-				</Pressable>
+				</FeedbackPressable>
 			))}
 		</View>
 	);
