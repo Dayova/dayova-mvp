@@ -1,3 +1,7 @@
+## Topic layout and inline hint search — 18 October 2026
+
+[Latest incremental screenshots, recordings, revisions and limitations](topic-hint-layout-2026-10-18.md). Product 30c80460; iOS component fixture with controlled results. Uploaded through GitHub CLI to a separate evidence archive; no product media binaries. Earlier evidence below retains its original scope.
+
 ## Current selection-and-notes correction — 17 October 2026
 
 [Latest regular-app native acceptance, persistence checks and pause fix](https://github.com/Dayova/dayova-mvp/pull/884#issuecomment-6235441405). This report tracks the later Android run and its own platform limits. Earlier galleries below retain their original revision and scope.

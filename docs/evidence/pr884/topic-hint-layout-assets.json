@@ -1,0 +1,52 @@
+{
+  "repository": "Dayova/dayova-mvp",
+  "branch": "codex/pr-884-evidence-2026-10-18",
+  "before": "a58b0d7953d11f7394750be47ede3b93908df3b9",
+  "after": "30c8046000053e6cd09712f3a3d2d9c7028a25da",
+  "environment": "iPhone 17 Pro simulator, iOS 26.5, dark appearance, native development client; actual components with controlled WLO results; no authenticated save or live-provider acceptance",
+  "files": [
+    {
+      "name": "before-topics.png",
+      "bytes": 296617,
+      "sha256": "d34acbf0db9b07b53cf63afd2fb1dcf3e944e21f42d740ade5b61d728c2ee756",
+      "url": "https://github.com/Dayova/dayova-mvp/blob/1c929959c355fad4d2fa9ffaa701687a78e9f803/before-topics.png",
+      "rawUrl": "https://raw.githubusercontent.com/Dayova/dayova-mvp/1c929959c355fad4d2fa9ffaa701687a78e9f803/before-topics.png"
+    },
+    {
+      "name": "after-topics.png",
+      "bytes": 293924,
+      "sha256": "49c4f9234bc208cb06621ffafb9d350c1a2e2bf340b8aec68db5df531fc6a9a3",
+      "url": "https://github.com/Dayova/dayova-mvp/blob/1c929959c355fad4d2fa9ffaa701687a78e9f803/after-topics.png",
+      "rawUrl": "https://raw.githubusercontent.com/Dayova/dayova-mvp/1c929959c355fad4d2fa9ffaa701687a78e9f803/after-topics.png"
+    },
+    {
+      "name": "before-hints.png",
+      "bytes": 315096,
+      "sha256": "9ba54b8792a146ca11a6618f5283937196a189766ed82580fe806b5ffa7f4dde",
+      "url": "https://github.com/Dayova/dayova-mvp/blob/1c929959c355fad4d2fa9ffaa701687a78e9f803/before-hints.png",
+      "rawUrl": "https://raw.githubusercontent.com/Dayova/dayova-mvp/1c929959c355fad4d2fa9ffaa701687a78e9f803/before-hints.png"
+    },
+    {
+      "name": "after-hints.png",
+      "bytes": 306138,
+      "sha256": "cbd20ccfc542d5de1585b6a90cee8552d1ccda2a8235d4bcf3f6f4bf9f445b75",
+      "url": "https://github.com/Dayova/dayova-mvp/blob/1c929959c355fad4d2fa9ffaa701687a78e9f803/after-hints.png",
+      "rawUrl": "https://raw.githubusercontent.com/Dayova/dayova-mvp/1c929959c355fad4d2fa9ffaa701687a78e9f803/after-hints.png"
+    },
+    {
+      "name": "before.mp4",
+      "bytes": 4826213,
+      "sha256": "156aac9fa358c6f194c87769281c786883d606eb1ae2af7f5828a1a3ad72c554",
+      "url": "https://github.com/Dayova/dayova-mvp/blob/1c929959c355fad4d2fa9ffaa701687a78e9f803/before.mp4",
+      "rawUrl": "https://raw.githubusercontent.com/Dayova/dayova-mvp/1c929959c355fad4d2fa9ffaa701687a78e9f803/before.mp4"
+    },
+    {
+      "name": "after.mp4",
+      "bytes": 4302740,
+      "sha256": "9310cdabf1300d606ec1cc1f7dab83598993e4f5bdb6ac550539c399889b7e43",
+      "url": "https://github.com/Dayova/dayova-mvp/blob/1c929959c355fad4d2fa9ffaa701687a78e9f803/after.mp4",
+      "rawUrl": "https://raw.githubusercontent.com/Dayova/dayova-mvp/1c929959c355fad4d2fa9ffaa701687a78e9f803/after.mp4"
+    }
+  ],
+  "archiveCommit": "1c929959c355fad4d2fa9ffaa701687a78e9f803"
+}
