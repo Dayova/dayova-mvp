@@ -1,6 +1,6 @@
 import { describe, expect, jest, test } from "@jest/globals";
-import { act, render } from "@testing-library/react-native";
-import { View } from "react-native";
+import { act, fireEvent, render } from "@testing-library/react-native";
+import { AccessibilityInfo, Animated, StyleSheet, View } from "react-native";
 import { NotchedActionCard } from "./notched-action-card";
 
 jest.mock("~/lib/theme", () => ({
@@ -86,4 +86,56 @@ describe("NotchedActionCard", () => {
 		expect(background.props.vbWidth).toBe(320);
 		expect(background.props.vbHeight).toBe(160);
 	});
+});
+
+test("the separate action hit target animates its visible circle and dispatches immediately", async () => {
+	const preference = jest
+		.spyOn(AccessibilityInfo, "isReduceMotionEnabled")
+		.mockResolvedValue(false);
+	const timing = jest
+		.spyOn(Animated, "timing")
+		.mockImplementation((value, config) => {
+			(value as Animated.Value).setValue(config.toValue as number);
+			return {
+				start: (callback) => callback?.({ finished: true }),
+				stop: jest.fn(),
+				reset: jest.fn(),
+			};
+		});
+	const spring = jest.spyOn(Animated, "spring");
+	try {
+		const onPress = jest.fn();
+		const screen = await render(
+			<NotchedActionCard
+				actionAccessibilityLabel="Öffnen"
+				actionIcon={<View />}
+				onPress={onPress}
+				pressType="action"
+			>
+				<View />
+			</NotchedActionCard>,
+		);
+		const action = screen.getByRole("button", { name: "Öffnen" });
+		await fireEvent(action, "pressIn", {});
+		expect(timing).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ toValue: 0.92 }),
+		);
+		const animatedScale = timing.mock.calls[0][0];
+		// The visible circle uses the animated value; the independent hit target does not.
+		const tree = JSON.stringify(screen.toJSON());
+		expect(tree).toContain('"scale":0.92');
+		expect(StyleSheet.flatten(action.props.style).transform).toBeUndefined();
+		await fireEvent.press(action);
+		expect(onPress).toHaveBeenCalledTimes(1);
+		await fireEvent(action, "pressOut", {});
+		expect(spring).toHaveBeenCalledWith(
+			animatedScale,
+			expect.objectContaining({ toValue: 1 }),
+		);
+	} finally {
+		preference.mockRestore();
+		timing.mockRestore();
+		spring.mockRestore();
+	}
 });

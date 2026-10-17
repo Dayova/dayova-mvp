@@ -1,12 +1,7 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { type Href, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import {
-	ActivityIndicator,
-	Linking,
-	TouchableOpacity,
-	View,
-} from "react-native";
+import { ActivityIndicator, Linking, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
 	Easing,
@@ -24,6 +19,7 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { NotificationDeliveryInfoSheet } from "~/components/notification-delivery-info-sheet";
 import { ScreenHeader as Header } from "~/components/screen-header";
+import { FeedbackTouchableOpacity } from "~/components/ui/feedback-pressable";
 import {
 	BellOff,
 	BookOpen,
@@ -293,7 +289,7 @@ function NotificationCard({
 						<Text className="font-poppins text-body-4 text-secondary-text">
 							{notification.body}
 						</Text>
-						<TouchableOpacity
+						<FeedbackTouchableOpacity
 							accessibilityRole="button"
 							accessibilityLabel={`${notification.title} öffnen`}
 							onPress={onOpen}
@@ -308,7 +304,7 @@ function NotificationCard({
 									? "Neu planen"
 									: "Öffnen"}
 							</Text>
-						</TouchableOpacity>
+						</FeedbackTouchableOpacity>
 					</View>
 				</Animated.View>
 			</GestureDetector>
@@ -384,7 +380,7 @@ export default function NotificationsScreen() {
 				<View className="gap-5">
 					<CategoryTabs value={category} onChange={setCategory} />
 					{pushDeliveryState.showDisabledStatus ? (
-						<TouchableOpacity
+						<FeedbackTouchableOpacity
 							accessibilityLabel="Push-Mitteilungen sind aus. Details öffnen"
 							accessibilityRole="button"
 							activeOpacity={0.72}
@@ -399,7 +395,7 @@ export default function NotificationsScreen() {
 							<Text className="font-poppins font-semibold text-body-4 text-secondary-text">
 								Push aus
 							</Text>
-						</TouchableOpacity>
+						</FeedbackTouchableOpacity>
 					) : null}
 
 					{inbox === null ? (
