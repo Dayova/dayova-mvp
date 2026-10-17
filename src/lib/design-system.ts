@@ -1,8 +1,14 @@
+const PRIMARY_INTERACTIVE_GRADIENT = {
+	colors: ["#00A0E6", "#4FD8FF"],
+	start: { x: 0.5, y: 0 },
+	end: { x: 0.5, y: 1 },
+} as const;
+
 export const DAYOVA_DESIGN_SYSTEM = {
 	brand: {
 		attributes: ["structured", "clear", "trustworthy", "supportive", "calm"],
 		direction:
-			"Modern EdTech look with solid colors, bold systems, quiet hierarchy, and at most one gradient per view.",
+			"Modern EdTech look with solid colors, bold systems, quiet hierarchy, and primary action gradients and the same branded gradient for selected indicators.",
 	},
 	colors: {
 		primary: "#00BAFF",
@@ -26,6 +32,8 @@ export const DAYOVA_DESIGN_SYSTEM = {
 		wrong: "#FF9500",
 		wrongSubtle: "#FFECD6",
 		destructive: "#FF3B30",
+		dangerAction: "#B01B10",
+		dangerSubtle: "#FFF0EE",
 		info: "#C9A100",
 		infoSubtle: "#FFF8CC",
 		system: "#00BAFF",
@@ -54,11 +62,8 @@ export const DAYOVA_DESIGN_SYSTEM = {
 		uploadArtworkShadow: "#8896C8",
 	},
 	gradients: {
-		primaryInteractive: {
-			colors: ["#00A0E6", "#4FD8FF"],
-			start: { x: 0.5, y: 0 },
-			end: { x: 0.5, y: 1 },
-		},
+		selection: PRIMARY_INTERACTIVE_GRADIENT,
+		primaryInteractive: PRIMARY_INTERACTIVE_GRADIENT,
 	},
 	typography: {
 		fontFamily: "Poppins",

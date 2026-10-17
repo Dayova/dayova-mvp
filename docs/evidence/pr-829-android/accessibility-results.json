@@ -1,0 +1,180 @@
+[
+  {
+    "seconds": 2.929,
+    "scenario": "native accessibility activation opens closed card",
+    "pass": true,
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791299631360
+        }
+      ],
+      "pathname": "/learning-plans/jn7fs2jrmrzej683zrth5x4x4x8fswym",
+      "route": "learning-plans/[planId]/index"
+    },
+    "nativeAction": "INSTRUMENTATION_RESULT: click=true\r\nINSTRUMENTATION_RESULT: description=Deutsch, Heute, 2026-10-21, Wissenscheck \u00b7 5\u201310 Fragen, 0 abgeschlossen \u00b7 2 weitere Termine geplant, noch 15 Tage\r\nINSTRUMENTATION_RESULT: focus=true\r\nINSTRUMENTATION_RESULT: found=true\r\nINSTRUMENTATION_CODE: 0\r\n"
+  },
+  {
+    "seconds": 6.275,
+    "scenario": "settled short swipe 1",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    },
+    "nativeAction": null
+  },
+  {
+    "seconds": 8.624,
+    "scenario": "accessibility opens after settled short swipe 1",
+    "pass": true,
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791299637149
+        }
+      ],
+      "pathname": "/learning-plans/jn7fs2jrmrzej683zrth5x4x4x8fswym",
+      "route": "learning-plans/[planId]/index"
+    },
+    "nativeAction": "INSTRUMENTATION_RESULT: click=true\r\nINSTRUMENTATION_RESULT: description=Deutsch, Heute, 2026-10-21, Wissenscheck \u00b7 5\u201310 Fragen, 0 abgeschlossen \u00b7 2 weitere Termine geplant, noch 15 Tage\r\nINSTRUMENTATION_RESULT: focus=true\r\nINSTRUMENTATION_RESULT: found=true\r\nINSTRUMENTATION_CODE: 0\r\n"
+  },
+  {
+    "seconds": 11.998,
+    "scenario": "settled short swipe 2",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    },
+    "nativeAction": null
+  },
+  {
+    "seconds": 14.473,
+    "scenario": "accessibility opens after settled short swipe 2",
+    "pass": true,
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791299642945
+        }
+      ],
+      "pathname": "/learning-plans/jn7fs2jrmrzej683zrth5x4x4x8fswym",
+      "route": "learning-plans/[planId]/index"
+    },
+    "nativeAction": "INSTRUMENTATION_RESULT: click=true\r\nINSTRUMENTATION_RESULT: description=Deutsch, Heute, 2026-10-21, Wissenscheck \u00b7 5\u201310 Fragen, 0 abgeschlossen \u00b7 2 weitere Termine geplant, noch 15 Tage\r\nINSTRUMENTATION_RESULT: focus=true\r\nINSTRUMENTATION_RESULT: found=true\r\nINSTRUMENTATION_CODE: 0\r\n"
+  },
+  {
+    "seconds": 17.806,
+    "scenario": "settled short swipe 3",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    },
+    "nativeAction": null
+  },
+  {
+    "seconds": 20.314,
+    "scenario": "accessibility opens after settled short swipe 3",
+    "pass": true,
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791299648743
+        }
+      ],
+      "pathname": "/learning-plans/jn7fs2jrmrzej683zrth5x4x4x8fswym",
+      "route": "learning-plans/[planId]/index"
+    },
+    "nativeAction": "INSTRUMENTATION_RESULT: click=true\r\nINSTRUMENTATION_RESULT: description=Deutsch, Heute, 2026-10-21, Wissenscheck \u00b7 5\u201310 Fragen, 0 abgeschlossen \u00b7 2 weitere Termine geplant, noch 15 Tage\r\nINSTRUMENTATION_RESULT: focus=true\r\nINSTRUMENTATION_RESULT: found=true\r\nINSTRUMENTATION_CODE: 0\r\n"
+  },
+  {
+    "seconds": 22.685,
+    "scenario": "long swipe leaves overview",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    },
+    "nativeAction": null
+  },
+  {
+    "seconds": 24.871,
+    "scenario": "first accessibility activation closes open rail",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    },
+    "nativeAction": "INSTRUMENTATION_RESULT: click=true\r\nINSTRUMENTATION_RESULT: description=Deutsch, Heute, 2026-10-21, Wissenscheck \u00b7 5\u201310 Fragen, 0 abgeschlossen \u00b7 2 weitere Termine geplant, noch 15 Tage\r\nINSTRUMENTATION_RESULT: focus=true\r\nINSTRUMENTATION_RESULT: found=true\r\nINSTRUMENTATION_CODE: 0\r\n"
+  },
+  {
+    "seconds": 27.071,
+    "scenario": "second accessibility activation opens Deutsch",
+    "pass": true,
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791299655705
+        }
+      ],
+      "pathname": "/learning-plans/jn7fs2jrmrzej683zrth5x4x4x8fswym",
+      "route": "learning-plans/[planId]/index"
+    },
+    "nativeAction": "INSTRUMENTATION_RESULT: click=true\r\nINSTRUMENTATION_RESULT: description=Deutsch, Heute, 2026-10-21, Wissenscheck \u00b7 5\u201310 Fragen, 0 abgeschlossen \u00b7 2 weitere Termine geplant, noch 15 Tage\r\nINSTRUMENTATION_RESULT: focus=false\r\nINSTRUMENTATION_RESULT: found=true\r\nINSTRUMENTATION_CODE: 0\r\n"
+  },
+  {
+    "seconds": 29.298,
+    "scenario": "diagonal drag leaves overview",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    },
+    "nativeAction": null
+  },
+  {
+    "seconds": 31.53,
+    "scenario": "accessibility opens after failed vertical pan",
+    "pass": true,
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791299660084
+        }
+      ],
+      "pathname": "/learning-plans/jn7fs2jrmrzej683zrth5x4x4x8fswym",
+      "route": "learning-plans/[planId]/index"
+    },
+    "nativeAction": "INSTRUMENTATION_RESULT: click=true\r\nINSTRUMENTATION_RESULT: description=Deutsch, Heute, 2026-10-21, Wissenscheck \u00b7 5\u201310 Fragen, 0 abgeschlossen \u00b7 2 weitere Termine geplant, noch 15 Tage\r\nINSTRUMENTATION_RESULT: focus=true\r\nINSTRUMENTATION_RESULT: found=true\r\nINSTRUMENTATION_CODE: 0\r\n"
+  },
+  {
+    "seconds": 34.973,
+    "scenario": "Mathematik accessibility activation opens other card",
+    "pass": true,
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791299663554
+        }
+      ],
+      "pathname": "/learning-plans/jn74zte5pe2h8wkkcyvyz41ren8fs9sh",
+      "route": "learning-plans/[planId]/index"
+    },
+    "nativeAction": "INSTRUMENTATION_RESULT: click=true\r\nINSTRUMENTATION_RESULT: description=Mathematik, Heute, 2026-10-20, Wissenscheck \u00b7 5\u201310 Fragen, 0 abgeschlossen \u00b7 2 weitere Termine geplant, noch 14 Tage\r\nINSTRUMENTATION_RESULT: focus=true\r\nINSTRUMENTATION_RESULT: found=true\r\nINSTRUMENTATION_CODE: 0\r\n"
+  }
+]
