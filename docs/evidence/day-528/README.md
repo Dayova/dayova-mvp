@@ -1,10 +1,10 @@
 # DAY-528 validation — 17 October 2026
 
-## Current integrated stack — 19:10 CEST
+## Current integrated stack
 
 Native stack #810 remains `main -> #661 -> #748 -> #895`.
-Repaired parent #661: `3df0ab08fd2c2750ecb4e2d4b1a4120482deeb92`;
-direct base #748: `39c4165cff0c561716b2f51fb0a8c6ccd5c3543c`.
+Repaired parent #661: `d169c77d4c932b49660379f3e3607db81adda153`;
+direct base #748: `5555469073ca9f78d9df07f9d50757fee7170abd`.
 All three PRs are mergeable. The earlier evidence below is historical.
 
 - #661 merged current main and resolved the shared sheet/input conflicts using
@@ -15,10 +15,18 @@ All three PRs are mergeable. The earlier evidence below is historical.
 - The deletion fixture count includes main's new personal-subject row. Vitest
   uses two workers and 30-second timeouts, including native Expo subprocess
   tests, to address the reproduced worker contention and timeouts.
-- Real EAS CI on #661 passed lint, TypeScript, tests, Convex preview deployment,
-  native fingerprints and production OTA checks. The OTA-compatible report covers
-  the exact head above; this PR run published no OTA.
-  [EAS run](https://expo.dev/accounts/dayova/projects/dayova/workflows/01a14ac1-cd94-7e1a-8a6b-235e0d58ee15).
+- Real EAS CI on all three layers passed lint, TypeScript, tests, Convex preview
+  deployment, native fingerprints and production OTA checks. Their reports cover
+  the exact heads; these PR runs published no OTA.
+  [#661 run](https://expo.dev/accounts/dayova/projects/dayova/workflows/01a14ae2-d8a2-7144-8d8f-e5b641ca68ac),
+  [#748 run](https://expo.dev/accounts/dayova/projects/dayova/workflows/01a14ae2-d5c7-73d1-a35f-d404cdf9c8a6),
+  [#895 run at d19bd131](https://expo.dev/accounts/dayova/projects/dayova/workflows/01a14ae2-d8b9-7935-954e-c359a8eb4902).
+- PR triggers now cover `codex/**` stack bases while preserving repository and
+  contributor trust gates and main-only release rules. The official EAS schema
+  validates (its union types require Ajv's `allowUnionTypes`); 37 existing workflow
+  regressions passed. The two-line trigger change was manually reviewed after
+  CodeRabbit reached its limit. Earlier manual dispatches skipped checks due to
+  their GitHub-event conditions; only the real PR runs above count as full CI.
 - `git range-diff` confirms #748's implementation survived unchanged; #895's
   replay differs only in generated API context for newly added main modules.
 - Complete top-stack Vitest: **145 files / 1,120 tests passed** before the final
@@ -44,15 +52,40 @@ the regional production Cloud-to-Site hostname rewrite is correct.
 For real provider rehearsal, a separate European development deployment
 `utmost-oriole-983` (`dev/clerk-lifecycle-20261017`, expires after five days) is
 deployed with the development Clerk issuer and isolated test CRM destination.
-Both CRM switches start off. The shared dev deploy rejected data from another
-branch; no data was changed to force it. A three-event Clerk endpoint is prepared,
-pending browser access confirmation. Real provider delivery is not yet verified.
+The shared dev deploy rejected data from another branch; no data was changed to
+force it. Jakob explicitly confirmed server-side Clerk-key transfer and the
+three-event endpoints for test, then production, before they were configured.
+
+The real provider rehearsal passed with one newly created disposable Clerk
+development account and one contact in the isolated test CRM source:
+
+- Verified the backend key against Clerk's `/v1/instance` before any account write.
+- Real Clerk `user.created`, `user.updated`, `user.deleted` deliveries all succeeded
+  (Svix: three successful deliveries, zero errors).
+- Initial dry-run: 15 unmatched existing test contacts, one proposed new signup,
+  zero conflicts/proposed identity bindings/failures. Live created exactly one
+  synthetic contact; existing test contacts were unchanged.
+- A verified primary-email change updated the same Convex user and same Notion
+  page. A sync with the old identity email retained the new address. The manually
+  seeded CRM note survived.
+- Deleted only that disposable development account through Clerk. Its real event
+  completed the pipeline: Convex user removed, terminal tombstone without email,
+  `stage=complete`, `crmDeletionVerified=true`, operational identity references
+  removed. Re-sync under the deleted identity was rejected.
+- Notion readback: page retained, `App Account Status=deleted`, deletion date set,
+  Clerk/Convex IDs cleared; new email, name, manual CRM status and note retained.
+- RevenueCat and PostHog are not configured in this isolated fixture; their stages
+  explicitly reported `notConfigured`. This does not certify their real erasure,
+  R2-upload cleanup or native-device account deletion.
+- Test CRM switches were reset to `off` and its endpoint disabled after success;
+  the three successful delivery records remain available for inspection.
 
 Notion's two required account-status properties were added and verified separately
 in test and production. Normal production CRM delivery is already live (DAY-366:
 eight new contacts, 61 verified links, two isolated founder-review cases).
 Lifecycle production activation still requires matching Clerk configuration and
-the provider rehearsal. RevenueCat deletion credentials exist in production;
+production processor setup. Its endpoint is prepared but disabled until rollout.
+RevenueCat deletion credentials exist in production;
 PostHog deletion credentials are absent. No historical production account was
 repaired, deleted or merged by email; DAY-357's broader matrix is not certified.
 
