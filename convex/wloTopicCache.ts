@@ -17,7 +17,7 @@ export async function topicCacheKey(query: string, subject: string) {
 		.map(normalizeWloText)
 		.sort();
 	const bytes = new TextEncoder().encode(
-		JSON.stringify(["wlo-v2", term, context]),
+		JSON.stringify(["wlo-v3", term, context]),
 	);
 	const hash = await crypto.subtle.digest("SHA-256", bytes);
 	return Array.from(new Uint8Array(hash), (byte) =>

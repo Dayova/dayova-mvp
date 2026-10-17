@@ -1,9 +1,9 @@
 import { View } from "react-native";
-import { Check, Plus, X } from "~/components/ui/icon";
+import { X } from "~/components/ui/icon";
+import { SelectionOptionRow } from "~/components/ui/selection-option-row";
 import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { useDayovaTheme } from "~/lib/theme";
-import { cn } from "~/lib/utils";
 
 export function SearchSelectionChip({
 	title,
@@ -39,7 +39,6 @@ export function SearchSuggestion({
 	selected,
 	disabled,
 	onPress,
-	checkColor,
 	className,
 	custom = false,
 	customLabel,
@@ -52,56 +51,26 @@ export function SearchSuggestion({
 	selected: boolean;
 	disabled: boolean;
 	onPress: () => void;
-	checkColor: string;
 	className?: string;
 }) {
 	return (
-		<ActionSurface
+		<SelectionOptionRow
 			accessibilityRole="checkbox"
 			accessibilityLabel={title}
 			accessibilityHint={hint}
-			accessibilityState={{ checked: selected, disabled }}
+			selected={selected}
 			disabled={disabled}
 			onPress={onPress}
-			className={cn(
-				"min-h-14 flex-row items-center gap-3 py-3",
+			className={className}
+			label={
 				custom
-					? "rounded-full bg-card px-4"
-					: "rounded-none bg-transparent px-1",
-				className,
-			)}
-		>
-			<View className="flex-1 gap-1">
-				<Text
-					className={cn(
-						"font-poppins text-body-2 text-text",
-						!custom && "font-semibold",
-					)}
-				>
-					{custom
-						? (customLabel ??
-							(selected
-								? `„${title}“ ausgewählt`
-								: `„${title}“ als eigenes Thema hinzufügen`))
-						: title}
-				</Text>
-				{detail && !custom ? (
-					<Text className="font-poppins text-body-4 text-secondary-text">
-						{detail}
-					</Text>
-				) : null}
-			</View>
-			<View
-				accessible={false}
-				importantForAccessibility="no-hide-descendants"
-				className="h-8 w-8 items-center justify-center rounded-full border border-secondary-text"
-			>
-				{selected ? (
-					<Check size={20} color={checkColor} />
-				) : (
-					<Plus size={20} color={checkColor} />
-				)}
-			</View>
-		</ActionSurface>
+					? (customLabel ??
+						(selected
+							? `„${title}“ ausgewählt`
+							: `„${title}“ als eigenes Thema hinzufügen`))
+					: title
+			}
+			description={custom ? undefined : detail}
+		/>
 	);
 }

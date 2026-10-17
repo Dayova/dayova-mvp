@@ -331,19 +331,8 @@ are empty; example selections belong only in historical screenshot evidence.
 The duration explanation adapts to the chosen value; an additional explanation
 between weekdays and start time brings the profile flow to twelve steps.
 
-## Exam topic search rows
-
-DAY-530 follows the supplied topic-search reference: neutral removable chips
-immediately below the search, transparent catalog rows with outlined plus/check
-icons, and a quiet custom-term action below suggestions. These controlled rows
-use ActionSurface with explicit checkbox state, 56px minimum touch height and
-wrapping text; they are a scoped alternative to the filled SelectionControl
-cards. Existing subject metadata remains visible. Exam hint suggestions use the
-same quiet plus-row treatment, remain optional, and append only after a tap.
-Hints stay inline by default and their complete text remains editable beneath
-the hint search. See https://linear.app/dayova/issue/DAY-530 and the prior
-[decision record](https://app.notion.com/p/3fb2e87228bf817a880dde6127a1996a).
-
 ## Search selections in exam setup
 
-Topic and hint pages share `SearchSelectionChip` and `SearchSuggestion` in `src/features/learning-plans/search-selection.tsx`: neutral removable chips below the input, transparent suggestion rows with a plus/check control, and a quiet custom-entry action. Keep one question and one search per page; Weiter advances topics → optional hints → material. Chips wrap instead of truncating learner content. Preserve checkbox state/disabled semantics and explicit remove labels; use the full-text edit action for long legacy hints.
+Topic and hint suggestions reuse `SelectionOptionRow`, the same rounded card used by exam-type and subject selection. Search choices use checkbox semantics for multiple selections; existing subject/exam choices retain radio semantics. The optional leading icon, wrapping label, subject metadata, selected accent surface and indicator are owned by the shared row. `SearchSuggestion` supplies the custom-entry wording and a concise accessible title; it does not clone the visual treatment.
+
+Keep neutral removable `SearchSelectionChip` controls below the input, one question and one search per page, and topics → optional hints → material navigation. Show five catalog alternatives initially and let the learner reveal the remaining returned suggestions with “Mehr Vorschläge anzeigen”. Preserve disabled semantics and explicit remove labels; use the full-text edit action for long legacy hints. This supersedes DAY-530's earlier transparent plus-row treatment following the user's PR #884 feedback on 18 October 2026. See https://linear.app/dayova/issue/DAY-530 and the [decision record](https://app.notion.com/p/3fb2e87228bf817a880dde6127a1996a).

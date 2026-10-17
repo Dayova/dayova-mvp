@@ -16,6 +16,56 @@ const reply = (collections: ReturnType<typeof node>[]) =>
 	new Response(JSON.stringify({ nodes: collections }), { status: 200 });
 afterEach(() => vi.unstubAllGlobals());
 describe("WLO topic search", () => {
+	test("keeps usable fuzzy suggestions when the bounded expansion fails", async () => {
+		const fetcher = vi
+			.fn()
+			.mockResolvedValueOnce(reply([node("Gedichte", "Englisch")]))
+			.mockRejectedValueOnce(new Error("offline"));
+		vi.stubGlobal("fetch", fetcher);
+		const result = await searchWloTopics("Gedichts", "Deutsch");
+		expect(result.topics.map((topic) => topic.title)).toEqual(["Gedichte"]);
+		expect(result.truncated).toBe(true);
+		expect(fetcher).toHaveBeenCalledTimes(2);
+	});
+	test("does not turn a failed expansion into a successful empty search", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi
+				.fn()
+				.mockResolvedValueOnce(reply([]))
+				.mockRejectedValueOnce(new Error("offline")),
+		);
+		await expect(searchWloTopics("Gedichts", "Deutsch")).rejects.toThrow(
+			"offline",
+		);
+	});
+
+	test("recovers Gedichts suggestions from live-provider-shaped responses while preserving subject ranking", async () => {
+		const fetcher = vi
+			.fn()
+			.mockImplementation(async (_url: URL, init: RequestInit) => {
+				const term = JSON.parse(String(init.body)).criteria[0].values[0];
+				return reply(
+					term === "gedichts"
+						? [node("Gedichte", "Englisch")]
+						: [
+								node("Gedichtanalyse"),
+								node("Gedichte", "Englisch"),
+								node("Kreatives Schreiben"),
+							],
+				);
+			});
+		vi.stubGlobal("fetch", fetcher);
+		const result = await searchWloTopics("Gedichts", "Deutsch");
+		expect(result.topics.map((topic) => topic.title)).toEqual([
+			"Gedichtanalyse",
+			"Gedichte",
+		]);
+		expect(result.topics[0].isAdditional).toBe(false);
+		expect(result.topics[1].isAdditional).toBe(true);
+		expect(fetcher).toHaveBeenCalledTimes(2);
+	});
+
 	test("reuses authenticated catalog results across equivalent subject contexts without another provider call", async () => {
 		const fetcher = vi
 			.fn()
@@ -369,7 +419,7 @@ describe("WLO topic search", () => {
 			"fetch",
 			vi
 				.fn()
-				.mockResolvedValue(
+				.mockImplementation(async () =>
 					reply([
 						node("Carbonsäuren", "Chemie"),
 						node("Butter Demo", "Chemie"),

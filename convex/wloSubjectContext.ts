@@ -76,6 +76,35 @@ export function resolveWloSubjectContext(subject: string): string[] {
 	return [...new Set(parts.flatMap((part) => contexts.get(part) ?? []))];
 }
 
+/** One edit in a word prefix tolerates typing slips without accepting description-only hits.
+ * Short queries stay literal so broad three-letter searches remain predictable. */
+export function matchesWloTitle(title: string, query: string): boolean {
+	const term = normalizeWloQuery(query);
+	const name = normalizeWloText(title);
+	if (name.includes(term)) return true;
+	if (!/^[a-zäöüß]{5,40}$/u.test(term)) return false;
+	return name.split(/[^a-zäöüß]+/u).some((word) =>
+		[term.length - 1, term.length, term.length + 1].some((length) => {
+			if (word.length < length) return false;
+			const prefix = word.slice(0, length);
+			let i = 0;
+			while (i < Math.min(term.length, prefix.length) && term[i] === prefix[i])
+				i++;
+			if (term.length === prefix.length) {
+				return (
+					term.slice(i + 1) === prefix.slice(i + 1) ||
+					(term[i] === prefix[i + 1] &&
+						term[i + 1] === prefix[i] &&
+						term.slice(i + 2) === prefix.slice(i + 2))
+				);
+			}
+			return term.length > prefix.length
+				? term.slice(i + 1) === prefix.slice(i)
+				: term.slice(i) === prefix.slice(i + 1);
+		}),
+	);
+}
+
 /** Same ranking for fresh provider results and provisional known title matches. */
 export function rankWloTopics<T extends { title: string; subjects?: string[] }>(
 	topics: readonly T[],
@@ -89,9 +118,11 @@ export function rankWloTopics<T extends { title: string; subjects?: string[] }>(
 			? 0
 			: normalizeWloText(title).startsWith(term)
 				? 1
-				: 2;
+				: normalizeWloText(title).includes(term)
+					? 2
+					: 3;
 	return topics
-		.filter((topic) => normalizeWloText(topic.title).includes(term))
+		.filter((topic) => matchesWloTitle(topic.title, term))
 		.map((topic) => ({
 			...topic,
 			isAdditional:

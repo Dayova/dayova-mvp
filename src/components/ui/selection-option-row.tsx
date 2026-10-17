@@ -15,35 +15,49 @@ export function SelectionOptionRow({
 	description,
 	selected,
 	onPress,
+	disabled = false,
+	accessibilityRole = "radio",
+	accessibilityLabel = label,
+	accessibilityHint = description,
+	className,
 }: {
-	Icon: typeof Check;
+	Icon?: typeof Check;
 	label: string;
 	description?: string;
 	selected: boolean;
 	onPress: () => void;
+	disabled?: boolean;
+	accessibilityRole?: "radio" | "checkbox";
+	accessibilityLabel?: string;
+	accessibilityHint?: string;
+	className?: string;
 }) {
 	const { colors } = useDayovaTheme();
 
 	return (
 		<SelectionControl
 			selected={selected}
-			accessibilityLabel={label}
-			accessibilityHint={description}
-			accessibilityRole="radio"
-			accessibilityState={{ checked: selected }}
+			accessibilityLabel={accessibilityLabel}
+			accessibilityHint={accessibilityHint}
+			accessibilityRole={accessibilityRole}
+			accessibilityState={{ checked: selected, disabled }}
+			disabled={disabled}
+			className={className}
 			contentClassName="min-h-16 flex-row items-center gap-4 rounded-3xl px-5 py-3"
 			onPress={onPress}
 		>
-			<View
-				accessible={false}
-				className="h-9 w-9 items-center justify-center rounded-full bg-system-subtle"
-			>
-				<Icon
-					size={20}
-					color={selected ? colors.primary : colors.secondaryText}
-					strokeWidth={2}
-				/>
-			</View>
+			{Icon ? (
+				<View
+					accessible={false}
+					className="h-9 w-9 items-center justify-center rounded-full bg-system-subtle"
+				>
+					<Icon
+						size={20}
+						color={selected ? colors.primary : colors.secondaryText}
+						strokeWidth={2}
+					/>
+				</View>
+			) : null}
 			<View className="flex-1">
 				<SelectionText
 					className={cn(

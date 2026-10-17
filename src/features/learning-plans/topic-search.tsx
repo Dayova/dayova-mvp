@@ -10,7 +10,6 @@ import { ErrorMessage } from "~/components/ui/error-message";
 import { SearchField } from "~/components/ui/search-field";
 import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
-import { useDayovaTheme } from "~/lib/theme";
 import { SearchSelectionChip, SearchSuggestion } from "./search-selection";
 
 export type TopicSearchResult = {
@@ -44,9 +43,9 @@ export function TopicSearch({
 	searchTopics: SearchTopics;
 	disabled: boolean;
 }) {
-	const { colors } = useDayovaTheme();
 	const [query, setQuery] = useState("");
 	const [retry, setRetry] = useState(0);
+	const [expandedKey, setExpandedKey] = useState<string | null>(null);
 	const [state, setState] = useState<{
 		key: string;
 		result?: TopicSearchResult;
@@ -179,7 +178,10 @@ export function TopicSearch({
 	const otherTopics =
 		result?.topics.filter((topic) => topicTitleKey(topic.title) !== titleKey) ??
 		[];
-	const visible = otherTopics.slice(0, MAX_VISIBLE_RESULTS);
+	const visible = otherTopics.slice(
+		0,
+		expandedKey === key ? 20 : MAX_VISIBLE_RESULTS,
+	);
 	function toggleTopic(title: string) {
 		const included = selectedTopics.some(
 			(item) => topicTitleKey(item) === topicTitleKey(title),
@@ -211,7 +213,6 @@ export function TopicSearch({
 			selected={selectedTitle !== undefined}
 			disabled={disabled}
 			onPress={() => toggleTopic(directTitle)}
-			checkColor={colors.secondaryText}
 		/>
 	) : null;
 	return (
@@ -319,12 +320,23 @@ export function TopicSearch({
 									disabled={disabled}
 									onPress={() => toggleTopic(topic.title)}
 									className="mt-2"
-									checkColor={colors.secondaryText}
 								/>
 							</View>
 						);
 					})}
-					{result.truncated || otherTopics.length > MAX_VISIBLE_RESULTS ? (
+					{otherTopics.length > visible.length ? (
+						<ActionSurface
+							accessibilityRole="button"
+							disabled={disabled}
+							onPress={() => setExpandedKey(key)}
+							className="min-h-12 justify-center py-3"
+						>
+							<Text className="font-poppins font-semibold text-body-3 text-text">
+								Mehr Vorschläge anzeigen
+							</Text>
+						</ActionSurface>
+					) : null}
+					{result.truncated ? (
 						<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
 							Grenze deinen Suchbegriff weiter ein, um weitere passende Themen
 							zu finden.

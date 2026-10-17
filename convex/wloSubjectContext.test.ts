@@ -1,5 +1,9 @@
 import { describe, expect, test } from "vitest";
-import { resolveWloSubjectContext } from "./wloSubjectContext";
+import {
+	matchesWloTitle,
+	rankWloTopics,
+	resolveWloSubjectContext,
+} from "./wloSubjectContext";
 
 describe("subject names as derived WLO search context", () => {
 	test.each([
@@ -41,5 +45,37 @@ describe("subject names as derived WLO search context", () => {
 			"Wirtschaftskunde",
 		);
 		expect(resolveWloSubjectContext("Unser Projekt")).toEqual([]);
+	});
+});
+
+describe("topic title typing tolerance", () => {
+	test.each([
+		["Gedichts", "Gedichtanalyse"],
+		["Gedichts", "Gedichte"],
+		["Gedihct", "Gedichtanalyse"],
+		["Rhetro", "Rhetorische Mittel"],
+		["Vektr", "Vektoren"],
+		["Gleichugn", "Lineare Gleichungen"],
+	])("keeps %s related to %s", (query, title) => {
+		expect(matchesWloTitle(title, query)).toBe(true);
+	});
+	test.each([
+		["Gedichts", "Kreatives Schreiben"],
+		["Butter", "Carbonsäuren"],
+		["Bio", "Bilanz"],
+		["Vektor", "Generator"],
+		["Gedichts ohne", "Gedichtanalyse"],
+	])("does not invent relevance for %s / %s", (query, title) => {
+		expect(matchesWloTitle(title, query)).toBe(false);
+	});
+	test("uses the same fuzzy title and subject ranking for cached previews", () => {
+		const topics = [
+			{ title: "Gedichte", subjects: ["Englisch"] },
+			{ title: "Kreatives Schreiben", subjects: ["Deutsch"] },
+			{ title: "Gedichtanalyse", subjects: ["Deutsch"] },
+		];
+		expect(
+			rankWloTopics(topics, "Gedichts", "Deutsch").map((topic) => topic.title),
+		).toEqual(["Gedichtanalyse", "Gedichte"]);
 	});
 });

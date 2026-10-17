@@ -622,7 +622,7 @@ describe("inline topic search with a free-text exam scope", () => {
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
 	});
 
-	test("shows a bounded result list with a refinement hint", async () => {
+	test("reveals all returned suggestions and selects more than one without another search", async () => {
 		const search = jest
 			.fn<SearchTopics>()
 			.mockResolvedValue(
@@ -633,11 +633,24 @@ describe("inline topic search with a free-text exam scope", () => {
 		await debounce();
 		expect(screen.getAllByRole("checkbox")).toHaveLength(6);
 		expect(screen.queryByText("Thema 5")).toBeNull();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Mehr Vorschläge anzeigen" }),
+		);
+		expect(screen.getAllByRole("checkbox")).toHaveLength(9);
+		await fireEvent.press(screen.getByRole("checkbox", { name: "Thema 5" }));
+		await fireEvent.press(screen.getByRole("checkbox", { name: "Thema 7" }));
 		expect(
-			screen.getByText(
-				"Grenze deinen Suchbegriff weiter ein, um weitere passende Themen zu finden.",
-			),
-		).toBeOnTheScreen();
+			screen.getByRole("checkbox", { name: "Thema 5" }).props
+				.accessibilityState,
+		).toMatchObject({ checked: true });
+		expect(
+			screen.getByRole("checkbox", { name: "Thema 7" }).props
+				.accessibilityState,
+		).toMatchObject({ checked: true });
+		expect(search).toHaveBeenCalledTimes(1);
+		expect(
+			screen.queryByRole("button", { name: "Mehr Vorschläge anzeigen" }),
+		).toBeNull();
 	});
 
 	test("freezes both inputs while saving without needing a search result", async () => {

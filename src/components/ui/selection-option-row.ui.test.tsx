@@ -49,3 +49,24 @@ test.each([
 jest.mock("react-native-reanimated", () =>
 	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
 );
+
+test("supports disabled multi-select search choices with a separate spoken title", async () => {
+	const onPress = jest.fn();
+	const screen = await render(
+		<SelectionOptionRow
+			label="Als eigenes Thema hinzufügen"
+			accessibilityLabel="Gedichts"
+			accessibilityRole="checkbox"
+			selected
+			disabled
+			onPress={onPress}
+		/>,
+	);
+	const choice = screen.getByRole("checkbox", { name: "Gedichts" });
+	expect(choice.props.accessibilityState).toMatchObject({
+		checked: true,
+		disabled: true,
+	});
+	await fireEvent.press(choice);
+	expect(onPress).not.toHaveBeenCalled();
+});

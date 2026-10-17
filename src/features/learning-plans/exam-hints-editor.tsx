@@ -5,7 +5,6 @@ import { SearchField } from "~/components/ui/search-field";
 import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
-import { useDayovaTheme } from "~/lib/theme";
 import { appendExamHint, getExamHintExamples } from "./exam-hint-examples";
 import { SearchSelectionChip, SearchSuggestion } from "./search-selection";
 
@@ -29,7 +28,6 @@ export function ExamHintsEditor({
 	onChange: (value: string) => void;
 	disabled?: boolean;
 }) {
-	const { colors } = useDayovaTheme();
 	const [query, setQuery] = useState("");
 	const [editing, setEditing] = useState(false);
 	const term = query.trim();
@@ -87,7 +85,6 @@ export function ExamHintsEditor({
 								title={example}
 								selected={Boolean(selection)}
 								disabled={disabled}
-								checkColor={colors.secondaryText}
 								onPress={() =>
 									selection ? remove(selection.index) : add(example)
 								}
@@ -108,7 +105,6 @@ export function ExamHintsEditor({
 					}
 					selected={Boolean(selected(term))}
 					disabled={disabled}
-					checkColor={colors.secondaryText}
 					onPress={() => {
 						const selection = selected(term);
 						if (selection) remove(selection.index);

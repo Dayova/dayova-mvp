@@ -4,6 +4,7 @@ import { internal } from "./_generated/api";
 import { action } from "./_generated/server";
 import { throwUserFacingError } from "./errors";
 import {
+	matchesWloTitle,
 	normalizeWloText as normalize,
 	normalizeWloQuery,
 	rankWloTopics,
@@ -47,7 +48,7 @@ export async function searchWloTopics(query: string, subject: string) {
 	const timeout = setTimeout(() => controller.abort(), 8000);
 	let truncated = false;
 	try {
-		const loadPage = async (page: number) => {
+		const loadPage = async (page: number, searchTerm = term) => {
 			const url = new URL(ENDPOINT);
 			url.searchParams.set("contentType", "COLLECTIONS");
 			url.searchParams.append("propertyFilter", "ccm:taxonid");
@@ -64,7 +65,7 @@ export async function searchWloTopics(query: string, subject: string) {
 					"Content-Type": "application/json",
 				},
 				body: JSON.stringify({
-					criteria: [{ property: "ngsearchword", values: [term] }],
+					criteria: [{ property: "ngsearchword", values: [searchTerm] }],
 					resolveCollections: false,
 					resolveUsernames: false,
 					returnSuggestions: false,
@@ -99,7 +100,7 @@ export async function searchWloTopics(query: string, subject: string) {
 				}
 			}
 		}
-		for (const [page, data] of pages.entries()) {
+		const addMatches = (data: z.infer<typeof responseSchema>) => {
 			for (const node of data.nodes) {
 				const title = node.title?.trim();
 				const properties = node.properties ?? {};
@@ -109,8 +110,8 @@ export async function searchWloTopics(query: string, subject: string) {
 					node.collection?.type !== "EDITORIAL"
 				)
 					continue;
-				// Search also matches descriptions; only title matches make useful topic suggestions.
-				if (!normalize(title).includes(term)) continue;
+				// Keep title relevance, including small typing slips; descriptions alone are insufficient.
+				if (!matchesWloTitle(title, term)) continue;
 				if (/\bdemo\b|\bstartseite\b|^tools$|^materialien$/i.test(title))
 					continue;
 				if (subjects.includes(normalize(title))) continue;
@@ -140,8 +141,29 @@ export async function searchWloTopics(query: string, subject: string) {
 						!combined.some((name) => subjects.includes(normalize(name))),
 				});
 			}
+		};
+		for (const [page, data] of pages.entries()) {
+			addMatches(data);
 			if (data.nodes.length < PAGE_SIZE) break;
 			if (page === MAX_PAGES - 1) truncated = true;
+		}
+		// A trailing letter can hide a whole compound family (Gedichts → Gedichtanalyse).
+		// One bounded prefix retry shares the original deadline and never replaces the input.
+		if (
+			/^[a-zäöüß]{5,40}$/u.test(term) &&
+			![...matches.values()].some((topic) =>
+				normalize(topic.title).includes(term),
+			)
+		) {
+			try {
+				const fallback = await loadPage(0, term.slice(0, -1));
+				addMatches(fallback);
+				truncated ||= fallback.nodes.length === PAGE_SIZE;
+			} catch (error) {
+				if (!matches.size) throw error;
+				// Retain usable initial results when optional expansion is unavailable.
+				truncated = true;
+			}
 		}
 	} finally {
 		clearTimeout(timeout);
