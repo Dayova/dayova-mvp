@@ -1,5 +1,63 @@
 # DAY-528 validation — 17 October 2026
 
+## Current integrated stack — 19:10 CEST
+
+Native stack #810 remains `main -> #661 -> #748 -> #895`.
+Repaired parent #661: `3df0ab08fd2c2750ecb4e2d4b1a4120482deeb92`;
+direct base #748: `39c4165cff0c561716b2f51fb0a8c6ccd5c3543c`.
+All three PRs are mergeable. The earlier evidence below is historical.
+
+- #661 merged current main and resolved the shared sheet/input conflicts using
+  main's keyboard-aware input context, with a password-field regression.
+- New main APIs for personal subjects, dashboard and preparation now enforce
+  deletion barriers. A regression reproduced the missing barrier, then passed
+  across seven public API paths; another account remains unaffected.
+- The deletion fixture count includes main's new personal-subject row. Vitest
+  uses two workers and 30-second timeouts, including native Expo subprocess
+  tests, to address the reproduced worker contention and timeouts.
+- Real EAS CI on #661 passed lint, TypeScript, tests, Convex preview deployment,
+  native fingerprints and production OTA checks. The OTA-compatible report covers
+  the exact head above; this PR run published no OTA.
+  [EAS run](https://expo.dev/accounts/dayova/projects/dayova/workflows/01a14ac1-cd94-7e1a-8a6b-235e0d58ee15).
+- `git range-diff` confirms #748's implementation survived unchanged; #895's
+  replay differs only in generated API context for newly added main modules.
+- Complete top-stack Vitest: **145 files / 1,120 tests passed** before the final
+  completion guard. Final focused lifecycle/deletion selection: **27 passed**,
+  including a new processor-level no-match completion/disabled-cleanup retry test.
+- Complete Jest UI: **102 suites / 525 tests passed**. These UI/test files are
+  identical in #661 and the top layer. Supporting Node scripts: **18 passed**.
+- Repository `pnpm check` passed again after the completion guard. Both isolated
+  local and cloud Convex pushes succeeded. The fresh local signed HTTP smoke
+  again produced every successful result shown below, after main integration.
+
+CodeRabbit completed the integrated diff review. The processor now sends an
+unverified completion into retry/review instead of silently stopping; the inherited
+runbook now describes server password verification, retained-contact cleanup and
+the actual `retryRequest` recovery operation. CodeRabbit's follow-up review of
+the completion/test/runbook diff completed with zero findings; the evidence update
+was reviewed manually. Reviewed suggestions not applied:
+the suggested email fallback contradicts the tested verified-primary contract;
+tombstones already clear email/name/payload and deliberately retain opaque replay
+barrier keys. Arbitrary custom HTTP origins are outside this hosted rollout;
+the regional production Cloud-to-Site hostname rewrite is correct.
+
+For real provider rehearsal, a separate European development deployment
+`utmost-oriole-983` (`dev/clerk-lifecycle-20261017`, expires after five days) is
+deployed with the development Clerk issuer and isolated test CRM destination.
+Both CRM switches start off. The shared dev deploy rejected data from another
+branch; no data was changed to force it. A three-event Clerk endpoint is prepared,
+pending browser access confirmation. Real provider delivery is not yet verified.
+
+Notion's two required account-status properties were added and verified separately
+in test and production. Normal production CRM delivery is already live (DAY-366:
+eight new contacts, 61 verified links, two isolated founder-review cases).
+Lifecycle production activation still requires matching Clerk configuration and
+the provider rehearsal. RevenueCat deletion credentials exist in production;
+PostHog deletion credentials are absent. No historical production account was
+repaired, deleted or merged by email; DAY-357's broader matrix is not certified.
+
+## Earlier implementation evidence
+
 Native GitHub stack #810: `main -> #661 -> #748 -> #895`.
 The direct base is PR #748, head `66cf73d44d8cb3c7306d30be79dabaf3d7abf0a6`;
 PR #661 supplies the deletion pipeline. The original checks below used #661

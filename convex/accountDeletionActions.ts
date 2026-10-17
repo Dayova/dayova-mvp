@@ -269,7 +269,13 @@ export const processDeletionRequest = internalAction({
 					);
 					return null;
 				}
-				await ctx.runMutation(internal.accountDeletion.completeRequest, args);
+				if (
+					!(await ctx.runMutation(
+						internal.accountDeletion.completeRequest,
+						args,
+					))
+				)
+					throw new ProcessorError("completion_unverified");
 			}
 			if (stage !== "deleteData" && stage !== "deleteNotion") {
 				await ctx.scheduler.runAfter(
