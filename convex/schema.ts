@@ -131,6 +131,14 @@ const sessionContentChoiceValidator = v.object({
 });
 
 export default defineSchema({
+	clerkIdentities: defineTable({
+		tokenIdentifier: v.string(),
+		clerkId: v.string(),
+		updatedAt: v.number(),
+		eventAt: v.number(),
+		verifiedEmail: v.optional(v.string()),
+		deletedAt: v.optional(v.number()),
+	}).index("by_tokenIdentifier", ["tokenIdentifier"]),
 	accountDeletionRequests: defineTable({
 		requestId: v.string(),
 		ownerTokenIdentifier: v.optional(v.string()),
@@ -148,6 +156,7 @@ export default defineSchema({
 			v.literal("deleteRevenueCat"),
 			v.literal("deletePostHog"),
 			v.literal("deleteData"),
+			v.literal("deleteNotion"),
 			v.literal("complete"),
 		),
 		attemptCount: v.number(),
@@ -162,6 +171,9 @@ export default defineSchema({
 		postHogStatus: v.optional(
 			v.union(v.literal("completed"), v.literal("notConfigured")),
 		),
+		crmDataSourceId: v.optional(v.string()),
+		crmPageId: v.optional(v.string()),
+		crmDeletionVerified: v.optional(v.boolean()),
 		policyVersion: v.string(),
 		requestedAt: v.number(),
 		updatedAt: v.number(),
@@ -204,8 +216,13 @@ export default defineSchema({
 		key: v.string(),
 		runId: v.string(),
 		dataSourceId: v.string(),
-		mode: v.union(v.literal("dry-run"), v.literal("live")),
+		mode: v.union(
+			v.literal("dry-run"),
+			v.literal("live"),
+			v.literal("cleanup"),
+		),
 		running: v.boolean(),
+		cleanupLease: v.optional(v.boolean()),
 		startedAt: v.number(),
 		finishedAt: v.optional(v.number()),
 		dryRunAt: v.optional(v.number()),
