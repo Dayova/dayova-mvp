@@ -12,7 +12,17 @@ export const accounts = internalQuery({
 	args: { paginationOpts: paginationOptsValidator },
 	returns: paginationResultValidator(account),
 	handler: async (ctx, args) => {
-		const page = await ctx.db.query("users").paginate(args.paginationOpts);
+		if (!env.CLERK_JWT_ISSUER_DOMAIN)
+			throw new Error("Clerk issuer is not configured");
+		const prefix = `${env.CLERK_JWT_ISSUER_DOMAIN}|`;
+		const page = await ctx.db
+			.query("users")
+			.withIndex("by_tokenIdentifier", (q) =>
+				q
+					.gte("tokenIdentifier", prefix)
+					.lt("tokenIdentifier", `${prefix}\uffff`),
+			)
+			.paginate(args.paginationOpts);
 		return {
 			...page,
 			page: page.page.map((user) => ({

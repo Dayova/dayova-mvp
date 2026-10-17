@@ -302,6 +302,13 @@ test("reconciliation is read-only by default and checks the API key's instance",
 	const t = convexTest(schema, modules),
 		user = t.withIdentity(identity);
 	await user.mutation(api.users.syncCurrentUser, {});
+	await t.run((ctx) =>
+		ctx.db.insert("users", {
+			tokenIdentifier: "https://other-instance.test|user_foreign",
+			clerkId: "user_foreign",
+			email: "foreign@example.com",
+		}),
+	);
 	vi.stubGlobal(
 		"fetch",
 		vi.fn(async (url: string) =>
