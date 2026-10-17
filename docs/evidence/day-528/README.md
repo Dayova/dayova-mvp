@@ -5,7 +5,9 @@
 Native stack #810 remains `main -> #661 -> #748 -> #895`.
 Repaired parent #661: `d169c77d4c932b49660379f3e3607db81adda153`;
 direct base #748: `5555469073ca9f78d9df07f9d50757fee7170abd`.
-All three PRs are mergeable. The earlier evidence below is historical.
+All three PRs have no merge conflicts. GitHub still requires an approving review
+for each layer; the native stack's enqueue action is disabled until then.
+The earlier evidence below is historical.
 
 - #661 merged current main and resolved the shared sheet/input conflicts using
   main's keyboard-aware input context, with a password-field regression.
@@ -83,11 +85,38 @@ development account and one contact in the isolated test CRM source:
 Notion's two required account-status properties were added and verified separately
 in test and production. Normal production CRM delivery is already live (DAY-366:
 eight new contacts, 61 verified links, two isolated founder-review cases).
-Lifecycle production activation still requires matching Clerk configuration and
-production processor setup. Its endpoint is prepared but disabled until rollout.
-RevenueCat deletion credentials exist in production;
-PostHog deletion credentials are absent. No historical production account was
-repaired, deleted or merged by email; DAY-357's broader matrix is not certified.
+Lifecycle production activation still requires the protected stack merge and
+deployment. Matching Clerk API/signing/instance configuration is now stored in
+production; its three-event endpoint is prepared but disabled until rollout.
+RevenueCat deletion credentials already exist in production. Separate PostHog
+personal keys are now stored only in their matching backends: Production 190091
+on `sleek-bulldog-130`, Dev 190100 on `utmost-oriole-983`, EU API host. Each has
+only `person:write`, which also permits the required person lookup. Both matching
+lookups returned 200; cross-project access returned 403 in both directions.
+
+A second disposable Clerk development account verified the configured PostHog
+stage through the real Clerk deletion webhook and deployed Convex worker:
+`status=completed`, `stage=complete`, `clerkStatus=completed`,
+`postHogStatus=completed`, `crmDeletionVerified=true`, zero retries. The synthetic
+PostHog person existed before deletion and was absent afterward, as was the
+Convex user. A separate direct API probe accepted the worker's exact DELETE URL
+with `delete_events=true&delete_recordings=true` (202). PostHog processes erasure
+asynchronously; these observations verify acceptance and profile removal, not
+physical completion of event/recording purges. No recording was seeded.
+RevenueCat remained `notConfigured` in the isolated fixture. Test CRM switches
+were reset to `off` and the development endpoint disabled again after the probe.
+
+The final pre-handoff code/evidence head `c3918b8d` passed every remote check,
+including its fresh OTA report:
+[EAS run](https://expo.dev/accounts/dayova/projects/dayova/workflows/01a14b35-356f-781d-81bb-555a3e258b53).
+This subsequent update changes evidence only. No historical production account
+was repaired, deleted or merged by email; DAY-357's broader matrix is not certified.
+
+After approval, enqueue the native stack, wait for the merged production Convex
+deployment, verify its function/configuration readback, then set production
+`NOTION_CRM_DELETION_MODE=live` and enable the prepared production Clerk endpoint.
+Keep the already-live `NOTION_CRM_MODE=live`. Historical reconciliation stays
+read-only unless a specific account repair is separately authorized.
 
 ## Earlier implementation evidence
 
