@@ -6,7 +6,19 @@ import {
 const MINUTES_PER_DAY = 24 * 60;
 const DEFAULT_LEARNING_START_TIME = "16:00";
 
-export const ONBOARDING_DURATION_OPTIONS = [10, 20, 30, 45, 60, 90] as const;
+export const ONBOARDING_DURATION_OPTIONS = [
+	15, 30, 45, 60, 90, 120, 150, 180, 210, 240,
+] as const;
+
+export const getOnboardingDurationDisplay = (minutes: number) => ({
+	value: String(minutes < 60 ? minutes : minutes / 60).replace(".", ","),
+	unit: minutes < 60 ? "Minuten" : minutes === 60 ? "Stunde" : "Stunden",
+});
+
+export const formatOnboardingDuration = (minutes: number) => {
+	const { value, unit } = getOnboardingDurationDisplay(minutes);
+	return `${value} ${unit}`;
+};
 
 const parseTimeToMinutes = (value: string) => {
 	const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value.trim());
@@ -22,11 +34,14 @@ const formatTimeFromMinutes = (minutes: number) => {
 
 export const parseOnboardingDurationMinutes = (value: string) => {
 	const normalizedValue = value.trim();
-	return (
-		ONBOARDING_DURATION_OPTIONS.find(
-			(option) => String(option) === normalizedValue,
-		) ?? null
-	);
+	if (!/^\d+$/.test(normalizedValue)) return null;
+	const minutes = Number(normalizedValue);
+	// Preserve already saved onboarding answers from earlier app versions.
+	return ONBOARDING_DURATION_OPTIONS.some((option) => option === minutes) ||
+		minutes === 10 ||
+		minutes === 20
+		? minutes
+		: null;
 };
 
 export const parseOnboardingStudyDays = (value: string) => {
@@ -123,7 +138,8 @@ export const getOnboardingLearningTimeSummary = (input: {
 		window?.durationMinutes ?? parseOnboardingDurationMinutes(input.studyTime);
 	return {
 		daysLabel: joinGermanList(days),
-		durationLabel: durationMinutes === null ? "" : `${durationMinutes} Minuten`,
+		durationLabel:
+			durationMinutes === null ? "" : formatOnboardingDuration(durationMinutes),
 		windowLabel: window
 			? `${window.startTime}–${window.endTime} Uhr`
 			: input.learningTime,

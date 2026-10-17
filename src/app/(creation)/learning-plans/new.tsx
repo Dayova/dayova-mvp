@@ -14,7 +14,7 @@ import {
 	actionSheetIconColor,
 } from "~/components/ui/action-sheet";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
-import { Attachment, ScanImage } from "~/components/ui/icon";
+import { Attachment, Photo, ScanImage } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
@@ -29,6 +29,7 @@ import {
 	examEntrySuccessPath,
 	learningPlanStepPath,
 } from "~/features/learning-plans/creation-routes";
+import { prepareGalleryUploadAsset } from "~/features/learning-plans/gallery-upload";
 import { useLearningPlanSetupOrigin } from "~/features/learning-plans/learning-plan-setup-origin";
 import {
 	MaterialUploadStep,
@@ -55,10 +56,11 @@ import {
 	useBackIntent,
 } from "~/lib/navigation";
 import { ROUTES } from "~/lib/routes";
-import { AI_CONSENT_REQUIRED_ERROR_CODE } from "~/lib/user-facing-error-contract";
-import type { UserFacingErrorCode } from "~/lib/user-facing-error-contract";
 import { ACCEPTED_FILE_TYPES, validateUploadFile } from "~/lib/upload-policy";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
+import type { UserFacingErrorCode } from "~/lib/user-facing-error-contract";
+import { AI_CONSENT_REQUIRED_ERROR_CODE } from "~/lib/user-facing-error-contract";
 
 const UPLOAD_TIMEOUT_MS = 45_000;
 const UPLOAD_COMPLETION_FAILURE_MESSAGE =
@@ -71,18 +73,21 @@ type PreparedUploadAsset = {
 	fileType: string;
 };
 
-type PendingUploadAction = "camera" | "files";
+type PendingUploadAction = "camera" | "library" | "files";
 type PendingUploadRequest = {
 	action: PendingUploadAction;
 };
 
 export default function NewLearningPlanScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const params = useLocalSearchParams<{
 		step?: string;
 		learningPlanId?: string;
 		examDayEntryId?: string;
 		subject?: string;
+		personalSubjectId?: string;
+		subjectIsOneTime?: string;
 		examTypeLabel?: string;
 		examDateKey?: string;
 		examDateLabel?: string;
@@ -108,6 +113,10 @@ export default function NewLearningPlanScreen() {
 	const removeDocument = useMutation(api.learningPlans.removeDocument);
 
 	const subject = params.subject?.trim() || "Fach";
+	const personalSubjectId = params.personalSubjectId as
+		| Id<"personalSubjects">
+		| undefined;
+	const subjectIsOneTime = params.subjectIsOneTime === "true";
 	const examTypeLabel = params.examTypeLabel?.trim() || "Leistungskontrolle";
 	const examDateKey = params.examDateKey || getDateKey(new Date());
 	const examDateLabel =
@@ -130,11 +139,17 @@ export default function NewLearningPlanScreen() {
 	const [topicsInput, setTopicsInput] = useState<string | null>(
 		params.topicDescription ?? params.teacherGuidance ?? null,
 	);
+	// Route params can be older than the saved draft; only actual input edits
+	// may overwrite its topics when pausing.
+	const hasEditedTopicsRef = useRef(false);
 	const [isBusy, setIsBusy] = useState(false);
 	const [isUploading, setIsUploading] = useState(false);
 	const [isUploadSheetVisible, setIsUploadSheetVisible] = useState(false);
 	const [isPauseConfirmationVisible, setIsPauseConfirmationVisible] =
 		useState(false);
+	const [pauseErrorMessage, setPauseErrorMessage] = useState<string | null>(
+		null,
+	);
 	const pendingUploadRequestRef = useRef<PendingUploadRequest | null>(null);
 	const topicActionGateRef = useRef(createAsyncActionGate());
 	const [openingUploadAction, setOpeningUploadAction] =
@@ -216,6 +231,7 @@ export default function NewLearningPlanScreen() {
 			createDraftPlan({
 				examDayEntryId,
 				subject,
+				...(personalSubjectId ? { personalSubjectId } : {}),
 				examTypeLabel,
 				examDateKey,
 				examDateLabel,
@@ -479,6 +495,60 @@ export default function NewLearningPlanScreen() {
 		}
 	};
 
+	const selectPhotos = async () => {
+		if (!canWrite || isBusy) {
+			setOpeningUploadAction(null);
+			return;
+		}
+
+		setSetupError(null);
+		try {
+			const result = await ImagePicker.launchImageLibraryAsync({
+				mediaTypes: ["images"],
+				allowsEditing: false,
+				allowsMultipleSelection: true,
+				orderedSelection: true,
+				selectionLimit: 0,
+				quality: 0.82,
+				preferredAssetRepresentationMode:
+					ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Automatic,
+				shouldDownloadFromNetwork: true,
+			});
+			setOpeningUploadAction(null);
+			if (result.canceled) return;
+
+			setIsUploading(true);
+			await runWithErrorHandling(
+				"Die Fotos konnten nicht hochgeladen werden.",
+				async () => {
+					const preparedAssets = result.assets.map((asset, index) => {
+						return prepareUploadAsset(
+							prepareGalleryUploadAsset(
+								asset,
+								`galerie-${Date.now()}-${index + 1}`,
+							),
+						);
+					});
+					const id = await ensurePlan(topics);
+					for (const asset of preparedAssets) {
+						await uploadLearningPlanAsset(asset, id);
+					}
+				},
+			);
+		} catch (error) {
+			setSetupError({
+				code: null,
+				message: getErrorMessage(
+					error,
+					"Die Galerie konnte nicht geöffnet werden.",
+				),
+			});
+		} finally {
+			setIsUploading(false);
+			setOpeningUploadAction(null);
+		}
+	};
+
 	const closeUploadSheet = () => {
 		pendingUploadRequestRef.current = null;
 		setOpeningUploadAction(null);
@@ -488,6 +558,8 @@ export default function NewLearningPlanScreen() {
 	const runUploadAction = (action: PendingUploadAction) => {
 		if (action === "files") {
 			void uploadMaterial();
+		} else if (action === "library") {
+			void selectPhotos();
 		} else {
 			void takePhoto();
 		}
@@ -573,7 +645,14 @@ export default function NewLearningPlanScreen() {
 	const removeUploadedDocument = async (
 		documentId: Id<"learningPlanDocuments">,
 	) => {
-		await removeDocument({ id: documentId });
+		trackFeature("material.remove", "attempted", documentId);
+		try {
+			await removeDocument({ id: documentId });
+			trackFeature("material.remove", "succeeded", documentId);
+		} catch (error) {
+			trackFeature("material.remove", "failed", documentId);
+			throw error;
+		}
 	};
 
 	const exitCreation = () => {
@@ -582,6 +661,8 @@ export default function NewLearningPlanScreen() {
 				examEntryResumePath({
 					examDayEntryId,
 					subject,
+					personalSubjectId,
+					subjectIsOneTime,
 					examTypeLabel,
 					examDateKey,
 					durationMinutes,
@@ -607,7 +688,50 @@ export default function NewLearningPlanScreen() {
 		return true;
 	};
 
+	const openPauseConfirmation = () => {
+		setPauseErrorMessage(null);
+		setIsPauseConfirmationVisible(true);
+	};
+
+	const pauseCreation = async () => {
+		if (!learningPlanId) return;
+		await topicActionGateRef.current.run(async () => {
+			setIsBusy(true);
+			setPauseErrorMessage(null);
+			try {
+				if (
+					hasEditedTopicsRef.current &&
+					topics !== snapshot?.plan.topicDescription
+				) {
+					if (!isMeaningfulTopicDescription(topics)) {
+						throw new Error(
+							"Bitte ergänze gültige Prüfungsthemen, bevor du pausierst.",
+						);
+					}
+					await retryOnceAfterAuthResume(() =>
+						updateRequiredTopics({
+							id: learningPlanId,
+							topicDescription: topics,
+						}),
+					);
+				}
+				setIsPauseConfirmationVisible(false);
+				dismissToOrReplace(router, ROUTES.learningPlans);
+			} catch (error) {
+				setPauseErrorMessage(
+					getErrorMessage(
+						error,
+						"Deine Änderungen konnten nicht gespeichert werden. Bitte versuche es erneut.",
+					),
+				);
+			} finally {
+				setIsBusy(false);
+			}
+		});
+	};
+
 	const goBack = () => {
+		if (isBusy || topicActionGateRef.current.isRunning) return true;
 		const intent = getLearningPlanCreationBackIntent({
 			step: setupStep,
 			hasSavedDraft: Boolean(learningPlanId),
@@ -625,7 +749,7 @@ export default function NewLearningPlanScreen() {
 			return true;
 		}
 		if (intent.kind === "confirmPause") {
-			setIsPauseConfirmationVisible(true);
+			openPauseConfirmation();
 			return true;
 		}
 		return exitCreation();
@@ -636,6 +760,18 @@ export default function NewLearningPlanScreen() {
 		active: true,
 		currentStep: currentProgressStep,
 		onBack: goBack,
+		onClose: () => {
+			if (isBusy || topicActionGateRef.current.isRunning) return;
+			if (learningPlanId) {
+				openPauseConfirmation();
+				return;
+			}
+			dismissToOrReplace(
+				router,
+				examDayEntryId ? `/entry/${examDayEntryId}` : ROUTES.learningPlans,
+			);
+		},
+		closeDisabled: isBusy,
 	});
 
 	const continueToAnalysis = () => {
@@ -668,7 +804,10 @@ export default function NewLearningPlanScreen() {
 							canContinue={canContinueTopics}
 							errorMessage={errorMessage}
 							isBusy={isBusy}
-							onChangeTopics={setTopicsInput}
+							onChangeTopics={(value) => {
+								hasEditedTopicsRef.current = true;
+								setTopicsInput(value);
+							}}
 							onContinue={() => void continueToMaterial()}
 							topics={topics}
 						/>
@@ -698,11 +837,11 @@ export default function NewLearningPlanScreen() {
 			<ActionSheet
 				visible={isUploadSheetVisible}
 				title="Material von deiner Schule"
-				description="Scanne oder lade Unterlagen deiner Schule oder Lehrkraft hoch."
+				description="Fotografiere oder wähle Unterlagen deiner Schule oder Lehrkraft aus."
 				onClose={closeUploadSheet}
 				onDismiss={runPendingUploadAction}
 				closeAccessibilityLabel="Hochladen schließen"
-				layout="tile"
+				layout="row"
 				onSelect={chooseUploadAction}
 				options={[
 					{
@@ -714,6 +853,22 @@ export default function NewLearningPlanScreen() {
 								<ActivityIndicator color={actionSheetIconColor} />
 							) : (
 								<ScanImage
+									size={28}
+									color={actionSheetIconColor}
+									strokeWidth={1.8}
+								/>
+							),
+					},
+					{
+						value: "library",
+						title: "Galerie",
+						description: "Vorhandene Fotos auswählen",
+						disabled: !canUpload,
+						icon:
+							openingUploadAction === "library" || isBusy ? (
+								<ActivityIndicator color={actionSheetIconColor} />
+							) : (
+								<Photo
 									size={28}
 									color={actionSheetIconColor}
 									strokeWidth={1.8}
@@ -744,11 +899,10 @@ export default function NewLearningPlanScreen() {
 				cancelLabel="Weiter bearbeiten"
 				confirmLabel="Später fortsetzen"
 				confirmTone="primary"
+				isBusy={isBusy}
+				errorMessage={pauseErrorMessage}
 				onClose={() => setIsPauseConfirmationVisible(false)}
-				onConfirm={() => {
-					setIsPauseConfirmationVisible(false);
-					dismissToOrReplace(router, ROUTES.learningPlans);
-				}}
+				onConfirm={() => void pauseCreation()}
 			/>
 		</Screen>
 	);
