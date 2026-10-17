@@ -1,3 +1,39 @@
+## Native route acceptance and confirmed pause — 17 October 2026
+
+The [current native acceptance report and raw captures](https://github.com/Dayova/dayova-mvp/pull/884#issuecomment-6235441405)
+tracks the case-by-case outcome of the later Android run, including remaining
+platform/accessibility limits. It supersedes the earlier open-case matrices
+below only for cases explicitly demonstrated there. This is the regular app
+with a synthetic Clerk test account and development Convex, not the fixture.
+
+The full route created the personal subject Rechnungswesen and found Bilanz /
+Handelsbilanz through the real provider. Native checks demonstrated selection
+without notes, unchanged notes through selection/removal and an unsuccessful
+query, save/material/back, structured restoration after an app restart, and
+removal of all selections followed by pause/save/reopen with intact free text.
+
+The run exposed a real navigation failure: confirmed pause closed its sheet
+but could remain in creation while native removal protection was active.
+After the input has saved successfully, the route now commits an explicit
+leaving state to release that protection before dispatching its exit. Ordinary
+back navigation, pending saves and failed saves remain protected. The corrected
+exit was subsequently demonstrated on the emulator.
+
+Four integration regressions use the real navigation router and prevention
+context with the actual creation route. Success cases failed before the fix;
+all four now pass. They cover unchanged confirmed pause, delayed edited-input
+save, failed save retaining protection/text, and the existing material-later
+replacement (which needs no protection bypass). TypeScript, changed-file
+Biome/ESLint and the CodeRabbit review of both changed code files passed.
+
+The separate native preview includes startup fix #891. Its tested creation
+route matches this PR's file byte-for-byte (SHA-256
+`e87d095e89bc7e95dfeab4362d484f1892b822b689a78889ab0b28eb3ceff42d`).
+The Pixel's preview was kept separate; these later captures use the dedicated
+Android 16/API 36 x86_64 test emulator. Current iOS service availability and
+screen-reader acceptance are reported explicitly in the linked report rather
+than inferred from automated tests or old captures.
+
 ## CI test-environment fix — 17 October 2026
 
 The CI run for `269084cb` passed lint, typecheck, all 139 Vitest files and the

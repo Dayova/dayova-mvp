@@ -156,6 +156,7 @@ export default function NewLearningPlanScreen() {
 	const [isUploadSheetVisible, setIsUploadSheetVisible] = useState(false);
 	const [isPauseConfirmationVisible, setIsPauseConfirmationVisible] =
 		useState(false);
+	const [isLeavingAfterPause, setIsLeavingAfterPause] = useState(false);
 	const [pauseErrorMessage, setPauseErrorMessage] = useState<string | null>(
 		null,
 	);
@@ -715,7 +716,7 @@ export default function NewLearningPlanScreen() {
 					);
 				}
 				setIsPauseConfirmationVisible(false);
-				dismissToOrReplace(router, ROUTES.learningPlans);
+				setIsLeavingAfterPause(true);
 			} catch (error) {
 				setPauseErrorMessage(
 					getErrorMessage(
@@ -750,7 +751,15 @@ export default function NewLearningPlanScreen() {
 		return exitCreation();
 	};
 
-	useBackIntent(hasExamEntry, goBack);
+	useBackIntent(hasExamEntry, goBack, {
+		allowRouteRemoval: isLeavingAfterPause,
+	});
+	useEffect(() => {
+		if (!isLeavingAfterPause) return;
+		// Release native removal protection in the committed render before the
+		// confirmed, saved exit. Ordinary back and failed saves stay protected.
+		dismissToOrReplace(router, ROUTES.learningPlans);
+	}, [isLeavingAfterPause, router]);
 	useLearningPlanCreationProgress({
 		active: true,
 		currentStep: currentProgressStep,
