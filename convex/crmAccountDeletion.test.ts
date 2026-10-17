@@ -214,6 +214,46 @@ test("lost PATCH response recovers by persisted page ID after the Clerk ID was c
 	expect(patches()).toBe(1);
 }, 10_000);
 
+test("the processor completes a verified no-match and retries disabled cleanup", async () => {
+	const { t, request, properties, patches } = await fixture();
+	vi.stubEnv("NOTION_CRM_DELETION_MODE", "off");
+	await t.action(internal.accountDeletionActions.processDeletionRequest, {
+		requestId: request.requestId,
+	});
+	expect(
+		await t.query(internal.accountDeletion.getRequestForProcessing, {
+			requestId: request.requestId,
+		}),
+	).toMatchObject({
+		stage: "deleteNotion",
+		status: "retryScheduled",
+		lastErrorCode: "deleteNotion_configuration",
+	});
+	vi.stubEnv("NOTION_CRM_DELETION_MODE", "live");
+	properties["Clerk User ID"] = { type: "rich_text", rich_text: [] };
+	await t.run(async (ctx) => {
+		const row = await ctx.db.query("accountDeletionRequests").unique();
+		if (!row) throw new Error("Missing request");
+		await ctx.db.patch("accountDeletionRequests", row._id, {
+			crmPageId: undefined,
+			nextAttemptAt: undefined,
+		});
+	});
+	await t.action(internal.accountDeletionActions.processDeletionRequest, {
+		requestId: request.requestId,
+	});
+	expect(
+		await t.query(internal.accountDeletion.getRequestForProcessing, {
+			requestId: request.requestId,
+		}),
+	).toMatchObject({
+		stage: "complete",
+		status: "completed",
+		crmDeletionVerified: true,
+	});
+	expect(patches()).toBe(0);
+});
+
 test("changed identity/destination and missing cleanup configuration fail closed", async () => {
 	const { t, request, properties, patches } = await fixture();
 	properties["Clerk User ID"] = {

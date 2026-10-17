@@ -15,30 +15,38 @@ accountable-human approval tracked in DAY-357.
 - `POSTHOG_PERSONAL_API_KEY` and `POSTHOG_PROJECT_ID`: configure both or neither.
   The key must be allowed to delete persons. Events and recordings are included.
 - `POSTHOG_API_HOST`: optional, defaults to `https://eu.posthog.com`.
+- `NOTION_CRM_DELETION_MODE=live`, `NOTION_CRM_TOKEN` and
+  `NOTION_CRM_DATA_SOURCE_ID`: required for verified CRM account cleanup.
+  This switch is independent of normal `NOTION_CRM_MODE` delivery.
 
 Set secrets with `npx convex env set NAME value`; never add them to Expo public
 environment variables.
 
 ## Pipeline and guarantees
 
-1. The client asks Clerk for recent first-factor reverification when the token's
-   factor verification age is older than ten minutes.
+1. The client verifies the current password with Clerk and obtains a fresh JWT.
+   `POST /account-deletion` independently verifies that password with Clerk for
+   the authenticated subject before accepting the request. Passwords are not
+   persisted or forwarded as mutation arguments. The legacy public mutation
+   fails closed.
 2. Convex creates one idempotent `accountDeletionRequests` tombstone and denies
    subsequent app reads and writes for that owner immediately.
 3. The processor revokes all active Clerk sessions, deletes the Clerk identity,
    removes the RevenueCat customer, and deletes the PostHog person together with
    events and recordings.
 4. Convex-owned rows and uploaded files are deleted in bounded batches.
-5. Completion removes owner and Clerk identifiers from the request. Only the
+5. The `deleteNotion` stage retains the CRM contact and manual/profile/history
+   fields, clears current app identity/access fields and marks the app account
+   deleted. Completion requires `crmDeletionVerified=true` after readback.
+6. Completion removes owner and Clerk identifiers from the request. Only the
    request id, policy version, timestamps, processor outcomes, counts, and a
    machine-readable error code remain as the minimum operational audit record.
 
-The current pipeline also removes the user's local CRM signup, link, and update
-rows. It does **not** delete or anonymize the corresponding contact in Notion
-or Loops. A completed app-account request is therefore not evidence that those
-independent processor records were deleted. Keep the CRM integration disabled
-for live use until DAY-357 defines their treatment and DAY-358 implements and
-tests the approved behavior.
+The pipeline also removes the user's local CRM signup, link and update rows.
+The retained Notion contact follows Jakob's explicit CRM decision documented in
+[the Clerk lifecycle runbook](clerk-lifecycle.md). It does not delete an
+independent Loops contact. A completed app-account request therefore does not
+certify erasure from every independent processor.
 
 Each completed stage is durable and safe to repeat. HTTP 404 responses are
 treated as successful deletion. Failures use capped exponential delays and move
@@ -50,8 +58,11 @@ attempt number, and sanitized error code only.
 - Search `accountDeletionRequests` by `requestId` in the Convex dashboard.
 - `retryScheduled` means the scheduler will continue automatically.
 - `manualReview` means an operator must fix the configuration or provider
-  problem, then run `accountDeletionActions.processDeletionRequest` with the
-  request id from the Convex dashboard. The action resumes at the stored stage.
+  problem, then run `accountDeletion.retryRequest` with the request id from the
+  Convex dashboard. This resets attempts, re-queues the request and resumes its
+  stored stage. Calling the processor directly does not unblock manual review.
+- Disabled or missing Notion cleanup configuration retries at `deleteNotion`
+  and eventually reaches `manualReview`; it never reports successful completion.
 - A completed record must have `stage=complete`, no owner or Clerk id, and
   processor status fields for every configured downstream system.
 
