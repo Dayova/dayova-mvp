@@ -26,6 +26,7 @@ import { useAccountActions } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { openExternalUrl } from "~/lib/open-external-url";
 import { env } from "~/lib/runtime-config";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 const PAYWALL_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 const BRAND_COLORS = DAYOVA_DESIGN_SYSTEM.colors;
@@ -44,6 +45,7 @@ const primaryPayerIconStyle = {
 };
 
 export function PaywallScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const { deleteAccount, logout } = useAccountActions();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
@@ -58,7 +60,10 @@ export function PaywallScreen() {
 	const [deletionPassword, setDeletionPassword] = useState("");
 	const deletionInFlightRef = useRef(false);
 
-	const openSubscription = () => router.push("/subscription");
+	const openSubscription = () => {
+		trackFeature("paywall.subscription_opened");
+		router.push("/subscription");
+	};
 
 	const requestAccountDeletion = () => {
 		setDeleteError(null);

@@ -25,6 +25,8 @@ import type * as crmSync from "../crmSync.js";
 import type * as crmSyncState from "../crmSyncState.js";
 import type * as crmUpdates from "../crmUpdates.js";
 import type * as crons from "../crons.js";
+import type * as dashboardMigrations from "../dashboardMigrations.js";
+import type * as dashboardNextStep from "../dashboardNextStep.js";
 import type * as dayEntries from "../dayEntries.js";
 import type * as dayKeyVariants from "../dayKeyVariants.js";
 import type * as diagnosticReadiness from "../diagnosticReadiness.js";
@@ -40,8 +42,11 @@ import type * as learningPlanAi from "../learningPlanAi.js";
 import type * as learningPlanAiCost from "../learningPlanAiCost.js";
 import type * as learningPlanAiUsage from "../learningPlanAiUsage.js";
 import type * as learningPlanAvailability from "../learningPlanAvailability.js";
+import type * as learningPlanCalendar from "../learningPlanCalendar.js";
+import type * as learningPlanDiagnostic from "../learningPlanDiagnostic.js";
 import type * as learningPlanPlanningHints from "../learningPlanPlanningHints.js";
 import type * as learningPlans from "../learningPlans.js";
+import type * as learningPreparation from "../learningPreparation.js";
 import type * as learningPreparationPolicy from "../learningPreparationPolicy.js";
 import type * as learningSessionComposition from "../learningSessionComposition.js";
 import type * as learningSessionContent from "../learningSessionContent.js";
@@ -50,10 +55,14 @@ import type * as learningSessionDurationText from "../learningSessionDurationTex
 import type * as learningSessionScheduleFormatting from "../learningSessionScheduleFormatting.js";
 import type * as learningSessionSegmentation from "../learningSessionSegmentation.js";
 import type * as learningTimeAvailability from "../learningTimeAvailability.js";
+import type * as learningTimePlanning from "../learningTimePlanning.js";
 import type * as learningTimes from "../learningTimes.js";
 import type * as learningTimesBackfill from "../learningTimesBackfill.js";
 import type * as learningTopicMap from "../learningTopicMap.js";
 import type * as notifications from "../notifications.js";
+import type * as personalSubjectReferences from "../personalSubjectReferences.js";
+import type * as personalSubjects from "../personalSubjects.js";
+import type * as preparationSchedule from "../preparationSchedule.js";
 import type * as questionNovelty from "../questionNovelty.js";
 import type * as revenueCat from "../revenueCat.js";
 import type * as scheduleConflicts from "../scheduleConflicts.js";
@@ -91,6 +100,8 @@ declare const fullApi: ApiFromModules<{
   crmSyncState: typeof crmSyncState;
   crmUpdates: typeof crmUpdates;
   crons: typeof crons;
+  dashboardMigrations: typeof dashboardMigrations;
+  dashboardNextStep: typeof dashboardNextStep;
   dayEntries: typeof dayEntries;
   dayKeyVariants: typeof dayKeyVariants;
   diagnosticReadiness: typeof diagnosticReadiness;
@@ -106,8 +117,11 @@ declare const fullApi: ApiFromModules<{
   learningPlanAiCost: typeof learningPlanAiCost;
   learningPlanAiUsage: typeof learningPlanAiUsage;
   learningPlanAvailability: typeof learningPlanAvailability;
+  learningPlanCalendar: typeof learningPlanCalendar;
+  learningPlanDiagnostic: typeof learningPlanDiagnostic;
   learningPlanPlanningHints: typeof learningPlanPlanningHints;
   learningPlans: typeof learningPlans;
+  learningPreparation: typeof learningPreparation;
   learningPreparationPolicy: typeof learningPreparationPolicy;
   learningSessionComposition: typeof learningSessionComposition;
   learningSessionContent: typeof learningSessionContent;
@@ -116,10 +130,14 @@ declare const fullApi: ApiFromModules<{
   learningSessionScheduleFormatting: typeof learningSessionScheduleFormatting;
   learningSessionSegmentation: typeof learningSessionSegmentation;
   learningTimeAvailability: typeof learningTimeAvailability;
+  learningTimePlanning: typeof learningTimePlanning;
   learningTimes: typeof learningTimes;
   learningTimesBackfill: typeof learningTimesBackfill;
   learningTopicMap: typeof learningTopicMap;
   notifications: typeof notifications;
+  personalSubjectReferences: typeof personalSubjectReferences;
+  personalSubjects: typeof personalSubjects;
+  preparationSchedule: typeof preparationSchedule;
   questionNovelty: typeof questionNovelty;
   revenueCat: typeof revenueCat;
   scheduleConflicts: typeof scheduleConflicts;
@@ -162,4 +180,5 @@ export declare const internal: FilterApi<
 
 export declare const components: {
   convexFilesControl: import("@gilhrpenner/convex-files-control/_generated/component.js").ComponentApi<"convexFilesControl">;
+  migrations: import("@convex-dev/migrations/_generated/component.js").ComponentApi<"migrations">;
 };

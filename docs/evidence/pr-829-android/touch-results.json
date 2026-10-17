@@ -1,0 +1,511 @@
+[
+  {
+    "seconds": 4.337,
+    "scenario": "ordinary tap opens Deutsch",
+    "pass": true,
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791299397912
+        }
+      ],
+      "pathname": "/learning-plans/jn7fs2jrmrzej683zrth5x4x4x8fswym",
+      "route": "learning-plans/[planId]/index"
+    }
+  },
+  {
+    "seconds": 9.956,
+    "scenario": "Back returns to overview",
+    "pass": true,
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791299397912
+        },
+        {
+          "route": "learning-plans",
+          "time": 1791299403265
+        }
+      ],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 12.791,
+    "scenario": "long swipe 1",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 15.375,
+    "scenario": "closing swipe 1",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 17.881,
+    "scenario": "long swipe 2",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 22.552,
+    "scenario": "closing swipe 2",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 24.342,
+    "scenario": "long swipe 3",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 25.986,
+    "scenario": "closing swipe 3",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 27.518,
+    "scenario": "long swipe 4",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 28.641,
+    "scenario": "closing swipe 4",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 29.732,
+    "scenario": "long swipe 5",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 30.762,
+    "scenario": "closing swipe 5",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 31.679,
+    "scenario": "long swipe 6",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 32.671,
+    "scenario": "closing swipe 6",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 33.641,
+    "scenario": "long swipe 7",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 34.514,
+    "scenario": "closing swipe 7",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 35.448,
+    "scenario": "long swipe 8",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 36.336,
+    "scenario": "closing swipe 8",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 37.199,
+    "scenario": "long swipe 9",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 38.075,
+    "scenario": "closing swipe 9",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 38.957,
+    "scenario": "long swipe 10",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 39.827,
+    "scenario": "closing swipe 10",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 40.706,
+    "scenario": "short swipe 1",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 41.575,
+    "scenario": "short swipe 2",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 42.428,
+    "scenario": "short swipe 3",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 43.348,
+    "scenario": "short swipe 4",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 44.314,
+    "scenario": "short swipe 5",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 45.246,
+    "scenario": "short swipe 6",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 46.155,
+    "scenario": "short swipe 7",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 47.084,
+    "scenario": "short swipe 8",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 47.993,
+    "scenario": "short swipe 9",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 48.889,
+    "scenario": "short swipe 10",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 50.42,
+    "scenario": "fresh tap closes actions",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 51.477,
+    "scenario": "second tap opens Deutsch",
+    "pass": true,
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791299444716
+        }
+      ],
+      "pathname": "/learning-plans/jn7fs2jrmrzej683zrth5x4x4x8fswym",
+      "route": "learning-plans/[planId]/index"
+    }
+  },
+  {
+    "seconds": 53.903,
+    "scenario": "immediate fresh tap during snap-back 1",
+    "pass": true,
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791299447157
+        }
+      ],
+      "pathname": "/learning-plans/jn7fs2jrmrzej683zrth5x4x4x8fswym",
+      "route": "learning-plans/[planId]/index"
+    }
+  },
+  {
+    "seconds": 56.371,
+    "scenario": "immediate fresh tap during snap-back 2",
+    "pass": true,
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791299449976
+        }
+      ],
+      "pathname": "/learning-plans/jn7fs2jrmrzej683zrth5x4x4x8fswym",
+      "route": "learning-plans/[planId]/index"
+    }
+  },
+  {
+    "seconds": 59.889,
+    "scenario": "immediate fresh tap during snap-back 3",
+    "pass": true,
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791299452916
+        }
+      ],
+      "pathname": "/learning-plans/jn7fs2jrmrzej683zrth5x4x4x8fswym",
+      "route": "learning-plans/[planId]/index"
+    }
+  },
+  {
+    "seconds": 62.645,
+    "scenario": "immediate fresh tap during snap-back 4",
+    "pass": true,
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791299456166
+        }
+      ],
+      "pathname": "/learning-plans/jn7fs2jrmrzej683zrth5x4x4x8fswym",
+      "route": "learning-plans/[planId]/index"
+    }
+  },
+  {
+    "seconds": 65.788,
+    "scenario": "immediate fresh tap during snap-back 5",
+    "pass": true,
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791299458923
+        }
+      ],
+      "pathname": "/learning-plans/jn7fs2jrmrzej683zrth5x4x4x8fswym",
+      "route": "learning-plans/[planId]/index"
+    }
+  },
+  {
+    "seconds": 68.109,
+    "scenario": "mostly vertical diagonal drag 1",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 69.101,
+    "scenario": "vertical drag 1",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 70.289,
+    "scenario": "mostly vertical diagonal drag 2",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 71.427,
+    "scenario": "vertical drag 2",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 72.572,
+    "scenario": "mostly vertical diagonal drag 3",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 73.713,
+    "scenario": "vertical drag 3",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 75.639,
+    "scenario": "swipe Deutsch then tap Mathematik",
+    "pass": true,
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791299469038
+        }
+      ],
+      "pathname": "/learning-plans/jn74zte5pe2h8wkkcyvyz41ren8fs9sh",
+      "route": "learning-plans/[planId]/index"
+    }
+  }
+]

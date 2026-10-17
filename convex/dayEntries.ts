@@ -5,6 +5,15 @@ import { mutation, query } from "./_generated/server";
 import { assertAccountActive } from "./accountDeletion";
 import { getBerlinDayKey, getDayKeyQueryVariants } from "./dayKeyVariants";
 import { throwUserFacingError } from "./errors";
+import {
+	addPersonalSubjectReference,
+	deleteDayEntryWithPersonalSubjectReference,
+	replacePersonalSubjectReference,
+} from "./personalSubjectReferences";
+import {
+	renameSubjectPrefix,
+	resolveSubjectSelection,
+} from "./personalSubjects";
 import { assertNoScheduleConflict, isExamEntry } from "./scheduleConflicts";
 import {
 	getActiveTimetableLessons,
@@ -15,6 +24,8 @@ import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
 
 type OptionalEntryFields = {
 	subject?: string;
+	personalSubjectId?: Id<"personalSubjects">;
+	subjectIsOneTime?: boolean;
 	time?: string;
 	kind?: string;
 	notes?: string;
@@ -60,6 +71,12 @@ const optionalEntryFields = (
 ): OptionalEntryFields => ({
 	...(entry.time !== undefined ? { time: entry.time } : {}),
 	...(entry.subject !== undefined ? { subject: entry.subject } : {}),
+	...(entry.personalSubjectId !== undefined
+		? { personalSubjectId: entry.personalSubjectId }
+		: {}),
+	...(entry.subjectIsOneTime !== undefined
+		? { subjectIsOneTime: entry.subjectIsOneTime }
+		: {}),
 	...(entry.kind !== undefined ? { kind: entry.kind } : {}),
 	...(entry.notes !== undefined ? { notes: entry.notes } : {}),
 	...(entry.dueDateKey !== undefined ? { dueDateKey: entry.dueDateKey } : {}),
@@ -157,6 +174,8 @@ const isSameCreatePayload = (
 ) =>
 	entry.title === args.title &&
 	optionalValuesMatch(entry.subject, args.subject) &&
+	optionalValuesMatch(entry.personalSubjectId, args.personalSubjectId) &&
+	optionalValuesMatch(entry.subjectIsOneTime, args.subjectIsOneTime) &&
 	optionalValuesMatch(
 		isExamEntry(entry) ? undefined : entry.time,
 		isExamEntry(args) ? undefined : args.time,
@@ -201,6 +220,8 @@ const findExistingSameEntry = async (
 const entryFields = {
 	title: v.string(),
 	subject: v.optional(v.string()),
+	personalSubjectId: v.optional(v.id("personalSubjects")),
+	subjectIsOneTime: v.optional(v.boolean()),
 	time: v.optional(v.string()),
 	kind: v.optional(v.string()),
 	notes: v.optional(v.string()),
@@ -295,7 +316,13 @@ export const listByDayKeys = query({
 			Doc<"learningPlans"> | null
 		>();
 		for (const session of learningSessions) {
-			if (session.planningStatus === "provisional") continue;
+			if (
+				session.planningStatus === "provisional" ||
+				session.preparationSlotId ||
+				session.unscheduled ||
+				session.additionalPractice
+			)
+				continue;
 			const requestedDayKey = getRequestedDayKey(
 				session.dateKey,
 				queryKeyToRequestedDayKey,
@@ -411,6 +438,8 @@ export const updatePendingExam = mutation({
 		id: v.id("dayEntries"),
 		dayKey: v.string(),
 		subject: v.string(),
+		personalSubjectId: v.union(v.id("personalSubjects"), v.null()),
+		subjectIsOneTime: v.boolean(),
 		examTypeLabel: v.string(),
 		plannedDateLabel: v.string(),
 		durationMinutes: v.number(),
@@ -435,21 +464,37 @@ export const updatePendingExam = mutation({
 				"Diese Prüfung ist bereits abgeschlossen oder mit einem Lernplan verknüpft. Öffne sie unter Lernpläne.",
 			);
 		}
-		const subject = args.subject.trim();
+		const requestedSubject = args.subject.trim();
 		const examTypeLabel = args.examTypeLabel.trim();
-		if (!subject || !examTypeLabel) {
+		if (!requestedSubject || !examTypeLabel) {
 			throwUserFacingError("Wähle ein Fach und eine Prüfungsart aus.");
 		}
 		if (!Number.isFinite(args.durationMinutes) || args.durationMinutes <= 0) {
 			throwUserFacingError("Die Prüfungsdauer muss größer als null sein.");
 		}
+		const resolvedSubject = await resolveSubjectSelection(ctx, {
+			ownerTokenIdentifier,
+			subject: requestedSubject,
+			personalSubjectId: args.personalSubjectId ?? undefined,
+		});
 		await ctx.db.patch("dayEntries", args.id, {
 			dayKey: args.dayKey,
-			subject,
+			subject: resolvedSubject.subject,
+			personalSubjectId: resolvedSubject.personalSubjectId,
+			subjectIsOneTime:
+				args.subjectIsOneTime && !resolvedSubject.personalSubjectId
+					? true
+					: undefined,
 			examTypeLabel,
-			title: `${subject} ${examTypeLabel}`,
+			title: `${resolvedSubject.subject} ${examTypeLabel}`,
 			plannedDateLabel: args.plannedDateLabel,
 			durationMinutes: args.durationMinutes,
+		});
+		await replacePersonalSubjectReference(ctx, {
+			ownerTokenIdentifier,
+			previousPersonalSubjectId: entry.personalSubjectId,
+			nextPersonalSubjectId: resolvedSubject.personalSubjectId,
+			target: { targetKind: "dayEntry", dayEntryId: entry._id },
 		});
 		return null;
 	},
@@ -462,14 +507,39 @@ export const create = mutation({
 	},
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
-		const title = args.title.trim();
-		if (!title) {
+		const submittedTitle = args.title.trim();
+		if (!submittedTitle) {
 			throwUserFacingError("Titel darf nicht leer sein.");
 		}
+		if (args.personalSubjectId && !args.subject?.trim()) {
+			throwUserFacingError("Fach fehlt.");
+		}
+		const resolvedSubject: {
+			subject?: string;
+			personalSubjectId?: Id<"personalSubjects">;
+		} = args.subject?.trim()
+			? await resolveSubjectSelection(ctx, {
+					ownerTokenIdentifier,
+					subject: args.subject,
+					personalSubjectId: args.personalSubjectId,
+				})
+			: {};
+		const title =
+			resolvedSubject.subject && args.subject
+				? renameSubjectPrefix(
+						submittedTitle,
+						args.subject.trim(),
+						resolvedSubject.subject,
+					)
+				: submittedTitle;
 		const normalizedArgs = {
 			...args,
 			title,
-			...(args.subject?.trim() ? { subject: args.subject.trim() } : {}),
+			...resolvedSubject,
+			subjectIsOneTime:
+				args.subjectIsOneTime && !resolvedSubject.personalSubjectId
+					? true
+					: undefined,
 			...(isExamEntry(args) ? { time: undefined } : {}),
 		};
 		const existingSameEntry = await findExistingSameEntry(ctx, {
@@ -488,12 +558,18 @@ export const create = mutation({
 			durationMinutes: normalizedArgs.durationMinutes,
 		});
 
-		return await ctx.db.insert("dayEntries", {
+		const dayEntryId = await ctx.db.insert("dayEntries", {
 			ownerTokenIdentifier,
 			dayKey: args.dayKey,
 			title,
 			...optionalEntryFields(normalizedArgs),
 		});
+		await addPersonalSubjectReference(ctx, {
+			ownerTokenIdentifier,
+			personalSubjectId: resolvedSubject.personalSubjectId,
+			target: { targetKind: "dayEntry", dayEntryId },
+		});
+		return dayEntryId;
 	},
 });
 
@@ -533,7 +609,7 @@ export const remove = mutation({
 			return null;
 		}
 
-		await ctx.db.delete("dayEntries", args.id);
+		await deleteDayEntryWithPersonalSubjectReference(ctx, args.id);
 		return entry.dayKey;
 	},
 });

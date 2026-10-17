@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import type { TextInput } from "react-native";
-import { DayovaSheetInput } from "~/components/ui/dayova-sheet-frame";
 import { Field, FieldControl, FieldLabel } from "~/components/ui/field";
+import { Input } from "~/components/ui/input";
 
 export function AccountDeletionPasswordField({
 	value,
@@ -18,7 +18,7 @@ export function AccountDeletionPasswordField({
 		<Field>
 			<FieldLabel onPress={() => inputRef.current?.focus()}>{label}</FieldLabel>
 			<FieldControl>
-				<DayovaSheetInput
+				<Input
 					ref={inputRef}
 					className="min-h-16 self-stretch"
 					accessibilityLabel={label}

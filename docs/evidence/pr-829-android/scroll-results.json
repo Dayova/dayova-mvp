@@ -1,0 +1,77 @@
+[
+  {
+    "seconds": 4.114,
+    "scenario": "Vertical drag scrolls list without opening a plan",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    },
+    "observation": {
+      "beforeMathBounds": [
+        [
+          41,
+          1504,
+          680,
+          1424
+        ]
+      ],
+      "afterMathBounds": [
+        [
+          41,
+          1201,
+          680,
+          1424
+        ]
+      ]
+    }
+  },
+  {
+    "seconds": 8.438,
+    "scenario": "Mostly vertical diagonal drag remains on overview",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    },
+    "observation": {
+      "mathBounds": [
+        [
+          41,
+          1028,
+          680,
+          1384
+        ]
+      ]
+    }
+  },
+  {
+    "seconds": 10.096,
+    "scenario": "Fresh tap after scrolling opens Mathematik",
+    "pass": true,
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791300158690
+        }
+      ],
+      "pathname": "/learning-plans/jn74zte5pe2h8wkkcyvyz41ren8fs9sh",
+      "route": "learning-plans/[planId]/index"
+    },
+    "observation": null
+  },
+  {
+    "seconds": 13.452,
+    "scenario": "Reverse vertical scroll stays on overview",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    },
+    "observation": null
+  }
+]

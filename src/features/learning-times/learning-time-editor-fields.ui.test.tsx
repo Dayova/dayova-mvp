@@ -1,5 +1,6 @@
 import { describe, expect, jest, test } from "@jest/globals";
-import { render } from "@testing-library/react-native";
+import { render, within } from "@testing-library/react-native";
+import { processColor } from "react-native";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { LearningTimeEditorFields } from "./learning-time-editor-fields";
 
@@ -34,12 +35,33 @@ describe("LearningTimeEditorFields", () => {
 		);
 
 		const selectedDay = screen.getByRole("radio", { name: "Dienstag" });
-		expect(selectedDay.props.accessibilityState).toEqual({ checked: true });
-		expect(selectedDay.props.className).toContain("aspect-square");
-		expect(selectedDay.props.className).toContain("max-w-12");
+		expect(selectedDay.props.accessibilityState).toMatchObject({
+			checked: true,
+			disabled: false,
+		});
 		expect(screen.getByText("Di")).toHaveStyle({
 			color: DAYOVA_DESIGN_SYSTEM.colors.onPrimary,
 		});
+		expect(screen.getByText("Mo")).toHaveStyle({
+			color: DAYOVA_DESIGN_SYSTEM.colors.text,
+		});
+		expect(
+			screen.getByTestId("learning-weekday-row").props.className,
+		).not.toContain("flex-wrap");
+		expect(screen.getAllByRole("radio")).toHaveLength(7);
+		expect(
+			screen.getByTestId("learning-weekday-row").props.className,
+		).toContain("justify-between");
+		expect(
+			screen.getByTestId("learning-weekday-row").props.className,
+		).toContain("grow");
+		expect(
+			within(selectedDay).getByTestId("selection-gradient").props.colors,
+		).toEqual(
+			DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.colors.map((color) =>
+				processColor(color),
+			),
+		);
 	});
 
 	test("uses bordered time fields without drop shadows", async () => {
@@ -57,7 +79,12 @@ describe("LearningTimeEditorFields", () => {
 		for (const label of ["Beginn: 17:00", "Ende: 17:30"]) {
 			const timeField = screen.getByRole("button", { name: label });
 			expect(timeField.props.className).toContain("border-border");
+			expect(timeField.props.className).toContain("rounded-[24px]");
 			expect(timeField.props.className).not.toContain("shadow");
 		}
 	});
 });
+
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+);

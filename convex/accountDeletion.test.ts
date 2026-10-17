@@ -222,6 +222,20 @@ test("deletes account data in bounded internal batches and preserves other users
 			startTime: "16:00",
 			updatedAt: 1,
 		});
+		await ctx.db.insert("personalSubjects", {
+			ownerTokenIdentifier: userIdentity.tokenIdentifier,
+			name: "Französisch",
+			normalizedName: "französisch",
+			createdAt: 1,
+			updatedAt: 1,
+		});
+		await ctx.db.insert("personalSubjects", {
+			ownerTokenIdentifier: otherIdentity.tokenIdentifier,
+			name: "Latein",
+			normalizedName: "latein",
+			createdAt: 1,
+			updatedAt: 1,
+		});
 		for (const [id, status] of [
 			[userId, "pending"],
 			[otherUserId, "review"],
@@ -252,6 +266,10 @@ test("deletes account data in bounded internal batches and preserves other users
 	expect(batches).toBeGreaterThan(1);
 	const remaining = await backend.run(async (ctx) => ({
 		dayEntries: await ctx.db.query("dayEntries").take(100),
+		personalSubjects: await ctx.db.query("personalSubjects").take(100),
+		personalSubjectReferences: await ctx.db
+			.query("personalSubjectReferences")
+			.take(100),
 		onboardingAnswers: await ctx.db.query("userOnboardingAnswers").take(100),
 		requests: await ctx.db.query("accountDeletionRequests").take(10),
 		users: await ctx.db.query("users").take(10),
@@ -260,6 +278,10 @@ test("deletes account data in bounded internal batches and preserves other users
 	expect(remaining.dayEntries).toMatchObject([
 		{ ownerTokenIdentifier: otherIdentity.tokenIdentifier },
 	]);
+	expect(remaining.personalSubjects).toMatchObject([
+		{ ownerTokenIdentifier: otherIdentity.tokenIdentifier, name: "Latein" },
+	]);
+	expect(remaining.personalSubjectReferences).toEqual([]);
 	expect(remaining.onboardingAnswers).toMatchObject([{ userId: otherUserId }]);
 	expect(remaining.users).toMatchObject([
 		{ tokenIdentifier: otherIdentity.tokenIdentifier },
@@ -270,7 +292,7 @@ test("deletes account data in bounded internal batches and preserves other users
 	expect(remaining.requests[0]).toMatchObject({
 		status: "completed",
 		stage: "complete",
-		deletedRecords: 35,
+		deletedRecords: 36,
 	});
 	expect(remaining.requests[0]).not.toHaveProperty("ownerTokenIdentifier");
 	expect(remaining.requests[0]).not.toHaveProperty("clerkUserId");

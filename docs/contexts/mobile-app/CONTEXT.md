@@ -14,8 +14,10 @@ recoverable error in the surface where the action occurred.
 
 ## Settings navigation
 
-The Mehr page prioritizes Profil, Hilfe & Support, Lernen, App, Dayova,
-then Datenschutz & Rechtliches. Profil owns personal details, password changes,
+The Mehr page keeps Profil and Hilfe & Support first. Without an active store
+subscription, the Dayova card follows Support, before Lernen and App. For an
+active subscription or billing grace period, the Dayova management card follows
+App, directly before Datenschutz & Rechtliches. Profil owns personal details, password changes,
 sign-out, and confirmed account deletion. Profile, support, and subscription
 entries use standalone cards without repeated headings; the profile card shows
 the user's name and “Profil & Konto”, with that label alone as the fallback.

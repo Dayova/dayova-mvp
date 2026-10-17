@@ -3,6 +3,12 @@ import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import { PaywallScreen } from "./paywall-screen";
 
+jest.mock("~/lib/theme", () => ({
+	useDayovaTheme: () => ({
+		colors: { primary: "#2B5BFC", text: "#101828" },
+	}),
+}));
+
 jest.mock("~/components/ui/icon", () => ({
 	ArrowLeft: () => null,
 	ArrowRight: () => null,
@@ -103,9 +109,6 @@ jest.mock("~/components/ui/dayova-sheet-frame", () => {
 	const { Text: NativeText, View: NativeView } =
 		jest.requireActual<typeof import("react-native")>("react-native");
 	return {
-		DayovaSheetInput:
-			jest.requireActual<typeof import("react-native")>("react-native")
-				.TextInput,
 		DayovaSheetFrame: ({
 			children,
 			description,

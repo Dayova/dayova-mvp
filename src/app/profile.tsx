@@ -26,11 +26,13 @@ import {
 } from "~/features/settings/settings-list";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { logDiagnosticError } from "~/lib/diagnostics";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 const isValidEmail = (value: string) => /\S+@\S+\.\S+/.test(value.trim());
 const isValidName = (value: string) => value.trim().length >= 2;
 
 export default function ProfileScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const { user } = useAuthSession();
 	const {
@@ -172,6 +174,11 @@ export default function ProfileScreen() {
 				return;
 			}
 
+			try {
+				trackFeature("settings.profile_saved", "succeeded");
+			} catch {
+				// Analytics must not turn a saved profile into a failed update.
+			}
 			setFeedback({
 				tone: "success",
 				message: "Dein Profil wurde gespeichert.",
@@ -199,6 +206,11 @@ export default function ProfileScreen() {
 		setFeedback(null);
 		try {
 			await verifyProfileEmailCode(code);
+			try {
+				trackFeature("settings.profile_saved", "succeeded");
+			} catch {
+				// Analytics must not turn a verified email into a failed update.
+			}
 			setIsEmailVerificationPending(false);
 			setCode("");
 			setFeedback({

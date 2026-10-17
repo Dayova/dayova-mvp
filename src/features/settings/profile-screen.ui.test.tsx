@@ -3,11 +3,6 @@ import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import ProfileScreen from "../../app/profile";
 
-jest.mock("~/components/ui/dayova-sheet-frame", () => ({
-	DayovaSheetInput:
-		jest.requireActual<typeof import("react-native")>("react-native").TextInput,
-}));
-
 const mockReplace = jest.fn();
 
 const mockPush = jest.fn();

@@ -405,6 +405,8 @@ export default defineSchema({
 		title: v.string(),
 		// Keep entries written by adaptive exam-planning builds schema-compatible.
 		subject: v.optional(v.string()),
+		personalSubjectId: v.optional(v.id("personalSubjects")),
+		subjectIsOneTime: v.optional(v.boolean()),
 		time: v.optional(v.string()),
 		kind: v.optional(v.string()),
 		notes: v.optional(v.string()),
@@ -466,6 +468,8 @@ export default defineSchema({
 		timetableId: v.id("timetables"),
 		dayOfWeek: v.number(),
 		subject: v.string(),
+		personalSubjectId: v.optional(v.id("personalSubjects")),
+		subjectIsOneTime: v.optional(v.boolean()),
 		startTime: v.string(),
 		endTime: v.string(),
 		room: v.optional(v.string()),
@@ -482,12 +486,22 @@ export default defineSchema({
 	learningPlans: defineTable({
 		ownerTokenIdentifier: v.string(),
 		subject: v.string(),
+		personalSubjectId: v.optional(v.id("personalSubjects")),
 		examTypeLabel: v.string(),
 		examDateKey: v.string(),
 		examDateLabel: v.string(),
 		examTime: v.optional(v.string()),
 		durationMinutes: v.number(),
 		targetStudyMinutes: v.optional(v.number()),
+		preparationState: v.optional(
+			v.union(
+				v.literal("diagnostic"),
+				v.literal("review"),
+				v.literal("ready"),
+				v.literal("completed"),
+			),
+		),
+		preparationRevision: v.optional(v.number()),
 		preparationDepth: v.optional(
 			v.union(
 				v.literal("compact"),
@@ -529,6 +543,45 @@ export default defineSchema({
 			"ownerTokenIdentifier",
 			"status",
 		]),
+	personalSubjects: defineTable({
+		ownerTokenIdentifier: v.string(),
+		name: v.string(),
+		normalizedName: v.string(),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	}).index("by_ownerTokenIdentifier_and_normalizedName", [
+		"ownerTokenIdentifier",
+		"normalizedName",
+	]),
+	personalSubjectReferences: defineTable(
+		v.union(
+			v.object({
+				ownerTokenIdentifier: v.string(),
+				personalSubjectId: v.id("personalSubjects"),
+				targetKind: v.literal("dayEntry"),
+				dayEntryId: v.id("dayEntries"),
+			}),
+			v.object({
+				ownerTokenIdentifier: v.string(),
+				personalSubjectId: v.id("personalSubjects"),
+				targetKind: v.literal("learningPlan"),
+				learningPlanId: v.id("learningPlans"),
+			}),
+			v.object({
+				ownerTokenIdentifier: v.string(),
+				personalSubjectId: v.id("personalSubjects"),
+				targetKind: v.literal("timetableLesson"),
+				timetableLessonId: v.id("timetableLessons"),
+			}),
+		),
+	)
+		.index("by_ownerTokenIdentifier_and_personalSubjectId", [
+			"ownerTokenIdentifier",
+			"personalSubjectId",
+		])
+		.index("by_dayEntryId", ["dayEntryId"])
+		.index("by_learningPlanId", ["learningPlanId"])
+		.index("by_timetableLessonId", ["timetableLessonId"]),
 	learningPlanDocuments: defineTable({
 		ownerTokenIdentifier: v.string(),
 		learningPlanId: v.id("learningPlans"),
@@ -619,11 +672,16 @@ export default defineSchema({
 		])
 		.index("by_learningPlanId_and_createdAt", ["learningPlanId", "createdAt"]),
 	learningPlanSessions: defineTable({
+		preparationSlotId: v.optional(v.string()),
+		additionalPractice: v.optional(v.boolean()),
+		unscheduled: v.optional(v.boolean()),
 		ownerTokenIdentifier: v.string(),
 		learningPlanId: v.id("learningPlans"),
 		phase: sessionPhaseValidator,
 		title: v.string(),
 		dateKey: v.string(),
+		// Optional during backfill; null marks an invalid legacy date.
+		berlinDayKey: v.optional(v.union(v.string(), v.null())),
 		dateLabel: v.string(),
 		startTime: v.string(),
 		durationMinutes: v.number(),
@@ -644,6 +702,8 @@ export default defineSchema({
 		startedAt: v.optional(v.number()),
 		outcomeAt: v.optional(v.number()),
 		activeStudySeconds: v.optional(v.number()),
+		// Fixed baseline for cumulative time across interrupted runs.
+		activeStudySecondsAtStart: v.optional(v.number()),
 		knowledgeValidationStatus: v.optional(knowledgeValidationStatusValidator),
 		knowledgeValidationConfidence: v.optional(
 			knowledgeValidationConfidenceValidator,
@@ -661,6 +721,14 @@ export default defineSchema({
 		updatedAt: v.number(),
 	})
 		.index("by_learningPlanId_and_sortOrder", ["learningPlanId", "sortOrder"])
+		.index("by_learningPlanId_and_preparationSlotId", [
+			"learningPlanId",
+			"preparationSlotId",
+		])
+		.index("by_ownerTokenIdentifier_and_berlinDayKey", [
+			"ownerTokenIdentifier",
+			"berlinDayKey",
+		])
 		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
 		.index("by_dateKey", ["dateKey"]),
 	learningSessionContentItems: defineTable({

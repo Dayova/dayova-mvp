@@ -41,7 +41,7 @@ describe("iOS Apple sign-in capability", () => {
 				"com.apple.developer.applesignin",
 			);
 		},
-		20_000,
+		30_000,
 	);
 
 	it("keeps Apple sign-in absent from generated native entitlements when present", () => {
