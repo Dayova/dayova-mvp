@@ -61,15 +61,15 @@ describe("learning-plan setup steps", () => {
 			screen.getByText("Welche Themen kommen in der Prüfung dran?"),
 		).toBeOnTheScreen();
 		expect(
-			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 		).toHaveDisplayValue("Lineare Gleichungen und Funktionen");
 		expect(
-			screen.getByLabelText("Zusätzliche Themen und Hinweise").props.className,
+			screen.getByLabelText("Hinweise zur Prüfung (optional)").props.className,
 		).toContain("border-border");
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
 
 		await fireEvent.changeText(
-			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 			"Lineare Funktionen, Steigung und Achsenabschnitt",
 		);
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
@@ -252,7 +252,7 @@ describe("learning-plan setup steps", () => {
 		);
 
 		expect(
-			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 		).toHaveDisplayValue("Mathe");
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
 	});

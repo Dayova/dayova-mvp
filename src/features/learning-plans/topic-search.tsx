@@ -171,32 +171,78 @@ export function TopicSearch({
 
 	const current = state.key === key ? state : undefined;
 	const result = current?.result;
-	const visible = result?.topics.slice(0, MAX_VISIBLE_RESULTS) ?? [];
+	const titleKey = topicTitleKey(term);
+	const exact = result?.topics.find(
+		(topic) => topicTitleKey(topic.title) === titleKey,
+	);
+	// Keep the learner's chosen spelling when a catalog result arrives later.
+	const selectedTitle = selectedTopics.find(
+		(title) => topicTitleKey(title) === titleKey,
+	);
+	const directTitle = selectedTitle ?? exact?.title ?? term;
+	const otherTopics =
+		result?.topics.filter((topic) => topicTitleKey(topic.title) !== titleKey) ??
+		[];
+	const visible = otherTopics.slice(0, MAX_VISIBLE_RESULTS);
+	function toggleTopic(title: string) {
+		const included = selectedTopics.some(
+			(item) => topicTitleKey(item) === topicTitleKey(title),
+		);
+		onChangeSelectedTopics(
+			included
+				? selectedTopics.filter(
+						(item) => topicTitleKey(item) !== topicTitleKey(title),
+					)
+				: [...selectedTopics, title],
+		);
+	}
 	return (
 		<View className="mt-6 gap-3">
 			<SearchField
 				accessibilityLabel="Themen suchen"
-				accessibilityHint="Optional. Wähle passende Themen aus oder trage fehlende Themen unten ein."
+				accessibilityHint="Suche nach Vorschlägen oder wähle deinen eingegebenen Begriff direkt als Thema aus."
 				accessibilityState={{ disabled }}
-				placeholder="Thema suchen"
+				placeholder="Thema suchen oder eingeben"
 				value={query}
 				onChangeText={setQuery}
 				editable={!disabled}
 			/>
+			{term ? (
+				<TopicChoice
+					title={directTitle}
+					detail={
+						exact
+							? exact.subjects?.join(" · ") || "Katalogvorschlag"
+							: selectedTitle !== undefined
+								? "Ausgewählt"
+								: "Als eigenes Thema übernehmen"
+					}
+					hint={
+						exact?.subjects?.length
+							? `Themenbereich: ${exact.subjects.join(" · ")}`
+							: "Dein eingegebener Begriff. Kein Katalogtreffer erforderlich."
+					}
+					selected={selectedTitle !== undefined}
+					disabled={disabled}
+					onPress={() => toggleTopic(directTitle)}
+					checkColor={colors.onPrimary}
+				/>
+			) : null}
 			{term.length > 100 ? (
 				<Text className="font-poppins text-body-3 text-secondary-text">
-					Suche nach einem kürzeren Begriff. Deine vollständige Themenliste
-					kannst du unten einfügen.
+					Für Katalogvorschläge nutze höchstens 100 Zeichen. Deinen
+					vollständigen Text kannst du oben als eigenes Thema übernehmen.
 				</Text>
 			) : term.length > 0 && term.length < 3 ? (
 				<Text className="font-poppins text-body-3 text-secondary-text">
-					Gib mindestens drei Zeichen ein, um Themen zu suchen.
+					Katalogvorschläge gibt es ab drei Zeichen. Deinen Begriff kannst du
+					schon auswählen.
 				</Text>
 			) : canSearch && current?.error ? (
 				<View className="gap-1">
 					<ErrorMessage className="text-body-3">
-						Die Themensuche ist gerade nicht erreichbar. Du kannst deine Themen
-						unten direkt eintragen und fortfahren.
+						Die Katalogsuche ist gerade nicht erreichbar. Du kannst deinen
+						Begriff oben trotzdem als Thema auswählen.
 					</ErrorMessage>
 					<ActionSurface
 						accessibilityRole="button"
@@ -231,9 +277,11 @@ export function TopicSearch({
 						accessibilityLiveRegion="polite"
 						className="font-poppins text-body-4 text-secondary-text"
 					>
-						{visible.length
+						{result.topics.length
 							? "Wähle nur Themen aus, die bei dir drankommen."
-							: "Keine passenden Vorschläge. Trage deine Themen unten direkt ein."}
+							: selectedTitle !== undefined
+								? "Keine weiteren Katalogvorschläge."
+								: "Keine passenden Katalogvorschläge. Du kannst deinen Begriff oben übernehmen."}
 					</Text>
 					{visible.map((topic, index) => {
 						const isIncluded = selectedTopics.some(
@@ -247,44 +295,20 @@ export function TopicSearch({
 										Weitere Vorschläge
 									</Text>
 								) : null}
-								<SelectionControl
-									accessibilityRole="checkbox"
-									accessibilityLabel={topic.title}
-									accessibilityHint={
-										context ? `Themenbereich: ${context}` : undefined
-									}
+								<TopicChoice
+									title={topic.title}
+									detail={context}
+									hint={context ? `Themenbereich: ${context}` : undefined}
 									selected={isIncluded}
 									disabled={disabled}
-									onPress={() =>
-										onChangeSelectedTopics(
-											isIncluded
-												? selectedTopics.filter(
-														(title) =>
-															topicTitleKey(title) !==
-															topicTitleKey(topic.title),
-													)
-												: [...selectedTopics, topic.title],
-										)
-									}
+									onPress={() => toggleTopic(topic.title)}
 									className="mt-2"
-									contentClassName="min-h-14 flex-row items-center gap-3 rounded-2xl px-4 py-3"
-								>
-									<View className="flex-1 gap-1">
-										<Text className="font-poppins text-body-3 text-text">
-											{topic.title}
-										</Text>
-										{context ? (
-											<Text className="font-poppins text-body-4 text-secondary-text">
-												{context}
-											</Text>
-										) : null}
-									</View>
-									<SelectionIndicator checkColor={colors.onPrimary} />
-								</SelectionControl>
+									checkColor={colors.onPrimary}
+								/>
 							</View>
 						);
 					})}
-					{result.truncated || result.topics.length > MAX_VISIBLE_RESULTS ? (
+					{result.truncated || otherTopics.length > MAX_VISIBLE_RESULTS ? (
 						<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
 							Grenze deinen Suchbegriff weiter ein, um weitere passende Themen
 							zu finden.
@@ -332,5 +356,49 @@ export function TopicSearch({
 				</View>
 			) : null}
 		</View>
+	);
+}
+
+/** The entered term and catalog results share the same reversible choice. */
+function TopicChoice({
+	title,
+	detail,
+	hint,
+	selected,
+	disabled,
+	onPress,
+	checkColor,
+	className,
+}: {
+	title: string;
+	detail?: string;
+	hint?: string;
+	selected: boolean;
+	disabled: boolean;
+	onPress: () => void;
+	checkColor: string;
+	className?: string;
+}) {
+	return (
+		<SelectionControl
+			accessibilityRole="checkbox"
+			accessibilityLabel={title}
+			accessibilityHint={hint}
+			selected={selected}
+			disabled={disabled}
+			onPress={onPress}
+			className={className}
+			contentClassName="min-h-14 flex-row items-center gap-3 rounded-2xl px-4 py-3"
+		>
+			<View className="flex-1 gap-1">
+				<Text className="font-poppins text-body-3 text-text">{title}</Text>
+				{detail ? (
+					<Text className="font-poppins text-body-4 text-secondary-text">
+						{detail}
+					</Text>
+				) : null}
+			</View>
+			<SelectionIndicator checkColor={checkColor} />
+		</SelectionControl>
 	);
 }

@@ -35,8 +35,11 @@ unless the team explicitly supersedes this temporary model.
 native input props, system text scaling and a named accessibility label. In
 exam-topic setup, search results use reversible `SelectionControl` checkboxes.
 Selected titles remain visible as removable, wrapping chips with named remove
-actions and minimum 44pt targets. A separate optional textarea collects additional
-topics and conditions; selections never change its contents. See the
+actions and minimum 44pt targets. The entered nonblank title is immediately
+selectable below the input using the same checkbox row, merging exact catalog
+matches without duplicate choices. A separate optional textarea is presented
+for exam conditions and special instructions; existing free text stays editable
+and selections never change its contents. See the
 [topic-input contract](../product/adr/inline-topic-search-with-free-scope.md).
 
 All app switches must use `Switch` from `src/components/ui/switch`. Do not

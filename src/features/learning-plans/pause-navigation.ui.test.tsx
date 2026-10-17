@@ -181,7 +181,7 @@ test("confirmed pause leaves the real guarded route for the overview", async () 
 	await act(() => mockClose());
 	await fireEvent.press(screen.getByText("Später fortsetzen"));
 	expect(screen.getByText("Lernplanübersicht")).toBeVisible();
-	expect(screen.queryByLabelText("Zusätzliche Themen und Hinweise")).toBeNull();
+	expect(screen.queryByLabelText("Hinweise zur Prüfung (optional)")).toBeNull();
 });
 
 test("pause keeps native protection until edited topics have saved", async () => {
@@ -194,7 +194,7 @@ test("pause keeps native protection until edited topics have saved", async () =>
 	);
 	await render(<App />);
 	await fireEvent.changeText(
-		screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+		screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 		"Ohne Hilfsmittel. Auch Inventur.",
 	);
 	await act(() => mockClose());
@@ -203,7 +203,7 @@ test("pause keeps native protection until edited topics have saved", async () =>
 		"protected",
 	);
 	expect(
-		screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+		screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 	).toBeOnTheScreen();
 	await act(() => finishSave());
 	expect(screen.getByText("Lernplanübersicht")).toBeVisible();
@@ -219,7 +219,7 @@ test("failed pause retains the route, native protection and edited text", async 
 	mockSave.mockRejectedValue(new Error("offline"));
 	await render(<App />);
 	await fireEvent.changeText(
-		screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+		screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 		"Ohne Hilfsmittel. Auch Inventur.",
 	);
 	await act(() => mockClose());
@@ -228,7 +228,7 @@ test("failed pause retains the route, native protection and edited text", async 
 		"protected",
 	);
 	expect(
-		screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+		screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 	).toHaveDisplayValue("Ohne Hilfsmittel. Auch Inventur.");
 	expect(screen.getByText("offline")).toBeOnTheScreen();
 });

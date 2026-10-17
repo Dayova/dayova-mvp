@@ -394,7 +394,7 @@ describe("exam creation across the topics boundary", () => {
 		mockSnapshot = { plan: { topicDescription: saved }, documents: [] };
 		const screen = await render(<NewLearningPlanScreen />);
 		expect(
-			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 		).toHaveDisplayValue(saved);
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		expect(mockUpdateRequiredTopics).toHaveBeenCalledWith({
@@ -412,7 +412,7 @@ describe("exam creation across the topics boundary", () => {
 			topicDescription: "Alter Themenstand aus dem Link",
 		};
 		const screen = await render(<NewLearningPlanScreen />);
-		expect(screen.getByLabelText("Zusätzliche Themen und Hinweise")).toHaveProp(
+		expect(screen.getByLabelText("Hinweise zur Prüfung (optional)")).toHaveProp(
 			"editable",
 			false,
 		);
@@ -430,9 +430,9 @@ describe("exam creation across the topics boundary", () => {
 		};
 		await screen.rerender(<NewLearningPlanScreen />);
 		expect(
-			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 		).toHaveDisplayValue("Genetik und Vererbung");
-		expect(screen.getByLabelText("Zusätzliche Themen und Hinweise")).toHaveProp(
+		expect(screen.getByLabelText("Hinweise zur Prüfung (optional)")).toHaveProp(
 			"editable",
 			true,
 		);
@@ -505,7 +505,7 @@ describe("exam creation across the topics boundary", () => {
 		});
 		await act(() => mockProgress.onBack());
 		expect(
-			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 		).toHaveDisplayValue(original);
 	});
 	test.each([
@@ -582,7 +582,7 @@ describe("exam creation across the topics boundary", () => {
 		screen = await render(<NewLearningPlanScreen />);
 		expect(mockProgress.currentStep).toBe(3);
 		await fireEvent.changeText(
-			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 			"Zellteilung und Mitose",
 		);
 		await act(() => mockProgress.onBack());
@@ -749,7 +749,7 @@ describe("exam creation across the topics boundary", () => {
 		);
 		const screen = await render(<NewLearningPlanScreen />);
 		await fireEvent.changeText(
-			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 			"Genetik und Vererbung",
 		);
 		await act(() => mockProgress.onClose());
@@ -788,7 +788,7 @@ describe("exam creation across the topics boundary", () => {
 		);
 		const screen = await render(<NewLearningPlanScreen />);
 		await fireEvent.changeText(
-			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 			"Genetik und Vererbung",
 		);
 		await act(() => mockProgress.onClose());
@@ -796,7 +796,7 @@ describe("exam creation across the topics boundary", () => {
 		await waitFor(() => expect(mockPauseProps.errorMessage).toBeTruthy());
 		expect(mockPauseVisible).toBe(true);
 		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
-		expect(screen.getByLabelText("Zusätzliche Themen und Hinweise")).toHaveProp(
+		expect(screen.getByLabelText("Hinweise zur Prüfung (optional)")).toHaveProp(
 			"value",
 			"Genetik und Vererbung",
 		);
@@ -858,7 +858,7 @@ describe("exam creation across the topics boundary", () => {
 		};
 		const screen = await render(<NewLearningPlanScreen />);
 		await fireEvent.changeText(
-			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 			"",
 		);
 		await act(() => mockProgress.onBack());
@@ -867,7 +867,7 @@ describe("exam creation across the topics boundary", () => {
 		expect(mockPauseVisible).toBe(true);
 		expect(mockUpdateRequiredTopics).not.toHaveBeenCalled();
 		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
-		expect(screen.getByLabelText("Zusätzliche Themen und Hinweise")).toHaveProp(
+		expect(screen.getByLabelText("Hinweise zur Prüfung (optional)")).toHaveProp(
 			"value",
 			"",
 		);
@@ -1188,6 +1188,49 @@ describe("exam creation across the topics boundary", () => {
 	});
 });
 
+test("saves an own topic straight from the search with independent notes and restores both", async () => {
+	mockParams = { learningPlanId: "plan-1", step: "topic" };
+	mockSnapshot = {
+		plan: {
+			topicDescription: "",
+			topicItems: [],
+			topicAdditionalInfo: "Ohne Taschenrechner",
+		},
+		documents: [],
+	};
+	const screen = await render(<NewLearningPlanScreen />);
+	await fireEvent.changeText(
+		screen.getByLabelText("Themen suchen"),
+		"Kostenstellenrechnung",
+	);
+	await fireEvent.press(
+		screen.getByRole("checkbox", { name: "Kostenstellenrechnung" }),
+	);
+	await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+	expect(mockUpdateRequiredTopics).toHaveBeenCalledWith({
+		id: "plan-1",
+		topicItems: ["Kostenstellenrechnung"],
+		topicAdditionalInfo: "Ohne Taschenrechner",
+		topicDescription: "Kostenstellenrechnung\nOhne Taschenrechner",
+	});
+	await screen.unmount();
+	mockSnapshot = {
+		plan: {
+			topicDescription: "Kostenstellenrechnung\nOhne Taschenrechner",
+			topicItems: ["Kostenstellenrechnung"],
+			topicAdditionalInfo: "Ohne Taschenrechner",
+		},
+		documents: [],
+	};
+	const reopened = await render(<NewLearningPlanScreen />);
+	expect(
+		reopened.getByRole("button", { name: "Kostenstellenrechnung entfernen" }),
+	).toBeOnTheScreen();
+	expect(
+		reopened.getByLabelText("Hinweise zur Prüfung (optional)"),
+	).toHaveDisplayValue("Ohne Taschenrechner");
+});
+
 test("reopens saved choices as chips and additional information as free text despite stale route metadata", async () => {
 	mockParams = {
 		learningPlanId: "plan-1",
@@ -1209,14 +1252,14 @@ test("reopens saved choices as chips and additional information as free text des
 		screen.getByRole("button", { name: "Bilanz entfernen" }),
 	).toBeOnTheScreen();
 	expect(
-		screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+		screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 	).toHaveDisplayValue("Ohne Hilfsmittel");
 	expect(screen.queryByText("Alter Treffer")).toBeNull();
 	await fireEvent.press(
 		screen.getByRole("button", { name: "Bilanz entfernen" }),
 	);
 	await fireEvent.changeText(
-		screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+		screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 		"Inventur ohne Hilfsmittel",
 	);
 	await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
@@ -1247,6 +1290,6 @@ test("preserves selection boundaries and notes through the unsaved exam back rou
 	]);
 	expect(url.searchParams.get("topicAdditionalInfo")).toBe("Ohne Hilfsmittel");
 	expect(
-		screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+		screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 	).toHaveDisplayValue("Ohne Hilfsmittel");
 });

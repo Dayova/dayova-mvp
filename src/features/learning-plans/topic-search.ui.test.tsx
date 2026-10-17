@@ -83,6 +83,125 @@ afterEach(() => {
 });
 
 describe("inline topic search with a free-text exam scope", () => {
+	test("selects the entered topic immediately without a catalog response or retyping notes", async () => {
+		const search = jest
+			.fn<SearchTopics>()
+			.mockRejectedValue(new Error("offline"));
+		const screen = await render(
+			<Setup searchTopics={search} initial="Ohne Taschenrechner" />,
+		);
+		await fireEvent.changeText(
+			screen.getByLabelText("Themen suchen"),
+			"Kostenstellenrechnung",
+		);
+		await fireEvent.press(
+			screen.getByRole("checkbox", { name: "Kostenstellenrechnung" }),
+		);
+		expect(search).not.toHaveBeenCalled();
+		expect(
+			screen.getByRole("button", { name: "Kostenstellenrechnung entfernen" }),
+		).toBeOnTheScreen();
+		await debounce();
+		expect(
+			screen.getByRole("checkbox", { name: "Kostenstellenrechnung" }),
+		).toBeChecked();
+		expect(
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
+		).toHaveDisplayValue("Ohne Taschenrechner");
+		await fireEvent.changeText(screen.getByLabelText("Themen suchen"), "");
+		expect(
+			screen.getByRole("button", { name: "Kostenstellenrechnung entfernen" }),
+		).toBeOnTheScreen();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Kostenstellenrechnung entfernen" }),
+		);
+		await fireEvent.changeText(
+			screen.getByLabelText("Themen suchen"),
+			"Kostenstellenrechnung",
+		);
+		expect(
+			screen.getByRole("checkbox", { name: "Kostenstellenrechnung" }),
+		).not.toBeChecked();
+	});
+
+	test("does not duplicate or rewrite an own selection when its exact catalog match arrives", async () => {
+		let finish: (result: TopicSearchResult) => void = () => {};
+		const search = jest.fn<SearchTopics>().mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					finish = resolve;
+				}),
+		);
+		const screen = await render(<Setup searchTopics={search} initial="" />);
+		await fireEvent.changeText(
+			screen.getByLabelText("Themen suchen"),
+			"  bilanz  ",
+		);
+		await fireEvent.press(screen.getByRole("checkbox", { name: "bilanz" }));
+		await debounce();
+		await act(async () => finish(reply("Bilanz", "Handelsbilanz")));
+		expect(screen.getAllByRole("checkbox", { name: "bilanz" })).toHaveLength(1);
+		expect(screen.queryByRole("checkbox", { name: "Bilanz" })).toBeNull();
+		expect(
+			screen.getByRole("button", { name: "bilanz entfernen" }),
+		).toBeOnTheScreen();
+		expect(screen.getByText("Ausgewählte Themen (1)")).toBeOnTheScreen();
+		expect(
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
+		).toHaveDisplayValue("");
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
+		await fireEvent.changeText(
+			screen.getByLabelText("Themen suchen"),
+			"ＢＩＬＡＮＺ",
+		);
+		expect(screen.getByRole("checkbox", { name: "bilanz" })).toBeChecked();
+		await fireEvent.press(screen.getByRole("checkbox", { name: "bilanz" }));
+		expect(
+			screen.queryByRole("button", { name: "bilanz entfernen" }),
+		).toBeNull();
+	});
+
+	test("accepts the full own title beyond the catalog limit without querying or retyping", async () => {
+		const search = jest.fn<SearchTopics>();
+		const screen = await render(<Setup searchTopics={search} initial="" />);
+		await fireEvent.changeText(
+			screen.getByLabelText("Themen suchen"),
+			longScope,
+		);
+		await fireEvent.press(
+			screen.getByRole("checkbox", { name: longScope.trim() }),
+		);
+		await debounce();
+		expect(search).not.toHaveBeenCalled();
+		expect(
+			screen.getByRole("button", { name: `${longScope.trim()} entfernen` }),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
+		).toHaveDisplayValue("");
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
+	});
+
+	test("offers short own titles but no whitespace, and freezes the own option while saving", async () => {
+		const search = jest.fn<SearchTopics>();
+		const props = {
+			selectedTopics: [],
+			subject: "Informatik",
+			onChangeSelectedTopics: jest.fn(),
+			searchTopics: search,
+			disabled: false,
+		};
+		const screen = await render(<TopicSearch {...props} />);
+		await fireEvent.changeText(screen.getByLabelText("Themen suchen"), "   ");
+		expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+		await fireEvent.changeText(screen.getByLabelText("Themen suchen"), "KI");
+		expect(screen.getByRole("checkbox", { name: "KI" })).toBeOnTheScreen();
+		await screen.rerender(<TopicSearch {...props} disabled />);
+		expect(screen.getByRole("checkbox", { name: "KI" })).toBeDisabled();
+		await fireEvent.press(screen.getByRole("checkbox", { name: "KI" }));
+		expect(props.onChangeSelectedTopics).not.toHaveBeenCalled();
+		expect(search).not.toHaveBeenCalled();
+	});
 	test("starts an uncached search within 150ms of the last keystroke", async () => {
 		const search = jest.fn<SearchTopics>().mockResolvedValue(reply("Bilanz"));
 		const screen = await render(<Setup searchTopics={search} />);
@@ -185,7 +304,7 @@ describe("inline topic search with a free-text exam scope", () => {
 			screen.getByRole("checkbox", { name: "Bilanzgleichung" }),
 		).toBeOnTheScreen();
 		expect(
-			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 		).toHaveDisplayValue("Ohne Hilfsmittel");
 	});
 	test("keeps known matching titles on backspace even if the broader provider search fails", async () => {
@@ -212,7 +331,7 @@ describe("inline topic search with a free-text exam scope", () => {
 		).toBeOnTheScreen();
 		await fireEvent.press(screen.getByRole("checkbox", { name: "Bilanz" }));
 		expect(
-			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 		).toHaveDisplayValue("Ohne Hilfsmittel");
 	});
 
@@ -239,7 +358,7 @@ describe("inline topic search with a free-text exam scope", () => {
 		);
 		expect(screen.getByLabelText("Themen suchen")).toHaveProp(
 			"placeholder",
-			"Thema suchen",
+			"Thema suchen oder eingeben",
 		);
 		expect(screen.queryByRole("radiogroup")).toBeNull();
 		await fireEvent.changeText(
@@ -254,7 +373,7 @@ describe("inline topic search with a free-text exam scope", () => {
 		);
 		await fireEvent.press(screen.getByRole("checkbox", { name: "Bilanz" }));
 		expect(
-			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 		).toHaveDisplayValue("Inventur ohne Hilfsmittel");
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
 	});
@@ -278,7 +397,9 @@ describe("inline topic search with a free-text exam scope", () => {
 		await screen.rerender(
 			<TopicSearch {...props} subject="Mein Wirtschaftskurs" />,
 		);
-		expect(screen.queryByText("Bilanz")).toBeNull();
+		// The entered title stays available as an own topic; old catalog context
+		// must not survive the subject change while the new request is pending.
+		expect(screen.getByText("Als eigenes Thema übernehmen")).toBeOnTheScreen();
 		await debounce();
 		expect(search).toHaveBeenLastCalledWith({
 			query: "Bilanz",
@@ -293,12 +414,12 @@ describe("inline topic search with a free-text exam scope", () => {
 			<Setup searchTopics={search} initial="" onContinue={next} />,
 		);
 		await fireEvent.changeText(
-			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 			longScope,
 		);
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		expect(
-			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 		).toHaveDisplayValue(longScope);
 		expect(next).toHaveBeenCalledTimes(1);
 		expect(search).not.toHaveBeenCalled();
@@ -318,16 +439,16 @@ describe("inline topic search with a free-text exam scope", () => {
 			subject: "Mathematik",
 		});
 		expect(
-			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 		).toHaveDisplayValue(longScope);
 		const revised = `${longScope}Nur Aufgaben ohne Taschenrechner`;
 		await fireEvent.changeText(
-			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 			revised,
 		);
 		await fireEvent.press(screen.getByRole("checkbox", { name: "Geraden" }));
 		expect(
-			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 		).toHaveDisplayValue(revised);
 		expect(screen.getByLabelText("Themen suchen")).toHaveDisplayValue("Gerad");
 	});
@@ -345,7 +466,7 @@ describe("inline topic search with a free-text exam scope", () => {
 		await fireEvent.press(screen.getByRole("checkbox", { name: "Vektoren" }));
 		expect(screen.getByRole("checkbox", { name: "Vektoren" })).toBeChecked();
 		expect(
-			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 		).toHaveDisplayValue("Vektoren ohne Hilfsmittel");
 		await fireEvent.press(screen.getByRole("checkbox", { name: "Vektoren" }));
 		expect(
@@ -361,7 +482,7 @@ describe("inline topic search with a free-text exam scope", () => {
 		);
 		expect(screen.queryByText("Ausgewählte Themen (1)")).toBeNull();
 		expect(
-			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 		).toHaveDisplayValue("Vektoren ohne Hilfsmittel");
 	});
 	test("continues with selection alone and keeps selections across different searches", async () => {
@@ -391,7 +512,7 @@ describe("inline topic search with a free-text exam scope", () => {
 			screen.getByRole("button", { name: "Inventur entfernen" }),
 		).toBeOnTheScreen();
 		expect(
-			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 		).toHaveDisplayValue("");
 	});
 
@@ -448,7 +569,7 @@ describe("inline topic search with a free-text exam scope", () => {
 		expect(screen.queryByText("private provider detail")).toBeNull();
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
 		await fireEvent.changeText(
-			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 			"Evolution",
 		);
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
@@ -458,11 +579,11 @@ describe("inline topic search with a free-text exam scope", () => {
 		await debounce();
 		expect(
 			screen.getByText(
-				"Keine passenden Vorschläge. Trage deine Themen unten direkt ein.",
+				"Keine passenden Katalogvorschläge. Du kannst deinen Begriff oben übernehmen.",
 			),
 		).toBeOnTheScreen();
 		expect(
-			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 		).toHaveDisplayValue("Evolution");
 	});
 
@@ -482,7 +603,7 @@ describe("inline topic search with a free-text exam scope", () => {
 		).toBeUndefined();
 		expect(
 			screen.getByText(
-				"Suche nach einem kürzeren Begriff. Deine vollständige Themenliste kannst du unten einfügen.",
+				"Für Katalogvorschläge nutze höchstens 100 Zeichen. Deinen vollständigen Text kannst du oben als eigenes Thema übernehmen.",
 			),
 		).toBeOnTheScreen();
 		expect(search).not.toHaveBeenCalled();
@@ -498,7 +619,7 @@ describe("inline topic search with a free-text exam scope", () => {
 		const screen = await render(<Setup searchTopics={search} />);
 		await fireEvent.changeText(screen.getByLabelText("Themen suchen"), "Thema");
 		await debounce();
-		expect(screen.getAllByRole("checkbox")).toHaveLength(5);
+		expect(screen.getAllByRole("checkbox")).toHaveLength(6);
 		expect(screen.queryByText("Thema 5")).toBeNull();
 		expect(
 			screen.getByText(
@@ -515,7 +636,7 @@ describe("inline topic search with a free-text exam scope", () => {
 			"editable",
 			false,
 		);
-		expect(screen.getByLabelText("Zusätzliche Themen und Hinweise")).toHaveProp(
+		expect(screen.getByLabelText("Hinweise zur Prüfung (optional)")).toHaveProp(
 			"editable",
 			false,
 		);

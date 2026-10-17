@@ -307,8 +307,8 @@ export function RequiredTopicsStep({
 				Welche Themen kommen in der Prüfung dran?
 			</Text>
 			<Text className="mt-3 font-poppins text-body-3 text-secondary-text">
-				Wähle passende Themen aus. Ergänze unten, was die Themenauswahl nicht
-				abdeckt.
+				Wähle Vorschläge aus oder übernimm deinen eigenen Begriff. Ergänze
+				besondere Hinweise unten.
 			</Text>
 			<TopicSearch
 				selectedTopics={selectedTopics}
@@ -318,17 +318,17 @@ export function RequiredTopicsStep({
 				disabled={isBusy}
 			/>
 			<Text className="mt-6 font-poppins text-body-4 text-secondary-text">
-				Zusätzliche Themen und Hinweise
+				Hinweise zur Prüfung (optional)
 			</Text>
 			<Textarea
-				accessibilityLabel="Zusätzliche Themen und Hinweise"
-				accessibilityHint="Optional. Ergänze Prüfungsbedingungen, Unterpunkte oder Themen, die du nicht gefunden hast."
+				accessibilityLabel="Hinweise zur Prüfung (optional)"
+				accessibilityHint="Optional. Ergänze Prüfungsbedingungen oder besondere Anweisungen."
 				accessibilityState={{ disabled: isBusy }}
 				className="mt-2 min-h-48 flex-none rounded-[24px] border border-border bg-card px-4 py-4"
 				value={additionalInfo}
 				onChangeText={onChangeAdditionalInfo}
 				editable={!isBusy}
-				placeholder="Zum Beispiel: Ohne Hilfsmittel. Nur Kapitel 3. Auch Inventur und Belege."
+				placeholder="Zum Beispiel: OHiMi (ohne Hilfsmittel). Ohne Taschenrechner. Lösungsweg angeben."
 			/>
 
 			<SetupError message={errorMessage} />
