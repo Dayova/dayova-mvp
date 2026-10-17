@@ -243,8 +243,6 @@ function EvidenceScreen() {
 						<RequiredTopicsStep
 							key={generation}
 							{...props}
-							additionalInfo={topics}
-							onChangeAdditionalInfo={setTopics}
 							selectedTopics={selectedTopics}
 							onChangeSelectedTopics={setSelectedTopics}
 							subject={subject}

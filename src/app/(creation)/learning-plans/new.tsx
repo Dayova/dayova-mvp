@@ -19,11 +19,9 @@ import {
 	ActionSheet,
 	actionSheetIconColor,
 } from "~/components/ui/action-sheet";
-import { Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import { Attachment, Photo, ScanImage } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
-import { Text } from "~/components/ui/text";
 import { useAuthSession } from "~/context/AuthContext";
 import {
 	getLearningPlanCreationBackIntent,
@@ -37,7 +35,6 @@ import {
 	learningPlanStepPath,
 } from "~/features/learning-plans/creation-routes";
 import { prepareGalleryUploadAsset } from "~/features/learning-plans/gallery-upload";
-import { useHintVariant } from "~/features/learning-plans/hint-validation-preference";
 import { useLearningPlanSetupOrigin } from "~/features/learning-plans/learning-plan-setup-origin";
 import {
 	ExamHintsStep,
@@ -86,8 +83,6 @@ type PendingUploadRequest = {
 };
 
 export default function NewLearningPlanScreen() {
-	const { variant: hintVariant, error: hintVariantError } = useHintVariant();
-	const [isHintViewOpen, setIsHintViewOpen] = useState(false);
 	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const params = useLocalSearchParams<{
@@ -142,6 +137,7 @@ export default function NewLearningPlanScreen() {
 		useState<Id<"learningPlans"> | null>(initialLearningPlanId ?? null);
 	const [setupStep, setSetupStep] = useState<LearningPlanSetupStep>(() => {
 		if (params.step === "topic") return "requiredTopics";
+		if (params.step === "hints") return "examHints";
 		if (params.step === "material" || params.errorMessage)
 			return "materialUpload";
 		return initialLearningPlanId ? "materialUpload" : "requiredTopics";
@@ -205,7 +201,9 @@ export default function NewLearningPlanScreen() {
 	const currentProgressStep =
 		setupStep === "requiredTopics"
 			? LEARNING_PLAN_CREATION_STEPS.examTopics
-			: LEARNING_PLAN_CREATION_STEPS.materialUpload;
+			: setupStep === "examHints"
+				? LEARNING_PLAN_CREATION_STEPS.examHints
+				: LEARNING_PLAN_CREATION_STEPS.materialUpload;
 
 	useEffect(() => {
 		if (!hasExamEntry) {
@@ -217,6 +215,8 @@ export default function NewLearningPlanScreen() {
 		if (params.step === "topic") {
 			// eslint-disable-next-line react-hooks/set-state-in-effect -- Route params can change while this screen remains mounted.
 			setSetupStep("requiredTopics");
+		} else if (params.step === "hints") {
+			setSetupStep("examHints");
 		} else if (params.step === "material" || params.errorMessage) {
 			setSetupStep("materialUpload");
 		}
@@ -739,10 +739,6 @@ export default function NewLearningPlanScreen() {
 	const goBack = () => {
 		if (isBusy || topicActionGateRef.current.isRunning) return true;
 		if (isPauseConfirmationVisible) return true;
-		if (isHintViewOpen) {
-			setIsHintViewOpen(false);
-			return true;
-		}
 		const intent = getLearningPlanCreationBackIntent({
 			step: setupStep,
 			hasSavedDraft: Boolean(learningPlanId),
@@ -751,7 +747,10 @@ export default function NewLearningPlanScreen() {
 		if (intent.kind === "ignore") return true;
 		if (intent.kind === "previousStep") {
 			setErrorMessage(null);
-			router.setParams({ errorMessage: undefined, step: "topic" });
+			router.setParams({
+				errorMessage: undefined,
+				step: intent.step === "examHints" ? "hints" : "topic",
+			});
 			setSetupStep(intent.step);
 			return true;
 		}
@@ -795,30 +794,11 @@ export default function NewLearningPlanScreen() {
 	};
 
 	if (!hasExamEntry) return null;
-	if (!hintVariant)
-		return (
-			<Screen>
-				<View className="flex-1 justify-center gap-4 px-8">
-					{hintVariantError ? (
-						<>
-							<Text accessibilityRole="alert">
-								Die Testvariante konnte nicht geladen werden.
-							</Text>
-							<Button onPress={() => router.replace("/hint-validation")}>
-								<Text>Testvariante erneut wählen</Text>
-							</Button>
-						</>
-					) : (
-						<ActivityIndicator accessibilityLabel="Testvariante wird geladen" />
-					)}
-				</View>
-			</Screen>
-		);
 	const changeAdditionalInfo = (value: string) => {
 		hasEditedTopicsRef.current = true;
 		setTopicInput({ ...input, topicAdditionalInfo: value });
 	};
-	const viewKey = isHintViewOpen ? "hints" : setupStep;
+	const viewKey = setupStep;
 	const hintSubject = snapshot?.plan.subject ?? subject;
 
 	return (
@@ -830,28 +810,31 @@ export default function NewLearningPlanScreen() {
 				topPadding={0}
 				contentContainerStyle={{ flexGrow: 1 }}
 			>
-				<View key={viewKey} className="flex-1">
-					{isHintViewOpen ? (
+				<View className="flex-1">
+					{setupStep === "examHints" ? (
 						<ExamHintsStep
 							subject={hintSubject}
 							selectedTopics={input.topicItems}
 							additionalInfo={input.topicAdditionalInfo}
 							onChange={changeAdditionalInfo}
-							onDone={() => setIsHintViewOpen(false)}
+							onContinue={() => void continueToMaterial()}
+							canContinue={canContinueTopics}
+							errorMessage={errorMessage}
 							isBusy={isBusy || isPlanSnapshotLoading}
 						/>
 					) : setupStep === "requiredTopics" ? (
 						<RequiredTopicsStep
-							hintVariant={hintVariant}
-							onOpenHints={() => setIsHintViewOpen(true)}
 							subject={hintSubject}
 							searchTopics={searchTopics}
 							canContinue={canContinueTopics}
 							errorMessage={errorMessage}
 							isBusy={isBusy || isPlanSnapshotLoading}
-							onChangeAdditionalInfo={changeAdditionalInfo}
-							onContinue={() => void continueToMaterial()}
-							additionalInfo={input.topicAdditionalInfo}
+							onContinue={() => {
+								if (!canContinueTopics) return;
+								setErrorMessage(null);
+								setSetupStep("examHints");
+								router.setParams({ step: "hints", errorMessage: undefined });
+							}}
 							selectedTopics={input.topicItems}
 							onChangeSelectedTopics={(value) => {
 								hasEditedTopicsRef.current = true;

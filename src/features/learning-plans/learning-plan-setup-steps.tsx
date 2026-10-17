@@ -8,7 +8,6 @@ import { MaterialCard } from "~/features/learning-plans/learning-plan-ui";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { useDayovaTheme } from "~/lib/theme";
 import { ExamHintsEditor } from "./exam-hints-editor";
-import type { HintVariant } from "./hint-validation-preference";
 import { type SearchTopics, TopicSearch } from "./topic-search";
 
 type PendingUploadAction = "camera" | "library" | "files";
@@ -282,26 +281,18 @@ export function RequiredTopicsStep({
 	canContinue,
 	errorMessage,
 	isBusy,
-	onChangeAdditionalInfo,
 	onContinue,
-	additionalInfo,
 	selectedTopics,
 	onChangeSelectedTopics,
-	hintVariant = "inline",
-	onOpenHints,
 }: {
 	canContinue: boolean;
 	errorMessage: string | null;
 	isBusy: boolean;
-	onChangeAdditionalInfo: (value: string) => void;
 	onChangeSelectedTopics: (value: string[]) => void;
 	onContinue: () => void;
-	additionalInfo: string;
 	selectedTopics: string[];
 	subject: string;
 	searchTopics: SearchTopics;
-	hintVariant?: HintVariant;
-	onOpenHints?: () => void;
 }) {
 	return (
 		<View className="flex-1">
@@ -311,9 +302,6 @@ export function RequiredTopicsStep({
 			>
 				Welche Themen kommen in der Prüfung dran?
 			</Text>
-			<Text className="mt-3 font-poppins text-body-3 text-secondary-text">
-				Wähle Vorschläge aus oder übernimm deinen eigenen Begriff.
-			</Text>
 			<TopicSearch
 				selectedTopics={selectedTopics}
 				subject={subject}
@@ -321,42 +309,6 @@ export function RequiredTopicsStep({
 				searchTopics={searchTopics}
 				disabled={isBusy}
 			/>
-			<View className="mt-6 gap-3">
-				{hintVariant === "inline" ? (
-					<>
-						<Text className="font-poppins text-body-4 text-secondary-text">
-							Hinweise zur Prüfung (optional)
-						</Text>
-						<ExamHintsEditor
-							subject={subject}
-							selectedTopics={selectedTopics}
-							value={additionalInfo}
-							onChange={onChangeAdditionalInfo}
-							disabled={isBusy}
-						/>
-					</>
-				) : (
-					<>
-						{additionalInfo.trim() ? (
-							<Text
-								selectable
-								className="font-poppins text-body-3 text-text"
-								numberOfLines={3}
-							>
-								{additionalInfo}
-							</Text>
-						) : null}
-						<Button variant="cancel" disabled={isBusy} onPress={onOpenHints}>
-							<Text>
-								{additionalInfo.trim()
-									? "Hinweise ansehen oder bearbeiten"
-									: "Prüfungsbedingungen oder Hinweise ergänzen (optional)"}
-							</Text>
-						</Button>
-					</>
-				)}
-			</View>
-
 			<SetupError message={errorMessage} />
 			<View className="mt-auto pt-8">
 				<SetupContinueButton
@@ -374,23 +326,30 @@ export function ExamHintsStep({
 	selectedTopics,
 	additionalInfo,
 	onChange,
-	onDone,
+	onContinue,
 	isBusy,
+	canContinue,
+	errorMessage,
 }: {
 	subject: string;
 	selectedTopics: string[];
 	additionalInfo: string;
 	onChange: (value: string) => void;
-	onDone: () => void;
+	onContinue: () => void;
 	isBusy: boolean;
+	canContinue: boolean;
+	errorMessage: string | null;
 }) {
 	return (
-		<View className="flex-1 gap-4">
+		<View className="flex-1">
 			<Text
 				accessibilityRole="header"
 				className="font-poppins font-semibold text-body-1 text-text"
 			>
-				Hinweise zur Prüfung (optional)
+				Welche Hinweise gibt es zur Prüfung?
+			</Text>
+			<Text className="mt-2 font-poppins text-body-4 text-secondary-text">
+				Optional – ergänze nur, was für deine Prüfung gilt.
 			</Text>
 			<ExamHintsEditor
 				subject={subject}
@@ -399,10 +358,13 @@ export function ExamHintsStep({
 				onChange={onChange}
 				disabled={isBusy}
 			/>
+			<SetupError message={errorMessage} />
 			<View className="mt-auto pt-8">
-				<Button disabled={isBusy} onPress={onDone}>
-					<Text>Zurück zu den Themen</Text>
-				</Button>
+				<SetupContinueButton
+					canContinue={canContinue}
+					isBusy={isBusy}
+					onPress={onContinue}
+				/>
 			</View>
 		</View>
 	);

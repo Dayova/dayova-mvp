@@ -42,7 +42,31 @@ jest.mock("~/lib/theme", () => ({
 }));
 
 describe("learning-plan setup steps", () => {
-	test("searches hints, adds several suggestions and a custom condition without replacing existing text", async () => {
+	test("topic page contains only topic search and Continue", async () => {
+		const next = jest.fn();
+		const screen = await render(
+			<RequiredTopicsStep
+				subject="Deutsch"
+				searchTopics={async () => ({ topics: [], truncated: false })}
+				selectedTopics={["Gedichtanalyse"]}
+				onChangeSelectedTopics={jest.fn()}
+				canContinue
+				isBusy={false}
+				errorMessage={null}
+				onContinue={next}
+			/>,
+		);
+		expect(screen.getByLabelText("Themen suchen")).toBeOnTheScreen();
+		expect(screen.queryByLabelText("Hinweise suchen")).toBeNull();
+		expect(
+			screen.queryByLabelText("Hinweise zur Prüfung (optional)"),
+		).toBeNull();
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(next).toHaveBeenCalledTimes(1);
+	});
+
+	test("hint search adds, selects and removes multiple suggestions and a custom condition", async () => {
+		const changes = jest.fn();
 		function Harness() {
 			const [value, setValue] = useState(
 				"Teil 1 ohne Hilfsmittel; Teil 2 mit Formelsammlung.",
@@ -52,142 +76,127 @@ describe("learning-plan setup steps", () => {
 					subject="Mathe LK"
 					selectedTopics={["Vektoren"]}
 					value={value}
-					onChange={setValue}
+					onChange={(next) => {
+						setValue(next);
+						changes(next);
+					}}
 				/>
 			);
 		}
 		const screen = await render(<Harness />);
+		expect(
+			screen.queryByLabelText("Hinweise zur Prüfung (optional)"),
+		).toBeNull();
 		await fireEvent.changeText(
 			screen.getByLabelText("Hinweise suchen"),
 			"lösung",
 		);
 		expect(
-			screen.queryByRole("button", {
-				name: "Beispiel übernehmen: Ohne Taschenrechner",
-			}),
+			screen.queryByRole("checkbox", { name: "Ohne Taschenrechner" }),
 		).toBeNull();
 		await fireEvent.press(
-			screen.getByRole("button", {
-				name: "Beispiel übernehmen: Lösungsweg angeben",
-			}),
+			screen.getByRole("checkbox", { name: "Lösungsweg angeben" }),
 		);
 		expect(screen.getByLabelText("Hinweise suchen")).toHaveDisplayValue("");
+		expect(
+			screen.getByRole("checkbox", { name: "Lösungsweg angeben" }),
+		).toBeChecked();
 		await fireEvent.press(
-			screen.getByRole("button", {
-				name: "Beispiel übernehmen: Skizzen beschriften",
-			}),
+			screen.getByRole("checkbox", { name: "Skizzen beschriften" }),
 		);
 		await fireEvent.changeText(
 			screen.getByLabelText("Hinweise suchen"),
 			"Nur Aufgabe 3 mit Rechner",
 		);
 		await fireEvent.press(
-			screen.getByRole("button", {
-				name: "Eigenen Hinweis hinzufügen: Nur Aufgabe 3 mit Rechner",
-			}),
+			screen.getByRole("checkbox", { name: "Nur Aufgabe 3 mit Rechner" }),
 		);
-		expect(
-			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
-		).toHaveDisplayValue(
+		expect(changes).toHaveBeenLastCalledWith(
 			"Teil 1 ohne Hilfsmittel; Teil 2 mit Formelsammlung.\nLösungsweg angeben\nSkizzen beschriften\nNur Aufgabe 3 mit Rechner",
 		);
 		await fireEvent.press(
-			screen.getByRole("button", {
-				name: "Beispiel übernehmen: Lösungsweg angeben",
-			}),
+			screen.getByRole("button", { name: "Lösungsweg angeben entfernen" }),
 		);
 		expect(
-			screen
-				.getByLabelText("Hinweise zur Prüfung (optional)")
-				.props.value.match(/Lösungsweg angeben/g),
-		).toHaveLength(1);
+			screen.getByRole("checkbox", { name: "Lösungsweg angeben" }),
+		).not.toBeChecked();
+		expect(changes).toHaveBeenLastCalledWith(
+			"Teil 1 ohne Hilfsmittel; Teil 2 mit Formelsammlung.\nSkizzen beschriften\nNur Aufgabe 3 mit Rechner",
+		);
 	});
 
-	test("both placements share the same opt-in examples and preserve long text when adding one", async () => {
+	test("preserves exact legacy whitespace and scoped conditions until an explicit edit", async () => {
 		const note =
-			"Analysis ohne Taschenrechner; Stochastik mit Formelsammlung. ".repeat(8);
+			"  Analysis ohne Taschenrechner; Stochastik mit Formelsammlung.  \n\nSkizzen beschriften\n";
 		const change = jest.fn();
 		const screen = await render(
-			<ExamHintsStep
+			<ExamHintsEditor
 				subject="Mathe LK"
 				selectedTopics={["Vektoren"]}
-				additionalInfo={note}
+				value={note}
 				onChange={change}
-				onDone={jest.fn()}
-				isBusy={false}
 			/>,
 		);
 		expect(change).not.toHaveBeenCalled();
 		await fireEvent.press(
-			screen.getByRole("button", {
-				name: "Beispiel übernehmen: Lösungsweg angeben",
-			}),
+			screen.getByRole("button", { name: "Skizzen beschriften entfernen" }),
 		);
-		expect(change).toHaveBeenCalledWith(`${note}\nLösungsweg angeben`);
+		expect(change).toHaveBeenLastCalledWith(
+			"  Analysis ohne Taschenrechner; Stochastik mit Formelsammlung.  \n\n",
+		);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Hinweise bearbeiten" }),
+		);
+		expect(
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
+		).toHaveDisplayValue(note);
+		await fireEvent.changeText(
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
+			"Neue Bedingung",
+		);
+		expect(change).toHaveBeenLastCalledWith("Neue Bedingung");
+	});
+
+	test("hint page permits continuing empty and locks search, selections and Continue while saving", async () => {
+		const props = {
+			subject: "Deutsch",
+			selectedTopics: ["Gedichtanalyse"],
+			additionalInfo: "",
+			onChange: jest.fn(),
+			onContinue: jest.fn(),
+			isBusy: false,
+			canContinue: true,
+			errorMessage: null,
+		};
+		const screen = await render(<ExamHintsStep {...props} />);
+		expect(screen.queryByLabelText("Themen suchen")).toBeNull();
+		expect(
+			screen.queryByLabelText("Hinweise zur Prüfung (optional)"),
+		).toBeNull();
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
 		await screen.rerender(
 			<ExamHintsStep
-				subject="Deutsch"
-				selectedTopics={["Gedichtanalyse"]}
-				additionalInfo={note}
-				onChange={change}
-				onDone={jest.fn()}
+				{...props}
+				additionalInfo="Textbelege mit Zeilenangaben"
 				isBusy
+				canContinue={false}
 			/>,
 		);
-		expect(screen.getByLabelText("Hinweise zur Prüfung (optional)")).toHaveProp(
+		expect(screen.getByLabelText("Hinweise suchen")).toHaveProp(
 			"editable",
 			false,
 		);
 		expect(
+			screen.getByRole("checkbox", { name: "Textbelege mit Zeilenangaben" }),
+		).toBeDisabled();
+		expect(
 			screen.getByRole("button", {
-				name: "Beispiel übernehmen: Textbelege mit Zeilenangaben",
+				name: "Textbelege mit Zeilenangaben entfernen",
 			}),
 		).toBeDisabled();
 		expect(
-			screen.queryByRole("button", {
-				name: "Beispiel übernehmen: Ohne Taschenrechner",
-			}),
-		).toBeNull();
-	});
-	test("collects required exam topics before material upload", async () => {
-		const onChangeTopics = jest.fn();
-		const onContinue = jest.fn();
-		const screen = await render(
-			<RequiredTopicsStep
-				subject="Mathematik"
-				searchTopics={async () => ({ topics: [], truncated: false })}
-				canContinue
-				errorMessage={null}
-				isBusy={false}
-				onChangeAdditionalInfo={onChangeTopics}
-				selectedTopics={[]}
-				onChangeSelectedTopics={jest.fn()}
-				onContinue={onContinue}
-				additionalInfo="Lineare Gleichungen und Funktionen"
-			/>,
-		);
-
-		expect(
-			screen.getByText("Welche Themen kommen in der Prüfung dran?"),
-		).toBeOnTheScreen();
-		expect(
-			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
-		).toHaveDisplayValue("Lineare Gleichungen und Funktionen");
-		expect(
-			screen.getByLabelText("Hinweise zur Prüfung (optional)").props.className,
-		).toContain("border-border");
-		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
-
-		await fireEvent.changeText(
-			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
-			"Lineare Funktionen, Steigung und Achsenabschnitt",
-		);
-		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
-
-		expect(onChangeTopics).toHaveBeenCalledWith(
-			"Lineare Funktionen, Steigung und Achsenabschnitt",
-		);
-		expect(onContinue).toHaveBeenCalledTimes(1);
+			screen.getByRole("button", { name: "Weiter, wird geladen" }),
+		).toBeDisabled();
 	});
 
 	test("keeps the empty school-material page focused on one upload action", async () => {
@@ -353,17 +362,13 @@ describe("learning-plan setup steps", () => {
 				canContinue={false}
 				errorMessage={null}
 				isBusy={false}
-				onChangeAdditionalInfo={jest.fn()}
 				selectedTopics={[]}
 				onChangeSelectedTopics={jest.fn()}
 				onContinue={jest.fn()}
-				additionalInfo="Mathe"
 			/>,
 		);
 
-		expect(
-			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
-		).toHaveDisplayValue("Mathe");
+		expect(screen.queryByLabelText("Hinweise suchen")).toBeNull();
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
 	});
 });

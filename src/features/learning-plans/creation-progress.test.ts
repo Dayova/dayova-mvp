@@ -14,6 +14,7 @@ describe("learning-plan creation progress", () => {
 			examSubject: 1.5,
 			examDate: 2,
 			examTopics: 3,
+			examHints: 3.25,
 			materialUpload: 3.5,
 			materialAnalysis: 4,
 			scopeConfirmation: 4.5,

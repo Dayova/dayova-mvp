@@ -7,11 +7,11 @@ import {
 	rankWloTopics,
 } from "#convex/wloSubjectContext";
 import { ErrorMessage } from "~/components/ui/error-message";
-import { Check, Plus, X } from "~/components/ui/icon";
 import { SearchField } from "~/components/ui/search-field";
 import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { useDayovaTheme } from "~/lib/theme";
+import { SearchSelectionChip, SearchSuggestion } from "./search-selection";
 
 export type TopicSearchResult = {
 	topics: {
@@ -193,7 +193,7 @@ export function TopicSearch({
 		);
 	}
 	const directChoice = term ? (
-		<TopicChoice
+		<SearchSuggestion
 			title={directTitle}
 			custom={!exact}
 			detail={
@@ -226,42 +226,21 @@ export function TopicSearch({
 				editable={!disabled}
 			/>
 			{selectedTopics.length > 0 ? (
-				<View className="mt-3 gap-2">
-					<Text
-						accessibilityRole="header"
-						className="font-poppins font-semibold text-body-3 text-text"
-					>
-						Ausgewählte Themen ({selectedTopics.length})
-					</Text>
-					<View className="flex-row flex-wrap gap-2">
-						{selectedTopics.map((title) => (
-							<ActionSurface
-								key={topicTitleKey(title)}
-								accessibilityRole="button"
-								accessibilityLabel={`${title} entfernen`}
-								disabled={disabled}
-								accessibilityState={{ disabled }}
-								onPress={() =>
-									onChangeSelectedTopics(
-										selectedTopics.filter(
-											(item) => topicTitleKey(item) !== topicTitleKey(title),
-										),
-									)
-								}
-								className="min-h-12 max-w-full flex-row items-center gap-2 rounded-full border border-border bg-card px-4 py-2"
-							>
-								<Text className="shrink font-poppins text-body-3 text-text">
-									{title}
-								</Text>
-								<View
-									accessible={false}
-									importantForAccessibility="no-hide-descendants"
-								>
-									<X size={16} color={colors.text} />
-								</View>
-							</ActionSurface>
-						))}
-					</View>
+				<View className="mt-1 flex-row flex-wrap gap-2">
+					{selectedTopics.map((title) => (
+						<SearchSelectionChip
+							key={topicTitleKey(title)}
+							title={title}
+							disabled={disabled}
+							onRemove={() =>
+								onChangeSelectedTopics(
+									selectedTopics.filter(
+										(item) => topicTitleKey(item) !== topicTitleKey(title),
+									),
+								)
+							}
+						/>
+					))}
 				</View>
 			) : null}
 			{term.length > 100 ? (
@@ -332,7 +311,7 @@ export function TopicSearch({
 										Weitere Vorschläge
 									</Text>
 								) : null}
-								<TopicChoice
+								<SearchSuggestion
 									title={topic.title}
 									detail={context}
 									hint={context ? `Themenbereich: ${context}` : undefined}
@@ -355,68 +334,5 @@ export function TopicSearch({
 			) : null}
 			{!exact ? directChoice : null}
 		</View>
-	);
-}
-
-/** The entered term and catalog results share the same reversible choice. */
-function TopicChoice({
-	title,
-	detail,
-	hint,
-	selected,
-	disabled,
-	onPress,
-	checkColor,
-	className,
-	custom = false,
-}: {
-	title: string;
-	custom?: boolean;
-	detail?: string;
-	hint?: string;
-	selected: boolean;
-	disabled: boolean;
-	onPress: () => void;
-	checkColor: string;
-	className?: string;
-}) {
-	return (
-		<ActionSurface
-			accessibilityRole="checkbox"
-			accessibilityLabel={title}
-			accessibilityHint={hint}
-			accessibilityState={{ checked: selected, disabled }}
-			disabled={disabled}
-			onPress={onPress}
-			className={`${custom ? "rounded-full bg-card px-4" : "rounded-none bg-transparent px-1"} min-h-14 flex-row items-center gap-3 py-3 ${className ?? ""}`}
-		>
-			<View className="flex-1 gap-1">
-				<Text
-					className={`font-poppins text-body-2 text-text ${custom ? "" : "font-semibold"}`}
-				>
-					{custom
-						? selected
-							? `„${title}“ ausgewählt`
-							: `„${title}“ als eigenes Thema hinzufügen`
-						: title}
-				</Text>
-				{detail && !custom ? (
-					<Text className="font-poppins text-body-4 text-secondary-text">
-						{detail}
-					</Text>
-				) : null}
-			</View>
-			<View
-				accessible={false}
-				importantForAccessibility="no-hide-descendants"
-				className="h-8 w-8 items-center justify-center rounded-full border border-secondary-text"
-			>
-				{selected ? (
-					<Check size={20} color={checkColor} />
-				) : (
-					<Plus size={20} color={checkColor} />
-				)}
-			</View>
-		</ActionSurface>
 	);
 }

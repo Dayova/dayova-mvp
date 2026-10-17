@@ -343,3 +343,7 @@ same quiet plus-row treatment, remain optional, and append only after a tap.
 Hints stay inline by default and their complete text remains editable beneath
 the hint search. See https://linear.app/dayova/issue/DAY-530 and the prior
 [decision record](https://app.notion.com/p/3fb2e87228bf817a880dde6127a1996a).
+
+## Search selections in exam setup
+
+Topic and hint pages share `SearchSelectionChip` and `SearchSuggestion` in `src/features/learning-plans/search-selection.tsx`: neutral removable chips below the input, transparent suggestion rows with a plus/check control, and a quiet custom-entry action. Keep one question and one search per page; Weiter advances topics → optional hints → material. Chips wrap instead of truncating learner content. Preserve checkbox state/disabled semantics and explicit remove labels; use the full-text edit action for long legacy hints.

@@ -12,9 +12,6 @@ import { Text, View } from "react-native";
 import NewLearningPlanScreen from "~/app/(creation)/learning-plans/new";
 
 let mockClose: () => void;
-jest.mock("~/features/learning-plans/hint-validation-preference", () => ({
-	useHintVariant: () => ({ variant: "inline", error: false }),
-}));
 let mockParams: Record<string, string>;
 const mockSave = jest.fn<() => Promise<void>>();
 
@@ -196,6 +193,10 @@ test("pause keeps native protection until edited topics have saved", async () =>
 			}),
 	);
 	await render(<App />);
+	await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+	await fireEvent.press(
+		screen.getByRole("button", { name: "Hinweise bearbeiten" }),
+	);
 	await fireEvent.changeText(
 		screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 		"Ohne Hilfsmittel. Auch Inventur.",
@@ -221,6 +222,10 @@ test("pause keeps native protection until edited topics have saved", async () =>
 test("failed pause retains the route, native protection and edited text", async () => {
 	mockSave.mockRejectedValue(new Error("offline"));
 	await render(<App />);
+	await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+	await fireEvent.press(
+		screen.getByRole("button", { name: "Hinweise bearbeiten" }),
+	);
 	await fireEvent.changeText(
 		screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 		"Ohne Hilfsmittel. Auch Inventur.",
@@ -248,6 +253,7 @@ test("the deliberate material-later replacement is allowed while back stays prot
 	expect(screen.getByTestId("native-protection")).toHaveTextContent(
 		"protected",
 	);
+	await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 	await fireEvent.press(screen.getByText("Ohne Lernmaterial erstellen"));
 	expect(screen.getByText("Lernplanübersicht")).toBeVisible();
 	expect(screen.queryByText("Schulmaterial hinzufügen")).toBeNull();

@@ -1,3 +1,5 @@
+> Superseded placement experiment: the 18 October request makes topics and optional hints sequential pages. The internal test entry now opens that ordinary flow; old device assignments are ignored. Historical build and student-study observations below retain their original scope.
+
 # Hint location comparison, examples v1
 
 Design brief: the job is to preserve actual exam conditions and special instructions without distracting from topic selection. Hierarchy: topics first, optional conditions second, continue to materials third. Continue remains the primary action; conditions are never a mandatory step. A single multiline editor accepts arbitrary instructions and offers explicit contextual example buttons beneath it. A second search/commit field would create an uncommitted draft that can be lost on back; free typing therefore edits the saved text directly. Both variants use this identical editor. Only its placement differs.

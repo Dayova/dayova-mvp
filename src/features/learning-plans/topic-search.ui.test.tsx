@@ -9,6 +9,7 @@ import {
 import { act, fireEvent, render } from "@testing-library/react-native";
 import { useState } from "react";
 import { isMeaningfulTopicDescription } from "#convex/topicDescriptionValidation";
+import { Textarea } from "~/components/ui/textarea";
 import { RequiredTopicsStep } from "./learning-plan-setup-steps";
 import {
 	type SearchTopics,
@@ -52,21 +53,28 @@ function Setup({
 	const [topics, setTopics] = useState(initial);
 	const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
 	return (
-		<RequiredTopicsStep
-			subject="Mathematik"
-			searchTopics={searchTopics}
-			additionalInfo={topics}
-			selectedTopics={selectedTopics}
-			onChangeSelectedTopics={setSelectedTopics}
-			onChangeAdditionalInfo={setTopics}
-			onContinue={onContinue}
-			isBusy={busy}
-			canContinue={
-				!busy &&
-				isMeaningfulTopicDescription([...selectedTopics, topics].join("\n"))
-			}
-			errorMessage={null}
-		/>
+		<>
+			<RequiredTopicsStep
+				subject="Mathematik"
+				searchTopics={searchTopics}
+				selectedTopics={selectedTopics}
+				onChangeSelectedTopics={setSelectedTopics}
+				onContinue={onContinue}
+				isBusy={busy}
+				canContinue={
+					!busy &&
+					isMeaningfulTopicDescription([...selectedTopics, topics].join("\n"))
+				}
+				errorMessage={null}
+			/>
+			{/* Independent state probe: route tests assert that the real pages are separate. */}
+			<Textarea
+				accessibilityLabel="Hinweise zur Prüfung (optional)"
+				value={topics}
+				onChangeText={setTopics}
+				editable={!busy}
+			/>
+		</>
 	);
 }
 
@@ -145,7 +153,9 @@ describe("inline topic search with a free-text exam scope", () => {
 		expect(
 			screen.getByRole("button", { name: "bilanz entfernen" }),
 		).toBeOnTheScreen();
-		expect(screen.getByText("Ausgewählte Themen (1)")).toBeOnTheScreen();
+		expect(
+			screen.getByRole("button", { name: "bilanz entfernen" }),
+		).toBeOnTheScreen();
 		expect(
 			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 		).toHaveDisplayValue("");

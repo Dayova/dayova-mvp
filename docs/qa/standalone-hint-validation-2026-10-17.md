@@ -1,3 +1,5 @@
+> Superseded placement experiment: the 18 October request makes topics and optional hints sequential pages. The internal test entry now opens that ordinary flow; old device assignments are ignored. Historical build and student-study observations below retain their original scope.
+
 # Standalone hint comparison builds
 
 Jakob requested a version Julius can run without Metro. Julius uses an iPhone, so `validation-testflight` is the primary distribution profile. Both profiles embed the same Inline/Extraansicht editor and deterministic examples v1 from #884. Before handing over the device, choose Settings → Hinweisvergleich (Test), then a new exam or an existing draft. The study protocol remains in [DAY-517](https://linear.app/dayova/issue/DAY-517) and the [Product decision record](https://app.notion.com/p/3fb2e87228bf817a880dde6127a1996a).

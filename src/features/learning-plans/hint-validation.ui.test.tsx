@@ -1,13 +1,17 @@
 import { beforeEach, expect, jest, test } from "@jest/globals";
-import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
-import { Text } from "react-native";
+import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import HintValidationScreen from "~/app/hint-validation";
-import {
-	readHintVariant,
-	useHintVariant,
-	writeHintVariant,
-} from "./hint-validation-preference";
 
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+);
+jest.mock("expo-constants", () => ({ expoConfig: { extra: {} } }));
+jest.mock("~/components/ui/icon", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	const Icon = (props: Record<string, unknown>) =>
+		React.createElement("Icon", props);
+	return new Proxy({}, { get: () => Icon });
+});
 const mockReplace = jest.fn();
 jest.mock("~/components/ui/screen", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
@@ -45,60 +49,16 @@ beforeEach(() => {
 	mockStorageFailure = false;
 });
 
-test("moderator persists the chosen placement before opening the ordinary creation flow", async () => {
+test("opens the single two-page flow without reading or writing an old placement preference", async () => {
+	mockStored = "inline";
+	mockStorageFailure = true;
 	const screen = await render(<HintValidationScreen />);
-	await fireEvent.press(
-		screen.getByRole("button", { name: "Extraansicht: neue Prüfung" }),
-	);
+	expect(screen.queryByText("Inline: neue Prüfung")).toBeNull();
+	await fireEvent.press(screen.getByRole("button", { name: "Neue Prüfung" }));
 	await waitFor(() =>
 		expect(mockReplace).toHaveBeenCalledWith("/entry/new?type=exam"),
 	);
-	expect(await readHintVariant()).toBe("extra");
-	await screen.unmount();
-	const reopened = await render(<HintValidationScreen />);
-	await fireEvent.press(
-		reopened.getByRole("button", { name: "Inline: Entwurf öffnen" }),
-	);
-	await waitFor(() =>
-		expect(mockReplace).toHaveBeenLastCalledWith("/learning-plans"),
-	);
-	expect(await readHintVariant()).toBe("inline");
-});
-
-test("storage failure leaves the moderator on a retryable choice instead of launching the wrong variant", async () => {
-	mockStorageFailure = true;
-	const screen = await render(<HintValidationScreen />);
-	await fireEvent.press(
-		screen.getByRole("button", { name: "Extraansicht: neue Prüfung" }),
-	);
-	await waitFor(() => expect(screen.getByRole("alert")).toBeOnTheScreen());
-	expect(mockReplace).not.toHaveBeenCalled();
-	mockStorageFailure = false;
-	await fireEvent.press(
-		screen.getByRole("button", { name: "Extraansicht: neue Prüfung" }),
-	);
-	await waitFor(() => expect(mockReplace).toHaveBeenCalled());
-});
-
-function Assignment() {
-	const { variant, error } = useHintVariant();
-	return <Text>{error ? "error" : (variant ?? "loading")}</Text>;
-}
-
-test("the running session freezes its assignment; a fresh mount reads the new assignment", async () => {
-	await writeHintVariant("extra");
-	const screen = await render(<Assignment />);
-	await waitFor(() => expect(screen.getByText("extra")).toBeOnTheScreen());
-	await act(() => writeHintVariant("inline"));
-	await screen.rerender(<Assignment />);
-	expect(screen.getByText("extra")).toBeOnTheScreen();
-	await screen.unmount();
-	const next = await render(<Assignment />);
-	await waitFor(() => expect(next.getByText("inline")).toBeOnTheScreen());
-});
-
-test("an unreadable assignment is explicit and never silently falls back", async () => {
-	mockStorageFailure = true;
-	const screen = await render(<Assignment />);
-	await waitFor(() => expect(screen.getByText("error")).toBeOnTheScreen());
+	expect(mockStored).toBe("inline");
+	await fireEvent.press(screen.getByRole("button", { name: "Entwurf öffnen" }));
+	expect(mockReplace).toHaveBeenLastCalledWith("/learning-plans");
 });

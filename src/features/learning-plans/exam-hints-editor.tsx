@@ -1,13 +1,20 @@
 import { useState } from "react";
 import { View } from "react-native";
 import { Button } from "~/components/ui/button";
-import { Plus } from "~/components/ui/icon";
 import { SearchField } from "~/components/ui/search-field";
 import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { useDayovaTheme } from "~/lib/theme";
 import { appendExamHint, getExamHintExamples } from "./exam-hint-examples";
+import { SearchSelectionChip, SearchSuggestion } from "./search-selection";
+
+const hintKey = (value: string) =>
+	value
+		.normalize("NFKC")
+		.trim()
+		.toLocaleLowerCase("de-DE")
+		.replace(/\s+/g, " ");
 
 export function ExamHintsEditor({
 	subject,
@@ -24,24 +31,29 @@ export function ExamHintsEditor({
 }) {
 	const { colors } = useDayovaTheme();
 	const [query, setQuery] = useState("");
+	const [editing, setEditing] = useState(false);
 	const term = query.trim();
+	// Line boundaries are already used by appendExamHint. Never split conditions
+	// at commas or reinterpret legacy prose, and retain untouched whitespace.
+	const lines = value.split("\n");
+	const selections = lines
+		.map((text, index) => ({ text, index }))
+		.filter((item) => item.text.trim());
 	const examples = getExamHintExamples(subject, selectedTopics).filter(
-		(example) =>
-			example
-				.toLocaleLowerCase("de-DE")
-				.includes(term.toLocaleLowerCase("de-DE")),
+		(example) => hintKey(example).includes(hintKey(term)),
 	);
+	const remove = (index: number) => {
+		if (!disabled) onChange(lines.filter((_, i) => i !== index).join("\n"));
+	};
 	const add = (hint: string) => {
 		if (disabled) return;
 		onChange(appendExamHint(value, hint));
 		setQuery("");
 	};
+	const selected = (hint: string) =>
+		selections.find((item) => hintKey(item.text) === hintKey(hint));
 	return (
-		<View className="gap-3">
-			<Text className="font-poppins text-body-3 text-secondary-text">
-				Ergänze nur, was für deine Prüfung gilt. Beispiele sind keine Vorgaben.
-				Du kannst auch eigene Hinweise formulieren.
-			</Text>
+		<View className="mt-6 gap-3">
 			<SearchField
 				accessibilityLabel="Hinweise suchen"
 				placeholder="Hinweis suchen oder eingeben"
@@ -50,58 +62,93 @@ export function ExamHintsEditor({
 				editable={!disabled}
 				accessibilityState={{ disabled }}
 			/>
-
-			{examples.map((example) => (
+			{selections.length > 0 ? (
+				<View className="mt-1 flex-row flex-wrap gap-2">
+					{selections.map((item) => (
+						<SearchSelectionChip
+							key={`${item.index}:${item.text}`}
+							title={item.text}
+							disabled={disabled}
+							onRemove={() => remove(item.index)}
+						/>
+					))}
+				</View>
+			) : null}
+			{examples.length > 0 ? (
+				<View className="mt-1 gap-2">
+					<Text className="font-poppins text-body-4 text-secondary-text">
+						Vorschläge für deine Prüfung
+					</Text>
+					{examples.map((example) => {
+						const selection = selected(example);
+						return (
+							<SearchSuggestion
+								key={example}
+								title={example}
+								selected={Boolean(selection)}
+								disabled={disabled}
+								checkColor={colors.secondaryText}
+								onPress={() =>
+									selection ? remove(selection.index) : add(example)
+								}
+							/>
+						);
+					})}
+				</View>
+			) : null}
+			{term &&
+			!examples.some((example) => hintKey(example) === hintKey(term)) ? (
+				<SearchSuggestion
+					title={term}
+					custom
+					customLabel={
+						selected(term)
+							? `„${term}“ ausgewählt`
+							: `„${term}“ als eigenen Hinweis hinzufügen`
+					}
+					selected={Boolean(selected(term))}
+					disabled={disabled}
+					checkColor={colors.secondaryText}
+					onPress={() => {
+						const selection = selected(term);
+						if (selection) remove(selection.index);
+						else add(term);
+					}}
+				/>
+			) : null}
+			{editing ? (
+				<View className="gap-3">
+					<Textarea
+						accessibilityLabel="Hinweise zur Prüfung (optional)"
+						accessibilityHint="Der vollständige Hinweistext bleibt frei bearbeitbar."
+						accessibilityState={{ disabled }}
+						value={value}
+						onChangeText={onChange}
+						editable={!disabled}
+						className="min-h-32 flex-none rounded-[24px] border border-border bg-card px-4 py-4"
+					/>
+					<Button
+						variant="cancel"
+						disabled={disabled}
+						onPress={() => setEditing(false)}
+					>
+						<Text>Bearbeitung fertig</Text>
+					</Button>
+				</View>
+			) : value.trim() ? (
 				<ActionSurface
 					accessibilityRole="button"
+					accessibilityLabel="Hinweise bearbeiten"
+					disabled={disabled}
 					accessibilityState={{ disabled }}
-					key={example}
-					disabled={disabled}
-					accessibilityLabel={`Beispiel übernehmen: ${example}`}
-					onPress={() => add(example)}
-					className="min-h-14 flex-row items-center gap-3 rounded-none bg-transparent py-3"
+					onPress={() => setEditing(true)}
+					className="min-h-12 justify-center self-start py-3"
 				>
-					<Text className="flex-1 font-poppins font-semibold text-body-2 text-text">
-						{example}
+					<Text className="font-poppins text-body-4 text-secondary-text">
+						Hinweise bearbeiten
 					</Text>
-					<View
-						accessible={false}
-						importantForAccessibility="no-hide-descendants"
-						className="h-8 w-8 items-center justify-center rounded-full border border-secondary-text"
-					>
-						<Plus size={20} color={colors.secondaryText} />
-					</View>
 				</ActionSurface>
-			))}
-			{term &&
-			!examples.some(
-				(example) =>
-					example.toLocaleLowerCase("de-DE") ===
-					term.toLocaleLowerCase("de-DE"),
-			) ? (
-				<Button
-					variant="cancel"
-					size="sm"
-					disabled={disabled}
-					onPress={() => add(term)}
-					accessibilityLabel={`Eigenen Hinweis hinzufügen: ${term}`}
-				>
-					<Text>„{term}“ als eigenen Hinweis hinzufügen</Text>
-				</Button>
 			) : null}
-			<Text className="font-poppins text-body-4 text-secondary-text">
-				Deine Hinweise – jederzeit bearbeitbar
-			</Text>
-			<Textarea
-				accessibilityLabel="Hinweise zur Prüfung (optional)"
-				accessibilityHint="Optional. Prüfungsbedingungen und Anweisungen bleiben vollständig bearbeitbar."
-				accessibilityState={{ disabled }}
-				className="min-h-32 flex-none rounded-[24px] border border-border bg-card px-4 py-4"
-				value={value}
-				onChangeText={onChange}
-				editable={!disabled}
-				placeholder="Hinweis formulieren oder Beispiel übernehmen"
-			/>
 		</View>
 	);
 }

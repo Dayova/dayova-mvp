@@ -176,7 +176,7 @@ export default function SettingsScreen() {
 							{isHintValidationAvailable ? (
 								<SettingsRow
 									icon={BookOpen}
-									label="Hinweisvergleich (Test)"
+									label="Themen und Hinweise (Test)"
 									onPress={() => router.push("/hint-validation")}
 								/>
 							) : null}
