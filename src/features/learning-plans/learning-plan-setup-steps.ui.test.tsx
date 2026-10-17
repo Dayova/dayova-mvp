@@ -2,10 +2,14 @@ import { describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render } from "@testing-library/react-native";
 import type { Id } from "#convex/_generated/dataModel";
 import {
+	ExamHintsStep,
 	MaterialUploadStep,
 	RequiredTopicsStep,
 } from "./learning-plan-setup-steps";
 
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+);
 jest.mock("~/components/ui/icon", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
 	const Icon = (props: Record<string, unknown>) =>
@@ -17,6 +21,8 @@ jest.mock("~/components/ui/icon", () => {
 		Clock3: Icon,
 		GraduationCap: Icon,
 		Plus: Icon,
+		Search: Icon,
+		Check: Icon,
 		PropertyEdit: Icon,
 		X: Icon,
 	};
@@ -34,33 +40,83 @@ jest.mock("~/lib/theme", () => ({
 }));
 
 describe("learning-plan setup steps", () => {
+	test("both placements share the same opt-in examples and preserve long text when adding one", async () => {
+		const note =
+			"Analysis ohne Taschenrechner; Stochastik mit Formelsammlung. ".repeat(8);
+		const change = jest.fn();
+		const screen = await render(
+			<ExamHintsStep
+				subject="Mathe LK"
+				selectedTopics={["Vektoren"]}
+				additionalInfo={note}
+				onChange={change}
+				onDone={jest.fn()}
+				isBusy={false}
+			/>,
+		);
+		expect(change).not.toHaveBeenCalled();
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: "Beispiel übernehmen: Lösungsweg angeben",
+			}),
+		);
+		expect(change).toHaveBeenCalledWith(`${note}\nLösungsweg angeben`);
+		await screen.rerender(
+			<ExamHintsStep
+				subject="Deutsch"
+				selectedTopics={["Gedichtanalyse"]}
+				additionalInfo={note}
+				onChange={change}
+				onDone={jest.fn()}
+				isBusy
+			/>,
+		);
+		expect(screen.getByLabelText("Hinweise zur Prüfung (optional)")).toHaveProp(
+			"editable",
+			false,
+		);
+		expect(
+			screen.getByRole("button", {
+				name: "Beispiel übernehmen: Textbelege mit Zeilenangaben",
+			}),
+		).toBeDisabled();
+		expect(
+			screen.queryByRole("button", {
+				name: "Beispiel übernehmen: Ohne Taschenrechner",
+			}),
+		).toBeNull();
+	});
 	test("collects required exam topics before material upload", async () => {
 		const onChangeTopics = jest.fn();
 		const onContinue = jest.fn();
 		const screen = await render(
 			<RequiredTopicsStep
+				subject="Mathematik"
+				searchTopics={async () => ({ topics: [], truncated: false })}
 				canContinue
 				errorMessage={null}
 				isBusy={false}
-				onChangeTopics={onChangeTopics}
+				onChangeAdditionalInfo={onChangeTopics}
+				selectedTopics={[]}
+				onChangeSelectedTopics={jest.fn()}
 				onContinue={onContinue}
-				topics="Lineare Gleichungen und Funktionen"
+				additionalInfo="Lineare Gleichungen und Funktionen"
 			/>,
 		);
 
 		expect(
 			screen.getByText("Welche Themen kommen in der Prüfung dran?"),
 		).toBeOnTheScreen();
-		expect(screen.getByLabelText("Prüfungsthemen")).toHaveDisplayValue(
-			"Lineare Gleichungen und Funktionen",
-		);
-		expect(screen.getByLabelText("Prüfungsthemen").props.className).toContain(
-			"border-border",
-		);
+		expect(
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
+		).toHaveDisplayValue("Lineare Gleichungen und Funktionen");
+		expect(
+			screen.getByLabelText("Hinweise zur Prüfung (optional)").props.className,
+		).toContain("border-border");
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
 
 		await fireEvent.changeText(
-			screen.getByLabelText("Prüfungsthemen"),
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 			"Lineare Funktionen, Steigung und Achsenabschnitt",
 		);
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
@@ -229,16 +285,22 @@ describe("learning-plan setup steps", () => {
 	test("disables the topic continuation until the answer is valid", async () => {
 		const screen = await render(
 			<RequiredTopicsStep
+				subject="Mathematik"
+				searchTopics={async () => ({ topics: [], truncated: false })}
 				canContinue={false}
 				errorMessage={null}
 				isBusy={false}
-				onChangeTopics={jest.fn()}
+				onChangeAdditionalInfo={jest.fn()}
+				selectedTopics={[]}
+				onChangeSelectedTopics={jest.fn()}
 				onContinue={jest.fn()}
-				topics="Mathe"
+				additionalInfo="Mathe"
 			/>,
 		);
 
-		expect(screen.getByLabelText("Prüfungsthemen")).toHaveDisplayValue("Mathe");
+		expect(
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
+		).toHaveDisplayValue("Mathe");
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
 	});
 });

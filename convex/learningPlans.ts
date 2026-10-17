@@ -19,6 +19,7 @@ import {
 import { getBerlinDayKey } from "./dayKeyVariants";
 import { deriveTopicReadiness } from "./diagnosticReadiness";
 import { throwUserFacingError } from "./errors";
+import { validateExamTopicInput } from "./examTopicInput";
 import {
 	deleteManagedFile,
 	getConfiguredStorageProvider,
@@ -269,6 +270,8 @@ type CreateLearningPlanArgs = {
 	examTime?: string;
 	durationMinutes: number;
 	topicDescription: string;
+	topicItems?: string[];
+	topicAdditionalInfo?: string;
 	teacherGuidance?: string;
 	notes?: string;
 };
@@ -296,7 +299,8 @@ const createLearningPlan = async (
 	});
 	const subject = resolvedSubject.subject;
 	const examTypeLabel = args.examTypeLabel.trim();
-	const topicDescription = args.topicDescription.trim();
+	const topicInput = validateExamTopicInput(args);
+	const { topicDescription } = topicInput;
 	const notes = args.notes?.trim() ?? "";
 
 	if (!subject) throwUserFacingError("Fach fehlt.");
@@ -319,7 +323,7 @@ const createLearningPlan = async (
 		examDateKey: args.examDateKey,
 		examDateLabel: args.examDateLabel,
 		durationMinutes: args.durationMinutes,
-		topicDescription,
+		...topicInput,
 		notes,
 		status: "draft",
 		preparationDepth: getDefaultPreparationDepth(examTypeLabel),
@@ -377,7 +381,13 @@ const invalidateDerivedExamEvidence = async (
 	learningPlanId: Id<"learningPlans">,
 	updatedAt: number,
 	sourcePatch: Partial<
-		Pick<Doc<"learningPlans">, "teacherGuidance" | "topicDescription">
+		Pick<
+			Doc<"learningPlans">,
+			| "teacherGuidance"
+			| "topicDescription"
+			| "topicItems"
+			| "topicAdditionalInfo"
+		>
 	> = {},
 ) => {
 	const answers = await ctx.db
@@ -617,8 +627,11 @@ export const start = mutation({
 		examTime: v.optional(v.string()),
 		durationMinutes: v.number(),
 		topicDescription: v.string(),
+		topicItems: v.optional(v.array(v.string())),
+		topicAdditionalInfo: v.optional(v.string()),
 		notes: v.optional(v.string()),
 	},
+	returns: v.id("learningPlans"),
 	handler: async (ctx, args) => {
 		return await createLearningPlan(ctx, args, {
 			requireMeaningfulTopic: true,
@@ -637,8 +650,11 @@ export const createDraft = mutation({
 		examTime: v.optional(v.string()),
 		durationMinutes: v.number(),
 		topicDescription: v.string(),
+		topicItems: v.optional(v.array(v.string())),
+		topicAdditionalInfo: v.optional(v.string()),
 		notes: v.optional(v.string()),
 	},
+	returns: v.id("learningPlans"),
 	handler: async (ctx, args) => {
 		return await createLearningPlan(ctx, args, {
 			requireMeaningfulTopic: false,
@@ -652,6 +668,7 @@ export const updateBasics = mutation({
 		topicDescription: v.string(),
 		notes: v.optional(v.string()),
 	},
+	returns: v.null(),
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier =
 			await requireOwnerTokenIdentifierForMutation(ctx);
@@ -669,6 +686,9 @@ export const updateBasics = mutation({
 
 		await ctx.db.patch("learningPlans", args.id, {
 			topicDescription,
+			...(topicDescription === plan.topicDescription
+				? {}
+				: { topicItems: undefined, topicAdditionalInfo: undefined }),
 			notes,
 			updatedAt: Date.now(),
 		});
@@ -684,7 +704,10 @@ export const updateRequiredTopics = mutation({
 	args: {
 		id: v.id("learningPlans"),
 		topicDescription: v.string(),
+		topicItems: v.optional(v.array(v.string())),
+		topicAdditionalInfo: v.optional(v.string()),
 	},
+	returns: v.number(),
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier =
 			await requireOwnerTokenIdentifierForMutation(ctx);
@@ -696,15 +719,24 @@ export const updateRequiredTopics = mutation({
 			throwUserFacingError("Dieser Lernplan wurde bereits erstellt.");
 		}
 
-		const topicDescription = args.topicDescription.trim();
+		const input = validateExamTopicInput(args);
+		const { topicDescription } = input;
 		assertMeaningfulTopicDescription(topicDescription);
-		if (plan.topicDescription === topicDescription && !plan.teacherGuidance) {
+		if (
+			plan.topicDescription === topicDescription &&
+			!plan.teacherGuidance &&
+			(args.topicItems === undefined ||
+				(JSON.stringify(plan.topicItems) === JSON.stringify(input.topicItems) &&
+					plan.topicAdditionalInfo === input.topicAdditionalInfo))
+		) {
 			return plan.updatedAt;
 		}
 		const updatedAt = Date.now();
 		await invalidateDerivedExamEvidence(ctx, args.id, updatedAt, {
 			teacherGuidance: undefined,
 			topicDescription,
+			topicItems: input.topicItems,
+			topicAdditionalInfo: input.topicAdditionalInfo,
 		});
 		if (plan.examDayEntryId) {
 			await ctx.db.patch("dayEntries", plan.examDayEntryId, {
@@ -916,6 +948,8 @@ export const getSnapshot = query({
 					(plan.preparationDepth as PreparationDepth | undefined) ??
 					getDefaultPreparationDepth(plan.examTypeLabel),
 				topicDescription: plan.topicDescription,
+				topicItems: plan.topicItems,
+				topicAdditionalInfo: plan.topicAdditionalInfo,
 				teacherGuidance: plan.teacherGuidance,
 				notes: plan.notes,
 				status: plan.status,
@@ -1100,6 +1134,8 @@ export const listOverview = query({
 				subject: plan.subject,
 				examTypeLabel: plan.examTypeLabel,
 				topicDescription: plan.topicDescription,
+				topicItems: plan.topicItems,
+				topicAdditionalInfo: plan.topicAdditionalInfo,
 				status: plan.status,
 				needsSchoolMaterial,
 				diagnosticPlacement: plan.diagnosticPlacement,

@@ -2,6 +2,10 @@ import { describe, expect, jest, test } from "@jest/globals";
 import { render } from "@testing-library/react-native";
 import { IntroUploadArtwork } from "./intro-upload-artwork";
 
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../tests/mocks/selection-reanimated.cjs"),
+);
+
 jest.mock("~/lib/theme", () => ({
 	useDayovaTheme: () => ({
 		colors: {

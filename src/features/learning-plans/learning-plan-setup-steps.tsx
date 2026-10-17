@@ -4,10 +4,12 @@ import { Button } from "~/components/ui/button";
 import { GraduationCap, Plus } from "~/components/ui/icon";
 import { ActionSurface, Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
-import { Textarea } from "~/components/ui/textarea";
 import { MaterialCard } from "~/features/learning-plans/learning-plan-ui";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { useDayovaTheme } from "~/lib/theme";
+import { ExamHintsEditor } from "./exam-hints-editor";
+import type { HintVariant } from "./hint-validation-preference";
+import { type SearchTopics, TopicSearch } from "./topic-search";
 
 type PendingUploadAction = "camera" | "library" | "files";
 
@@ -275,35 +277,85 @@ export function MaterialUploadStep({
 }
 
 export function RequiredTopicsStep({
+	subject,
+	searchTopics,
 	canContinue,
 	errorMessage,
 	isBusy,
-	onChangeTopics,
+	onChangeAdditionalInfo,
 	onContinue,
-	topics,
+	additionalInfo,
+	selectedTopics,
+	onChangeSelectedTopics,
+	hintVariant = "inline",
+	onOpenHints,
 }: {
 	canContinue: boolean;
 	errorMessage: string | null;
 	isBusy: boolean;
-	onChangeTopics: (value: string) => void;
+	onChangeAdditionalInfo: (value: string) => void;
+	onChangeSelectedTopics: (value: string[]) => void;
 	onContinue: () => void;
-	topics: string;
+	additionalInfo: string;
+	selectedTopics: string[];
+	subject: string;
+	searchTopics: SearchTopics;
+	hintVariant?: HintVariant;
+	onOpenHints?: () => void;
 }) {
 	return (
 		<View className="flex-1">
-			<Text className="font-poppins font-semibold text-body-1 text-text">
+			<Text
+				accessibilityRole="header"
+				className="font-poppins font-semibold text-body-1 text-text"
+			>
 				Welche Themen kommen in der Prüfung dran?
 			</Text>
 			<Text className="mt-3 font-poppins text-body-3 text-secondary-text">
-				Nenne alle Themen, die du für diese Prüfung lernen musst.
+				Wähle Vorschläge aus oder übernimm deinen eigenen Begriff.
 			</Text>
-			<Textarea
-				accessibilityLabel="Prüfungsthemen"
-				className="mt-6 h-48 flex-none rounded-[24px] border border-border bg-card px-4 py-4"
-				value={topics}
-				onChangeText={onChangeTopics}
-				placeholder="Zum Beispiel: Lineare Funktionen, Steigung berechnen und den y-Achsenabschnitt bestimmen."
+			<TopicSearch
+				selectedTopics={selectedTopics}
+				subject={subject}
+				onChangeSelectedTopics={onChangeSelectedTopics}
+				searchTopics={searchTopics}
+				disabled={isBusy}
 			/>
+			<View className="mt-6 gap-3">
+				{hintVariant === "inline" ? (
+					<>
+						<Text className="font-poppins text-body-4 text-secondary-text">
+							Hinweise zur Prüfung (optional)
+						</Text>
+						<ExamHintsEditor
+							subject={subject}
+							selectedTopics={selectedTopics}
+							value={additionalInfo}
+							onChange={onChangeAdditionalInfo}
+							disabled={isBusy}
+						/>
+					</>
+				) : (
+					<>
+						{additionalInfo.trim() ? (
+							<Text
+								selectable
+								className="font-poppins text-body-3 text-text"
+								numberOfLines={3}
+							>
+								{additionalInfo}
+							</Text>
+						) : null}
+						<Button variant="cancel" disabled={isBusy} onPress={onOpenHints}>
+							<Text>
+								{additionalInfo.trim()
+									? "Hinweise ansehen oder bearbeiten"
+									: "Prüfungsbedingungen oder Hinweise ergänzen (optional)"}
+							</Text>
+						</Button>
+					</>
+				)}
+			</View>
 
 			<SetupError message={errorMessage} />
 			<View className="mt-auto pt-8">
@@ -312,6 +364,45 @@ export function RequiredTopicsStep({
 					isBusy={isBusy}
 					onPress={onContinue}
 				/>
+			</View>
+		</View>
+	);
+}
+
+export function ExamHintsStep({
+	subject,
+	selectedTopics,
+	additionalInfo,
+	onChange,
+	onDone,
+	isBusy,
+}: {
+	subject: string;
+	selectedTopics: string[];
+	additionalInfo: string;
+	onChange: (value: string) => void;
+	onDone: () => void;
+	isBusy: boolean;
+}) {
+	return (
+		<View className="flex-1 gap-4">
+			<Text
+				accessibilityRole="header"
+				className="font-poppins font-semibold text-body-1 text-text"
+			>
+				Hinweise zur Prüfung (optional)
+			</Text>
+			<ExamHintsEditor
+				subject={subject}
+				selectedTopics={selectedTopics}
+				value={additionalInfo}
+				onChange={onChange}
+				disabled={isBusy}
+			/>
+			<View className="mt-auto pt-8">
+				<Button disabled={isBusy} onPress={onDone}>
+					<Text>Zurück zu den Themen</Text>
+				</Button>
 			</View>
 		</View>
 	);

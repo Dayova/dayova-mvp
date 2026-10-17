@@ -8,14 +8,22 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import {
+	composeExamTopicDescription,
+	type ExamTopicInput,
+	parseTopicItemsParam,
+	readExamTopicInput,
+} from "#convex/examTopicInput";
 import { isMeaningfulTopicDescription } from "#convex/topicDescriptionValidation";
 import {
 	ActionSheet,
 	actionSheetIconColor,
 } from "~/components/ui/action-sheet";
+import { Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import { Attachment, Photo, ScanImage } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
+import { Text } from "~/components/ui/text";
 import { useAuthSession } from "~/context/AuthContext";
 import {
 	getLearningPlanCreationBackIntent,
@@ -29,8 +37,10 @@ import {
 	learningPlanStepPath,
 } from "~/features/learning-plans/creation-routes";
 import { prepareGalleryUploadAsset } from "~/features/learning-plans/gallery-upload";
+import { useHintVariant } from "~/features/learning-plans/hint-validation-preference";
 import { useLearningPlanSetupOrigin } from "~/features/learning-plans/learning-plan-setup-origin";
 import {
+	ExamHintsStep,
 	MaterialUploadStep,
 	RequiredTopicsStep,
 } from "~/features/learning-plans/learning-plan-setup-steps";
@@ -76,6 +86,8 @@ type PendingUploadRequest = {
 };
 
 export default function NewLearningPlanScreen() {
+	const { variant: hintVariant, error: hintVariantError } = useHintVariant();
+	const [isHintViewOpen, setIsHintViewOpen] = useState(false);
 	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const params = useLocalSearchParams<{
@@ -90,6 +102,8 @@ export default function NewLearningPlanScreen() {
 		examDateLabel?: string;
 		durationMinutes?: string;
 		topicDescription?: string;
+		topicItems?: string;
+		topicAdditionalInfo?: string;
 		teacherGuidance?: string;
 		fromExamEntry?: string;
 		errorMessage?: string;
@@ -101,6 +115,7 @@ export default function NewLearningPlanScreen() {
 	const updateRequiredTopics = useMutation(
 		api.learningPlans.updateRequiredTopics,
 	);
+	const searchTopics = useAction(api.wloTopics.search);
 	const generateUploadUrl = useMutation(api.learningPlans.generateUploadUrl);
 	const registerUploadedDocument = useAction(
 		api.learningPlans.registerUploadedDocument,
@@ -131,8 +146,13 @@ export default function NewLearningPlanScreen() {
 			return "materialUpload";
 		return initialLearningPlanId ? "materialUpload" : "requiredTopics";
 	});
-	const [topicsInput, setTopicsInput] = useState<string | null>(
-		params.topicDescription ?? params.teacherGuidance ?? null,
+	const [topicInput, setTopicInput] = useState<ExamTopicInput | null>(() =>
+		initialLearningPlanId
+			? null
+			: readExamTopicInput({
+					...params,
+					topicItems: parseTopicItemsParam(params.topicItems),
+				}),
 	);
 	// Route params can be older than the saved draft; only actual input edits
 	// may overwrite its topics when pausing.
@@ -142,6 +162,7 @@ export default function NewLearningPlanScreen() {
 	const [isUploadSheetVisible, setIsUploadSheetVisible] = useState(false);
 	const [isPauseConfirmationVisible, setIsPauseConfirmationVisible] =
 		useState(false);
+	const [isLeavingAfterPause, setIsLeavingAfterPause] = useState(false);
 	const [pauseErrorMessage, setPauseErrorMessage] = useState<string | null>(
 		null,
 	);
@@ -161,7 +182,8 @@ export default function NewLearningPlanScreen() {
 			: "skip",
 	) ?? null) as LearningPlanSnapshot | null;
 	const canWrite = Boolean(user && isConvexAuthenticated);
-	const topics = topicsInput ?? snapshot?.plan.topicDescription ?? "";
+	const input = topicInput ?? readExamTopicInput(snapshot?.plan ?? {});
+	const topics = composeExamTopicDescription(input);
 	const hasSchoolMaterial = Boolean(
 		snapshot?.documents.some((document) => document.sourceKind === "school"),
 	);
@@ -174,6 +196,7 @@ export default function NewLearningPlanScreen() {
 		isMeaningfulTopicDescription(topics);
 	const canContinueTopics =
 		canWrite &&
+		!isPlanSnapshotLoading &&
 		!isBusy &&
 		!openingUploadAction &&
 		isMeaningfulTopicDescription(topics);
@@ -223,6 +246,7 @@ export default function NewLearningPlanScreen() {
 				examDateLabel,
 				durationMinutes,
 				topicDescription,
+				...input,
 				notes: "",
 			}),
 		);
@@ -575,6 +599,7 @@ export default function NewLearningPlanScreen() {
 						updateRequiredTopics({
 							id: learningPlanId,
 							topicDescription: topics,
+							...input,
 						}),
 					);
 				} else {
@@ -584,6 +609,8 @@ export default function NewLearningPlanScreen() {
 					errorMessage: undefined,
 					step: "material",
 					topicDescription: topics,
+					topicItems: JSON.stringify(input.topicItems),
+					topicAdditionalInfo: input.topicAdditionalInfo,
 				});
 				setSetupStep("materialUpload");
 			} catch (error) {
@@ -642,6 +669,7 @@ export default function NewLearningPlanScreen() {
 					examDateKey,
 					durationMinutes,
 					topicDescription: topics,
+					...input,
 				}),
 			);
 			return true;
@@ -676,7 +704,9 @@ export default function NewLearningPlanScreen() {
 			try {
 				if (
 					hasEditedTopicsRef.current &&
-					topics !== snapshot?.plan.topicDescription
+					(topics !== snapshot?.plan.topicDescription ||
+						JSON.stringify(input) !==
+							JSON.stringify(readExamTopicInput(snapshot?.plan ?? {})))
 				) {
 					if (!isMeaningfulTopicDescription(topics)) {
 						throw new Error(
@@ -687,11 +717,12 @@ export default function NewLearningPlanScreen() {
 						updateRequiredTopics({
 							id: learningPlanId,
 							topicDescription: topics,
+							...input,
 						}),
 					);
 				}
 				setIsPauseConfirmationVisible(false);
-				dismissToOrReplace(router, ROUTES.learningPlans);
+				setIsLeavingAfterPause(true);
 			} catch (error) {
 				setPauseErrorMessage(
 					getErrorMessage(
@@ -707,6 +738,11 @@ export default function NewLearningPlanScreen() {
 
 	const goBack = () => {
 		if (isBusy || topicActionGateRef.current.isRunning) return true;
+		if (isPauseConfirmationVisible) return true;
+		if (isHintViewOpen) {
+			setIsHintViewOpen(false);
+			return true;
+		}
 		const intent = getLearningPlanCreationBackIntent({
 			step: setupStep,
 			hasSavedDraft: Boolean(learningPlanId),
@@ -726,7 +762,15 @@ export default function NewLearningPlanScreen() {
 		return exitCreation();
 	};
 
-	useBackIntent(hasExamEntry, goBack);
+	useBackIntent(hasExamEntry, goBack, {
+		allowRouteRemoval: isLeavingAfterPause,
+	});
+	useEffect(() => {
+		if (!isLeavingAfterPause) return;
+		// Release native removal protection in the committed render before the
+		// confirmed, saved exit. Ordinary back and failed saves stay protected.
+		dismissToOrReplace(router, ROUTES.learningPlans);
+	}, [isLeavingAfterPause, router]);
 	useLearningPlanCreationProgress({
 		active: true,
 		currentStep: currentProgressStep,
@@ -751,28 +795,68 @@ export default function NewLearningPlanScreen() {
 	};
 
 	if (!hasExamEntry) return null;
+	if (!hintVariant)
+		return (
+			<Screen>
+				<View className="flex-1 justify-center gap-4 px-8">
+					{hintVariantError ? (
+						<>
+							<Text accessibilityRole="alert">
+								Die Testvariante konnte nicht geladen werden.
+							</Text>
+							<Button onPress={() => router.replace("/hint-validation")}>
+								<Text>Testvariante erneut wählen</Text>
+							</Button>
+						</>
+					) : (
+						<ActivityIndicator accessibilityLabel="Testvariante wird geladen" />
+					)}
+				</View>
+			</Screen>
+		);
+	const changeAdditionalInfo = (value: string) => {
+		hasEditedTopicsRef.current = true;
+		setTopicInput({ ...input, topicAdditionalInfo: value });
+	};
+	const viewKey = isHintViewOpen ? "hints" : setupStep;
+	const hintSubject = snapshot?.plan.subject ?? subject;
 
 	return (
 		<Screen>
 			<Stack.Screen options={{ gestureEnabled: true }} />
 			<ScreenScroll
-				key={setupStep}
+				key={viewKey}
 				includeTopSafeArea={false}
 				topPadding={0}
 				contentContainerStyle={{ flexGrow: 1 }}
 			>
-				<View key={setupStep} className="flex-1">
-					{setupStep === "requiredTopics" ? (
+				<View key={viewKey} className="flex-1">
+					{isHintViewOpen ? (
+						<ExamHintsStep
+							subject={hintSubject}
+							selectedTopics={input.topicItems}
+							additionalInfo={input.topicAdditionalInfo}
+							onChange={changeAdditionalInfo}
+							onDone={() => setIsHintViewOpen(false)}
+							isBusy={isBusy || isPlanSnapshotLoading}
+						/>
+					) : setupStep === "requiredTopics" ? (
 						<RequiredTopicsStep
+							hintVariant={hintVariant}
+							onOpenHints={() => setIsHintViewOpen(true)}
+							subject={hintSubject}
+							searchTopics={searchTopics}
 							canContinue={canContinueTopics}
 							errorMessage={errorMessage}
-							isBusy={isBusy}
-							onChangeTopics={(value) => {
-								hasEditedTopicsRef.current = true;
-								setTopicsInput(value);
-							}}
+							isBusy={isBusy || isPlanSnapshotLoading}
+							onChangeAdditionalInfo={changeAdditionalInfo}
 							onContinue={() => void continueToMaterial()}
-							topics={topics}
+							additionalInfo={input.topicAdditionalInfo}
+							selectedTopics={input.topicItems}
+							onChangeSelectedTopics={(value) => {
+								hasEditedTopicsRef.current = true;
+								setTopicInput({ ...input, topicItems: value });
+							}}
 						/>
 					) : (
 						<MaterialUploadStep
@@ -780,7 +864,7 @@ export default function NewLearningPlanScreen() {
 							canContinue={canContinueUpload}
 							documents={snapshot?.documents ?? []}
 							errorMessage={errorMessage}
-							isBusy={isBusy}
+							isBusy={isBusy || isPlanSnapshotLoading}
 							isUploading={isUploading}
 							onContinue={continueToAnalysis}
 							onOpenUpload={() => setIsUploadSheetVisible(true)}

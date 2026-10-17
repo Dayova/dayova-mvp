@@ -1,0 +1,531 @@
+{
+  "gallery": "https://github.com/Dayova/dayova-mvp/pull/884#issuecomment-6222153115",
+  "productCommit": "d126c3d4d84427aa8dea2769b54c443e5fc45f62",
+  "baselineCommit": "3eb4e5d29f8cb2771fb79825c3b447587c514740",
+  "scope": "Native Android components in an isolated fixture; see README for limitations",
+  "assets": [
+    {
+      "file": "01-before-empty.png",
+      "url": "https://github.com/user-attachments/assets/74877514-6b9f-41a5-984e-c41368094ec0",
+      "caption": "01 – Vorher: leer",
+      "capturedAt": "2026-10-16T18:11:43.684Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · before · Deutsch"
+      ],
+      "fontScale": "1.0",
+      "sha256": "db4f7db680e85fc150e5a736396eb27a469f26206f65cc1da15c35b89f7acc6e",
+      "bytes": 75188
+    },
+    {
+      "file": "02-after-empty.png",
+      "url": "https://github.com/user-attachments/assets/61d98212-2f92-4bab-8605-976b8329ae06",
+      "caption": "02 – Nachher: leer",
+      "capturedAt": "2026-10-16T18:11:51.631Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · after · Deutsch"
+      ],
+      "fontScale": "1.0",
+      "sha256": "98ec0f3c6fd196d7fa238838f59539a37d4a1dea876bde78091a81bf3874c5d6",
+      "bytes": 99467
+    },
+    {
+      "file": "03-search-results.png",
+      "url": "https://github.com/user-attachments/assets/fab92ab0-2209-468d-a0f5-c0d711798cd4",
+      "caption": "03 – Suchtreffer",
+      "capturedAt": "2026-10-16T17:59:08.319Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · results · Deutsch"
+      ],
+      "fontScale": "1.0",
+      "sha256": "2f95fc843603204038cf1b29e776728a7d4800a502b676f70be394d9b0012baa",
+      "bytes": 103123
+    },
+    {
+      "file": "04-suggestion-added.png",
+      "url": "https://github.com/user-attachments/assets/98aacb2f-3c9e-422f-b3cd-e3ceacc0f2b2",
+      "caption": "04 – Vorschlag angefügt",
+      "capturedAt": "2026-10-16T17:59:16.413Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · results · Deutsch"
+      ],
+      "fontScale": "1.0",
+      "sha256": "9d752d5c463f9f273522376ceb6b6969f4c29a93044f63c4536c75737849cf1f",
+      "bytes": 107749
+    },
+    {
+      "file": "05-removed-edit-preserved.png",
+      "url": "https://github.com/user-attachments/assets/a37e6d7a-962f-4dd9-9ea2-eae4f2dfa242",
+      "caption": "05 – Eintrag entfernt und Text bearbeitet",
+      "capturedAt": "2026-10-16T17:59:35.278Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · results · Deutsch"
+      ],
+      "fontScale": "1.0",
+      "sha256": "a20369f6b5f3324cbc39ed0a22c65dd53e2abf47acabdf50f66abba7b3030a3e",
+      "bytes": 100801
+    },
+    {
+      "file": "06-readded.png",
+      "url": "https://github.com/user-attachments/assets/1731f751-7d29-4da2-a95e-a06b17545c75",
+      "caption": "06 – Erneut hinzugefügt",
+      "capturedAt": "2026-10-16T17:59:43.123Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · results · Deutsch"
+      ],
+      "fontScale": "1.0",
+      "sha256": "9c0d756dcf92b625dc5aa875e72a7f873ad1ccc8fbb54e1f4bba2bda88637348",
+      "bytes": 105406
+    },
+    {
+      "file": "07-material-next-step.png",
+      "url": "https://github.com/user-attachments/assets/f10455b9-68d4-4601-97ff-82b75ca7c105",
+      "caption": "07 – Materialschritt (lokaler Testzustand)",
+      "capturedAt": "2026-10-16T17:59:51.203Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · results · Deutsch"
+      ],
+      "fontScale": "1.0",
+      "sha256": "f4ebf5ef593701b678ac843a6886aacb881abaa558465d941be652c284fdd3fb",
+      "bytes": 98427
+    },
+    {
+      "file": "08-back-preserves-scope.png",
+      "url": "https://github.com/user-attachments/assets/fbda03db-4162-4687-b588-9d58b77c66e4",
+      "caption": "08 – Zurück: Themen erhalten",
+      "capturedAt": "2026-10-16T17:59:59.655Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · results · Deutsch"
+      ],
+      "fontScale": "1.0",
+      "sha256": "a0fb7c4d4dcb12f9993cdb324b6ab104b12bb157b1a348ee75e1a87a46abd6f9",
+      "bytes": 92677
+    },
+    {
+      "file": "09-before-conditions.png",
+      "url": "https://github.com/user-attachments/assets/a6a956a5-5afc-4877-b8ed-351eff749a45",
+      "caption": "09 – Vorher: identische Liste mit Bedingungen",
+      "capturedAt": "2026-10-16T18:11:59.558Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · before-conditions · Deutsch"
+      ],
+      "fontScale": "1.0",
+      "sha256": "c62750f2660cd69d77c297d166b83df25ace13cfe4d3d9f1910ea953f97beaf4",
+      "bytes": 86647
+    },
+    {
+      "file": "10-after-conditions.png",
+      "url": "https://github.com/user-attachments/assets/b9b9e1ff-18f4-4eed-8706-05dce6ab31f8",
+      "caption": "10 – Nachher: Liste mit Bedingungen",
+      "capturedAt": "2026-10-16T18:07:03.110Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · conditions · Mathematik"
+      ],
+      "fontScale": "1.0",
+      "sha256": "8b9eae5ca66f06c526f166cbfbc9624a436a14a657a4a5f598e9e492a36fcbcc",
+      "bytes": 111193
+    },
+    {
+      "file": "11-own-subject-accounting.png",
+      "url": "https://github.com/user-attachments/assets/3866e5fc-f750-482b-a6f8-8be82697b8a1",
+      "caption": "11 – Persönliches Fach Rechnungswesen",
+      "capturedAt": "2026-10-16T18:07:08.707Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · accounting · Rechnungswesen"
+      ],
+      "fontScale": "1.0",
+      "sha256": "cd5336d1e093a49ceba2bf47f86978442e120b6f43cb76811ee6828c39d745a4",
+      "bytes": 99310
+    },
+    {
+      "file": "12-legacy-maths-accounting.png",
+      "url": "https://github.com/user-attachments/assets/07d57692-40ee-49dd-9543-3eec8dbd9d7f",
+      "caption": "12 – Historischer Fall unter Mathematik",
+      "capturedAt": "2026-10-16T18:07:14.307Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · legacy · Mathematik"
+      ],
+      "fontScale": "1.0",
+      "sha256": "e382bead3a876b5f309f009ac05e26c42b277fd9c56e8df9ff4bf622e05408b7",
+      "bytes": 97174
+    },
+    {
+      "file": "13-tax-list-top.png",
+      "url": "https://github.com/user-attachments/assets/c59e9557-2c2c-4b7c-bddd-a9e6b10846a3",
+      "caption": "13 – Umsatzsteuerliste: Anfang",
+      "capturedAt": "2026-10-16T18:07:19.893Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · tax · Mathematik"
+      ],
+      "fontScale": "1.0",
+      "sha256": "551b56dacc99c5caaed359e8acd283425b1780e88cde89e1e6850d58efd2e0f9",
+      "bytes": 191448
+    },
+    {
+      "file": "14-tax-list-bottom.png",
+      "url": "https://github.com/user-attachments/assets/e9d966c6-2c0b-4e8c-9a08-2dcd9bc38fe6",
+      "caption": "14 – Umsatzsteuerliste: Ende und Weiter",
+      "capturedAt": "2026-10-16T18:01:25.155Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · tax · Mathematik"
+      ],
+      "fontScale": "1.0",
+      "sha256": "90b16babe97a12add63747c24c5795eb83fa2f37cd08d3b0a2bfee257d632fea",
+      "bytes": 179183
+    },
+    {
+      "file": "15-before-tax-list.png",
+      "url": "https://github.com/user-attachments/assets/5b4d275f-0a4f-4c51-91eb-27a7cde93691",
+      "caption": "15 – Vorher: dieselbe Umsatzsteuerliste",
+      "capturedAt": "2026-10-16T18:12:07.483Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · before-tax · Deutsch"
+      ],
+      "fontScale": "1.0",
+      "sha256": "1560f25353cff51a66581b4fd9b4c42c61ff161edc93f7c1d0a20b30c63a1c84",
+      "bytes": 108986
+    },
+    {
+      "file": "16-single-topic.png",
+      "url": "https://github.com/user-attachments/assets/ff228a43-adda-4776-865f-9939f4d689c9",
+      "caption": "16 – Einzelthema Evolution",
+      "capturedAt": "2026-10-16T18:06:27.367Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · single · Biologie"
+      ],
+      "fontScale": "1.0",
+      "sha256": "3ceac0617511b22124460b3eae6a60ea24f2693e810712733e1b654cc8b27f97",
+      "bytes": 86448
+    },
+    {
+      "file": "17-vague-input.png",
+      "url": "https://github.com/user-attachments/assets/017c9d7b-1842-4d04-ad7b-1aca0be7e2ec",
+      "caption": "17 – Vage Eingabe bleibt vage",
+      "capturedAt": "2026-10-16T18:06:32.887Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · vague · Deutsch"
+      ],
+      "fontScale": "1.0",
+      "sha256": "70ad4610baf55c3ae91ef3fe225d6bb6702230ee3349c5738d2c3af764cfd5ae",
+      "bytes": 90002
+    },
+    {
+      "file": "18-task-reference.png",
+      "url": "https://github.com/user-attachments/assets/d2646874-5abd-4b53-9a24-81af80e902e4",
+      "caption": "18 – Aufgaben-/Seitenverweis bleibt erhalten",
+      "capturedAt": "2026-10-16T18:06:38.552Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · task · Deutsch"
+      ],
+      "fontScale": "1.0",
+      "sha256": "0c2a7d425366a307930a0401fed5165a4c153ba13dfb5c4c2ca879ff2d6816ec",
+      "bytes": 88600
+    },
+    {
+      "file": "19-placeholder-blocked.png",
+      "url": "https://github.com/user-attachments/assets/ac053008-9b02-4ae4-bdda-6928e5a3067f",
+      "caption": "19 – Platzhalter gesperrt",
+      "capturedAt": "2026-10-16T18:07:25.483Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · placeholder · Deutsch"
+      ],
+      "fontScale": "1.0",
+      "sha256": "da0d2a47acd426b2e47105dbc7dc6aeb55a2ded67c91acd1c865b2bf56b9dcbe",
+      "bytes": 85082
+    },
+    {
+      "file": "20-saving-disabled.png",
+      "url": "https://github.com/user-attachments/assets/ca7b0e8e-35b6-4711-b9d6-a599a9553c19",
+      "caption": "20 – Speichern: Eingaben und Weiter gesperrt",
+      "capturedAt": "2026-10-16T18:07:31.787Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · busy · Deutsch"
+      ],
+      "fontScale": "1.0",
+      "sha256": "a95a7a5ec77a30101150c99a7250fb6c2bc10e1f4f44b0b57fe9d3179f1963bf",
+      "bytes": 86834
+    },
+    {
+      "file": "21-validation-error.png",
+      "url": "https://github.com/user-attachments/assets/3ac396a6-b88c-49fa-b9e5-50ad2b052b7f",
+      "caption": "21 – Validierungsfehler",
+      "capturedAt": "2026-10-16T18:07:37.674Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · validation · Deutsch"
+      ],
+      "fontScale": "1.0",
+      "sha256": "202ef17479541c1abfb42c3d97509b7792fbc54b5333f63cd805839a2ba07251",
+      "bytes": 107217
+    },
+    {
+      "file": "22-short-query-keyboard.png",
+      "url": "https://github.com/user-attachments/assets/1d4c11a3-dc36-4dc6-b544-3fe5429a5976",
+      "caption": "22 – Zwei Zeichen mit Tastatur",
+      "capturedAt": "2026-10-16T18:12:59.361Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · loading · Deutsch"
+      ],
+      "fontScale": "1.0",
+      "sha256": "1b6e698ff7853e7fe523e01b0d52d1099fd680307002b69d62181cba3de733c8",
+      "bytes": 134361
+    },
+    {
+      "file": "23-loading-keyboard.png",
+      "url": "https://github.com/user-attachments/assets/07dff464-e15a-48a8-b543-a231c3ab4d88",
+      "caption": "23 – Laden mit Tastatur",
+      "capturedAt": "2026-10-16T18:13:05.353Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · loading · Deutsch"
+      ],
+      "fontScale": "1.0",
+      "sha256": "f9af74a469e479707238eee5a09b42cdd01f87361ad9b9683744e3a52118a2c8",
+      "bytes": 133068
+    },
+    {
+      "file": "24-provider-error.png",
+      "url": "https://github.com/user-attachments/assets/efc40138-a325-4a35-975f-c98723023349",
+      "caption": "24 – Simulierter Fehler",
+      "capturedAt": "2026-10-16T18:13:25.748Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · retry · Deutsch"
+      ],
+      "fontScale": "1.0",
+      "sha256": "46dffafadbf8d267f6bc350bfeb45e9839cdad0dc2b7481bba6e5b661affdad2",
+      "bytes": 111070
+    },
+    {
+      "file": "25-retry-success.png",
+      "url": "https://github.com/user-attachments/assets/c5942cbf-4d78-4f56-8628-b02ff1135405",
+      "caption": "25 – Erfolgreicher Retry",
+      "capturedAt": "2026-10-16T18:13:34.377Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · retry · Deutsch"
+      ],
+      "fontScale": "1.0",
+      "sha256": "f6a35f69208eba919f76819658afeecbc70577c1306af055e2267b0ed27a8cb6",
+      "bytes": 103427
+    },
+    {
+      "file": "26-live-spelling-variant.png",
+      "url": "https://github.com/user-attachments/assets/43ae3236-b0e3-4911-a449-637ae6c263b7",
+      "caption": "26 – Echter WLO-Treffer: Schreibvariante",
+      "capturedAt": "2026-10-16T18:14:26.183Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · live · Deutsch"
+      ],
+      "fontScale": "1.0",
+      "sha256": "8b9c456482f230fc7b44b18e58cb731dea4f07b3c1097fc331e6a86daa042343",
+      "bytes": 114807
+    },
+    {
+      "file": "27-own-subject-catalog-gap.png",
+      "url": "https://github.com/user-attachments/assets/4c902ba6-d073-48f7-ac91-7792144b9195",
+      "caption": "27 – Echte Kataloglücke bei Rechnungswesen",
+      "capturedAt": "2026-10-16T18:14:46.293Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · accounting · Rechnungswesen"
+      ],
+      "fontScale": "1.0",
+      "sha256": "24dd6b097bfb3551033457d7a2652df07cbad376511f80dccffd119f6b91db27",
+      "bytes": 103622
+    },
+    {
+      "file": "28-long-list-back.png",
+      "url": "https://github.com/user-attachments/assets/c87b61fa-cc61-4ac2-847e-86e489b859fd",
+      "caption": "28 – Lange Liste nach Material und Zurück",
+      "capturedAt": "2026-10-16T18:15:12.442Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · tax · Mathematik"
+      ],
+      "fontScale": "1.0",
+      "sha256": "1eb2b91b7bda5ff289c6065e3392daeea74376653ca850493ebac338df5bac61",
+      "bytes": 179600
+    },
+    {
+      "file": "29-no-results-free-entry.png",
+      "url": "https://github.com/user-attachments/assets/184127cf-8ff7-4919-bedd-a02765f8001f",
+      "caption": "29 – Keine Treffer: freie Eingabe verfügbar",
+      "capturedAt": "2026-10-16T18:16:26.371Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · empty · Deutsch"
+      ],
+      "fontScale": "1.0",
+      "sha256": "12961050da865a80e77620db09f9c3ba46ae3269e300524395be1cdd3ca18d3f",
+      "bytes": 96202
+    },
+    {
+      "file": "30-oversized-query.png",
+      "url": "https://github.com/user-attachments/assets/3c441938-db66-4b72-9f4f-5d67e49f543d",
+      "caption": "30 – Über 100 Suchzeichen: Hinweis statt Kürzung",
+      "capturedAt": "2026-10-16T18:16:56.636Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · after · Deutsch"
+      ],
+      "fontScale": "1.0",
+      "sha256": "744339ebf8cc38a6def53286a95edded353a931f25688bfd40cd6b73d8ffe243",
+      "bytes": 118249
+    },
+    {
+      "file": "31-five-results-top.png",
+      "url": "https://github.com/user-attachments/assets/8171d517-80d2-4f1d-b01d-fa006ec5cae0",
+      "caption": "31 – Maximal fünf Vorschläge",
+      "capturedAt": "2026-10-16T18:17:18.261Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · many · Mathematik"
+      ],
+      "fontScale": "1.0",
+      "sha256": "5b46eb1b5b4c6a0a6ee660b5b9b5c240a5376ae6bfd5944995c16ff667fe2886",
+      "bytes": 146327
+    },
+    {
+      "file": "32-refine-hint-editor.png",
+      "url": "https://github.com/user-attachments/assets/d4a3d6e2-998c-46b0-b041-abd020506feb",
+      "caption": "32 – Eingrenzung, Editor und Weiter",
+      "capturedAt": "2026-10-16T18:17:25.031Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · many · Mathematik"
+      ],
+      "fontScale": "1.0",
+      "sha256": "5ffd1128cb7bfd29535d3eb9f207c9eb34a12a06c0a7db1e15e322b2067443ea",
+      "bytes": 115728
+    },
+    {
+      "file": "33-stale-response-ignored.png",
+      "url": "https://github.com/user-attachments/assets/6a3d7043-d389-4cca-bb07-14747827a3ec",
+      "caption": "33 – Aktueller Treffer nach verspäteter Antwort",
+      "capturedAt": "2026-10-16T18:18:12.785Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · stale · Deutsch"
+      ],
+      "fontScale": "1.0",
+      "sha256": "25fc4f2eba78eb6654998035705b3b1f86e521fbfa0040cb8783c23bda6fbeed",
+      "bytes": 99167
+    },
+    {
+      "file": "34-subject-changed.png",
+      "url": "https://github.com/user-attachments/assets/a4f0bd02-1c32-4523-8872-56dff2f5aaf5",
+      "caption": "34 – Gleiche Suche unter Mathematik",
+      "capturedAt": "2026-10-16T18:18:21.995Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · stale · Mathematik"
+      ],
+      "fontScale": "1.0",
+      "sha256": "dd55af9be5e5e9f885f82c6d525881b2bff784c62d2e7b8f142e114e661dc0f0",
+      "bytes": 97129
+    },
+    {
+      "file": "35-subject-cache-return.png",
+      "url": "https://github.com/user-attachments/assets/241e0969-a435-453b-b33e-7fa173338773",
+      "caption": "35 – Zurück zum vorherigen Fach",
+      "capturedAt": "2026-10-16T18:18:31.280Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · stale · Deutsch"
+      ],
+      "fontScale": "1.0",
+      "sha256": "b2ef96ff51f6642a6ba60847d3ad5359da6c73d3d04eb05cc390dfdf3b0c644d",
+      "bytes": 99121
+    },
+    {
+      "file": "36-dark-scope.png",
+      "url": "https://github.com/user-attachments/assets/3ac8f1fe-7831-46d0-a7a9-326ebcfb6f84",
+      "caption": "36 – Dark Mode",
+      "capturedAt": "2026-10-16T18:18:55.742Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · conditions · Mathematik"
+      ],
+      "fontScale": "1.0",
+      "sha256": "f96f365e1e144fcc66129e16b62be5ef2a83fba9e5ca7e2b00ecd3743c2797cf",
+      "bytes": 116447
+    },
+    {
+      "file": "37-large-font-top.png",
+      "url": "https://github.com/user-attachments/assets/1e1b42fc-62ac-4159-897f-89386036fdca",
+      "caption": "37 – Systemschrift 2.0: oben",
+      "capturedAt": "2026-10-16T18:22:44.772Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · conditions · Mathematik"
+      ],
+      "fontScale": "2.0",
+      "sha256": "136b2fe28f1ff8cb347a5e42bfa4a9cc70539f01f17746124ccd41a3bd60d2a1",
+      "bytes": 179762
+    },
+    {
+      "file": "38-large-font-bottom.png",
+      "url": "https://github.com/user-attachments/assets/9cd4af0e-7044-4a7d-be3d-318d10beb6c1",
+      "caption": "38 – Systemschrift 2.0: unten und Weiter",
+      "capturedAt": "2026-10-16T18:22:52.764Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · conditions · Mathematik"
+      ],
+      "fontScale": "2.0",
+      "sha256": "ea3a274629d70514c7d3b1bd7f6de9059bd464e5581ff12573ea1e2141665aa0",
+      "bytes": 156572
+    },
+    {
+      "file": "39-small-screen-keyboard.png",
+      "url": "https://github.com/user-attachments/assets/308f026c-76f8-4670-8c82-bda3ea2f3be3",
+      "caption": "39 – 320 dp: Suche mit Tastatur",
+      "capturedAt": "2026-10-16T18:23:55.743Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · results · Deutsch"
+      ],
+      "fontScale": "1.0",
+      "sha256": "73d840c5292d3ed6959ca8138baf4709542e2fd284d70bc076af3c6dff7d5a4a",
+      "bytes": 107445
+    },
+    {
+      "file": "40-small-screen-bottom.png",
+      "url": "https://github.com/user-attachments/assets/a6017e8b-1223-409b-951e-7f0c07bddae0",
+      "caption": "40 – 320 dp: Liste und Weiter erreichbar",
+      "capturedAt": "2026-10-16T18:24:12.296Z",
+      "scenario": [
+        "PR 884 · isolierte Komponente · results · Deutsch"
+      ],
+      "fontScale": "1.0",
+      "sha256": "2c2f50014eeb813926ea899de5c13e6782de65ed6e124222fad7741fdca12a34",
+      "bytes": 64096
+    },
+    {
+      "file": "before-after.png",
+      "url": "https://github.com/user-attachments/assets/1616ecaf-20fd-45a1-9d27-0533b62854a8",
+      "kind": "comparison derived from 01 and 02",
+      "sha256": "72f0263bcadc081afff064012efe65588f44d478ce5afbdef6f2d410fc33fb7a",
+      "bytes": 79013
+    },
+    {
+      "file": "01-search-edit-back.mp4",
+      "url": "https://github.com/user-attachments/assets/9a0b7110-088e-4d5a-bf8e-214ccaeb579a",
+      "durationSeconds": 70.829633,
+      "coverage": "Coverage: 70.83-second video; 71 full-timeline frames sampled at 1 fps (1-second interval); 5 contact sheet(s); no audio stream.",
+      "audioPresent": false,
+      "sha256": "b66ae3d6c7610000400c91db4f2a9571e1043d62af8d1eac989b1e96bd4e474e",
+      "bytes": 1243515
+    },
+    {
+      "file": "02-loading-error-retry.mp4",
+      "url": "https://github.com/user-attachments/assets/68ffb706-20e9-4fef-ab37-3ccd6d2d6e56",
+      "durationSeconds": 46.441489,
+      "coverage": "Coverage: 46.44-second video; 46 full-timeline frames sampled at 1 fps (1-second interval); 3 contact sheet(s); no audio stream.",
+      "audioPresent": false,
+      "sha256": "52e6a9ab86dfe4db3291023d1414af3c051a59565617bf7071494b4727d3c5e7",
+      "bytes": 972773
+    },
+    {
+      "file": "03-live-provider-accounting-long-list.mp4",
+      "url": "https://github.com/user-attachments/assets/dd31fc9e-41fc-4c4c-a346-72ab1b46291e",
+      "durationSeconds": 60.124056,
+      "coverage": "Coverage: 60.12-second video; 60 full-timeline frames sampled at 1 fps (1-second interval); 4 contact sheet(s); no audio stream.",
+      "audioPresent": false,
+      "sha256": "335154a17f034280c9fa597666e7033e61165b28b87b57f0f4f2c4aa789ee8c0",
+      "bytes": 1881045
+    },
+    {
+      "file": "04-limits-stale-subject-cache.mp4",
+      "url": "https://github.com/user-attachments/assets/bcf20742-aa4f-47e4-bc53-ed087d5ba96a",
+      "durationSeconds": 142.079333,
+      "coverage": "Coverage: 142.08-second video; 80 full-timeline frames sampled at 0.563066 fps (1.775992-second interval); 5 contact sheet(s); no audio stream.",
+      "audioPresent": false,
+      "sha256": "929e51396bc7799ff499b9b58eaa528ea013e22a06c7f6cd16092d5224e88317",
+      "bytes": 2994314
+    }
+  ]
+}
