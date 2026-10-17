@@ -2,6 +2,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 import {
 	type AccessibilityRole,
+	Animated,
 	type LayoutChangeEvent,
 	Pressable,
 	type PressableProps,
@@ -10,6 +11,11 @@ import {
 	type ViewStyle,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
+import {
+	FeedbackPressable,
+	getPressScaleForSize,
+	usePressMotion,
+} from "~/components/ui/feedback-pressable";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
@@ -200,13 +206,13 @@ function ActionFrame({
 	actionSize,
 	children,
 	...props
-}: ViewProps & {
+}: React.ComponentProps<typeof Animated.View> & {
 	actionOffsetBottom: number;
 	actionOffsetRight: number;
 	actionSize: number;
 }) {
 	return (
-		<View
+		<Animated.View
 			{...props}
 			className={cn("absolute z-20 overflow-hidden", props.className)}
 			style={[
@@ -224,7 +230,7 @@ function ActionFrame({
 			]}
 		>
 			{children}
-		</View>
+		</Animated.View>
 	);
 }
 
@@ -248,6 +254,10 @@ function ActionPressableFrame({
 	onPress: NonNullable<PressableProps["onPress"]>;
 }) {
 	const [pressed, setPressed] = useState(false);
+	const { scale, pressIn, pressOut } = usePressMotion(
+		!actionDisabled,
+		getPressScaleForSize(actionSize, actionSize),
+	);
 	const touchTargetExpansion = Math.max(
 		0,
 		(MINIMUM_TOUCH_TARGET_SIZE - actionSize) / 2,
@@ -263,7 +273,10 @@ function ActionPressableFrame({
 				actionOffsetBottom={actionOffsetBottom}
 				actionOffsetRight={actionOffsetRight}
 				actionSize={actionSize}
-				style={pressed && !actionDisabled ? { opacity: 0.72 } : null}
+				style={{
+					opacity: pressed && !actionDisabled ? 0.72 : 1,
+					transform: [{ scale }],
+				}}
 			>
 				<ActionGradient>{actionIcon}</ActionGradient>
 			</ActionFrame>
@@ -277,8 +290,14 @@ function ActionPressableFrame({
 				disabled={actionDisabled}
 				hitSlop={touchTargetExpansion}
 				onPress={onPress}
-				onPressIn={() => setPressed(true)}
-				onPressOut={() => setPressed(false)}
+				onPressIn={() => {
+					setPressed(true);
+					pressIn();
+				}}
+				onPressOut={() => {
+					setPressed(false);
+					pressOut();
+				}}
 				style={{
 					position: "absolute",
 					right: actionOffsetRight,
@@ -430,7 +449,7 @@ export function NotchedActionCard({
 		} = props;
 
 		return (
-			<Pressable
+			<FeedbackPressable
 				{...viewProps}
 				accessible
 				accessibilityRole={cardAccessibilityRole}
@@ -457,7 +476,7 @@ export function NotchedActionCard({
 					actionOffsetRight={actionOffsetRight}
 					actionSize={actionSize}
 				/>
-			</Pressable>
+			</FeedbackPressable>
 		);
 	}
 
