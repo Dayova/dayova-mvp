@@ -6,6 +6,7 @@ import {
 	learningTopicValidator,
 } from "./learningTopicMap";
 import { theoryContentValidator } from "./theoryContent";
+import { wloTopicResult } from "./wloTopicContract";
 
 const planQuestionValidator = v.object({
 	id: v.string(),
@@ -131,6 +132,12 @@ const sessionContentChoiceValidator = v.object({
 });
 
 export default defineSchema({
+	wloTopicCache: defineTable({
+		slot: v.string(),
+		key: v.string(),
+		result: wloTopicResult,
+		expiresAt: v.number(),
+	}).index("by_slot", ["slot"]),
 	crmStudentSignups: defineTable({
 		userId: v.id("users"),
 		status: v.union(v.literal("pending"), v.literal("review")),

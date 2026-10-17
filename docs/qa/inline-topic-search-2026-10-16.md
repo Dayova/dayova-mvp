@@ -1,3 +1,11 @@
+## Search performance follow-up — 17 October 2026
+
+The [performance report](topic-search-performance-2026-10-17.md) records the
+120 ms debounce, immediate known-result previews, supported provider endpoint,
+bounded concurrency and server cache. It includes before/after raw measurements,
+remaining cold-provider limits and new regression coverage. Earlier media below
+retain their original revisions and are not latency measurements of this change.
+
 ## Native route acceptance and confirmed pause — 17 October 2026
 
 The [current native acceptance report and raw captures](https://github.com/Dayova/dayova-mvp/pull/884#issuecomment-6235441405)

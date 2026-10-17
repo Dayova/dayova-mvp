@@ -76,6 +76,8 @@ import type * as userAnalytics from "../userAnalytics.js";
 import type * as users from "../users.js";
 import type * as validationAnalytics from "../validationAnalytics.js";
 import type * as wloSubjectContext from "../wloSubjectContext.js";
+import type * as wloTopicCache from "../wloTopicCache.js";
+import type * as wloTopicContract from "../wloTopicContract.js";
 import type * as wloTopics from "../wloTopics.js";
 
 import type {
@@ -153,6 +155,8 @@ declare const fullApi: ApiFromModules<{
   users: typeof users;
   validationAnalytics: typeof validationAnalytics;
   wloSubjectContext: typeof wloSubjectContext;
+  wloTopicCache: typeof wloTopicCache;
+  wloTopicContract: typeof wloTopicContract;
   wloTopics: typeof wloTopics;
 }>;
 

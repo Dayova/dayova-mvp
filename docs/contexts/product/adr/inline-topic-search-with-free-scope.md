@@ -10,7 +10,7 @@ The rationale and validation plan live in the [Notion decision record](https://a
 - Show every selected title as a removable chip even when the query changes, clears, fails, or yields no results. Removing a chip unchecks its matching result. Match normalized complete titles, never substrings or inferred meanings.
 - The separate optional “Zusätzliche Themen und Hinweise” textarea accepts conditions, subskills, missing catalog topics and complete pasted lists. Selecting or removing a result never writes into, removes from, or interprets that field.
 - Search remains optional. A meaningful selection, free entry, or combination can continue; an empty scope and known placeholders cannot. Conditions alone are not evidence that the true exam scope is complete; Julius must evaluate completeness against school requirements.
-- Preserve existing query budgets: three to 100 characters, 350 ms debounce, bounded cache and at most five displayed results. Search failures never block editing or a valid scope. Saving and snapshot loading disable search, selection/removal and editing.
+- Search accepts three to 100 characters and debounces new requests by 120 ms. Exact local cache hits and already running requests skip that delay. Known matching titles may appear immediately while an authoritative search refreshes in the background, including after backspacing; this preview never suppresses the new request or invents an empty result. The same title/context ranking applies to both paths. Keep at most five displayed results and 30 local cache entries, each valid for five minutes. Search failures never block editing or a valid scope; known matches remain selectable when refreshing fails. Saving and snapshot loading disable search, selection/removal and editing.
 - No second subject picker. Personal subjects retain their IDs, ownership, reuse and management. Derive search context internally from the current subject name; exact title matches remain available across subjects. No provider IDs or categories become subject identity.
 
 ## Persistence and compatibility
@@ -24,7 +24,11 @@ The rationale and validation plan live in the [Notion decision record](https://a
 
 ## Provider boundary
 
-The authenticated WLO adapter originated in #872 at `c9a4c4e41aafe71cc8f97004ad16ba01ba504226`. Keep its subject-context ranking and existing request/page/cache budgets. Send only the search term upstream, never account identity, full exam scope, conditions or school materials. Catalog coverage and typo tolerance remain validation questions.
+The authenticated WLO adapter originated in #872 at `c9a4c4e41aafe71cc8f97004ad16ba01ba504226`. The performance follow-up uses the supported metadata search endpoint with the same `collections` query, requests only taxonomy properties, and disables unneeded collection/user resolution and spelling suggestions. Keep the five-page / 100-node page budget, 20 returned titles and eight-second deadline. Trust a valid total to avoid empty extra pages and fetch subsequent pages in batches of at most two; merge in page order. Missing totals retain the sequential fallback. Send only the search term upstream, never account identity, full exam scope, conditions or school materials. Catalog coverage and typo tolerance remain validation questions.
+
+A best-effort server cache stores public suggestions for five minutes in at most 256 hash-addressed slots. Its digest contains a version, normalized query and resolved context; no raw query, personal subject name or user identity is stored. Check authentication before reading, compare the complete digest to reject slot collisions, and check expiry in the action rather than a time-dependent query. Cache failures fall back to the provider, and provider failures are not cached. These are per-layer TTLs; without a freshness timestamp propagated to the client, a server hit subsequently cached locally may be nearly ten minutes old. This bounded catalog staleness is accepted; it does not apply to a learner's saved selections or notes.
+
+Measurements, tradeoffs and the remaining cold-provider limit are in the [performance verification](../../../qa/topic-search-performance-2026-10-17.md). No whole-catalog synchronization or change to personal subject identity is introduced.
 
 ## Acceptance limits
 

@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import { topicTitleKey } from "#convex/examTopicInput";
+import {
+	normalizeWloQuery,
+	normalizeWloText,
+	rankWloTopics,
+} from "#convex/wloSubjectContext";
 import { ErrorMessage } from "~/components/ui/error-message";
 import { X } from "~/components/ui/icon";
 import { SearchField } from "~/components/ui/search-field";
@@ -27,6 +32,7 @@ export type SearchTopics = (args: {
 }) => Promise<TopicSearchResult>;
 
 const MAX_VISIBLE_RESULTS = 5;
+const SEARCH_DELAY_MS = 120;
 
 /** Search selections remain distinct from the learner's additional free text. */
 export function TopicSearch({
@@ -49,43 +55,119 @@ export function TopicSearch({
 		key: string;
 		result?: TopicSearchResult;
 		error?: boolean;
+		refreshing?: boolean;
 	}>({ key: "" });
 	const cache = useRef(
-		new Map<string, { result: TopicSearchResult; expires: number }>(),
+		new Map<
+			string,
+			{
+				result: TopicSearchResult;
+				expires: number;
+				term: string;
+				subject: string;
+			}
+		>(),
 	);
+	const pending = useRef(new Map<string, Promise<TopicSearchResult>>());
 	const term = query.trim();
-	const cacheKey = JSON.stringify([subject, term]);
+	const normalizedTerm = normalizeWloQuery(term);
+	const normalizedSubject = normalizeWloText(subject);
+	const cacheKey = JSON.stringify([normalizedSubject, normalizedTerm]);
 	const key = JSON.stringify([cacheKey, retry]);
 	const canSearch = term.length >= 3 && term.length <= 100;
 
 	useEffect(() => {
 		if (!canSearch || disabled) return;
 		let active = true;
-		const timer = setTimeout(() => {
-			const cached = cache.current.get(cacheKey);
-			if (cached && cached.expires > Date.now()) {
-				setState({ key, result: cached.result });
-				return;
+		const cached = cache.current.get(cacheKey);
+		if (cached && cached.expires > Date.now()) {
+			setState({ key, result: cached.result });
+			return;
+		}
+		// Show only already known titles that actually match the new term. This
+		// is a preview, never a final cached answer: always refresh from the server
+		// so truncated broad searches cannot hide more relevant narrow matches.
+		const sources = [...cache.current.values()]
+			.filter(
+				(entry) =>
+					entry.subject === normalizedSubject && entry.expires > Date.now(),
+			)
+			.sort((a, b) => b.expires - a.expires);
+		if (sources.length) {
+			const known = new Map<string, TopicSearchResult["topics"][number]>();
+			for (const source of sources) {
+				for (const topic of source.result.topics) {
+					if (!known.has(topicTitleKey(topic.title)))
+						known.set(topicTitleKey(topic.title), topic);
+				}
 			}
-			void searchTopics({ query: term, subject })
+			const topics = rankWloTopics(
+				[...known.values()],
+				normalizedTerm,
+				subject,
+			);
+			if (topics.length)
+				setState({
+					key,
+					result: { topics, truncated: true },
+					refreshing: true,
+				});
+		}
+		const load = () => {
+			let request = pending.current.get(cacheKey);
+			if (!request) {
+				request = searchTopics({ query: term, subject })
+					.then((result) => {
+						if (cache.current.size >= 30) {
+							const oldest = cache.current.keys().next().value;
+							if (oldest !== undefined) cache.current.delete(oldest);
+						}
+						cache.current.set(cacheKey, {
+							result,
+							expires: Date.now() + 300_000,
+							term: normalizedTerm,
+							subject: normalizedSubject,
+						});
+						return result;
+					})
+					.finally(() => pending.current.delete(cacheKey));
+				pending.current.set(cacheKey, request);
+			}
+			void request
 				.then((result) => {
 					if (!active) return;
-					if (cache.current.size >= 30) cache.current.clear();
-					cache.current.set(cacheKey, {
-						result,
-						expires: Date.now() + 300_000,
-					});
 					setState({ key, result });
 				})
 				.catch(() => {
-					if (active) setState({ key, error: true });
+					if (active)
+						setState((previous) => ({
+							...(previous.key === key ? previous : {}),
+							key,
+							error: true,
+							refreshing: false,
+						}));
 				});
-		}, 350);
+		};
+		// Returning to an already running request should not pay another debounce.
+		const timer = pending.current.has(cacheKey)
+			? undefined
+			: setTimeout(load, SEARCH_DELAY_MS);
+		if (timer === undefined) load();
 		return () => {
 			active = false;
 			clearTimeout(timer);
 		};
-	}, [cacheKey, canSearch, disabled, key, searchTopics, subject, term]);
+	}, [
+		cacheKey,
+		canSearch,
+		disabled,
+		key,
+		normalizedSubject,
+		normalizedTerm,
+		searchTopics,
+		subject,
+		term,
+	]);
 
 	const current = state.key === key ? state : undefined;
 	const result = current?.result;
@@ -134,8 +216,17 @@ export function TopicSearch({
 				>
 					Themen werden gesucht …
 				</Text>
-			) : canSearch && result ? (
+			) : null}
+			{canSearch && result ? (
 				<View>
+					{current?.refreshing ? (
+						<Text
+							accessibilityLiveRegion="polite"
+							className="font-poppins text-body-4 text-secondary-text"
+						>
+							Themen werden gesucht …
+						</Text>
+					) : null}
 					<Text
 						accessibilityLiveRegion="polite"
 						className="font-poppins text-body-4 text-secondary-text"

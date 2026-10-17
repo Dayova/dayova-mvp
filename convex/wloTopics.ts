@@ -1,20 +1,25 @@
 import { v } from "convex/values";
 import { z } from "zod";
+import { internal } from "./_generated/api";
 import { action } from "./_generated/server";
 import { throwUserFacingError } from "./errors";
 import {
 	normalizeWloText as normalize,
+	normalizeWloQuery,
+	rankWloTopics,
 	resolveWloSubjectContext,
 } from "./wloSubjectContext";
+import { topicCacheKey } from "./wloTopicCache";
+import { wloTopicResult } from "./wloTopicContract";
 
-// WLO's public collection search is deprecated, but currently the verified
-// endpoint for topic search. Keep the provider boundary isolated for replacement.
+// Use the provider's supported metadata query instead of the deprecated
+// collection endpoint, which materializes every property of every match.
 const ENDPOINT =
-	"https://suche.wirlernenonline.de/edu-sharing/rest/collection/v1/collections/-home-/search";
+	"https://suche.wirlernenonline.de/edu-sharing/rest/search/v1/queries/-home-/-default-/collections";
 const PAGE_SIZE = 100;
 const MAX_PAGES = 5;
 const responseSchema = z.object({
-	collections: z.array(
+	nodes: z.array(
 		z.object({
 			ref: z.object({ id: z.string() }),
 			title: z.string().nullish(),
@@ -22,6 +27,7 @@ const responseSchema = z.object({
 			collection: z.object({ type: z.string().nullish() }).nullish(),
 		}),
 	),
+	pagination: z.object({ total: z.number().int().nonnegative() }).optional(),
 });
 export type TopicSuggestion = {
 	id: string;
@@ -32,7 +38,7 @@ export type TopicSuggestion = {
 
 /** Ranks title matches using subject context without excluding other subjects. */
 export async function searchWloTopics(query: string, subject: string) {
-	const term = normalize(query).replace(/gedichtsanalyse/g, "gedichtanalyse");
+	const term = normalizeWloQuery(query);
 	if (term.length < 3 || term.length > 100 || subject.length > 100)
 		return { topics: [], truncated: false };
 	const subjects = resolveWloSubjectContext(subject).map(normalize);
@@ -41,20 +47,60 @@ export async function searchWloTopics(query: string, subject: string) {
 	const timeout = setTimeout(() => controller.abort(), 8000);
 	let truncated = false;
 	try {
-		for (let page = 0; page < MAX_PAGES; page++) {
+		const loadPage = async (page: number) => {
 			const url = new URL(ENDPOINT);
-			url.searchParams.set("query", term);
+			url.searchParams.set("contentType", "COLLECTIONS");
+			url.searchParams.append("propertyFilter", "ccm:taxonid");
+			url.searchParams.append("propertyFilter", "ccm:taxonid_DISPLAYNAME");
 			url.searchParams.set("maxItems", String(PAGE_SIZE));
 			url.searchParams.set("skipCount", String(page * PAGE_SIZE));
 			url.searchParams.set("sortProperties", "cm:name");
 			url.searchParams.set("sortAscending", "true");
 			const response = await fetch(url, {
+				method: "POST",
 				signal: controller.signal,
-				headers: { Accept: "application/json" },
+				headers: {
+					Accept: "application/json",
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					criteria: [{ property: "ngsearchword", values: [term] }],
+					resolveCollections: false,
+					resolveUsernames: false,
+					returnSuggestions: false,
+				}),
 			});
 			if (!response.ok) throw new Error(`WLO ${response.status}`);
-			const data = responseSchema.parse(await response.json());
-			for (const node of data.collections) {
+			return responseSchema.parse(await response.json());
+		};
+		const first = await loadPage(0);
+		const pages = [first];
+		if (first.nodes.length === PAGE_SIZE) {
+			const total = first.pagination?.total;
+			if (total !== undefined && total >= PAGE_SIZE) {
+				const count = Math.min(MAX_PAGES, Math.ceil(total / PAGE_SIZE));
+				for (let page = 1; page < count; page += 2) {
+					// Keep the existing five-page budget, with at most two parallel
+					// requests. Promise.all retains page order for duplicate merging.
+					pages.push(
+						...(await Promise.all(
+							Array.from({ length: Math.min(2, count - page) }, (_, index) =>
+								loadPage(page + index),
+							),
+						)),
+					);
+				}
+			} else {
+				// Missing/implausible totals must not silently lose later matches.
+				for (let page = 1; page < MAX_PAGES; page++) {
+					const data = await loadPage(page);
+					pages.push(data);
+					if (data.nodes.length < PAGE_SIZE) break;
+				}
+			}
+		}
+		for (const [page, data] of pages.entries()) {
+			for (const node of data.nodes) {
 				const title = node.title?.trim();
 				const properties = node.properties ?? {};
 				if (
@@ -94,22 +140,14 @@ export async function searchWloTopics(query: string, subject: string) {
 						!combined.some((name) => subjects.includes(normalize(name))),
 				});
 			}
-			if (data.collections.length < PAGE_SIZE) break;
+			if (data.nodes.length < PAGE_SIZE) break;
 			if (page === MAX_PAGES - 1) truncated = true;
 		}
 	} finally {
 		clearTimeout(timeout);
+		controller.abort();
 	}
-	const topics = [...matches.values()].sort((a, b) => {
-		/** Exact titles first, then context matches, then other title matches. */
-		const rank = (title: string) =>
-			normalize(title) === term ? 0 : normalize(title).startsWith(term) ? 1 : 2;
-		return (
-			Number(a.isAdditional) - Number(b.isAdditional) ||
-			rank(a.title) - rank(b.title) ||
-			a.title.localeCompare(b.title, "de")
-		);
-	});
+	const topics = rankWloTopics([...matches.values()], term, subject);
 	return {
 		topics: topics.slice(0, 20),
 		truncated: truncated || topics.length > 20,
@@ -119,22 +157,29 @@ export async function searchWloTopics(query: string, subject: string) {
 /** Exposes WLO suggestions to signed-in learners with a recoverable provider error. */
 export const search = action({
 	args: { query: v.string(), subject: v.string() },
-	returns: v.object({
-		topics: v.array(
-			v.object({
-				id: v.string(),
-				title: v.string(),
-				subjects: v.array(v.string()),
-				isAdditional: v.boolean(),
-			}),
-		),
-		truncated: v.boolean(),
-	}),
-	handler: async (ctx, args) => {
+	returns: wloTopicResult,
+	handler: async (
+		ctx,
+		args,
+	): Promise<{ topics: TopicSuggestion[]; truncated: boolean }> => {
 		if (!(await ctx.auth.getUserIdentity()))
 			throwUserFacingError("Bitte melde dich an.");
+		const key = await topicCacheKey(args.query, args.subject);
+		if (!key) return { topics: [], truncated: false };
 		try {
-			return await searchWloTopics(args.query, args.subject);
+			const cached = await ctx.runQuery(internal.wloTopicCache.read, { key });
+			if (cached && cached.expiresAt > Date.now()) return cached.result;
+		} catch {
+			// A cache failure must not turn a usable provider into a search outage.
+		}
+		try {
+			const result = await searchWloTopics(args.query, args.subject);
+			try {
+				await ctx.runMutation(internal.wloTopicCache.store, { key, result });
+			} catch {
+				// Caching is optional; retain the successful search result.
+			}
+			return result;
 		} catch {
 			throwUserFacingError(
 				"Die Themensuche ist gerade nicht erreichbar. Du kannst dein Thema selbst hinzufügen.",

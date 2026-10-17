@@ -83,6 +83,139 @@ afterEach(() => {
 });
 
 describe("inline topic search with a free-text exam scope", () => {
+	test("starts an uncached search within 150ms of the last keystroke", async () => {
+		const search = jest.fn<SearchTopics>().mockResolvedValue(reply("Bilanz"));
+		const screen = await render(<Setup searchTopics={search} />);
+		await fireEvent.changeText(
+			screen.getByLabelText("Themen suchen"),
+			"Bilanz",
+		);
+		await act(async () => jest.advanceTimersByTime(150));
+		expect(search).toHaveBeenCalledWith({
+			query: "Bilanz",
+			subject: "Mathematik",
+		});
+		expect(screen.getByRole("checkbox", { name: "Bilanz" })).toBeOnTheScreen();
+	});
+	test("restores a normalized cached search immediately without a loading flash", async () => {
+		const search = jest.fn<SearchTopics>().mockResolvedValue(reply("Bilanz"));
+		const screen = await render(<Setup searchTopics={search} />);
+		await fireEvent.changeText(
+			screen.getByLabelText("Themen suchen"),
+			"Bilanz",
+		);
+		await debounce();
+		await fireEvent.changeText(screen.getByLabelText("Themen suchen"), "");
+		await fireEvent.changeText(
+			screen.getByLabelText("Themen suchen"),
+			" BILANZ ",
+		);
+		expect(screen.getByRole("checkbox", { name: "Bilanz" })).toBeOnTheScreen();
+		expect(screen.queryByText("Themen werden gesucht …")).toBeNull();
+		expect(search).toHaveBeenCalledTimes(1);
+	});
+
+	test("reuses an in-flight search when returning to its query and caches it after leaving", async () => {
+		let finish: (result: TopicSearchResult) => void = () => {};
+		const search = jest.fn<SearchTopics>().mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					finish = resolve;
+				}),
+		);
+		const screen = await render(<Setup searchTopics={search} />);
+		await fireEvent.changeText(
+			screen.getByLabelText("Themen suchen"),
+			"Bilanz",
+		);
+		await debounce();
+		await fireEvent.changeText(screen.getByLabelText("Themen suchen"), "");
+		await fireEvent.changeText(
+			screen.getByLabelText("Themen suchen"),
+			"Bilanz",
+		);
+		await debounce();
+		expect(search).toHaveBeenCalledTimes(1);
+		await fireEvent.changeText(screen.getByLabelText("Themen suchen"), "");
+		await act(async () => finish(reply("Bilanz")));
+		expect(screen.queryByRole("checkbox", { name: "Bilanz" })).toBeNull();
+		await fireEvent.changeText(
+			screen.getByLabelText("Themen suchen"),
+			"Bilanz",
+		);
+		expect(screen.getByRole("checkbox", { name: "Bilanz" })).toBeOnTheScreen();
+	});
+	test("shows matching known titles immediately while refining, but refreshes authoritative results", async () => {
+		let finish: (value: TopicSearchResult) => void = () => {};
+		const search = jest
+			.fn<SearchTopics>()
+			.mockResolvedValueOnce({
+				topics: [
+					{
+						id: "1",
+						title: "Bilanz",
+						subjects: ["Wirtschaftskunde"],
+						isAdditional: true,
+					},
+					{ id: "2", title: "Bild", subjects: ["Kunst"], isAdditional: true },
+				],
+				truncated: true,
+			})
+			.mockImplementationOnce(
+				() =>
+					new Promise((resolve) => {
+						finish = resolve;
+					}),
+			);
+		const screen = await render(
+			<Setup searchTopics={search} initial="Ohne Hilfsmittel" />,
+		);
+		await fireEvent.changeText(screen.getByLabelText("Themen suchen"), "Bil");
+		await debounce();
+		await fireEvent.changeText(
+			screen.getByLabelText("Themen suchen"),
+			"Bilanz",
+		);
+		expect(screen.getByRole("checkbox", { name: "Bilanz" })).toBeOnTheScreen();
+		expect(screen.queryByRole("checkbox", { name: "Bild" })).toBeNull();
+		expect(screen.queryByText("Weitere Vorschläge")).toBeNull();
+		await debounce();
+		await act(async () => finish(reply("Bilanz", "Bilanzgleichung")));
+		expect(
+			screen.getByRole("checkbox", { name: "Bilanzgleichung" }),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+		).toHaveDisplayValue("Ohne Hilfsmittel");
+	});
+	test("keeps known matching titles on backspace even if the broader provider search fails", async () => {
+		const search = jest
+			.fn<SearchTopics>()
+			.mockResolvedValueOnce(reply("Bilanz", "Handelsbilanz"))
+			.mockRejectedValueOnce(new Error("offline"));
+		const screen = await render(
+			<Setup searchTopics={search} initial="Ohne Hilfsmittel" />,
+		);
+		await fireEvent.changeText(
+			screen.getByLabelText("Themen suchen"),
+			"Bilanz",
+		);
+		await debounce();
+		await fireEvent.changeText(screen.getByLabelText("Themen suchen"), "Bil");
+		expect(screen.getByRole("checkbox", { name: "Bilanz" })).toBeOnTheScreen();
+		await debounce();
+		expect(
+			screen.getByRole("checkbox", { name: "Handelsbilanz" }),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByRole("button", { name: "Erneut versuchen" }),
+		).toBeOnTheScreen();
+		await fireEvent.press(screen.getByRole("checkbox", { name: "Bilanz" }));
+		expect(
+			screen.getByLabelText("Zusätzliche Themen und Hinweise"),
+		).toHaveDisplayValue("Ohne Hilfsmittel");
+	});
+
 	test("shows result context and additional suggestions without another subject picker, and selects only the title without modifying additional information", async () => {
 		const search = jest.fn<SearchTopics>().mockResolvedValue({
 			topics: [
