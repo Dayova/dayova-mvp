@@ -7,12 +7,8 @@ import {
 	rankWloTopics,
 } from "#convex/wloSubjectContext";
 import { ErrorMessage } from "~/components/ui/error-message";
-import { X } from "~/components/ui/icon";
+import { Check, Plus, X } from "~/components/ui/icon";
 import { SearchField } from "~/components/ui/search-field";
-import {
-	SelectionControl,
-	SelectionIndicator,
-} from "~/components/ui/selection-control";
 import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { useDayovaTheme } from "~/lib/theme";
@@ -196,6 +192,28 @@ export function TopicSearch({
 				: [...selectedTopics, title],
 		);
 	}
+	const directChoice = term ? (
+		<TopicChoice
+			title={directTitle}
+			custom={!exact}
+			detail={
+				exact
+					? exact.subjects?.join(" · ") || "Katalogvorschlag"
+					: selectedTitle !== undefined
+						? "Ausgewählt"
+						: "Als eigenes Thema übernehmen"
+			}
+			hint={
+				exact?.subjects?.length
+					? `Themenbereich: ${exact.subjects.join(" · ")}`
+					: "Dein eingegebener Begriff. Kein Katalogtreffer erforderlich."
+			}
+			selected={selectedTitle !== undefined}
+			disabled={disabled}
+			onPress={() => toggleTopic(directTitle)}
+			checkColor={colors.secondaryText}
+		/>
+	) : null;
 	return (
 		<View className="mt-6 gap-3">
 			<SearchField
@@ -207,115 +225,6 @@ export function TopicSearch({
 				onChangeText={setQuery}
 				editable={!disabled}
 			/>
-			{term ? (
-				<TopicChoice
-					title={directTitle}
-					detail={
-						exact
-							? exact.subjects?.join(" · ") || "Katalogvorschlag"
-							: selectedTitle !== undefined
-								? "Ausgewählt"
-								: "Als eigenes Thema übernehmen"
-					}
-					hint={
-						exact?.subjects?.length
-							? `Themenbereich: ${exact.subjects.join(" · ")}`
-							: "Dein eingegebener Begriff. Kein Katalogtreffer erforderlich."
-					}
-					selected={selectedTitle !== undefined}
-					disabled={disabled}
-					onPress={() => toggleTopic(directTitle)}
-					checkColor={colors.onPrimary}
-				/>
-			) : null}
-			{term.length > 100 ? (
-				<Text className="font-poppins text-body-3 text-secondary-text">
-					Für Katalogvorschläge nutze höchstens 100 Zeichen. Deinen
-					vollständigen Text kannst du oben als eigenes Thema übernehmen.
-				</Text>
-			) : term.length > 0 && term.length < 3 ? (
-				<Text className="font-poppins text-body-3 text-secondary-text">
-					Katalogvorschläge gibt es ab drei Zeichen. Deinen Begriff kannst du
-					schon auswählen.
-				</Text>
-			) : canSearch && current?.error ? (
-				<View className="gap-1">
-					<ErrorMessage className="text-body-3">
-						Die Katalogsuche ist gerade nicht erreichbar. Du kannst deinen
-						Begriff oben trotzdem als Thema auswählen.
-					</ErrorMessage>
-					<ActionSurface
-						accessibilityRole="button"
-						disabled={disabled}
-						onPress={() => setRetry((value) => value + 1)}
-						className="min-h-12 justify-center rounded-none bg-transparent py-3"
-					>
-						<Text className="font-poppins text-body-3 text-text">
-							Erneut versuchen
-						</Text>
-					</ActionSurface>
-				</View>
-			) : canSearch && !result && !disabled ? (
-				<Text
-					accessibilityLiveRegion="polite"
-					className="font-poppins text-body-3 text-secondary-text"
-				>
-					Themen werden gesucht …
-				</Text>
-			) : null}
-			{canSearch && result ? (
-				<View>
-					{current?.refreshing ? (
-						<Text
-							accessibilityLiveRegion="polite"
-							className="font-poppins text-body-4 text-secondary-text"
-						>
-							Themen werden gesucht …
-						</Text>
-					) : null}
-					<Text
-						accessibilityLiveRegion="polite"
-						className="font-poppins text-body-4 text-secondary-text"
-					>
-						{result.topics.length
-							? "Wähle nur Themen aus, die bei dir drankommen."
-							: selectedTitle !== undefined
-								? "Keine weiteren Katalogvorschläge."
-								: "Keine passenden Katalogvorschläge. Du kannst deinen Begriff oben übernehmen."}
-					</Text>
-					{visible.map((topic, index) => {
-						const isIncluded = selectedTopics.some(
-							(title) => topicTitleKey(title) === topicTitleKey(topic.title),
-						);
-						const context = topic.subjects?.join(" · ");
-						return (
-							<View key={topic.id}>
-								{topic.isAdditional && !visible[index - 1]?.isAdditional ? (
-									<Text className="mt-3 font-poppins text-body-4 text-secondary-text">
-										Weitere Vorschläge
-									</Text>
-								) : null}
-								<TopicChoice
-									title={topic.title}
-									detail={context}
-									hint={context ? `Themenbereich: ${context}` : undefined}
-									selected={isIncluded}
-									disabled={disabled}
-									onPress={() => toggleTopic(topic.title)}
-									className="mt-2"
-									checkColor={colors.onPrimary}
-								/>
-							</View>
-						);
-					})}
-					{result.truncated || otherTopics.length > MAX_VISIBLE_RESULTS ? (
-						<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
-							Grenze deinen Suchbegriff weiter ein, um weitere passende Themen
-							zu finden.
-						</Text>
-					) : null}
-				</View>
-			) : null}
 			{selectedTopics.length > 0 ? (
 				<View className="mt-3 gap-2">
 					<Text
@@ -339,7 +248,7 @@ export function TopicSearch({
 										),
 									)
 								}
-								className="min-h-12 max-w-full flex-row items-center gap-2 rounded-full border border-primary bg-accent px-4 py-2"
+								className="min-h-12 max-w-full flex-row items-center gap-2 rounded-full border border-border bg-card px-4 py-2"
 							>
 								<Text className="shrink font-poppins text-body-3 text-text">
 									{title}
@@ -355,6 +264,96 @@ export function TopicSearch({
 					</View>
 				</View>
 			) : null}
+			{term.length > 100 ? (
+				<Text className="font-poppins text-body-3 text-secondary-text">
+					Für Katalogvorschläge nutze höchstens 100 Zeichen. Deinen
+					vollständigen Text kannst du unten als eigenes Thema übernehmen.
+				</Text>
+			) : term.length > 0 && term.length < 3 ? (
+				<Text className="font-poppins text-body-3 text-secondary-text">
+					Katalogvorschläge gibt es ab drei Zeichen. Deinen Begriff kannst du
+					schon auswählen.
+				</Text>
+			) : canSearch && current?.error ? (
+				<View className="gap-1">
+					<ErrorMessage className="text-body-3">
+						Die Katalogsuche ist gerade nicht erreichbar. Du kannst deinen
+						Begriff unten trotzdem als Thema auswählen.
+					</ErrorMessage>
+					<ActionSurface
+						accessibilityRole="button"
+						disabled={disabled}
+						onPress={() => setRetry((value) => value + 1)}
+						className="min-h-12 justify-center rounded-none bg-transparent py-3"
+					>
+						<Text className="font-poppins text-body-3 text-text">
+							Erneut versuchen
+						</Text>
+					</ActionSurface>
+				</View>
+			) : canSearch && !result && !disabled ? (
+				<Text
+					accessibilityLiveRegion="polite"
+					className="font-poppins text-body-3 text-secondary-text"
+				>
+					Themen werden gesucht …
+				</Text>
+			) : null}
+			{exact ? directChoice : null}
+			{canSearch && result ? (
+				<View>
+					{current?.refreshing ? (
+						<Text
+							accessibilityLiveRegion="polite"
+							className="font-poppins text-body-4 text-secondary-text"
+						>
+							Themen werden gesucht …
+						</Text>
+					) : null}
+					<Text
+						accessibilityLiveRegion="polite"
+						className="font-poppins text-body-4 text-secondary-text"
+					>
+						{result.topics.length
+							? "Vorschläge von WirLernenOnline"
+							: selectedTitle !== undefined
+								? "Keine weiteren Katalogvorschläge."
+								: "Keine passenden Katalogvorschläge. Du kannst deinen Begriff unten übernehmen."}
+					</Text>
+					{visible.map((topic, index) => {
+						const isIncluded = selectedTopics.some(
+							(title) => topicTitleKey(title) === topicTitleKey(topic.title),
+						);
+						const context = topic.subjects?.join(" · ");
+						return (
+							<View key={topic.id}>
+								{topic.isAdditional && !visible[index - 1]?.isAdditional ? (
+									<Text className="mt-3 font-poppins text-body-4 text-secondary-text">
+										Weitere Vorschläge
+									</Text>
+								) : null}
+								<TopicChoice
+									title={topic.title}
+									detail={context}
+									hint={context ? `Themenbereich: ${context}` : undefined}
+									selected={isIncluded}
+									disabled={disabled}
+									onPress={() => toggleTopic(topic.title)}
+									className="mt-2"
+									checkColor={colors.secondaryText}
+								/>
+							</View>
+						);
+					})}
+					{result.truncated || otherTopics.length > MAX_VISIBLE_RESULTS ? (
+						<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
+							Grenze deinen Suchbegriff weiter ein, um weitere passende Themen
+							zu finden.
+						</Text>
+					) : null}
+				</View>
+			) : null}
+			{!exact ? directChoice : null}
 		</View>
 	);
 }
@@ -369,8 +368,10 @@ function TopicChoice({
 	onPress,
 	checkColor,
 	className,
+	custom = false,
 }: {
 	title: string;
+	custom?: boolean;
 	detail?: string;
 	hint?: string;
 	selected: boolean;
@@ -380,25 +381,42 @@ function TopicChoice({
 	className?: string;
 }) {
 	return (
-		<SelectionControl
+		<ActionSurface
 			accessibilityRole="checkbox"
 			accessibilityLabel={title}
 			accessibilityHint={hint}
-			selected={selected}
+			accessibilityState={{ checked: selected, disabled }}
 			disabled={disabled}
 			onPress={onPress}
-			className={className}
-			contentClassName="min-h-14 flex-row items-center gap-3 rounded-2xl px-4 py-3"
+			className={`${custom ? "rounded-full bg-card px-4" : "rounded-none bg-transparent px-1"} min-h-14 flex-row items-center gap-3 py-3 ${className ?? ""}`}
 		>
 			<View className="flex-1 gap-1">
-				<Text className="font-poppins text-body-3 text-text">{title}</Text>
-				{detail ? (
+				<Text
+					className={`font-poppins text-body-2 text-text ${custom ? "" : "font-semibold"}`}
+				>
+					{custom
+						? selected
+							? `„${title}“ ausgewählt`
+							: `„${title}“ als eigenes Thema hinzufügen`
+						: title}
+				</Text>
+				{detail && !custom ? (
 					<Text className="font-poppins text-body-4 text-secondary-text">
 						{detail}
 					</Text>
 				) : null}
 			</View>
-			<SelectionIndicator checkColor={checkColor} />
-		</SelectionControl>
+			<View
+				accessible={false}
+				importantForAccessibility="no-hide-descendants"
+				className="h-8 w-8 items-center justify-center rounded-full border border-secondary-text"
+			>
+				{selected ? (
+					<Check size={20} color={checkColor} />
+				) : (
+					<Plus size={20} color={checkColor} />
+				)}
+			</View>
+		</ActionSurface>
 	);
 }

@@ -330,3 +330,16 @@ are empty; example selections belong only in historical screenshot evidence.
 
 The duration explanation adapts to the chosen value; an additional explanation
 between weekdays and start time brings the profile flow to twelve steps.
+
+## Exam topic search rows
+
+DAY-530 follows the supplied topic-search reference: neutral removable chips
+immediately below the search, transparent catalog rows with outlined plus/check
+icons, and a quiet custom-term action below suggestions. These controlled rows
+use ActionSurface with explicit checkbox state, 56px minimum touch height and
+wrapping text; they are a scoped alternative to the filled SelectionControl
+cards. Existing subject metadata remains visible. Exam hint suggestions use the
+same quiet plus-row treatment, remain optional, and append only after a tap.
+Hints stay inline by default and their complete text remains editable beneath
+the hint search. See https://linear.app/dayova/issue/DAY-530 and the prior
+[decision record](https://app.notion.com/p/3fb2e87228bf817a880dde6127a1996a).

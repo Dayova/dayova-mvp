@@ -1,6 +1,8 @@
 import { describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render } from "@testing-library/react-native";
+import { useState } from "react";
 import type { Id } from "#convex/_generated/dataModel";
+import { ExamHintsEditor } from "./exam-hints-editor";
 import {
 	ExamHintsStep,
 	MaterialUploadStep,
@@ -40,6 +42,67 @@ jest.mock("~/lib/theme", () => ({
 }));
 
 describe("learning-plan setup steps", () => {
+	test("searches hints, adds several suggestions and a custom condition without replacing existing text", async () => {
+		function Harness() {
+			const [value, setValue] = useState(
+				"Teil 1 ohne Hilfsmittel; Teil 2 mit Formelsammlung.",
+			);
+			return (
+				<ExamHintsEditor
+					subject="Mathe LK"
+					selectedTopics={["Vektoren"]}
+					value={value}
+					onChange={setValue}
+				/>
+			);
+		}
+		const screen = await render(<Harness />);
+		await fireEvent.changeText(
+			screen.getByLabelText("Hinweise suchen"),
+			"lösung",
+		);
+		expect(
+			screen.queryByRole("button", {
+				name: "Beispiel übernehmen: Ohne Taschenrechner",
+			}),
+		).toBeNull();
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: "Beispiel übernehmen: Lösungsweg angeben",
+			}),
+		);
+		expect(screen.getByLabelText("Hinweise suchen")).toHaveDisplayValue("");
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: "Beispiel übernehmen: Skizzen beschriften",
+			}),
+		);
+		await fireEvent.changeText(
+			screen.getByLabelText("Hinweise suchen"),
+			"Nur Aufgabe 3 mit Rechner",
+		);
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: "Eigenen Hinweis hinzufügen: Nur Aufgabe 3 mit Rechner",
+			}),
+		);
+		expect(
+			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
+		).toHaveDisplayValue(
+			"Teil 1 ohne Hilfsmittel; Teil 2 mit Formelsammlung.\nLösungsweg angeben\nSkizzen beschriften\nNur Aufgabe 3 mit Rechner",
+		);
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: "Beispiel übernehmen: Lösungsweg angeben",
+			}),
+		);
+		expect(
+			screen
+				.getByLabelText("Hinweise zur Prüfung (optional)")
+				.props.value.match(/Lösungsweg angeben/g),
+		).toHaveLength(1);
+	});
+
 	test("both placements share the same opt-in examples and preserve long text when adding one", async () => {
 		const note =
 			"Analysis ohne Taschenrechner; Stochastik mit Formelsammlung. ".repeat(8);

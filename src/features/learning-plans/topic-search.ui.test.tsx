@@ -399,7 +399,9 @@ describe("inline topic search with a free-text exam scope", () => {
 		);
 		// The entered title stays available as an own topic; old catalog context
 		// must not survive the subject change while the new request is pending.
-		expect(screen.getByText("Als eigenes Thema übernehmen")).toBeOnTheScreen();
+		expect(
+			screen.getByText("„Bilanz“ als eigenes Thema hinzufügen"),
+		).toBeOnTheScreen();
 		await debounce();
 		expect(search).toHaveBeenLastCalledWith({
 			query: "Bilanz",
@@ -579,7 +581,7 @@ describe("inline topic search with a free-text exam scope", () => {
 		await debounce();
 		expect(
 			screen.getByText(
-				"Keine passenden Katalogvorschläge. Du kannst deinen Begriff oben übernehmen.",
+				"Keine passenden Katalogvorschläge. Du kannst deinen Begriff unten übernehmen.",
 			),
 		).toBeOnTheScreen();
 		expect(
@@ -603,7 +605,7 @@ describe("inline topic search with a free-text exam scope", () => {
 		).toBeUndefined();
 		expect(
 			screen.getByText(
-				"Für Katalogvorschläge nutze höchstens 100 Zeichen. Deinen vollständigen Text kannst du oben als eigenes Thema übernehmen.",
+				"Für Katalogvorschläge nutze höchstens 100 Zeichen. Deinen vollständigen Text kannst du unten als eigenes Thema übernehmen.",
 			),
 		).toBeOnTheScreen();
 		expect(search).not.toHaveBeenCalled();
