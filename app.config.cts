@@ -75,6 +75,7 @@ const config: ExpoConfig = {
 	},
 	ios: {
 		supportsTablet: true,
+		requireFullScreen: true,
 		bundleIdentifier: isProduction ? "de.dayova.app" : "de.dayova.app-dev",
 		runtimeVersion: APP_VERSION,
 		infoPlist: {
