@@ -1,10 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-	ActivityIndicator,
-	ScrollView,
-	TouchableOpacity,
-	View,
-} from "react-native";
+import { ActivityIndicator, ScrollView, View } from "react-native";
 import Animated, {
 	FadeIn,
 	FadeInDown,
@@ -16,6 +11,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "~/components/ui/button";
+import { FeedbackTouchableOpacity } from "~/components/ui/feedback-pressable";
 import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import {
 	BookOpen,
@@ -131,7 +127,7 @@ function CollapsibleTheorySection({
 			layout={reduceMotion ? undefined : LinearTransition.duration(200)}
 			className={cn("gap-4", className)}
 		>
-			<TouchableOpacity
+			<FeedbackTouchableOpacity
 				accessibilityHint={
 					isExpanded
 						? "Blendet den Inhalt dieses Abschnitts aus."
@@ -156,7 +152,7 @@ function CollapsibleTheorySection({
 				>
 					<ChevronDown size={20} color={chevronColor} strokeWidth={2.1} />
 				</Animated.View>
-			</TouchableOpacity>
+			</FeedbackTouchableOpacity>
 			{isExpanded ? (
 				<Animated.View
 					entering={reduceMotion ? undefined : FadeIn.duration(180)}

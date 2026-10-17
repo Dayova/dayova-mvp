@@ -1,14 +1,17 @@
-import { LinearGradient } from "expo-linear-gradient";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, View } from "react-native";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import { Field, FieldLabel } from "~/components/ui/field";
 import { Timer } from "~/components/ui/icon";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
+import {
+	SelectionControl,
+	SelectionText,
+} from "~/components/ui/selection-control";
 import { Text } from "~/components/ui/text";
 import {
 	LEARNING_DAYS,
 	type LearningDayLabel,
 } from "~/features/learning-times/learning-time-days";
-import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
@@ -27,7 +30,7 @@ function TimeControl({ label, value, onPress, disabled }: TimeControlProps) {
 			<Text className="font-poppins text-body-4 text-secondary-text">
 				{label}
 			</Text>
-			<Pressable
+			<FeedbackPressable
 				accessibilityLabel={`${label}: ${value}`}
 				accessibilityRole="button"
 				disabled={disabled}
@@ -44,7 +47,7 @@ function TimeControl({ label, value, onPress, disabled }: TimeControlProps) {
 					{value}
 				</Text>
 				<Timer size={19} color={colors.secondaryText} strokeWidth={1.9} />
-			</Pressable>
+			</FeedbackPressable>
 		</View>
 	);
 }
@@ -99,46 +102,19 @@ function LearningTimeEditorFields({
 							const isSelected = day.value === selectedDayValue;
 
 							return (
-								<Pressable
+								<SelectionControl
 									key={day.value}
-									accessibilityLabel={day.label}
-									accessibilityRole="radio"
-									accessibilityState={{ checked: isSelected, disabled }}
+									appearance="pill"
+									selected={isSelected}
 									disabled={disabled}
-									className={cn(
-										"min-h-11 min-w-11 items-center justify-center overflow-hidden rounded-full border px-2 py-3 active:opacity-80",
-										isSelected
-											? "border-white bg-primary"
-											: "border-border bg-card",
-									)}
+									accessibilityLabel={day.label}
+									contentClassName="min-h-11 min-w-11 px-2 py-3"
 									onPress={() => onDayChange(day.label)}
 								>
-									{isSelected ? (
-										<LinearGradient
-											pointerEvents="none"
-											testID="selected-weekday-gradient"
-											colors={
-												DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.colors
-											}
-											start={
-												DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.start
-											}
-											end={
-												DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.end
-											}
-											// The native gradient requires explicit fill bounds, as in Button.
-											style={StyleSheet.absoluteFill}
-										/>
-									) : null}
-									<Text
-										className={cn(
-											"font-poppins font-semibold text-body-4",
-											isSelected ? "text-white" : "text-text",
-										)}
-									>
+									<SelectionText className="font-poppins font-semibold text-body-4">
 										{day.abbreviation}
-									</Text>
-								</Pressable>
+									</SelectionText>
+								</SelectionControl>
 							);
 						})}
 					</View>

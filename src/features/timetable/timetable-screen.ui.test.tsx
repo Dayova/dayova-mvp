@@ -288,3 +288,7 @@ describe("Timetable import entry", () => {
 		expect(screen.getByRole("button", { name: "Dateien" })).toBeEnabled();
 	});
 });
+
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+);

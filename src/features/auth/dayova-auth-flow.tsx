@@ -16,7 +16,6 @@ import {
 	type NativeScrollEvent,
 	type NativeSyntheticEvent,
 	Platform,
-	Pressable,
 	ScrollView,
 	TextInput,
 	type TextInputProps,
@@ -25,7 +24,6 @@ import {
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Animated, {
-	Easing,
 	FadeIn,
 	FadeInDown,
 	FadeInUp,
@@ -35,7 +33,6 @@ import Animated, {
 	useAnimatedStyle,
 	useReducedMotion,
 	useSharedValue,
-	withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IntroUploadArtwork } from "~/components/intro-upload-artwork";
@@ -74,9 +71,9 @@ import {
 	DateTimePickerSheet,
 } from "~/components/ui/date-time-picker-sheet";
 import { ErrorMessage } from "~/components/ui/error-message";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import {
-	ArrowLeft,
 	Atom,
 	CalendarDays,
 	Check,
@@ -92,6 +89,10 @@ import {
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
 import { PasswordVisibilityButton } from "~/components/ui/password-visibility-button";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
+import {
+	SelectionControl,
+	SelectionText,
+} from "~/components/ui/selection-control";
 import { SnapCarouselSelector } from "~/components/ui/snap-carousel-selector";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
@@ -132,10 +133,6 @@ import { cn } from "~/lib/utils";
 // Password icons represent the current visibility state across this auth flow.
 // Decision: https://app.notion.com/p/39f2e87228bf81c28511c0728134c774
 const COLORS = DAYOVA_DESIGN_SYSTEM.colors;
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-const STUDY_DAY_SELECTION_DURATION_MS = 180;
-const STUDY_DAY_PRESS_IN_DURATION_MS = 80;
-const STUDY_DAY_PRESS_OUT_DURATION_MS = 120;
 const QUESTION_TITLE_STYLE = DAYOVA_DESIGN_SYSTEM.typography.headline.h2;
 const ONBOARDING_CONTENT_TOP_SPACING = 40;
 const CODE_LENGTH = 6;
@@ -314,23 +311,26 @@ export function AuthChoiceScreen() {
 						/>
 					</Animated.View>
 
-					<Text
+					<FeedbackPressable
 						accessibilityRole="button"
 						accessibilityLabel="Dayova, App-Informationen"
 						onPress={() => setShowReleaseInformation(true)}
-						allowFontScaling={false}
-						className="mt-6 text-center font-poppins font-semibold text-heading-1 text-text"
-						style={{
-							fontSize: responsiveLayout.brandFontSize,
-							lineHeight: responsiveLayout.brandLineHeight,
-							width: Math.min(
-								Math.max(width - 16, 0),
-								contentSizeLayout.containerMaxWidth,
-							),
-						}}
 					>
-						Dayova
-					</Text>
+						<Text
+							allowFontScaling={false}
+							className="mt-6 text-center font-poppins font-semibold text-heading-1 text-text"
+							style={{
+								fontSize: responsiveLayout.brandFontSize,
+								lineHeight: responsiveLayout.brandLineHeight,
+								width: Math.min(
+									Math.max(width - 16, 0),
+									contentSizeLayout.containerMaxWidth,
+								),
+							}}
+						>
+							Dayova
+						</Text>
+					</FeedbackPressable>
 					<Text
 						allowFontScaling={false}
 						className="mt-4 text-center font-poppins text-body-2 text-secondary-text"
@@ -460,19 +460,22 @@ export function AuthChoiceScreen() {
 							alignItems: "center",
 						}}
 					>
-						<Text
+						<FeedbackPressable
 							accessibilityRole="button"
 							accessibilityLabel="Dayova, App-Informationen"
 							onPress={() => setShowReleaseInformation(true)}
-							className="text-center font-poppins font-semibold text-text"
-							style={{
-								fontSize: scaled(AUTH_CHOICE_FRAME.title.fontSize),
-								lineHeight: scaled(AUTH_CHOICE_FRAME.title.lineHeight),
-								includeFontPadding: false,
-							}}
 						>
-							Dayova
-						</Text>
+							<Text
+								className="text-center font-poppins font-semibold text-text"
+								style={{
+									fontSize: scaled(AUTH_CHOICE_FRAME.title.fontSize),
+									lineHeight: scaled(AUTH_CHOICE_FRAME.title.lineHeight),
+									includeFontPadding: false,
+								}}
+							>
+								Dayova
+							</Text>
+						</FeedbackPressable>
 					</Animated.View>
 
 					<Animated.View
@@ -1839,7 +1842,7 @@ export function LoginScreen() {
 						</View>
 
 						<View className="w-full flex-row justify-end">
-							<Pressable
+							<FeedbackPressable
 								accessibilityRole="button"
 								accessibilityLabel="Passwort vergessen"
 								accessibilityHint="Öffnet den Ablauf zum Zurücksetzen deines Passworts"
@@ -1857,7 +1860,7 @@ export function LoginScreen() {
 								<Text className="text-right font-poppins text-body-4 text-primary">
 									Passwort vergessen?
 								</Text>
-							</Pressable>
+							</FeedbackPressable>
 						</View>
 
 						{error ? (
@@ -1895,7 +1898,7 @@ export function LoginScreen() {
 							<Text className="text-center font-poppins text-body-3 text-text">
 								Du hast keinen Account?
 							</Text>
-							<Pressable
+							<FeedbackPressable
 								accessibilityLabel="Jetzt registrieren"
 								accessibilityRole="button"
 								hitSlop={8}
@@ -1904,7 +1907,7 @@ export function LoginScreen() {
 								<Text className="text-center font-poppins text-body-3 text-primary">
 									Jetzt Registrieren
 								</Text>
-							</Pressable>
+							</FeedbackPressable>
 						</View>
 					</View>
 				</KeyboardSafeScrollView>
@@ -1920,7 +1923,6 @@ function PasswordResetScreen({
 	initialEmail: string;
 	onCancel: () => void;
 }) {
-	const { colors: COLORS } = useDayovaTheme();
 	const insets = useSafeAreaInsets();
 	const { height } = useWindowDimensions();
 	const reducedMotion = useReducedMotion();
@@ -2167,16 +2169,7 @@ function PasswordResetScreen({
 			>
 				<View className="flex-1 items-center px-8">
 					<View className="w-full flex-row items-center">
-						<Pressable
-							accessibilityRole="button"
-							accessibilityLabel="Zurück"
-							disabled={isLoading}
-							hitSlop={8}
-							onPress={handleBack}
-							className="h-12 w-12 items-center justify-center rounded-full border border-border bg-surface"
-						>
-							<ArrowLeft size={20} color={COLORS.text} strokeWidth={2.2} />
-						</Pressable>
+						<BackButton disabled={isLoading} onPress={handleBack} />
 					</View>
 
 					<Image
@@ -2311,7 +2304,7 @@ function PasswordResetScreen({
 					</View>
 
 					{stage === "reset_code" || stage === "second_factor" ? (
-						<Pressable
+						<FeedbackPressable
 							accessibilityLabel="Code erneut senden"
 							accessibilityRole="button"
 							accessibilityState={{ disabled: isLoading }}
@@ -2323,7 +2316,7 @@ function PasswordResetScreen({
 							<Text className="font-poppins text-body-3 text-primary">
 								Code erneut senden
 							</Text>
-						</Pressable>
+						</FeedbackPressable>
 					) : null}
 				</View>
 			</KeyboardSafeScrollView>
@@ -2406,7 +2399,7 @@ function VerificationScreen({
 						<Text className="mt-5 text-center font-poppins text-body-5 text-text">
 							Kein Code angekommen?
 						</Text>
-						<Pressable
+						<FeedbackPressable
 							accessibilityLabel="Code erneut senden"
 							accessibilityRole="button"
 							accessibilityState={{ disabled }}
@@ -2417,7 +2410,7 @@ function VerificationScreen({
 							<Text className="text-center font-poppins font-semibold text-body-5 text-primary">
 								Erneut senden
 							</Text>
-						</Pressable>
+						</FeedbackPressable>
 
 						{error ? (
 							<Animated.Text
@@ -2509,28 +2502,20 @@ export function OnboardingRecoveryScreen({
 					{ONBOARDING_DURATION_OPTIONS.map((duration) => {
 						const selected = answers.studyTime === String(duration);
 						return (
-							<Pressable
+							<SelectionControl
+								selected={selected}
+								appearance="pill"
 								key={duration}
 								accessibilityRole="radio"
 								accessibilityState={{ disabled: isSubmitting, selected }}
 								disabled={isSubmitting}
 								onPress={() => onChange("studyTime", String(duration))}
-								className={cn(
-									"rounded-full border px-4 py-3",
-									selected
-										? "border-primary bg-primary"
-										: "border-path-1 bg-system-subtle",
-								)}
+								contentClassName="px-4 py-3"
 							>
-								<Text
-									className={cn(
-										"font-poppins font-semibold text-body-4",
-										selected ? "text-on-primary" : "text-text",
-									)}
-								>
+								<SelectionText className="font-poppins font-semibold text-body-4">
 									{formatOnboardingDuration(duration)}
-								</Text>
-							</Pressable>
+								</SelectionText>
+							</SelectionControl>
 						);
 					})}
 				</View>
@@ -2542,7 +2527,9 @@ export function OnboardingRecoveryScreen({
 					{LEARNING_DAYS.map((day) => {
 						const selected = selectedDays.has(day.label);
 						return (
-							<Pressable
+							<SelectionControl
+								selected={selected}
+								appearance="pill"
 								key={day.label}
 								accessibilityRole="checkbox"
 								accessibilityState={{
@@ -2556,22 +2543,12 @@ export function OnboardingRecoveryScreen({
 										toggleOnboardingStudyDay(answers.studyDays, day.label),
 									)
 								}
-								className={cn(
-									"rounded-full border px-4 py-3",
-									selected
-										? "border-primary bg-primary"
-										: "border-path-1 bg-system-subtle",
-								)}
+								contentClassName="px-4 py-3"
 							>
-								<Text
-									className={cn(
-										"font-poppins font-semibold text-body-4",
-										selected ? "text-on-primary" : "text-text",
-									)}
-								>
+								<SelectionText className="font-poppins font-semibold text-body-4">
 									{day.label}
-								</Text>
-							</Pressable>
+								</SelectionText>
+							</SelectionControl>
 						);
 					})}
 				</View>
@@ -2579,7 +2556,7 @@ export function OnboardingRecoveryScreen({
 				<Text className="mt-6 font-poppins font-semibold text-body-3 text-text">
 					Startzeit
 				</Text>
-				<Pressable
+				<FeedbackPressable
 					accessibilityRole="button"
 					accessibilityState={{ disabled: isSubmitting }}
 					disabled={isSubmitting}
@@ -2603,7 +2580,7 @@ export function OnboardingRecoveryScreen({
 							? `${answers.learningTime} Uhr`
 							: "Uhrzeit auswählen"}
 					</Text>
-				</Pressable>
+				</FeedbackPressable>
 				{(error ?? validationError) ? (
 					<ErrorMessage className="mt-4 text-center">
 						{error ?? validationError}
@@ -2784,8 +2761,6 @@ function AuthProgressHeader({
 			<BackButton
 				accessibilityState={{ disabled }}
 				disabled={disabled}
-				iconSize={18}
-				strokeWidth={2.2}
 				onPress={() => onBack()}
 			/>
 			<View className="flex-1 gap-2">
@@ -3087,91 +3062,19 @@ function AnimatedStudyDayPill({
 	isSelected: boolean;
 	onToggle: () => void;
 }) {
-	const { colors } = useDayovaTheme();
-	const reducedMotion = useReducedMotion();
-	const selectionProgress = useSharedValue(isSelected ? 1 : 0);
-	const pressedScale = useSharedValue(1);
-
-	useEffect(() => {
-		const nextProgress = isSelected ? 1 : 0;
-		selectionProgress.set(
-			reducedMotion
-				? nextProgress
-				: withTiming(nextProgress, {
-						duration: STUDY_DAY_SELECTION_DURATION_MS,
-						easing: Easing.out(Easing.cubic),
-					}),
-		);
-	}, [isSelected, reducedMotion, selectionProgress]);
-
-	const pillStyle = useAnimatedStyle(() => ({
-		backgroundColor: interpolateColor(
-			selectionProgress.get(),
-			[0, 1],
-			[colors.surface, colors.primary],
-		),
-		borderColor: interpolateColor(
-			selectionProgress.get(),
-			[0, 1],
-			[colors.border, colors.primary],
-		),
-		transform: [{ scale: pressedScale.get() }],
-	}));
-	const gradientStyle = useAnimatedStyle(() => ({
-		opacity: selectionProgress.get(),
-	}));
-	const labelStyle = useAnimatedStyle(() => ({
-		color: interpolateColor(
-			selectionProgress.get(),
-			[0, 1],
-			[colors.text, "#FFFFFF"],
-		),
-	}));
-
-	const setPressedScale = (scale: number, duration: number) => {
-		if (reducedMotion) return;
-		pressedScale.set(
-			withTiming(scale, {
-				duration,
-				easing: Easing.out(Easing.cubic),
-			}),
-		);
-	};
-
 	return (
-		<AnimatedPressable
+		<SelectionControl
+			selected={isSelected}
+			appearance="pill"
 			accessibilityRole="checkbox"
 			accessibilityLabel={label}
-			accessibilityState={{ checked: isSelected }}
 			onPress={onToggle}
-			onPressIn={() => setPressedScale(0.97, STUDY_DAY_PRESS_IN_DURATION_MS)}
-			onPressOut={() => setPressedScale(1, STUDY_DAY_PRESS_OUT_DURATION_MS)}
-			className="min-h-12 min-w-[100px] flex-row items-center justify-center overflow-hidden rounded-full border px-6 py-3"
-			// Runtime state and press feedback intentionally animate outside NativeWind.
-			style={pillStyle}
+			contentClassName="min-h-12 min-w-[100px] px-6 py-3"
 		>
-			<Animated.View
-				pointerEvents="none"
-				className="absolute inset-0"
-				style={gradientStyle}
-			>
-				<LinearGradient
-					testID={`weekday-gradient-${label}`}
-					{...DAYOVA_DESIGN_SYSTEM.gradients.selection}
-					style={{ width: "100%", height: "100%" }}
-				/>
-			</Animated.View>
-			<Animated.Text
-				className="font-poppins font-semibold text-body-3"
-				// Selection animation and Android font metrics require native styles.
-				style={[
-					Platform.select({ android: { includeFontPadding: false } }),
-					labelStyle,
-				]}
-			>
+			<SelectionText className="font-poppins font-semibold text-body-3">
 				{label}
-			</Animated.Text>
-		</AnimatedPressable>
+			</SelectionText>
+		</SelectionControl>
 	);
 }
 
