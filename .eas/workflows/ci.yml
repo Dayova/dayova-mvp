@@ -12,6 +12,7 @@ on:
   push:
     branches:
       - main
+      - gh-readonly-queue/main/**
   workflow_dispatch: {}
 
 concurrency:
@@ -32,6 +33,16 @@ jobs:
     params:
       md: "CI source is eligible: pull requests must originate from this repository."
 
+  contributor_gate:
+    name: CI contributor eligibility
+    type: doc
+    needs:
+      - source_gate
+    # Separate contributor trust from branch routing to fit EAS's condition limit.
+    if: ${{ github.event_name != 'pull_request' || contains('OWNER,MEMBER,COLLABORATOR', github.event.pull_request.author_association) }}
+    params:
+      md: "CI contributor is eligible: pull requests must come from trusted contributors."
+
   production_fingerprint:
     name: Production native fingerprints
     type: fingerprint
@@ -46,9 +57,9 @@ jobs:
     type: custom
     runs_on: linux-medium
     needs:
-      - source_gate
+      - contributor_gate
     # This custom job uses production scope; fork code must not reach checkout.
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref_name == 'main') || (github.event_name == 'pull_request' && contains('OWNER,MEMBER,COLLABORATOR', github.event.pull_request.author_association)) }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || (github.event_name == 'push' && (github.ref_name == 'main' || startsWith(github.ref_name, 'gh-readonly-queue/main/'))) }}
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules

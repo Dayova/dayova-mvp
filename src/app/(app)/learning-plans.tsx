@@ -1,8 +1,8 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ScrollView, TouchableOpacity, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
 	Easing,
@@ -18,8 +18,10 @@ import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { CreateTypePickerModal } from "~/components/create-type-picker-modal";
-import { Button } from "~/components/ui/button";
+import { BackButton, Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
+import { CreateEntryIcon } from "~/components/ui/create-entry-icon";
+import { FeedbackTouchableOpacity } from "~/components/ui/feedback-pressable";
 import {
 	ArrowUpRight,
 	ClipboardEdit,
@@ -42,7 +44,8 @@ import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
-import { ROUTES } from "~/lib/routes";
+import { dismissToOrReplace } from "~/lib/navigation";
+import { getSafeReturnTo, ROUTES } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
 
 const PLAN_ACTION_RAIL_WIDTH = 104;
@@ -318,7 +321,7 @@ function PlansTabSwitch({
 			{tabs.map((tab) => {
 				const isActive = tab.key === activeTab;
 				return (
-					<TouchableOpacity
+					<FeedbackTouchableOpacity
 						key={tab.key}
 						accessibilityRole="tab"
 						accessibilityState={{ selected: isActive }}
@@ -348,7 +351,7 @@ function PlansTabSwitch({
 								{tab.label}
 							</Text>
 						</View>
-					</TouchableOpacity>
+					</FeedbackTouchableOpacity>
 				);
 			})}
 		</View>
@@ -379,7 +382,7 @@ function LearningPlanActionRail({
 			]}
 		>
 			<View className="items-center gap-4">
-				<TouchableOpacity
+				<FeedbackTouchableOpacity
 					accessibilityLabel="Lernplan bearbeiten"
 					accessibilityRole="button"
 					activeOpacity={0.78}
@@ -391,9 +394,9 @@ function LearningPlanActionRail({
 						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
 						strokeWidth={2.1}
 					/>
-				</TouchableOpacity>
+				</FeedbackTouchableOpacity>
 				<View className="h-0.5 w-8 rounded-full bg-light-1" />
-				<TouchableOpacity
+				<FeedbackTouchableOpacity
 					accessibilityLabel="Lernplan löschen"
 					accessibilityRole="button"
 					activeOpacity={0.78}
@@ -405,7 +408,7 @@ function LearningPlanActionRail({
 						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
 						strokeWidth={2.1}
 					/>
-				</TouchableOpacity>
+				</FeedbackTouchableOpacity>
 			</View>
 		</Animated.View>
 	);
@@ -457,13 +460,15 @@ function LearningPlanCard({
 		: needsSchoolMaterial
 			? "Lernmaterial hochladen"
 			: plan.currentSession?.sessionPurpose === "diagnostic"
-				? "Wissenscheck · 5–10 Fragen"
+				? "Wissenscheck"
 				: plan.currentSession?.goal ||
 					plan.currentSession?.title ||
 					plan.examTypeLabel;
 	const [isActionRailVisible, setIsActionRailVisible] = useState(false);
 	const translateX = useSharedValue(0);
 	const gestureStartX = useSharedValue(0);
+	const didDrag = useSharedValue(false);
+	const isActionRailOpen = useSharedValue(false);
 	const cardAnimatedStyle = useAnimatedStyle(() => ({
 		transform: [{ translateX: translateX.get() }],
 	}));
@@ -481,6 +486,11 @@ function LearningPlanCard({
 		.onBegin(() => {
 			"worklet";
 			gestureStartX.set(translateX.get());
+			didDrag.set(false);
+		})
+		.onStart(() => {
+			"worklet";
+			didDrag.set(true);
 			scheduleOnRN(setIsActionRailVisible, true);
 		})
 		.onUpdate((event) => {
@@ -495,6 +505,7 @@ function LearningPlanCard({
 		.onEnd(() => {
 			"worklet";
 			const shouldOpen = -translateX.get() >= PLAN_SWIPE_OPEN_THRESHOLD;
+			isActionRailOpen.set(shouldOpen);
 			translateX.set(
 				shouldOpen
 					? withTiming(-PLAN_ACTION_RAIL_WIDTH, {
@@ -515,13 +526,39 @@ function LearningPlanCard({
 							},
 						),
 			);
+		})
+		.onFinalize((event) => {
+			"worklet";
+			// A vertical drag can fail this pan without ever reaching onStart.
+			if (
+				Math.abs(event.translationX) > 10 ||
+				Math.abs(event.translationY) > 10
+			) {
+				didDrag.set(true);
+			}
 		});
+	const activateCard = () => {
+		const shouldCloseActions = isActionRailOpen.get();
+		isActionRailOpen.set(false);
+		translateX.set(0);
+		setIsActionRailVisible(false);
+		if (shouldCloseActions) return;
+		onPress();
+	};
+	const pressCard = () => {
+		// Suppress the trailing touch press, including failed vertical pans.
+		// Accessibility activation has no touch gesture and uses activateCard.
+		if (didDrag.get()) return;
+		activateCard();
+	};
 	const editPlan = () => {
+		isActionRailOpen.set(false);
 		translateX.set(0);
 		setIsActionRailVisible(false);
 		router.push(`/learning-plans/new?learningPlanId=${plan.id}` as const);
 	};
 	const deletePlan = () => {
+		isActionRailOpen.set(false);
 		translateX.set(0);
 		setIsActionRailVisible(false);
 		onDelete();
@@ -574,7 +611,8 @@ function LearningPlanCard({
 											rollingWindowLabel,
 										},
 						}}
-						onPress={onPress}
+						onPress={pressCard}
+						onAccessibilityActivate={activateCard}
 					/>
 				</Animated.View>
 			</GestureDetector>
@@ -739,6 +777,8 @@ function HomeworkCard({
 }
 
 export default function LearningPlansScreen() {
+	const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
+	const returnTarget = getSafeReturnTo(returnTo);
 	const insets = useSafeAreaInsets();
 	const { colors } = useDayovaTheme();
 	const { user } = useAuthSession();
@@ -838,27 +878,40 @@ export default function LearningPlansScreen() {
 		>
 			<ThemedStatusBar />
 			<View
-				className="gap-6 px-6"
+				className="gap-6 px-6 pb-6"
+				// Use the same runtime safe-area offset as the current Today header.
 				style={{
-					paddingTop: Math.max(insets.top - 4, 32),
-					paddingBottom: 18,
+					paddingTop: insets.top + 16,
 				}}
 			>
-				<View className="mt-7 flex-row items-center justify-between">
-					<Text className="font-poppins font-semibold text-heading-1 text-text">
+				<View className="min-h-12 flex-row items-center justify-between gap-6">
+					{returnTarget ? (
+						<BackButton
+							accessibilityLabel="Zurück zu Heute"
+							onPress={() => {
+								router.setParams({ returnTo: undefined });
+								dismissToOrReplace(router, returnTarget);
+							}}
+						/>
+					) : null}
+					<Text
+						accessibilityRole="header"
+						className="min-w-0 flex-1 font-poppins font-semibold text-heading-2 text-text"
+					>
 						Deine Pläne
 					</Text>
 
-					<TouchableOpacity
+					<FeedbackTouchableOpacity
 						accessibilityRole="button"
+						pressScale={0.92}
 						accessibilityLabel="Neuen Eintrag erstellen."
 						accessibilityHint="Öffnet den Eintragserstellungsdialog, um entweder eine Prüfung oder Hausaufgabe zu erstellen."
 						activeOpacity={0.88}
 						onPress={openCreateTypePicker}
-						className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
+						className="h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border bg-card"
 					>
-						<Plus size={28} color={colors.text} strokeWidth={1.8} />
-					</TouchableOpacity>
+						<CreateEntryIcon />
+					</FeedbackTouchableOpacity>
 				</View>
 
 				<PlansTabSwitch activeTab={activeTab} onChange={setActiveTab} />

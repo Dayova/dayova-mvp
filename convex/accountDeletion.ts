@@ -161,6 +161,30 @@ export const deleteCurrentUserDataBatch = mutation({
 			.take(DELETE_BATCH_SIZE);
 		deletedRecords += await deleteRows(ctx, "dayEntries", dayEntries);
 
+		const personalSubjectReferences = await ctx.db
+			.query("personalSubjectReferences")
+			.withIndex("by_ownerTokenIdentifier_and_personalSubjectId", (query) =>
+				query.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+			)
+			.take(DELETE_BATCH_SIZE);
+		deletedRecords += await deleteRows(
+			ctx,
+			"personalSubjectReferences",
+			personalSubjectReferences,
+		);
+
+		const personalSubjects = await ctx.db
+			.query("personalSubjects")
+			.withIndex("by_ownerTokenIdentifier_and_normalizedName", (query) =>
+				query.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+			)
+			.take(DELETE_BATCH_SIZE);
+		deletedRecords += await deleteRows(
+			ctx,
+			"personalSubjects",
+			personalSubjects,
+		);
+
 		const learningPlans = await ctx.db
 			.query("learningPlans")
 			.withIndex("by_ownerTokenIdentifier", (query) =>

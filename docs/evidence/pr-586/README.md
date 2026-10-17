@@ -17,11 +17,11 @@ Full screen recordings: [before](before.mp4), [after](after.mp4),
 Each is a ten-second MP4. The GIF is a cropped, resized, 20 fps preview at
 the original speed; it contains the complete ten-second comparison.
 
-![C selected before and after](selected-comparison.png)
+![C selected before and after](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/pr-586/selected-comparison.png?raw=true)
 
-![Resting, holding B, and holding B with reduced motion](interaction-states.png)
+![Resting, holding B, and holding B with reduced motion](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/pr-586/interaction-states.png?raw=true)
 
-![Dark theme and long answer states](additional-states.png)
+![Dark theme and long answer states](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/pr-586/additional-states.png?raw=true)
 
 The original 1080×2400 PNGs are included alongside these labeled comparisons.
 `after-unselected.png` shows the initial state; `after-pressed.png` holds B

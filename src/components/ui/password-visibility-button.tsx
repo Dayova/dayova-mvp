@@ -1,4 +1,4 @@
-import { Pressable } from "react-native";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import { Eye, EyeOff } from "~/components/ui/icon";
 import { useDayovaTheme } from "~/lib/theme";
 
@@ -18,7 +18,7 @@ export function PasswordVisibilityButton({
 	const { colors } = useDayovaTheme();
 
 	return (
-		<Pressable
+		<FeedbackPressable
 			accessibilityRole="button"
 			accessibilityLabel={`${fieldLabel} ${visible ? "ausblenden" : "anzeigen"}`}
 			accessibilityState={{ disabled }}
@@ -32,6 +32,6 @@ export function PasswordVisibilityButton({
 			) : (
 				<EyeOff size={19} color={colors.secondaryText} strokeWidth={2} />
 			)}
-		</Pressable>
+		</FeedbackPressable>
 	);
 }

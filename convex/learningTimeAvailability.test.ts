@@ -5,6 +5,31 @@ import {
 } from "./learningTimeAvailability";
 
 describe("deriveOnboardingLearningTimes", () => {
+	test.each([
+		"custom",
+		"241 min",
+		"270 min",
+		"1440 min",
+		"270.5 min",
+		"37 min",
+	])("rejects invalid or unbounded duration %s", (dailySchoolTime) => {
+		expect(
+			deriveOnboardingLearningTimes({
+				studyDays: "Montag",
+				learningTime: "00:00",
+				dailySchoolTime,
+			}),
+		).toEqual({ ok: false, reason: "invalidDuration" });
+	});
+	test("does not silently shorten four hours that reach midnight", () => {
+		expect(
+			deriveOnboardingLearningTimes({
+				studyDays: "Montag",
+				learningTime: "20:00",
+				dailySchoolTime: "240 min",
+			}),
+		).toEqual({ ok: false, reason: "crossesMidnight" });
+	});
 	test("derives one same-day window per selected weekday", () => {
 		expect(
 			deriveOnboardingLearningTimes({

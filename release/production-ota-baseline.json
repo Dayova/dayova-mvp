@@ -4,7 +4,7 @@
   "appVersion": "1.0.5",
   "runtimeVersion": "1.0.5",
   "sdkVersion": "57.0.0",
-  "reviewedAt": "2026-09-17",
+  "reviewedAt": "2026-10-16",
   "platforms": {
     "ios": {
       "appVersion": "1.0.5",
@@ -36,9 +36,9 @@
         },
         {
           "buildFingerprint": "1b690a3f1a0c5ac4d73873da35ab9c2ca695d807",
-          "evidence": "release/ota-equivalence-pr-662-2026-09-26.md — EAS source comparison: only the Maestro artifact ignore rule and developer-invoked test scripts differ",
-          "sourceSha": "2e3ccd579d170887f6c88980e419ca6a44b7e024",
-          "fingerprint": "0d4d8c27e554a284c2e5cbdbfc8b169737cd3965"
+          "evidence": "release/ota-compatibility-2026-10-16.md — EAS comparison: only documentation screenshot ignore patterns differ from the previously reviewed equivalent; all other 69 iOS source entries are identical",
+          "sourceSha": "5743e752b79bf4b14482d4e071843191844714eb",
+          "fingerprint": "57a1a902d2fb5d7b9c8abb450e3cfa02363d49ae"
         }
       ]
     },
@@ -72,9 +72,9 @@
         },
         {
           "buildFingerprint": "d91ab0f33529c36e5e7a76ef4e9a0a3bb66f26a1",
-          "evidence": "release/ota-equivalence-pr-662-2026-09-26.md — EAS source comparison: only the Maestro artifact ignore rule and developer-invoked test scripts differ",
-          "sourceSha": "2e3ccd579d170887f6c88980e419ca6a44b7e024",
-          "fingerprint": "392680bd43db4eae74d334e9b1a8ff6e4da14517"
+          "evidence": "release/ota-compatibility-2026-10-16.md — EAS comparison: only documentation screenshot ignore patterns differ from the previously reviewed equivalent; all other 72 Android source entries are identical",
+          "sourceSha": "5743e752b79bf4b14482d4e071843191844714eb",
+          "fingerprint": "f40c556a3a6952d2c672630b516cdbdba491000b"
         }
       ]
     }

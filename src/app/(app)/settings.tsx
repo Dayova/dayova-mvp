@@ -5,6 +5,7 @@ import { ReleaseInformationSheet } from "~/components/release-information-sheet"
 import { ErrorMessage } from "~/components/ui/error-message";
 import {
 	Bell,
+	BookOpen,
 	Computer,
 	CreditCard,
 	Globe,
@@ -29,11 +30,14 @@ import {
 } from "~/features/settings/settings-list";
 import { ThemePreferenceToggle } from "~/features/settings/theme-preference-toggle";
 import { openExternalUrl } from "~/lib/open-external-url";
+import { ROUTES } from "~/lib/routes";
 import { env } from "~/lib/runtime-config";
 import { getNativeSubscriptionManagementUrl } from "~/lib/store-subscription";
 import { useDayovaTheme } from "~/lib/theme";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 export default function SettingsScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const { user } = useAuthSession();
 	const profileName = user?.name?.trim();
@@ -65,6 +69,42 @@ export default function SettingsScreen() {
 	const isStoreSubscriber =
 		access?.state === "paid" || access?.state === "billingGrace";
 
+	const subscriptionCard = (
+		<View className="gap-3" testID="settings-subscription">
+			<SettingsCard>
+				{access?.state === "trial" ? (
+					<SettingsRow
+						icon={CreditCard}
+						label="Dayova abonnieren"
+						onPress={() => {
+							trackFeature("settings.subscription_opened");
+							router.push("/subscription");
+						}}
+					/>
+				) : (
+					<SettingsRow
+						icon={CreditCard}
+						label="Dayova"
+						accessibilityLabel={`Dayova, ${nativeManagementUrl ? "Abo im Store verwalten" : "Hilfe zum Abo"}`}
+						description={
+							nativeManagementUrl ? "Abo im Store verwalten" : "Hilfe zum Abo"
+						}
+						onPress={() =>
+							openLink(
+								"subscription",
+								nativeManagementUrl ?? env.EXPO_PUBLIC_SUPPORT_URL,
+							)
+						}
+						disabled={!isStoreSubscriber}
+					/>
+				)}
+			</SettingsCard>
+			{linkErrors.subscription ? (
+				<ErrorMessage>{linkErrors.subscription}</ErrorMessage>
+			) : null}
+		</View>
+	);
+
 	return (
 		<>
 			<Screen>
@@ -85,7 +125,10 @@ export default function SettingsScreen() {
 										? `${profileName}, Profil & Konto`
 										: "Profil & Konto"
 								}
-								onPress={() => router.push("/profile")}
+								onPress={() => {
+									trackFeature("settings.profile_opened");
+									router.push("/profile");
+								}}
 							/>
 						</SettingsCard>
 
@@ -97,7 +140,10 @@ export default function SettingsScreen() {
 											buttonRef={buttonRef}
 											icon={Mail}
 											label="Support kontaktieren"
-											onPress={onPress}
+											onPress={() => {
+												trackFeature("settings.support_opened");
+												onPress();
+											}}
 											busy={busy}
 											disabled={busy}
 										/>
@@ -106,11 +152,22 @@ export default function SettingsScreen() {
 							</SettingsCard>
 						</View>
 
+						{!isStoreSubscriber ? subscriptionCard : null}
+
 						<SettingsSection title="Lernen">
 							<SettingsRow
 								icon={Timer}
 								label="Lernzeiten"
-								onPress={() => router.push("/learning-times")}
+								onPress={() => {
+									trackFeature("settings.learning_times_opened");
+									router.push("/learning-times");
+								}}
+							/>
+							<SettingsDivider />
+							<SettingsRow
+								icon={BookOpen}
+								label="Persönliche Fächer"
+								onPress={() => router.push(ROUTES.personalSubjects)}
 							/>
 						</SettingsSection>
 
@@ -118,13 +175,19 @@ export default function SettingsScreen() {
 							<SettingsRow
 								icon={Computer}
 								label="App-Informationen"
-								onPress={() => setShowReleaseInformation(true)}
+								onPress={() => {
+									trackFeature("settings.release_information_opened");
+									setShowReleaseInformation(true);
+								}}
 							/>
 							<SettingsDivider />
 							<SettingsRow
 								icon={Bell}
 								label="Mitteilungen"
-								onPress={() => router.push("/notification-settings")}
+								onPress={() => {
+									trackFeature("settings.notifications_opened");
+									router.push("/notification-settings");
+								}}
 							/>
 							<SettingsDivider />
 							<SettingsRow
@@ -133,51 +196,26 @@ export default function SettingsScreen() {
 								trailing={
 									<ThemePreferenceToggle
 										preference={preference}
-										setPreference={setPreference}
+										setPreference={async (value) => {
+											await setPreference(value);
+											trackFeature("settings.theme_changed", "succeeded");
+										}}
 									/>
 								}
 							/>
 						</SettingsSection>
 
-						<View className="gap-3" testID="settings-subscription">
-							<SettingsCard>
-								{access?.state === "trial" ? (
-									<SettingsRow
-										icon={CreditCard}
-										label="Dayova abonnieren"
-										onPress={() => router.push("/subscription")}
-									/>
-								) : (
-									<SettingsRow
-										icon={CreditCard}
-										label="Dayova"
-										accessibilityLabel={`Dayova, ${nativeManagementUrl ? "Abo im Store verwalten" : "Hilfe zum Abo"}`}
-										description={
-											nativeManagementUrl
-												? "Abo im Store verwalten"
-												: "Hilfe zum Abo"
-										}
-										onPress={() =>
-											openLink(
-												"subscription",
-												nativeManagementUrl ?? env.EXPO_PUBLIC_SUPPORT_URL,
-											)
-										}
-										disabled={!isStoreSubscriber}
-									/>
-								)}
-							</SettingsCard>
-							{linkErrors.subscription ? (
-								<ErrorMessage>{linkErrors.subscription}</ErrorMessage>
-							) : null}
-						</View>
+						{isStoreSubscriber ? subscriptionCard : null}
 
 						<View className="gap-3" testID="settings-legal">
 							<SettingsSection title="Datenschutz & Rechtliches">
 								<SettingsRow
 									icon={Sparkles}
 									label="KI & Datenschutz"
-									onPress={openAiConsentSettings}
+									onPress={() => {
+										trackFeature("settings.ai_privacy_opened");
+										openAiConsentSettings();
+									}}
 									accessibilityLabel={`KI & Datenschutz, ${aiConsentStatusLabel}`}
 									trailing={
 										<View className="rounded-full bg-muted px-3 py-2">
@@ -191,13 +229,19 @@ export default function SettingsScreen() {
 								<SettingsRow
 									icon={Globe}
 									label="Datenschutz"
-									onPress={() => openLink("legal", env.EXPO_PUBLIC_PRIVACY_URL)}
+									onPress={() => {
+										trackFeature("settings.privacy_opened");
+										openLink("legal", env.EXPO_PUBLIC_PRIVACY_URL);
+									}}
 								/>
 								<SettingsDivider />
 								<SettingsRow
 									icon={Globe}
 									label="Nutzungsbedingungen"
-									onPress={() => openLink("legal", env.EXPO_PUBLIC_TERMS_URL)}
+									onPress={() => {
+										trackFeature("settings.terms_opened");
+										openLink("legal", env.EXPO_PUBLIC_TERMS_URL);
+									}}
 								/>
 							</SettingsSection>
 							{linkErrors.legal ? (

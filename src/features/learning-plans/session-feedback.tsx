@@ -94,14 +94,20 @@ export function FeedbackView({ attempt }: { attempt: SessionAnswerAttempt }) {
 			</View>
 
 			<View className="mt-9">
-				<Surface className="rounded-[32px] px-5 py-6" variant="flat">
+				<Surface
+					className="rounded-[32px] border border-border px-5 py-6"
+					variant="flat"
+				>
 					<TagPill label="Auswertung" icon="evaluation" />
 					<Text className="mt-8 font-poppins text-body-2 text-secondary-text">
 						{feedback}
 					</Text>
 				</Surface>
 				<View className="mx-8 my-8 h-px bg-border" />
-				<Surface className="rounded-[32px] px-5 py-6" variant="flat">
+				<Surface
+					className="rounded-[32px] border border-border px-5 py-6"
+					variant="flat"
+				>
 					<TagPill label="Ideale Antwort" icon="answer" />
 					<Text className="mt-8 font-poppins text-body-2 text-secondary-text">
 						{perfectAnswer}

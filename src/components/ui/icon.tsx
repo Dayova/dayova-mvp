@@ -5,6 +5,7 @@ import {
 	ArrowDown01Icon,
 	ArrowLeft01Icon,
 	ArrowRight01Icon,
+	ArrowRight02Icon,
 	ArrowUpRight01Icon,
 	Atom02Icon,
 	Attachment01Icon,
@@ -28,6 +29,7 @@ import {
 	GlobeIcon,
 	GreekHelmetIcon,
 	Home02Icon,
+	Image01Icon,
 	InformationCircleIcon,
 	LanguageCircleIcon,
 	Logout03Icon,
@@ -45,6 +47,7 @@ import {
 	PaintBrush01Icon,
 	PencilIcon,
 	Plant04Icon,
+	PlayIcon,
 	PlusSignIcon,
 	PropertyEditIcon,
 	RepeatIcon,
@@ -81,6 +84,7 @@ export const ArrowDataTransferHorizontal = createIcon(
 export const Atom = createIcon(Atom02Icon);
 export const ArrowLeft = createIcon(ArrowLeft01Icon);
 export const ArrowRight = createIcon(ArrowRight01Icon);
+export const ArrowRightStraight = createIcon(ArrowRight02Icon);
 export const ArrowUpRight = createIcon(ArrowUpRight01Icon);
 export const Backpack = createIcon(Backpack03Icon);
 export const Bell = createIcon(Notification01Icon);
@@ -110,6 +114,7 @@ export const GraduationCap = createIcon(Mortarboard01Icon);
 export const GreekHelmet = createIcon(GreekHelmetIcon);
 export const Globe = createIcon(GlobeIcon);
 export const Home = createIcon(Home02Icon);
+export const Photo = createIcon(Image01Icon);
 export const Info = createIcon(InformationCircleIcon);
 export const Language = createIcon(LanguageCircleIcon);
 export const Logout = createIcon(Logout03Icon);
@@ -124,6 +129,7 @@ export const Palette = createIcon(PaintBoardIcon);
 export const PaintBrush = createIcon(PaintBrush01Icon);
 export const Pencil = createIcon(PencilIcon);
 export const Plant = createIcon(Plant04Icon);
+export const Play = createIcon(PlayIcon);
 export const Plus = createIcon(PlusSignIcon);
 export const PropertyEdit = createIcon(PropertyEditIcon);
 export const Repeat = createIcon(RepeatIcon);

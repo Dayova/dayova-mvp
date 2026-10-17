@@ -125,6 +125,7 @@ const evaluate = (expression: string, context: Record<string, unknown>) =>
 	runInNewContext(expression.slice(3, -2), {
 		...context,
 		contains: (value: string, part: string) => value.includes(part),
+		startsWith: (value: string, prefix: string) => value.startsWith(prefix),
 	});
 
 const event = (eventName: string, association = "MEMBER", fork = false) => ({
@@ -183,37 +184,60 @@ describe("PR OTA workflow routing", () => {
 		],
 		["main push", event("push"), true],
 		["other push", { ...event("push"), ref_name: "feature" }, false],
+		[
+			"main merge queue push",
+			{
+				...event("push"),
+				ref_name: "gh-readonly-queue/main/pr-123-test",
+				event: {},
+			},
+			false,
+			true,
+		],
+		[
+			"other merge queue push",
+			{ ...event("push"), ref_name: "gh-readonly-queue/release/pr-123-test" },
+			false,
+		],
+		[
+			"similar queue prefix push",
+			{ ...event("push"), ref_name: "gh-readonly-queue/main-malicious/test" },
+			false,
+		],
 		["manual CI", event("workflow_dispatch"), false],
-	])("routes %s to production compatibility checks", (_label, github, expected) => {
-		const context = { github };
-		const canRun = (id: string): boolean => {
-			const job = workflow.jobs[id];
-			return (
-				(!job.if || Boolean(evaluate(job.if, context))) &&
-				(job.needs ?? []).every(canRun)
+	])(
+		"routes %s to production compatibility checks",
+		(_label, github, expected, queueChecks = false) => {
+			const context = { github };
+			const canRun = (id: string): boolean => {
+				const job = workflow.jobs[id];
+				return (
+					(!job.if || Boolean(evaluate(job.if, context))) &&
+					(job.needs ?? []).every(canRun)
+				);
+			};
+			expect(canRun("checks")).toBe(
+				expected || queueChecks || github.event_name === "workflow_dispatch",
 			);
-		};
-		expect(canRun("checks")).toBe(
-			expected || github.event_name === "workflow_dispatch",
-		);
-		expect(canRun("production_fingerprint")).toBe(expected);
-		expect(canRun("ota_checks")).toBe(expected);
-		const publicationContext = {
-			...context,
-			needs: { ota_checks: { outputs: { ota_safe: "true" } } },
-		};
-		const isMainPush =
-			github.event_name === "push" && github.ref_name === "main";
-		expect(
-			Boolean(evaluate(workflow.jobs.send_updates.if, publicationContext)),
-		).toBe(isMainPush);
-		expect(Boolean(evaluate(workflow.jobs.deploy_convex.if, context))).toBe(
-			isMainPush,
-		);
-		expect(Boolean(evaluate(workflow.jobs.pr_ota_comment.if, context))).toBe(
-			github.event_name === "pull_request",
-		);
-	});
+			expect(canRun("production_fingerprint")).toBe(expected);
+			expect(canRun("ota_checks")).toBe(expected);
+			const publicationContext = {
+				...context,
+				needs: { ota_checks: { outputs: { ota_safe: "true" } } },
+			};
+			const isMainPush =
+				github.event_name === "push" && github.ref_name === "main";
+			expect(
+				Boolean(evaluate(workflow.jobs.send_updates.if, publicationContext)),
+			).toBe(isMainPush);
+			expect(Boolean(evaluate(workflow.jobs.deploy_convex.if, context))).toBe(
+				isMainPush,
+			);
+			expect(Boolean(evaluate(workflow.jobs.pr_ota_comment.if, context))).toBe(
+				github.event_name === "pull_request",
+			);
+		},
+	);
 
 	it.each([
 		["null", 0],

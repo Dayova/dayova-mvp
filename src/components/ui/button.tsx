@@ -1,7 +1,8 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import { LinearGradient } from "expo-linear-gradient";
-import { Platform, Pressable, StyleSheet } from "react-native";
-import { ArrowLeft } from "~/components/ui/icon";
+import { Platform, type Pressable, StyleSheet } from "react-native";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
+import { ArrowLeft, X } from "~/components/ui/icon";
 import { TextClassContext } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
@@ -23,6 +24,9 @@ const buttonVariants = cva(
 	{
 		variants: {
 			variant: {
+				cancel: "border border-border bg-card active:bg-muted",
+				"destructive-outline":
+					"border border-danger-action bg-danger-subtle active:opacity-80",
 				default: cn(
 					"border-hairline border-white bg-primary active:opacity-90",
 					Platform.select({ web: "hover:opacity-90" }),
@@ -82,6 +86,8 @@ const buttonTextVariants = cva(
 	{
 		variants: {
 			variant: {
+				cancel: "text-text",
+				"destructive-outline": "text-danger-action",
 				default: "text-white",
 				neutral: "text-background",
 				destructive: "text-background",
@@ -130,7 +136,8 @@ function Button({
 		<TextClassContext.Provider
 			value={buttonTextVariants({ variant: resolvedVariant, size })}
 		>
-			<Pressable
+			<FeedbackPressable
+				pressScale={size === "icon" || size === "sm" ? 0.92 : undefined}
 				{...props}
 				accessible
 				accessibilityRole="button"
@@ -159,29 +166,42 @@ function Button({
 						{typeof children === "function" ? children(state) : children}
 					</>
 				)}
-			</Pressable>
+			</FeedbackPressable>
 		</TextClassContext.Provider>
 	);
 }
 
-type BackButtonProps = Omit<ButtonProps, "children" | "variant" | "size"> & {
+type NavigationIconButtonProps = Omit<
+	ButtonProps,
+	"children" | "variant" | "size"
+> & {
+	kind: "back" | "close";
 	iconSize?: number;
 	strokeWidth?: number;
 };
 
-function BackButton({
+function NavigationIconButton({
+	kind,
+	accessibilityHint,
+	accessibilityLabel = kind === "back" ? "Zurück" : "Schließen",
 	className,
 	iconSize = 20,
 	strokeWidth = 2.4,
 	style,
 	...props
-}: BackButtonProps) {
+}: NavigationIconButtonProps) {
 	const { colors } = useDayovaTheme();
+	const Icon = kind === "back" ? ArrowLeft : X;
 
 	return (
 		<Button
-			accessibilityHint="Geht zum vorherigen Schritt oder Bildschirm zurück."
-			accessibilityLabel="Zurück"
+			accessibilityHint={
+				accessibilityHint ??
+				(kind === "back"
+					? "Geht zum vorherigen Schritt oder Bildschirm zurück."
+					: undefined)
+			}
+			accessibilityLabel={accessibilityLabel}
 			hitSlop={8}
 			className={cn(
 				"h-12 min-h-12 w-12 min-w-12 items-center justify-center rounded-full border border-border bg-card px-0 active:bg-card/80",
@@ -193,13 +213,13 @@ function BackButton({
 			style={style}
 			{...props}
 		>
-			<ArrowLeft
-				size={iconSize}
-				color={colors.text}
-				strokeWidth={strokeWidth}
-			/>
+			<Icon size={iconSize} color={colors.text} strokeWidth={strokeWidth} />
 		</Button>
 	);
 }
 
-export { BackButton, Button };
+function BackButton(props: Omit<NavigationIconButtonProps, "kind">) {
+	return <NavigationIconButton kind="back" {...props} />;
+}
+
+export { BackButton, Button, NavigationIconButton };
