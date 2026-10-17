@@ -134,6 +134,32 @@ variant or `accessibilityRole="header"`; the primitive owns the documented
 large-title scaling curve. Do not reproduce `maxFontSizeMultiplier` values in
 individual screens. Non-heading text keeps unrestricted system scaling.
 
+Custom `ScreenHeader` titles remain complete. The shared header measures its
+side controls and keeps a centered inline title when it fits. A native text
+wrap, enlarged text, or compact viewport moves ordinary titles below the controls
+into a full-width row. A compound title may supply two complete parts: it keeps
+those parts beside Back when they fit, wrapping only at their boundary with a
+discretionary hyphen that is visible only when the word breaks. If a part
+fragments or a timer needs the space, the header gives the two complete parts
+their own full-width row. Wissenscheck supplies “Wissens”
+and “check”; its accessible label remains the uninterrupted word.
+`titleClassName` customizes typography; the shared header owns side padding. Learning-session headers use the shared content-size padding
+and reserve timer space only when the timer is present. The session's question
+and action areas share that padding; action pairs stack at enlarged/compact
+sizes so the expanded header does not leave task content unreachable. See
+[DAY-513](https://linear.app/dayova/issue/DAY-513).
+
+Learning-session actions stay pinned while their measured height uses at most
+40% of the available question area. Larger actions join the vertical content
+scroll; iOS keyboard height is deducted from that budget, and pinned actions
+measure their screen position below the header. On Android, actions always join
+the content scroll while the keyboard is visible, following the shared keyboard
+contract rather than relying on window resizing. Written questions and
+multiple-choice answers both remain scrollable. At compact/enlarged sizes, choice
+letters and selection indicators sit above the full-width answer text. Long
+German session-action labels have optional soft-hyphen breaks and centered
+wrapping, with unchanged accessible names and unrestricted system text scaling.
+
 Light-mode pill buttons have exactly two visual appearances: the light-mode
 gradient button and the black button using the primary text color `#1A1A1A`.
 There are no white pill buttons in the current light-mode design system. Both
