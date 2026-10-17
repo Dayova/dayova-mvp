@@ -1,10 +1,6 @@
-import {
-	type TextStyle,
-	TouchableOpacity,
-	View,
-	type ViewStyle,
-} from "react-native";
+import { type TextStyle, View, type ViewStyle } from "react-native";
 import Svg, { Circle } from "react-native-svg";
+import { FeedbackTouchableOpacity } from "~/components/ui/feedback-pressable";
 import {
 	ArrowRight,
 	ArrowUpRight,
@@ -30,8 +26,8 @@ import {
 } from "./dashboard-agenda";
 import type { DashboardNextStepFallbackAction } from "./dashboard-empty-state";
 import {
-	getDashboardSummaryCardLayoutClass,
 	type DashboardSummaryCardLayout,
+	getDashboardSummaryCardLayoutClass,
 } from "./dashboard-layout";
 
 type DashboardNextStepCardProps =
@@ -299,7 +295,7 @@ function DashboardNextStepCard(props: DashboardNextStepCardProps) {
 	};
 
 	return (
-		<TouchableOpacity
+		<FeedbackTouchableOpacity
 			activeOpacity={0.82}
 			accessibilityRole="button"
 			accessibilityState={{ disabled: props.isLoading }}
@@ -332,7 +328,7 @@ function DashboardNextStepCard(props: DashboardNextStepCardProps) {
 			style={continuousBorderStyle}
 		>
 			{content}
-		</TouchableOpacity>
+		</FeedbackTouchableOpacity>
 	);
 }
 
@@ -514,7 +510,7 @@ function DashboardWeeklyProgressCard(props: DashboardWeeklyProgressCardProps) {
 	}
 
 	return (
-		<TouchableOpacity
+		<FeedbackTouchableOpacity
 			activeOpacity={0.82}
 			accessibilityRole="button"
 			accessibilityLabel={
@@ -534,7 +530,7 @@ function DashboardWeeklyProgressCard(props: DashboardWeeklyProgressCardProps) {
 			style={continuousBorderStyle}
 		>
 			{content}
-		</TouchableOpacity>
+		</FeedbackTouchableOpacity>
 	);
 }
 
@@ -605,7 +601,7 @@ function DashboardAgendaEntryCard(props: DashboardAgendaEntryCardProps) {
 	}
 
 	return (
-		<TouchableOpacity
+		<FeedbackTouchableOpacity
 			activeOpacity={0.86}
 			accessibilityRole="button"
 			accessibilityLabel={`${isExam ? "Prüfung" : "Aufgabe"}: ${formatGermanUiText(getAgendaEntryTitle(props.item.entry))}`}
@@ -618,7 +614,7 @@ function DashboardAgendaEntryCard(props: DashboardAgendaEntryCardProps) {
 			style={continuousBorderStyle}
 		>
 			{content}
-		</TouchableOpacity>
+		</FeedbackTouchableOpacity>
 	);
 }
 

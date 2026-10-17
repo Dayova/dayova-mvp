@@ -37,14 +37,14 @@ geprüft, nicht durch diese Bilder. Der schwebende Zahnradknopf ist Entwicklungs
 
 | Datei | Originalzeit | Sichtbarer Zustand |
 | --- | --- | --- |
-| [01-settings-subjects.png](01-settings-subjects.png) | 21:53:11 | Französisch und Spanisch mit Stift-Aktionen. |
-| [02-edit-actions.png](02-edit-actions.png) | 21:53:20 | Bearbeiten mit Tastatur; Löschen und Speichern nebeneinander. |
-| [03-single-subject.png](03-single-subject.png) | 21:53:31 | Liste mit einem Fach; allein kein Beweis des Löschvorgangs. |
-| [04-swipe-delete.png](04-swipe-delete.png) | 21:53:33 | Freigelegte Swipe-Löschaktion. |
-| [05-add-settings.png](05-add-settings.png) | 21:53:38 | Leeres Hinzufügen-Sheet mit Tastatur und gesperrter Hinzufügen-Aktion. |
-| [06-exam-subject-list.png](06-exam-subject-list.png) | 22:26:39 | Durchgehende Fachliste, noch keine Auswahl. |
-| [07-add-italian.png](07-add-italian.png) | 22:26:54 | Italienisch eingegeben; direktes Hinzufügen ohne Speicherart-Abfrage. |
-| [08-italian-selected.png](08-italian-selected.png) | 22:26:57 | Italienisch ausgewählt; Weiter aktiv. |
+| [01-settings-subjects.png](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/qa/day-187-philipp-review-2026-10-02/01-settings-subjects.png?raw=true) | 21:53:11 | Französisch und Spanisch mit Stift-Aktionen. |
+| [02-edit-actions.png](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/qa/day-187-philipp-review-2026-10-02/02-edit-actions.png?raw=true) | 21:53:20 | Bearbeiten mit Tastatur; Löschen und Speichern nebeneinander. |
+| [03-single-subject.png](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/qa/day-187-philipp-review-2026-10-02/03-single-subject.png?raw=true) | 21:53:31 | Liste mit einem Fach; allein kein Beweis des Löschvorgangs. |
+| [04-swipe-delete.png](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/qa/day-187-philipp-review-2026-10-02/04-swipe-delete.png?raw=true) | 21:53:33 | Freigelegte Swipe-Löschaktion. |
+| [05-add-settings.png](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/qa/day-187-philipp-review-2026-10-02/05-add-settings.png?raw=true) | 21:53:38 | Leeres Hinzufügen-Sheet mit Tastatur und gesperrter Hinzufügen-Aktion. |
+| [06-exam-subject-list.png](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/qa/day-187-philipp-review-2026-10-02/06-exam-subject-list.png?raw=true) | 22:26:39 | Durchgehende Fachliste, noch keine Auswahl. |
+| [07-add-italian.png](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/qa/day-187-philipp-review-2026-10-02/07-add-italian.png?raw=true) | 22:26:54 | Italienisch eingegeben; direktes Hinzufügen ohne Speicherart-Abfrage. |
+| [08-italian-selected.png](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/qa/day-187-philipp-review-2026-10-02/08-italian-selected.png?raw=true) | 22:26:57 | Italienisch ausgewählt; Weiter aktiv. |
 
 Die PNG-Dateien sind unveränderte Originale. Die spätere Italienisch-Bildfolge
 ist ein separater Nachweis; das Video endet bei Spanisch.

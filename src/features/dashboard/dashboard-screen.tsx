@@ -15,6 +15,7 @@ import { formatGermanUiText } from "~/lib/german-ui-text";
 import { ROUTES, withReturnTo } from "~/lib/routes";
 import { triggerSelectionHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import type { DayEntry } from "~/types/dayEntries";
 import { getAgendaPlanRoute } from "./agenda-plan-route";
 import { CalendarPager } from "./calendar-pager";
@@ -77,6 +78,7 @@ const getEntryUrl = (entry: DayEntry, selectedDayLabel: string) => {
 export function DashboardScreen() {
 	const { colors } = useDayovaTheme();
 	const router = useRouter();
+	const trackFeature = useFeatureAnalytics();
 	const params = useLocalSearchParams<{ dayKey?: string }>();
 	const insets = useSafeAreaInsets();
 	const { user } = useAuthSession();
@@ -144,11 +146,15 @@ export function DashboardScreen() {
 			? user.name.trim().split(/\s+/)[0]
 			: null;
 
-	const commitSelectedDay = useCallback((dayKey: string) => {
-		if (!parseDayKey(dayKey)) return;
-		// Queue even a return to the rendered day: another selection may be pending.
-		setSelectedDayKey(dayKey);
-	}, []);
+	const commitSelectedDay = useCallback(
+		(dayKey: string) => {
+			if (!parseDayKey(dayKey)) return;
+			trackFeature("home.day_selected");
+			// Queue even a return to the rendered day: another selection may be pending.
+			setSelectedDayKey(dayKey);
+		},
+		[trackFeature],
+	);
 
 	const selectWeekPage = useCallback(
 		(weekKey: string) => {
@@ -174,6 +180,7 @@ export function DashboardScreen() {
 	const openItem = useCallback(
 		(item: DashboardAgendaItem, returnTo = ROUTES.home) => {
 			if (item.kind === "schoolLesson") return;
+			trackFeature("home.entry_opened", "performed", item.entry.id);
 			const itemDate = parseDayKey(item.dayKey) ?? parseDayKey(selectedDayKey);
 			if (!itemDate) return;
 			const itemDayLabel = new Intl.DateTimeFormat("de-DE", {
@@ -185,7 +192,7 @@ export function DashboardScreen() {
 				withReturnTo(getEntryUrl(item.entry, itemDayLabel), returnTo),
 			);
 		},
-		[router, selectedDayKey],
+		[router, selectedDayKey, trackFeature],
 	);
 
 	const openNextStepFallback = useCallback(

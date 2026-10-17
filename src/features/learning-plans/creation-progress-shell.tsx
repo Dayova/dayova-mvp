@@ -22,15 +22,16 @@ type CreationProgressConfiguration = {
 	active: boolean;
 	currentStep: number;
 	onBack: () => void;
+	onClose: () => void;
+	closeDisabled?: boolean;
 	totalSteps?: number;
-	title?: string;
 };
 
 type CreationProgressPresentation = {
 	active: boolean;
 	currentStep: number;
 	totalSteps: number;
-	title: string;
+	closeDisabled: boolean;
 };
 
 type CreationProgressContextValue = {
@@ -41,7 +42,7 @@ const DEFAULT_PRESENTATION: CreationProgressPresentation = {
 	active: false,
 	currentStep: LEARNING_PLAN_CREATION_STEPS.examDate,
 	totalSteps: LEARNING_PLAN_CREATION_TOTAL_STEPS,
-	title: "Prüfung eintragen",
+	closeDisabled: false,
 };
 
 const CreationProgressContext =
@@ -54,6 +55,7 @@ export function LearningPlanCreationProgressShell({
 }) {
 	const insets = useSafeAreaInsets();
 	const onBackRef = useRef<() => void>(() => undefined);
+	const onCloseRef = useRef<() => void>(() => undefined);
 	const [presentation, setPresentation] =
 		useState<CreationProgressPresentation>(DEFAULT_PRESENTATION);
 
@@ -62,29 +64,31 @@ export function LearningPlanCreationProgressShell({
 			active,
 			currentStep,
 			onBack,
-			title,
+			onClose,
+			closeDisabled = false,
 			totalSteps,
 		}: CreationProgressConfiguration) => {
 			onBackRef.current = onBack;
-			const nextTitle = title ?? "Lernplan erstellen";
+			onCloseRef.current = onClose;
 			const nextTotalSteps = totalSteps ?? LEARNING_PLAN_CREATION_TOTAL_STEPS;
 			setPresentation((current) =>
 				current.active === active &&
 				current.currentStep === currentStep &&
 				current.totalSteps === nextTotalSteps &&
-				current.title === nextTitle
+				current.closeDisabled === closeDisabled
 					? current
 					: {
 							active,
 							currentStep,
 							totalSteps: nextTotalSteps,
-							title: nextTitle,
+							closeDisabled,
 						},
 			);
 		},
 		[],
 	);
 	const handleBack = useCallback(() => onBackRef.current(), []);
+	const handleClose = useCallback(() => onCloseRef.current(), []);
 	const contextValue = useMemo(() => ({ configure }), [configure]);
 
 	return (
@@ -105,7 +109,8 @@ export function LearningPlanCreationProgressShell({
 						currentStep={presentation.currentStep}
 						onBack={handleBack}
 						totalSteps={presentation.totalSteps}
-						title={presentation.title}
+						onClose={handleClose}
+						closeDisabled={presentation.closeDisabled}
 					/>
 				</View>
 				<View className="flex-1">{children}</View>
@@ -119,7 +124,8 @@ export function useLearningPlanCreationProgress({
 	currentStep,
 	onBack,
 	totalSteps,
-	title,
+	onClose,
+	closeDisabled,
 }: CreationProgressConfiguration) {
 	const context = useContext(CreationProgressContext);
 	const isFocused = useIsFocused();
@@ -131,6 +137,22 @@ export function useLearningPlanCreationProgress({
 
 	useLayoutEffect(() => {
 		if (!isFocused) return;
-		context.configure({ active, currentStep, onBack, title, totalSteps });
-	}, [active, context, currentStep, isFocused, onBack, title, totalSteps]);
+		context.configure({
+			active,
+			currentStep,
+			onBack,
+			onClose,
+			closeDisabled,
+			totalSteps,
+		});
+	}, [
+		active,
+		context,
+		currentStep,
+		isFocused,
+		onBack,
+		onClose,
+		closeDisabled,
+		totalSteps,
+	]);
 }
