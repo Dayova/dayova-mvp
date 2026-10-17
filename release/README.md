@@ -29,13 +29,19 @@ CI and compatibility checks must still succeed before production publication.
 
 ## Runtime boundary
 
-The current app/runtime boundary is **1.0.5**. The September 2026 patch upgrade
+The current release candidate app/runtime boundary is **1.0.7**, prepared from
+the latest merged source for the App Store Connect 1.0.7 submission. This keeps
+the new binary separate from the distributed 1.0.5 baseline and the previous
+unmerged 1.0.6 dashboard candidate. Both platforms resolve 1.0.7 even though this
+release request builds and submits only iOS. The existing OTA baseline remains
+unchanged; a store upload alone does not authorize baseline activation.
+
+The September 2026 patch upgrade established runtime **1.0.5**. It
 uses Expo 57.0.20, React Native 0.86.3, Reanimated 4.5.1, and Worklets 0.10.1 to
 remove the [Hermes V1 memory regression](https://expo.dev/changelog/sdk-57#known-regressions).
 These native dependencies require a new store binary; do not send its JavaScript
-to existing 1.0.4 binaries. Both platforms resolve 1.0.5 even when only Android
-is being built. Keep the distributed-binary baseline unchanged until the exact
-replacement binaries satisfy the verification requirements below.
+to existing 1.0.4 binaries. Keep the distributed-binary baseline unchanged until
+the exact replacement binaries satisfy the verification requirements below.
 
 The original SDK 57 migration created an app/runtime boundary at `1.0.4`; the already
 distributed SDK 56 binaries remain on runtime `1.0.3`. Future native changes
