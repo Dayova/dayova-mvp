@@ -197,13 +197,10 @@ export function TopicSearch({
 	const directChoice = term ? (
 		<SearchSuggestion
 			title={directTitle}
-			custom={!exact}
 			detail={
 				exact
 					? exact.subjects?.join(" · ") || "Katalogvorschlag"
-					: selectedTitle !== undefined
-						? "Ausgewählt"
-						: "Als eigenes Thema übernehmen"
+					: "Eigenes Thema"
 			}
 			hint={
 				exact?.subjects?.length
@@ -279,72 +276,73 @@ export function TopicSearch({
 					Themen werden gesucht …
 				</Text>
 			) : null}
-			{exact ? directChoice : null}
-			{canSearch && result ? (
-				<View>
-					{current?.refreshing ? (
-						<Text
-							accessibilityLiveRegion="polite"
-							className="font-poppins text-body-4 text-secondary-text"
-						>
-							Themen werden gesucht …
-						</Text>
-					) : null}
-					<Text
-						accessibilityLiveRegion="polite"
-						className="font-poppins text-body-4 text-secondary-text"
-					>
-						{result.topics.length
-							? "Vorschläge von WirLernenOnline"
-							: selectedTitle !== undefined
-								? "Keine weiteren Katalogvorschläge."
-								: "Keine passenden Katalogvorschläge. Du kannst deinen Begriff unten übernehmen."}
-					</Text>
-					{visible.map((topic, index) => {
-						const isIncluded = selectedTopics.some(
-							(title) => topicTitleKey(title) === topicTitleKey(topic.title),
-						);
-						const context = topic.subjects?.join(" · ");
-						return (
-							<View key={topic.id}>
-								{topic.isAdditional && !visible[index - 1]?.isAdditional ? (
-									<Text className="mt-3 font-poppins text-body-4 text-secondary-text">
-										Weitere Vorschläge
-									</Text>
-								) : null}
-								<SearchSuggestion
-									title={topic.title}
-									detail={context}
-									hint={context ? `Themenbereich: ${context}` : undefined}
-									selected={isIncluded}
-									disabled={disabled}
-									onPress={() => toggleTopic(topic.title)}
-									className="mt-2"
-								/>
-							</View>
-						);
-					})}
-					{otherTopics.length > visible.length ? (
-						<ActionSurface
-							accessibilityRole="button"
-							disabled={disabled}
-							onPress={() => setExpandedKey(key)}
-							className="min-h-12 justify-center py-3"
-						>
-							<Text className="font-poppins font-semibold text-body-3 text-text">
-								Mehr Vorschläge anzeigen
+			<View className="gap-2">
+				{exact ? directChoice : null}
+				{canSearch && result ? (
+					<>
+						{current?.refreshing ? (
+							<Text
+								accessibilityLiveRegion="polite"
+								className="font-poppins text-body-4 text-secondary-text"
+							>
+								Themen werden gesucht …
 							</Text>
-						</ActionSurface>
-					) : null}
-					{result.truncated ? (
-						<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
-							Grenze deinen Suchbegriff weiter ein, um weitere passende Themen
-							zu finden.
-						</Text>
-					) : null}
-				</View>
-			) : null}
-			{!exact ? directChoice : null}
+						) : null}
+						{result.topics.length === 0 ? (
+							<Text
+								accessibilityLiveRegion="polite"
+								className="font-poppins text-body-4 text-secondary-text"
+							>
+								{selectedTitle !== undefined
+									? "Keine weiteren Katalogvorschläge."
+									: "Keine passenden Katalogvorschläge. Du kannst deinen Begriff unten übernehmen."}
+							</Text>
+						) : null}
+						{visible.map((topic, index) => {
+							const isIncluded = selectedTopics.some(
+								(title) => topicTitleKey(title) === topicTitleKey(topic.title),
+							);
+							const context = topic.subjects?.join(" · ");
+							return (
+								<View key={topic.id} className="gap-2">
+									{topic.isAdditional && !visible[index - 1]?.isAdditional ? (
+										<Text className="mt-3 font-poppins text-body-4 text-secondary-text">
+											Weitere Vorschläge
+										</Text>
+									) : null}
+									<SearchSuggestion
+										title={topic.title}
+										detail={context}
+										hint={context ? `Themenbereich: ${context}` : undefined}
+										selected={isIncluded}
+										disabled={disabled}
+										onPress={() => toggleTopic(topic.title)}
+									/>
+								</View>
+							);
+						})}
+						{otherTopics.length > visible.length ? (
+							<ActionSurface
+								accessibilityRole="button"
+								disabled={disabled}
+								onPress={() => setExpandedKey(key)}
+								className="min-h-12 justify-center py-3"
+							>
+								<Text className="font-poppins font-semibold text-body-3 text-text">
+									Mehr Vorschläge anzeigen
+								</Text>
+							</ActionSurface>
+						) : null}
+						{result.truncated ? (
+							<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
+								Grenze deinen Suchbegriff weiter ein, um weitere passende Themen
+								zu finden.
+							</Text>
+						) : null}
+					</>
+				) : null}
+				{!exact ? directChoice : null}
+			</View>
 		</View>
 	);
 }

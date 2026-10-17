@@ -44,3 +44,7 @@ Coverage: 14.50-second video; 29 full-timeline frames sampled at 2 fps (0.5-seco
 Coverage: 26.61-second video; 53 full-timeline frames sampled at 2 fps (0.5-second interval); 4 contact sheet(s); no audio stream.
 
 All six full-timeline contact sheets inspected. Sampling establishes the states above, not sub-frame timing or animation smoothness. Software keyboard, large text, VoiceOver, physical iPhone, full signed-in save/reopen and current Android runtime remain unverified. No Android device was connected. Shared accessibility labels, roles, checked/disabled states, wrapping and selection behavior are covered by automated tests; full assistive-technology acceptance remains open. PR remains draft. Existing TestFlight 1.0.7 (78) remains on a58b0d79.
+
+## Follow-up: uniform topic suggestion rows
+
+Removed the provider heading from successful topic results. The custom topic now uses its entered title with the subtitle “Eigenes Thema” in the same shared selection row as catalog suggestions. All topic choices share one 8-point gap container; text can still wrap for long titles and accessibility sizes. Subject labels and ranking remain unchanged. Existing topic/search-flow suite: 20 tests passed; TypeScript and changed-file Biome/ESLint checks passed. Reviewed selection identity, exact-match deduplication, pending/error custom choices and spacing.

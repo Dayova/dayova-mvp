@@ -409,9 +409,8 @@ describe("inline topic search with a free-text exam scope", () => {
 		);
 		// The entered title stays available as an own topic; old catalog context
 		// must not survive the subject change while the new request is pending.
-		expect(
-			screen.getByText("„Bilanz“ als eigenes Thema hinzufügen"),
-		).toBeOnTheScreen();
+		expect(screen.getByRole("checkbox", { name: "Bilanz" })).toBeOnTheScreen();
+		expect(screen.getByText("Eigenes Thema")).toBeOnTheScreen();
 		await debounce();
 		expect(search).toHaveBeenLastCalledWith({
 			query: "Bilanz",
