@@ -1,41 +1,51 @@
 import { View } from "react-native";
+import { IntroPhoneFrame } from "~/components/onboarding/intro-phone-frame";
+import { Text } from "~/components/ui/text";
 import {
 	MaterialUploadActionCard,
 	MaterialUploadStepLead,
 } from "~/features/learning-plans/learning-plan-setup-steps";
-
-const ARTWORK_WIDTH = 345;
-const ARTWORK_HEIGHT = 313;
-
-type IntroUploadArtworkProps = {
-	height?: number;
-	width?: number;
-};
-
 export function IntroUploadArtwork({
-	width = ARTWORK_WIDTH,
-	height = ARTWORK_HEIGHT,
-}: IntroUploadArtworkProps) {
-	const scale = Math.min(width / ARTWORK_WIDTH, height / ARTWORK_HEIGHT);
-
+	width = 345,
+	height = 550,
+}: {
+	width?: number;
+	height?: number;
+}) {
 	return (
-		<View
-			accessible={false}
-			accessibilityElementsHidden
-			importantForAccessibility="no-hide-descendants"
-			className="items-center justify-center"
-			// The artwork frame dimensions are runtime component inputs.
-			style={{ width, height }}
+		<IntroPhoneFrame
+			width={width}
+			height={height}
 			testID="intro-upload-artwork"
 		>
-			<View
-				className="h-[313px] w-[345px] justify-center rounded-[32px] bg-background px-5 py-6 shadow-black/10 shadow-sm"
-				// The fixed artboard scales to the runtime frame while preserving its geometry.
-				style={{ transform: [{ scale }] }}
-			>
-				<MaterialUploadStepLead mode="artwork" />
-				<MaterialUploadActionCard hasSchoolMaterial={false} mode="artwork" />
+			<View className="mb-7">
+				<View className="mb-3 flex-row justify-between">
+					<Text
+						allowFontScaling={false}
+						className="font-poppins font-semibold text-body-3 text-text"
+					>
+						Lernplan erstellen
+					</Text>
+					<Text
+						allowFontScaling={false}
+						className="text-body-4 text-secondary-text"
+					>
+						70 %
+					</Text>
+				</View>
+				<View className="h-2 rounded-full bg-primary/20">
+					<View className="h-2 w-[70%] rounded-full bg-primary" />
+				</View>
 			</View>
-		</View>
+			<MaterialUploadStepLead mode="artwork" />
+			<MaterialUploadActionCard hasSchoolMaterial={false} mode="artwork" />
+			<Text
+				allowFontScaling={false}
+				className="mt-4 font-poppins text-body-4 text-secondary-text"
+			>
+				Dein Lernplan-Entwurf bleibt gespeichert. Schulmaterial kannst du später
+				ergänzen.
+			</Text>
+		</IntroPhoneFrame>
 	);
 }

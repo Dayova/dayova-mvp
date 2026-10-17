@@ -26,6 +26,8 @@ test("revises the same pending exam after navigating back through creation", asy
 		id,
 		dayKey: "2026-10-01",
 		subject: "Chemie",
+		personalSubjectId: null,
+		subjectIsOneTime: false,
 		examTypeLabel: "Test",
 		plannedDateLabel: "Donnerstag, 1. Oktober",
 		durationMinutes: 45,
@@ -38,6 +40,97 @@ test("revises the same pending exam after navigating back through creation", asy
 		subject: "Chemie",
 		title: "Chemie Test",
 		durationMinutes: 45,
+	});
+});
+
+test("pending exam edits replace or clear the personal subject reference", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const french = await t.mutation(api.personalSubjects.create, {
+		name: "Französisch",
+	});
+	const latin = await t.mutation(api.personalSubjects.create, {
+		name: "Latein",
+	});
+	if (french.kind !== "personal" || latin.kind !== "personal") {
+		throw new Error("Expected personal subjects");
+	}
+	const id = await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-09-30",
+		title: "Französisch Klassenarbeit",
+		subject: french.name,
+		personalSubjectId: french.id,
+		kind: "Leistungskontrolle",
+		examTypeLabel: "Klassenarbeit",
+		durationMinutes: 30,
+	});
+
+	await t.mutation(api.dayEntries.updatePendingExam, {
+		id,
+		dayKey: "2026-10-01",
+		subject: latin.name,
+		personalSubjectId: latin.id,
+		subjectIsOneTime: false,
+		examTypeLabel: "Test",
+		plannedDateLabel: "1. Oktober",
+		durationMinutes: 45,
+	});
+	expect(await t.query(api.dayEntries.get, { id })).toMatchObject({
+		subject: "Latein",
+		personalSubjectId: latin.id,
+		title: "Latein Test",
+	});
+
+	await t.mutation(api.dayEntries.updatePendingExam, {
+		id,
+		dayKey: "2026-10-02",
+		subject: "Chemie",
+		personalSubjectId: null,
+		subjectIsOneTime: false,
+		examTypeLabel: "Klausur",
+		plannedDateLabel: "2. Oktober",
+		durationMinutes: 60,
+	});
+	const result = await t.run(async (ctx) => ({
+		entry: await ctx.db.get("dayEntries", id),
+		references: await ctx.db.query("personalSubjectReferences").take(10),
+	}));
+	expect(result.entry).toMatchObject({
+		subject: "Chemie",
+		title: "Chemie Klausur",
+	});
+	expect(result.entry?.personalSubjectId).toBeUndefined();
+	expect(result.references).toEqual([]);
+});
+
+test("stores an explicit one-time subject through create and resume", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const id = await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-10-03",
+		title: "Debattieren Präsentation",
+		subject: "Debattieren",
+		subjectIsOneTime: true,
+		kind: "Leistungskontrolle",
+		examTypeLabel: "Präsentation",
+		durationMinutes: 20,
+	});
+	expect(await t.query(api.dayEntries.get, { id })).toMatchObject({
+		subject: "Debattieren",
+		subjectIsOneTime: true,
+	});
+
+	await t.mutation(api.dayEntries.updatePendingExam, {
+		id,
+		dayKey: "2026-10-04",
+		subject: "Rhetorik",
+		personalSubjectId: null,
+		subjectIsOneTime: true,
+		examTypeLabel: "Präsentation",
+		plannedDateLabel: "4. Oktober",
+		durationMinutes: 25,
+	});
+	expect(await t.query(api.dayEntries.get, { id })).toMatchObject({
+		subject: "Rhetorik",
+		subjectIsOneTime: true,
 	});
 });
 
@@ -54,6 +147,8 @@ test("pending exam edits require ownership and cannot change an exam with a lear
 		id,
 		dayKey: "2026-10-01",
 		subject: "Chemie",
+		personalSubjectId: null,
+		subjectIsOneTime: false,
 		examTypeLabel: "Test",
 		plannedDateLabel: "1. Oktober",
 		durationMinutes: 30,

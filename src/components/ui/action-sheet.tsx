@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { View } from "react-native";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
+import { FeedbackTouchableOpacity } from "~/components/ui/feedback-pressable";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
@@ -51,7 +52,7 @@ function ActionSheet<T extends string>({
 			contentClassName={isTile ? "flex-row gap-3" : "gap-3"}
 		>
 			{options.map((option) => (
-				<TouchableOpacity
+				<FeedbackTouchableOpacity
 					key={option.value}
 					accessibilityLabel={
 						option.description
@@ -101,7 +102,7 @@ function ActionSheet<T extends string>({
 							</Text>
 						) : null}
 					</View>
-				</TouchableOpacity>
+				</FeedbackTouchableOpacity>
 			))}
 		</DayovaSheetFrame>
 	);

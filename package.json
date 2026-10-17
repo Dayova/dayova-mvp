@@ -49,6 +49,7 @@
 		"@ai-sdk/google-vertex": "^4.0.112",
 		"@babel/runtime": "^7.29.2",
 		"@clerk/expo": "^3.7.8",
+		"@convex-dev/migrations": "^0.3.4",
 		"@expo/metro-runtime": "~57.0.15",
 		"@expo/ui": "~57.0.16",
 		"@gilhrpenner/convex-files-control": "^0.5.3",
