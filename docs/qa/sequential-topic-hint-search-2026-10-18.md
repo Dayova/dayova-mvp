@@ -26,7 +26,7 @@ Review covered route entry/back/continue, busy and error states, saved drafts, h
 
 ## Native evidence and limits
 
-The linked evidence report records the exact product revision, native attachments and complete-timeline video inspection. iPhone 17 Pro / iOS 26.5 component preview uses the real topic/hints/material components, progress header and keyboard-aware scroll, synthetic Deutsch/Gedichtanalyse state, and controlled WLO results. The preview uses local state; it does not establish authenticated backend save/reopen.
+The [evidence report](../evidence/pr884/sequential-search-2026-10-18.md) records the exact product revision, native attachments and complete-timeline video inspection. iPhone 17 Pro / iOS 26.5 component preview uses the real topic/hints/material components, progress header and keyboard-aware scroll, synthetic Deutsch/Gedichtanalyse state, and controlled WLO results. The preview uses local state; it does not establish authenticated backend save/reopen.
 
 Development-mode rendering became unresponsive after first paint, including with temporary header and scroll substitutions. The final captures restore the original shared components and use Expo `--no-dev`; interactive capture then succeeds. The specific diagnostic cause was not established. This is not a shipped native build. Placeholder legal URLs were used only to satisfy preview configuration; no links were opened and no deployment occurred.
 

@@ -1,3 +1,5 @@
+> Historical inline layout; superseded by the [sequential topic/hint pages](sequential-search-2026-10-18.md).
+
 # Topic and inline hint search — 18 October 2026
 
 [DAY-530](https://linear.app/dayova/issue/DAY-530) is implemented directly in

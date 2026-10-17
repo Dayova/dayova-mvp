@@ -1,3 +1,7 @@
+## Current: topic search followed by hint search — 18 October 2026
+
+[Two-page screenshots, video and complete-timeline observations](sequential-search-2026-10-18.md). Product 3d411e83; native CLI attachments verified. Earlier inline galleries below are historical.
+
 ## Topic layout and inline hint search — 18 October 2026
 
 [Latest incremental screenshots, recordings, revisions and limitations](topic-hint-layout-2026-10-18.md). Product 30c80460; iOS component fixture with controlled results. Uploaded as native GitHub CLI attachments; image loading and both inline video players verified. The earlier archive remains a backup; no product media binaries. Earlier evidence below retains its original scope.

@@ -1,0 +1,39 @@
+{
+  "product_revision": "3d411e830e494fd1e2acc755f431ace04a03ac80",
+  "baseline_product_revision": "30c8046000053e6cd09712f3a3d2d9c7028a25da",
+  "gallery": "https://github.com/Dayova/dayova-mvp/pull/884#issuecomment-6242468537",
+  "upload": "GitHub CLI 2.102.0 native --attach, existing Gamius00 authentication",
+  "assets": [
+    {
+      "file": "topics-dark.png",
+      "url": "https://github.com/user-attachments/assets/bf9146eb-9602-49f2-936f-d3c714d8fd4c",
+      "bytes": 273409,
+      "sha256": "28058b94ebe5c62a31584b533e48bcb102f2e5b2b4f9f3e22375a3e44a6cff7a"
+    },
+    {
+      "file": "hints-dark.png",
+      "url": "https://github.com/user-attachments/assets/7efdd3dd-b227-41e7-a38d-85950db9e4ec",
+      "bytes": 246920,
+      "sha256": "282e5098eaaab8601f560015bb024eeae83c3cdc233aaa450bfc036871633370"
+    },
+    {
+      "file": "hints-selected-dark.png",
+      "url": "https://github.com/user-attachments/assets/30704b79-17ef-4540-a354-3637391d9262",
+      "bytes": 281939,
+      "sha256": "0bd5611b9b05de383082778e9b0e0e3d063a2bdebb940cd2e8e331a6ce461a2a"
+    },
+    {
+      "file": "hints-light.png",
+      "url": "https://github.com/user-attachments/assets/c52901ec-fb59-4592-a077-850c5b83a697",
+      "bytes": 303867,
+      "sha256": "d167e9c2b8cb666b511b76c03e3e88b4f0cacf6d25b30a5e48e3989688263d5e"
+    },
+    {
+      "file": "two-page-flow.mp4",
+      "url": "https://github.com/user-attachments/assets/7b08a72c-73bd-4de2-94ba-1cbffe9787aa",
+      "bytes": 4361900,
+      "sha256": "10e4f01f487c7014580ec047db7074257b2f4e7b26daf4790adc5a578db8ca81"
+    }
+  ],
+  "render_verification": "All six gallery images loaded at 1206x2622; both videos readyState 4 with durations 52.88 and 69.15 seconds, no media errors."
+}
