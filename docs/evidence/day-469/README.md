@@ -25,7 +25,7 @@ paths are covered by the shared component's shadow-free lint boundary.
 
 | Before (reporter, original build unknown) | After (native Android) |
 | --- | --- |
-| <img src="before-reporter.png" alt="Reported Android shadows below both arrow buttons" width="280" /> | <img src="after-android-reporter.png" alt="Android after: both learning-plan arrows without gray drop shadows" width="280" /> |
+| <img src="https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-469/before-reporter.png?raw=true" alt="Reported Android shadows below both arrow buttons" width="280" /> | <img src="https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-469/after-android-reporter.png?raw=true" alt="Android after: both learning-plan arrows without gray drop shadows" width="280" /> |
 
 ### Evidence correction — 24 September 2026
 

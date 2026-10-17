@@ -10,8 +10,8 @@ import {
 	View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Button } from "~/components/ui/button";
-import { ArrowLeft, Check } from "~/components/ui/icon";
+import { BackButton, Button } from "~/components/ui/button";
+import { Check } from "~/components/ui/icon";
 import { SupportContact } from "~/components/ui/support-contact";
 import { Text } from "~/components/ui/text";
 import { useAccess } from "~/context/AccessContext";
@@ -27,6 +27,7 @@ import {
 } from "~/lib/revenuecat-client";
 import { env } from "~/lib/runtime-config";
 import { getStoreName, getStoreSubscribeLabel } from "~/lib/store-subscription";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 const SUBSCRIPTION_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 const BRAND_COLORS = DAYOVA_DESIGN_SYSTEM.colors;
@@ -71,6 +72,7 @@ const getPlanDescription = (
 };
 
 export function SubscriptionScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const { refreshPaidAccess } = useAccess();
@@ -152,22 +154,42 @@ export function SubscriptionScreen() {
 	) => {
 		if (storeActionInFlightRef.current) return;
 		storeActionInFlightRef.current = true;
+		const interaction =
+			successPath === "/home"
+				? "subscription.restore"
+				: "subscription.checkout";
+		const billingPeriod =
+			interaction === "subscription.checkout"
+				? selectedBillingPeriod
+				: undefined;
+		trackFeature(interaction, "attempted", undefined, billingPeriod);
 		setError(null);
 		setIsPurchasing(true);
 		try {
 			const result = await action();
-			if (result.status === "cancelled") return;
+			if (result.status === "cancelled") {
+				trackFeature(interaction, "cancelled", undefined, billingPeriod);
+				return;
+			}
 			if (result.status !== "purchased") {
+				trackFeature(interaction, "failed", undefined, billingPeriod);
 				setError("Für dieses Store-Konto wurde kein aktives Abo gefunden.");
 				return;
 			}
 			const active = await refreshPaidAccess();
+			trackFeature(
+				interaction,
+				active ? "succeeded" : "pending",
+				undefined,
+				billingPeriod,
+			);
 			if (active) router.replace(successPath);
 			else
 				setError(
 					"Der Kauf wird noch bestätigt. Bitte tippe gleich auf „Käufe wiederherstellen“.",
 				);
 		} catch (purchaseError) {
+			trackFeature(interaction, "failed", undefined, billingPeriod);
 			logDiagnosticError(
 				"Unable to complete RevenueCat action.",
 				purchaseError,
@@ -239,20 +261,10 @@ export function SubscriptionScreen() {
 				}}
 			>
 				<View className="px-7 pt-4">
-					<Pressable
+					<BackButton
 						accessibilityHint="Kehrt zur vorherigen Seite zurück."
-						accessibilityLabel="Zurück"
-						accessibilityRole="button"
-						className="h-12 w-12 items-center justify-center rounded-full bg-white active:opacity-80"
-						hitSlop={8}
 						onPress={goBack}
-					>
-						<ArrowLeft
-							size={21}
-							color={BRAND_COLORS.primaryStrong}
-							strokeWidth={2.4}
-						/>
-					</Pressable>
+					/>
 
 					<View className="gap-3 pt-5 pb-6" testID="subscription-page-intro">
 						<Text
@@ -281,7 +293,15 @@ export function SubscriptionScreen() {
 							price={annualPlan?.price ?? "—"}
 							selected={selectedBillingPeriod === "annual"}
 							testID="subscription-plan-annual"
-							onPress={() => setSelectedBillingPeriod("annual")}
+							onPress={() => {
+								trackFeature(
+									"subscription.plan_selected",
+									"performed",
+									undefined,
+									"annual",
+								);
+								setSelectedBillingPeriod("annual");
+							}}
 						/>
 						<SubscriptionPlanCard
 							disabled={isLoadingPlans || isPurchasing || !monthlyPlan}
@@ -290,7 +310,15 @@ export function SubscriptionScreen() {
 							price={monthlyPlan?.price ?? "—"}
 							selected={selectedBillingPeriod === "monthly"}
 							testID="subscription-plan-monthly"
-							onPress={() => setSelectedBillingPeriod("monthly")}
+							onPress={() => {
+								trackFeature(
+									"subscription.plan_selected",
+									"performed",
+									undefined,
+									"monthly",
+								);
+								setSelectedBillingPeriod("monthly");
+							}}
 						/>
 					</View>
 

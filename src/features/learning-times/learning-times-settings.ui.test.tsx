@@ -23,6 +23,7 @@ const mockPush = jest.fn();
 const mockReplace = jest.fn();
 const mockSave = jest.fn<() => Promise<void>>();
 const mockRemove = jest.fn<(args: { id: string }) => Promise<void>>();
+const mockTrackFeature = jest.fn();
 const mockSwipeClose = jest.fn();
 let mockEditorDismiss: (() => void) | undefined;
 jest.mock("react-native-gesture-handler/ReanimatedSwipeable", () => {
@@ -104,6 +105,9 @@ jest.mock("expo-router", () => ({
 }));
 jest.mock("~/context/AuthContext", () => ({
 	useAuthSession: () => ({ user: { id: "test" } }),
+}));
+jest.mock("~/lib/use-feature-analytics", () => ({
+	useFeatureAnalytics: () => mockTrackFeature,
 }));
 jest.mock("~/components/ui/keyboard-safe-scroll-view", () => {
 	const { ScrollView } =
@@ -253,6 +257,7 @@ describe("learning times settings", () => {
 		mockSwipeClose.mockReset();
 		mockRemove.mockReset();
 		mockRemove.mockResolvedValue(undefined);
+		mockTrackFeature.mockReset();
 	});
 	test("lists existing times in weekday order with independent edit and delete actions", async () => {
 		const onEdit = jest.fn();
@@ -383,6 +388,10 @@ describe("learning times settings", () => {
 		expect(screen.getByText(/Montag, 16:00–20:30/)).toBeOnTheScreen();
 		await fireEvent.press(screen.getByRole("button", { name: "Löschen" }));
 		expect(mockRemove).toHaveBeenCalledWith({ id: "monday" });
+		expect(mockTrackFeature.mock.calls).toEqual([
+			["learning_times.remove", "attempted"],
+			["learning_times.remove", "succeeded"],
+		]);
 		expect(onClose).not.toHaveBeenCalled();
 		await fireEvent.press(
 			screen.getByRole("button", { name: "Native dismissal completed" }),
@@ -407,6 +416,12 @@ describe("learning times settings", () => {
 			startTime: "16:00",
 			endTime: "20:30",
 		});
+		expect(mockTrackFeature.mock.calls).toEqual([
+			["learning_times.save", "attempted"],
+			["learning_times.save", "failed"],
+			["learning_times.save", "attempted"],
+			["learning_times.save", "succeeded"],
+		]);
 		await fireEvent.press(
 			screen.getByRole("button", { name: "Native dismissal completed" }),
 		);
@@ -438,6 +453,10 @@ describe("learning times settings", () => {
 		expect(mockRemove).toHaveBeenCalledTimes(1);
 		expect(mockRemove).toHaveBeenCalledWith({ id: "monday" });
 		await act(async () => finish());
+		expect(mockTrackFeature.mock.calls).toEqual([
+			["learning_times.remove", "attempted"],
+			["learning_times.remove", "succeeded"],
+		]);
 		expect(screen.queryByRole("button", { name: "Löschen" })).toBeNull();
 	});
 	test("retains the confirmation when deletion fails and allows retry", async () => {

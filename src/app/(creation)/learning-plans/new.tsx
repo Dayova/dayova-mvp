@@ -56,6 +56,7 @@ import {
 } from "~/lib/navigation";
 import { ROUTES } from "~/lib/routes";
 import { ACCEPTED_FILE_TYPES, validateUploadFile } from "~/lib/upload-policy";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 
 const UPLOAD_TIMEOUT_MS = 45_000;
@@ -75,6 +76,7 @@ type PendingUploadRequest = {
 };
 
 export default function NewLearningPlanScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const params = useLocalSearchParams<{
 		step?: string;
@@ -132,13 +134,22 @@ export default function NewLearningPlanScreen() {
 	const [topicsInput, setTopicsInput] = useState<string | null>(
 		params.topicDescription ?? params.teacherGuidance ?? null,
 	);
+	// Route params can be older than the saved draft; only actual input edits
+	// may overwrite its topics when pausing.
+	const hasEditedTopicsRef = useRef(false);
 	const [isBusy, setIsBusy] = useState(false);
 	const [isUploading, setIsUploading] = useState(false);
 	const [isUploadSheetVisible, setIsUploadSheetVisible] = useState(false);
 	const [isPauseConfirmationVisible, setIsPauseConfirmationVisible] =
 		useState(false);
+	const [pauseErrorMessage, setPauseErrorMessage] = useState<string | null>(
+		null,
+	);
 	const [exitRequest, setExitRequest] = useState<
-		{ kind: "replace"; href: Href } | { kind: "dismiss"; href: string } | null
+		| { kind: "replace"; href: Href }
+		| { kind: "dismiss"; href: string }
+		| { kind: "back"; href: Href }
+		| null
 	>(null);
 	const pendingUploadRequestRef = useRef<PendingUploadRequest | null>(null);
 	const topicActionGateRef = useRef(createAsyncActionGate());
@@ -616,7 +627,14 @@ export default function NewLearningPlanScreen() {
 	const removeUploadedDocument = async (
 		documentId: Id<"learningPlanDocuments">,
 	) => {
-		await removeDocument({ id: documentId });
+		trackFeature("material.remove", "attempted", documentId);
+		try {
+			await removeDocument({ id: documentId });
+			trackFeature("material.remove", "succeeded", documentId);
+		} catch (error) {
+			trackFeature("material.remove", "failed", documentId);
+			throw error;
+		}
 	};
 
 	const exitCreation = () => {
@@ -645,16 +663,59 @@ export default function NewLearningPlanScreen() {
 			return true;
 		}
 		if (initialLearningPlanId) {
-			goBackOrReplace(router, ROUTES.learningPlans);
+			setExitRequest({ kind: "back", href: ROUTES.learningPlans });
 			return true;
 		}
 
-		goBackOrReplace(router, ROUTES.createExam);
+		setExitRequest({ kind: "back", href: ROUTES.createExam });
 		return true;
 	};
 
+	const openPauseConfirmation = () => {
+		setPauseErrorMessage(null);
+		setIsPauseConfirmationVisible(true);
+	};
+
+	const pauseCreation = async () => {
+		if (!learningPlanId) return;
+		await topicActionGateRef.current.run(async () => {
+			setIsBusy(true);
+			setPauseErrorMessage(null);
+			try {
+				if (
+					hasEditedTopicsRef.current &&
+					topics !== snapshot?.plan.topicDescription
+				) {
+					if (!isMeaningfulTopicDescription(topics)) {
+						throw new Error(
+							"Bitte ergänze gültige Prüfungsthemen, bevor du pausierst.",
+						);
+					}
+					await retryOnceAfterAuthResume(() =>
+						updateRequiredTopics({
+							id: learningPlanId,
+							topicDescription: topics,
+						}),
+					);
+				}
+				setIsPauseConfirmationVisible(false);
+				setExitRequest({ kind: "dismiss", href: ROUTES.learningPlans });
+			} catch (error) {
+				setPauseErrorMessage(
+					getErrorMessage(
+						error,
+						"Deine Änderungen konnten nicht gespeichert werden. Bitte versuche es erneut.",
+					),
+				);
+			} finally {
+				setIsBusy(false);
+			}
+		});
+	};
+
 	const goBack = () => {
-		if (exitRequest) return true;
+		if (exitRequest || isBusy || topicActionGateRef.current.isRunning)
+			return true;
 		const intent = getLearningPlanCreationBackIntent({
 			step: setupStep,
 			hasSavedDraft: Boolean(learningPlanId),
@@ -668,7 +729,7 @@ export default function NewLearningPlanScreen() {
 			return true;
 		}
 		if (intent.kind === "confirmPause") {
-			setIsPauseConfirmationVisible(true);
+			openPauseConfirmation();
 			return true;
 		}
 		return exitCreation();
@@ -677,21 +738,36 @@ export default function NewLearningPlanScreen() {
 	useBackIntent(hasExamEntry, goBack, {
 		allowRouteRemoval: exitRequest !== null,
 	});
-
 	useEffect(() => {
 		if (!exitRequest) return;
-		// Commit removal permission before dispatching an intentional exit. A
-		// nested creation stack can otherwise intercept its parent's removal.
+		// Commit removal permission before dispatching an intentional exit.
+		// The nested native creation stack otherwise intercepts parent removal.
 		if (exitRequest.kind === "replace") {
 			router.replace(exitRequest.href);
-		} else {
+		} else if (exitRequest.kind === "dismiss") {
 			dismissToOrReplace(router, exitRequest.href);
+		} else {
+			goBackOrReplace(router, exitRequest.href);
 		}
 	}, [exitRequest, router]);
 	useLearningPlanCreationProgress({
 		active: true,
 		currentStep: currentProgressStep,
 		onBack: goBack,
+		onClose: () => {
+			if (exitRequest || isBusy || topicActionGateRef.current.isRunning) return;
+			if (learningPlanId) {
+				openPauseConfirmation();
+				return;
+			}
+			setExitRequest({
+				kind: "dismiss",
+				href: examDayEntryId
+					? `/entry/${examDayEntryId}`
+					: ROUTES.learningPlans,
+			});
+		},
+		closeDisabled: isBusy || exitRequest !== null,
 	});
 
 	const continueToAnalysis = () => {
@@ -716,7 +792,10 @@ export default function NewLearningPlanScreen() {
 							canContinue={canContinueTopics}
 							errorMessage={errorMessage}
 							isBusy={isBusy}
-							onChangeTopics={setTopicsInput}
+							onChangeTopics={(value) => {
+								hasEditedTopicsRef.current = true;
+								setTopicsInput(value);
+							}}
 							onContinue={() => void continueToMaterial()}
 							topics={topics}
 						/>
@@ -804,11 +883,10 @@ export default function NewLearningPlanScreen() {
 				cancelLabel="Weiter bearbeiten"
 				confirmLabel="Später fortsetzen"
 				confirmTone="primary"
+				isBusy={isBusy}
+				errorMessage={pauseErrorMessage}
 				onClose={() => setIsPauseConfirmationVisible(false)}
-				onConfirm={() => {
-					setIsPauseConfirmationVisible(false);
-					setExitRequest({ kind: "dismiss", href: ROUTES.learningPlans });
-				}}
+				onConfirm={() => void pauseCreation()}
 			/>
 		</Screen>
 	);

@@ -22,8 +22,6 @@ export const getLearningPlanCreationOverview = (
 		progressLabel = "Schulmaterial fehlt";
 	} else if (plan.status === "draft") {
 		progressLabel = "Schulmaterial gespeichert";
-	} else if (plan.status === "questionsReady" && !plan.scopeConfirmedAt) {
-		progressLabel = "Prüfungsstoff bestätigen";
 	} else if (plan.status === "questionsReady") {
 		progressLabel = "Lernweg wird vorbereitet";
 	} else if (plan.status === "generated") {
