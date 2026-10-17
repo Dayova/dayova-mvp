@@ -25,15 +25,25 @@ _Avoid_: User-facing message, learner error text
 
 `.eas/workflows/ci.yml` uses one `checks` job, displayed as
 `Lint, typecheck, and test`, for trusted pull requests, manual runs, and pushes
-to `main`. Lint, TypeScript, and tests are separate sequential steps. A merge
-therefore checks the resulting `main` commit again under the same visible job
+to `main` or `gh-readonly-queue/main/**`. Lint, TypeScript, and tests are separate
+sequential steps. A merge therefore checks the resulting `main` commit again under the same visible job
 name instead of skipping a PR-only job and repeating its commands elsewhere.
 
 Pull request checks require the author's GitHub association to be `OWNER`,
-`MEMBER`, or `COLLABORATOR`. Manual runs validate only. Production fingerprinting,
-Convex deployment, and OTA work remain restricted to pushes to `main`.
+`MEMBER`, or `COLLABORATOR` and a head branch in this repository. Direct PRs to
+`main` qualify; stacked PRs qualify when their open parent PR chain reaches
+`main`. An ineligible chain skips quality and production compatibility checks
+but receives an unconfirmed OTA report. Manual runs validate only. Production
+fingerprinting and OTA assessment also run for eligible PRs, while Convex
+deployment and OTA publication remain restricted to pushes to `main`.
 Both Convex deployment and OTA checks depend on successful `checks`; OTA
 publication also requires successful fingerprinting, deployment, and OTA safety.
+
+Merge queue branches validate the combined candidate with the same required
+quality check. They do not run the stack-parent lookup, production fingerprinting,
+OTA assessment, PR reporting, Convex deployment, or OTA publication. Source,
+contributor, target, and branch routing gates keep each EAS condition within its
+250-character limit.
 
 ## Release Environment
 
