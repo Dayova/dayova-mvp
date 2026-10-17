@@ -1,10 +1,17 @@
 # DAY-528 validation — 17 October 2026
 
-Implementation is based on PR #661, head `d74da5831add803cb27abfd90ec7dfe2ae41097c`.
+Native GitHub stack #810: `main -> #661 -> #748 -> #895`.
+The direct base is PR #748, head `66cf73d44d8cb3c7306d30be79dabaf3d7abf0a6`;
+PR #661 supplies the deletion pipeline. The original checks below used #661
+at `d74da5831add803cb27abfd90ec7dfe2ae41097c` before the stack was extended.
 Runtime: Node 24.18.0, pnpm 11.15.1, Convex 1.41.0.
 
 ## Checks
 
+- After moving #895 onto #748 for native stack #810, `pnpm check` passed again
+  and the complete Vitest suite passed **938 tests across 131 files**.
+  `git range-diff` confirmed both implementation commits were unchanged by
+  the rebase; the added base contributes only the reviewed AI-usage layer.
 - `pnpm check`: repository lint and TypeScript passed.
 - `pnpm exec vitest run --maxWorkers=2 --testTimeout=30000`: 130 files,
   **932 tests passed** before the final small review follow-up.
