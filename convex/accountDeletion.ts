@@ -2,7 +2,13 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id, TableNames } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { internalMutation, internalQuery, mutation } from "./_generated/server";
+import {
+	env,
+	internalMutation,
+	internalQuery,
+	mutation,
+} from "./_generated/server";
+import { getClerkIdentity, markClerkIdentityDeleted } from "./clerkIdentity";
 import { throwUserFacingError } from "./errors";
 import { deleteManagedFile } from "./fileStorage";
 
@@ -16,6 +22,7 @@ const deletionStageValidator = v.union(
 	v.literal("deleteRevenueCat"),
 	v.literal("deletePostHog"),
 	v.literal("deleteData"),
+	v.literal("deleteNotion"),
 	v.literal("complete"),
 );
 
@@ -44,6 +51,9 @@ const deletionRequestValidator = v.object({
 	clerkStatus: v.optional(processorStatusValidator),
 	revenueCatStatus: v.optional(processorStatusValidator),
 	postHogStatus: v.optional(processorStatusValidator),
+	crmDataSourceId: v.optional(v.string()),
+	crmPageId: v.optional(v.string()),
+	crmDeletionVerified: v.optional(v.boolean()),
 	policyVersion: v.string(),
 	requestedAt: v.number(),
 	updatedAt: v.number(),
@@ -68,6 +78,11 @@ export const assertAccountActive = async (
 	ctx: QueryCtx | MutationCtx,
 	ownerTokenIdentifier: string,
 ) => {
+	if (
+		(await getClerkIdentity(ctx, ownerTokenIdentifier))?.deletedAt !== undefined
+	) {
+		throwUserFacingError("Dieses Konto wird dauerhaft gelöscht.");
+	}
 	const deletionRequest = await ctx.db
 		.query("accountDeletionRequests")
 		.withIndex("by_ownerTokenIdentifier", (query) =>
@@ -123,49 +138,157 @@ export const enqueueVerifiedDeletion = internalMutation({
 	handler: async (ctx) => {
 		const identity = await ctx.auth.getUserIdentity();
 		if (!identity) throwUserFacingError("Nicht authentifiziert.");
-
-		const existing = await ctx.db
-			.query("accountDeletionRequests")
-			.withIndex("by_ownerTokenIdentifier", (query) =>
-				query.eq("ownerTokenIdentifier", identity.tokenIdentifier),
-			)
-			.unique();
-		if (existing) {
-			await ctx.scheduler.runAfter(
-				0,
-				internal.accountDeletionActions.processDeletionRequest,
-				{ requestId: existing.requestId },
-			);
-			return { status: "accepted" as const, requestId: existing.requestId };
+		const requestId = await enqueueDeletion(
+			ctx,
+			identity.tokenIdentifier,
+			identity.subject,
+			Date.now(),
+			false,
+		);
+		return { status: "accepted" as const, requestId };
+	},
+});
+async function enqueueDeletion(
+	ctx: MutationCtx,
+	ownerTokenIdentifier: string,
+	clerkUserId: string,
+	requestedAt: number,
+	clerkAlreadyDeleted: boolean,
+) {
+	await markClerkIdentityDeleted(
+		ctx,
+		ownerTokenIdentifier,
+		clerkUserId,
+		requestedAt,
+	);
+	const existing = await ctx.db
+		.query("accountDeletionRequests")
+		.withIndex("by_ownerTokenIdentifier", (q) =>
+			q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+		)
+		.unique();
+	if (existing) {
+		if (
+			clerkAlreadyDeleted &&
+			["revokeSessions", "deleteClerkIdentity"].includes(existing.stage)
+		) {
+			await ctx.db.patch("accountDeletionRequests", existing._id, {
+				stage: "deleteRevenueCat",
+				clerkStatus: "completed",
+				status: "queued",
+				attemptCount: 0,
+				nextAttemptAt: undefined,
+				lastErrorCode: undefined,
+			});
 		}
-
-		const user = await ctx.db
-			.query("users")
-			.withIndex("by_tokenIdentifier", (query) =>
-				query.eq("tokenIdentifier", identity.tokenIdentifier),
-			)
+		await ctx.scheduler.runAfter(
+			0,
+			internal.accountDeletionActions.processDeletionRequest,
+			{ requestId: existing.requestId },
+		);
+		return existing.requestId;
+	}
+	const user = await ctx.db
+		.query("users")
+		.withIndex("by_tokenIdentifier", (q) =>
+			q.eq("tokenIdentifier", ownerTokenIdentifier),
+		)
+		.unique();
+	const links = user
+		? await ctx.db
+				.query("crmStudentLinks")
+				.withIndex("by_userId", (q) => q.eq("userId", user._id))
+				.take(2)
+		: [];
+	const requestId = crypto.randomUUID();
+	await ctx.db.insert("accountDeletionRequests", {
+		requestId,
+		ownerTokenIdentifier,
+		clerkUserId,
+		requestedAt,
+		updatedAt: Date.now(),
+		status: "queued",
+		stage: clerkAlreadyDeleted ? "deleteRevenueCat" : "revokeSessions",
+		...(clerkAlreadyDeleted ? { clerkStatus: "completed" as const } : {}),
+		attemptCount: 0,
+		deletedRecords: 0,
+		policyVersion: DELETION_POLICY_VERSION,
+		crmDataSourceId: env.NOTION_CRM_DATA_SOURCE_ID,
+		...(links.length === 1 ? { crmPageId: links[0].pageId } : {}),
+	});
+	await ctx.scheduler.runAfter(
+		0,
+		internal.accountDeletionActions.processDeletionRequest,
+		{ requestId },
+	);
+	return requestId;
+}
+// Only a verified webhook or an explicit operator reconciliation calls this helper.
+export const enqueueClerkDeletedAccount = (
+	ctx: MutationCtx,
+	tokenIdentifier: string,
+	clerkId: string,
+	deletedAt: number,
+) => enqueueDeletion(ctx, tokenIdentifier, clerkId, deletedAt, true);
+export const bindCrmCleanupPage = internalMutation({
+	args: {
+		requestId: v.string(),
+		dataSourceId: v.string(),
+		pageId: v.optional(v.string()),
+		verified: v.optional(v.boolean()),
+	},
+	returns: v.null(),
+	handler: async (ctx, args) => {
+		const request = await ctx.db
+			.query("accountDeletionRequests")
+			.withIndex("by_requestId", (q) => q.eq("requestId", args.requestId))
 			.unique();
-		// Keep the audit key opaque even when no Convex user row exists yet.
-		const requestId = crypto.randomUUID();
-		const now = Date.now();
-		await ctx.db.insert("accountDeletionRequests", {
-			requestId,
-			ownerTokenIdentifier: identity.tokenIdentifier,
-			clerkUserId: user?.clerkId ?? identity.subject,
+		if (
+			!request ||
+			request.stage !== "deleteNotion" ||
+			request.crmDataSourceId !== args.dataSourceId ||
+			(request.crmPageId && args.pageId && request.crmPageId !== args.pageId)
+		)
+			throw new Error("CRM identity changed");
+		await ctx.db.patch("accountDeletionRequests", request._id, {
+			...(args.pageId ? { crmPageId: args.pageId } : {}),
+			...(args.verified ? { crmDeletionVerified: true } : {}),
+		});
+		return null;
+	},
+});
+export const retryRequest = internalMutation({
+	args: { requestId: v.string(), crmDataSourceId: v.optional(v.string()) },
+	returns: v.null(),
+	handler: async (ctx, args) => {
+		const request = await ctx.db
+			.query("accountDeletionRequests")
+			.withIndex("by_requestId", (q) => q.eq("requestId", args.requestId))
+			.unique();
+		if (!request || request.status !== "manualReview")
+			throw new Error("Request is not awaiting review");
+		if (
+			args.crmDataSourceId &&
+			(request.crmDataSourceId ||
+				request.crmPageId ||
+				args.crmDataSourceId !== env.NOTION_CRM_DATA_SOURCE_ID)
+		)
+			throw new Error("Existing cleanup destinations cannot be redirected");
+		await ctx.db.patch("accountDeletionRequests", request._id, {
 			status: "queued",
-			stage: "revokeSessions",
 			attemptCount: 0,
-			deletedRecords: 0,
-			policyVersion: DELETION_POLICY_VERSION,
-			requestedAt: now,
-			updatedAt: now,
+			nextAttemptAt: undefined,
+			lastErrorCode: undefined,
+			...(args.crmDataSourceId
+				? { crmDataSourceId: args.crmDataSourceId }
+				: {}),
 		});
 		await ctx.scheduler.runAfter(
 			0,
 			internal.accountDeletionActions.processDeletionRequest,
-			{ requestId },
+			{ requestId: args.requestId },
 		);
-		return { status: "accepted" as const, requestId };
+		return null;
 	},
 });
 
@@ -288,11 +411,18 @@ export const completeRequest = internalMutation({
 				query.eq("requestId", args.requestId),
 			)
 			.unique();
-		if (!request || request.stage !== "deleteData") return false;
+		if (
+			!request ||
+			request.stage !== "deleteNotion" ||
+			!request.crmDeletionVerified
+		)
+			return false;
 		const now = Date.now();
 		await ctx.db.patch("accountDeletionRequests", request._id, {
 			ownerTokenIdentifier: undefined,
 			clerkUserId: undefined,
+			crmDataSourceId: undefined,
+			crmPageId: undefined,
 			status: "completed",
 			stage: "complete",
 			lastErrorCode: undefined,

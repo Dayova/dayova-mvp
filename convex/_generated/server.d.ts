@@ -25,13 +25,17 @@ import type { DataModel } from "./dataModel.js";
  * Typesafe environment variables declared in `convex.config.ts`.
  */
 type Env = {
+  readonly CLERK_JWT_ISSUER_DOMAIN: string | undefined;
   readonly CLERK_SECRET_KEY: string | undefined;
+  readonly CLERK_WEBHOOK_INSTANCE_ID: string | undefined;
+  readonly CLERK_WEBHOOK_SIGNING_SECRET: string | undefined;
+  readonly NOTION_CRM_DATA_SOURCE_ID: string | undefined;
+  readonly NOTION_CRM_DELETION_MODE: "off" | "live" | undefined;
+  readonly NOTION_CRM_MODE: "off" | "dry-run" | "live" | undefined;
+  readonly NOTION_CRM_TOKEN: string | undefined;
   readonly POSTHOG_API_HOST: string | undefined;
   readonly POSTHOG_PERSONAL_API_KEY: string | undefined;
   readonly POSTHOG_PROJECT_ID: string | undefined;
-  readonly NOTION_CRM_DATA_SOURCE_ID: string | undefined;
-  readonly NOTION_CRM_MODE: "off" | "dry-run" | "live" | undefined;
-  readonly NOTION_CRM_TOKEN: string | undefined;
   readonly REVENUECAT_SECRET_API_KEY: string | undefined;
   readonly REVENUECAT_WEBHOOK_AUTHORIZATION: string | undefined;
 };
