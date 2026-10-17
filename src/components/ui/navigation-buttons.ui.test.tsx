@@ -12,7 +12,9 @@ jest.mock("~/lib/theme", () => ({
 	useDayovaTheme: () => ({ colors: { text: "#1A1A1A" } }),
 }));
 
-afterEach(() => jest.restoreAllMocks());
+afterEach(() => {
+	jest.restoreAllMocks();
+});
 
 test.each([
 	{ label: "Zurück", Control: BackButton },
