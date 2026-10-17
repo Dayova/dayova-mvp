@@ -1,337 +1,71 @@
-# Package Patches
+# Package patches
 
-This directory contains patches applied by `pnpm` through the
-`patchedDependencies` section in `pnpm-workspace.yaml`.
+## SDK 58 audit
 
-When a patched package is installed, pnpm applies the matching `.patch` file to
-the package contents in `node_modules`. Keep each patch documented here so future
-dependency updates can decide whether the patch is still needed.
+[DAY-527](https://linear.app/dayova/issue/DAY-527/upgrade-dayova-to-expo-sdk-58-and-react-native-088)
+audits the published SDK 58 dependency sources before changing patch ownership.
+All patch entries are version-specific and applied by pnpm's frozen lockfile.
 
-## `react-native-screens@4.26.2.patch`
+- `react-native-screens` 4.30.0 includes upstream [#4413](https://github.com/software-mansion/react-native-screens/pull/4413): process-lifetime listener initialization, listener/install mutexes, captured Java references and token-checked teardown. The 4.26.2 backport from [DAY-524](https://linear.app/dayova/issue/DAY-524/backport-the-android-screens-startup-race-fix-found-during-pr-846) is removed from this SDK 58 graph; SDK 57 still needs it.
+- `react-native-keyboard-controller` 1.22.7 derives surface IDs from the React-managed `eventPropagationView` in both `KeyboardAnimationCallback` and `FocusedInputObserver`, rather than the modal decor view. Its 1.21.9 modal surface-ID patch is removed.
+- NativeWind and oxc-parser stay at their previously patched versions; their documented fixes remain unchanged.
+- `@parcel/watcher`'s optional install script is explicitly denied in `allowBuilds`. Platform prebuilt packages supply the watcher; the existing watcher and Metro integration checks must still pass.
+- Jest 30's `unrs-resolver` uses platform prebuilt bindings. Its install fallback is also denied; the full Jest suite must load and resolve modules successfully.
 
-### Why This Patch Exists
+## `expo-updates@58.0.17.patch`
 
-A clean Android launch can crash on the JS thread in
-`MountingCoordinator::pullTransaction` before the welcome screen settles.
-Native smoke on Android 16 / API 36 reproduced a SIGSEGV while trying to execute
-non-executable heap memory. The Expo-compatible 4.26.2 package still initializes
-its screen-removal delegate lazily without synchronization.
+### Why and what
 
-### What The Patch Changes
+The SDK 58 deferred-root splash still resolves its storyboard background before
+joining the active window. It can therefore use the default light trait during
+a dark launch. The patch retains Dayova's SDK 57 repair: copy the active window's
+appearance onto the splash and deferred root, then resolve the background color
+against that trait collection. Update selection and loading behavior are unchanged.
 
-This backports the four C++ changes from upstream
-[react-native-screens#4413](https://github.com/software-mansion/react-native-screens/pull/4413),
-merge `b3badd012f83679b12f4e29f2e28eceaa4830efd`. The only path adaptation is
-`cpp/legacy/RNSScreenRemovalListener.*` to this release's `cpp/` location.
-The listener has process lifetime, synchronized callback ownership, and a token
-that prevents an older proxy's teardown from disarming a newer proxy. Callback
-installation and invalidation are serialized; callbacks retain the Java reference
-instead of a raw proxy pointer. No JavaScript API or package version changes.
-
-### How To Verify
-
-Use a frozen install, then compile new Android and iOS development clients.
-Run all four authentication/onboarding smoke journeys on both platforms and
-repeat Android cold launches with the actual bundle loaded. Inspect system
-`am_crash` events and tombstones as well as the crash log buffer: the observed
-native crash appeared in system events while the dedicated crash buffer was empty.
-Report the number of valid launches and failures; a clean retry alone does not
-prove that a rare race is fixed. This native patch requires a new app binary.
-
-### How To Update Or Remove
-
-Recheck the installed C++ implementation when upgrading `react-native-screens`.
-Remove the patch only when the Expo-compatible release includes upstream #4413;
-then remove its `patchedDependencies` entry, regenerate the lockfile, and repeat
-the native builds, smoke journeys, and cold-launch checks. Upstream first shipped
-this fix in 4.28.0; do not override Expo's compatibility range solely to remove it.
+### Verification and removal
 
-## `expo-updates@57.0.21.patch`
-
-### Why This Patch Exists
+Run the iOS appearance regression suite and rebuild iOS. Verify cold launch and
+resume in both appearances without a wrong-color splash. Remove the patch only
+when the installed upstream deferred-root path resolves storyboard colors against
+the active window before presentation; a package version change alone is insufficient.
 
-Expo Updates creates a deferred splash-screen view while a Release build loads
-its embedded JavaScript bundle. That storyboard view is still detached from the
-application window when Expo reads its dynamic background color. UIKit therefore
-resolves the color with the default Light trait even when the active window is
-already Dark. Frame-by-frame cold-launch verification on iOS 26.5 reproduced a
-full-screen Light frame in the optimized Release build; the Debug development
-client does not use this deferred Expo Updates path and remained Dark.
+## `@expo__metro-config@58.0.14.patch`
 
-### What The Patch Changes
+### Why and what
 
-The patch reads the active application window's trait collection before adding
-the deferred splash. It applies that interface style to both the storyboard view
-and deferred React root, then resolves the root background color against the
-same trait collection. No Expo Updates loading, selection, or update behavior is
-changed.
+The published SDK 58 binary-file store still issues unbounded `readFile` calls.
+Dayova previously reproduced Windows `EMFILE` after a cold bundle with thousands
+of transforms. Retain the 256-read semaphore around cache reads, with FIFO slot
+handoff and release in `finally`. Reads remain concurrent; cache misses and errors
+retain their upstream behavior.
 
-The patch was retargeted to 57.0.21 after inspecting its deferred splash path.
-Upstream still resolves the detached view's background without the active window
-trait; the same patch applies and the installed Swift file retains the fix.
+### Verification and removal
 
-### How To Verify
-
-Run the focused source-shape test, build an optimized iOS Release app with an
-embedded bundle, stop Metro, set the simulator to Dark, and record a force-stop
-cold launch:
+Run `pnpm test:unit:metro-cache` and both cold-cache exports. The concurrency
+fixture issues 1,024 parallel reads and checks the bound and error recovery.
+Remove this patch only after upstream bounds file-descriptor use and the same
+fixtures plus a cold Windows bundle pass without it.
 
-```sh
-pnpm exec vitest run src/lib/ios-appearance-module.test.ts
-APP_VARIANT=development pnpm exec expo prebuild --platform ios
-```
+## `@react-native__gradle-plugin@0.88.0.patch`
 
-Review every recorded frame from before launch until the first settled React
-screen. The native splash, deferred splash/root, and first React frame must all
-remain Dark; screenshots of only the settled state are insufficient.
-
-### How To Update Or Remove
-
-Recheck this patch whenever `expo-updates` changes. Remove it when the deferred
-root path resolves its splash color using the active window trait upstream.
-
-1. Delete `patches/expo-updates@57.0.21.patch`.
-2. Remove its entry from `patchedDependencies` in `pnpm-workspace.yaml`.
-3. Run `pnpm install --frozen-lockfile` and the focused test.
-4. Repeat the frame-by-frame embedded-bundle Release cold-launch check in both
-   Light and Dark.
-
-## `@expo/metro-config@57.0.12.patch`
-
-### Why This Patch Exists
-
-Expo SDK 57's binary Metro cache starts one asynchronous `readFile` for every
-transform requested by Metro. A cold Dayova Android development bundle contains
-roughly 8,000 modules. On Windows with Node 24.18.0, the next bundle request can
-therefore exceed Node's file-descriptor table and fail with:
-
-```text
-EMFILE: too many open files, open
-'C:\Users\...\AppData\Local\Temp\metro-cache\...\.mp'
-```
-
-The failure was reproduced independently of Expo Router and the app by calling
-the real `BinaryFileStore.get()` for all 9,565 cache entries. The unpatched store
-failed with `EMFILE`; the patched store completed the same test.
-
-This binary store was introduced upstream in
-[`expo/expo#45656`](https://github.com/expo/expo/pull/45656) and received
-concurrent read/write handling in
-[`expo/expo#46171`](https://github.com/expo/expo/pull/46171), but that handling
-does not bound simultaneous reads. After the Expo SDK 57 integration,
-`@expo/metro-config@57.0.7` was tested without the patch: the deterministic
-regression test observed all 1,024 requested reads active concurrently. The
-upgrade therefore does not remove the failure. The September 2026 upgrade to
-57.0.12 still has an unbounded read in this path; the patch applies unchanged
-and the installed-package concurrency regression test passes.
-
-### What The Patch Changes
-
-The patch adds a process-wide FIFO slot queue around binary cache reads and
-allows at most 256 simultaneous `fs.promises.readFile` calls. A completed read
-transfers its slot directly to the next waiter, so new requests cannot jump the
-queue. Other Metro file operations retain ample descriptor headroom while cache
-reads remain highly concurrent.
-
-Only the published `build/binary-file-store.js` file is patched because the npm
-package does not ship the TypeScript source.
-
-### How To Verify
-
-Run the deterministic regression test:
-
-```sh
-pnpm test:unit:metro-cache
-```
-
-It replaces `readFile` with a controlled asynchronous cache miss, sends 1,024
-requests through the installed Expo `FileStore`, and asserts that no more than
-256 reads are active concurrently.
-
-For the full Windows integration path, clear Metro's cache, load Dayova on the
-connected Android development client, and then reload it:
-
-```powershell
-$env:APP_VARIANT = 'development'
-pnpm exec expo start --dev-client --clear
-```
-
-Both the initial bundle and reload must complete without `EMFILE`.
-
-### How To Update Or Remove
-
-When upgrading Expo or `@expo/metro-config`:
-
-1. Inspect upstream `packages/@expo/metro-config/src/binary-file-store.ts` for a
-   read-concurrency limit, retry queue, or equivalent `EMFILE` handling.
-2. Remove the `patchedDependencies` entry temporarily, then run
-   `pnpm install --force` so `node_modules` contains the unpatched package rather
-   than pnpm's previously patched installation.
-3. Run `pnpm test:unit:metro-cache`; it must still pass against that unpatched
-   package, then run the cold-cache Android integration path above on Windows.
-4. If both checks pass, delete `patches/@expo__metro-config@57.0.12.patch`.
-5. Run `pnpm install`, `pnpm check`, and `pnpm test`.
-## `@react-native__gradle-plugin@0.86.3.patch`
-
-### Why This Patch Exists
-
-Expo SDK 57 upgrades React Native from 0.85 to 0.86. The React Native 0.86
-Gradle plugin applies `org.gradle.toolchains.foojay-resolver-convention` from
-its Kotlin `settings.gradle.kts` so Gradle can provision a matching JDK.
-
-On Dayova's Windows environment, Gradle 9.3.1 miscompiled that settings script
-before plugin resolution and reported `Unresolved reference 'plugins'` and
-`Unresolved reference 'id'`. The failure reproduced when the React Native
-Gradle plugin was built by itself, before Dayova's Android project or native
-modules were configured. The upstream report
-[gradle/gradle#36323](https://github.com/gradle/gradle/issues/36323) records the
-same Windows failure shape on Gradle 9.2.1 and 9.3.0; Dayova independently
-reproduced it on 9.3.1.
-
-Dayova already requires JDK 17 for Android development and EAS Android build
-images provide the required JDK, so automatic Foojay toolchain provisioning is
-not needed for this project.
-
-### What The Patch Changes
-
-The patch removes only the Foojay settings plugin block from
-`@react-native/gradle-plugin/settings.gradle.kts`. It does not change React
-Native's application Gradle plugin, settings plugin, autolinking, codegen, or
-native compilation behavior. React Native 0.86.3 still includes this exact
-Foojay block, so the patch is retained for that version.
-
-Developers must keep a compatible JDK configured through `JAVA_HOME`; for SDK
-57 Android development in this repo, use JDK 17.
-
-### How To Verify
-
-After installing dependencies, run a clean Android build on Windows:
-
-```powershell
-pnpm install
-cd android
-.\gradlew.bat clean :app:assembleDebug
-```
-
-Expected result: Gradle configures `com.facebook.react.settings`, Expo
-autolinking, and the app's native modules without failing in React Native's
-`settings.gradle.kts`.
-
-If the patched file is present but Gradle instead fails while resolving
-`com.facebook.react.settings` with a `NoSuchMethodError` for
-`Settings_gradle.<init>`, first verify the failure with `gradlew.bat help`. This
-is a separate stale Kotlin-DSL cache failure, not evidence that the patch was
-not applied. It occurred during the SDK 57 integration when Gradle reused a
-compiled settings-script class with the old one-argument `Settings` constructor
-for a script that now required the three-argument `KotlinScriptHost`,
-`PluginDependenciesSpec`, and `Settings` constructor.
-
-Stop Gradle and move `%USERPROFILE%\.gradle\caches` aside before retrying. Keep
-the moved directory until `gradlew.bat help` and the clean native build both
-pass, then archive or remove it when disk space is needed. Moving only the
-`kotlin-dsl`, `build-cache`, or `jars` subdirectory did not repair the observed
-cache state; rebuilding the complete Gradle cache did.
-
-Then run the normal project checks:
-
-```sh
-pnpm check
-pnpm test
-npx expo-doctor
-```
-
-### How To Update Or Remove
-
-Recheck the patch whenever Expo changes the React Native 0.86 patch version or
-upgrades React Native. Remove it when the upstream Gradle/React Native
-combination configures successfully on Windows without the patch.
-
-Removal checklist:
-
-1. Delete `patches/@react-native__gradle-plugin@0.86.3.patch`.
-2. Remove its entry from `patchedDependencies` in `pnpm-workspace.yaml`.
-3. Run `pnpm install`.
-4. Run the clean Android build and normal checks above on Windows.
-
-If the workaround is still required for a new React Native Gradle plugin
-version, regenerate it with:
-
-```sh
-pnpm patch @react-native/gradle-plugin@<version>
-# Remove only the Foojay `plugins` block from settings.gradle.kts.
-pnpm patch-commit "<temporary patch directory printed by pnpm>"
-```
-
-## `react-native-keyboard-controller@1.21.9.patch`
-
-### Why This Patch Exists
-
-Expo SDK 57's recommended `react-native-keyboard-controller` version supports
-React Native 0.86, but opening a React Native `Modal` on Android logs an
-unhandled Fabric soft exception:
-
-```text
-Fabric View [-1] does not have SurfaceId associated with it
-```
-
-`ModalAttachedWatcher` installs a keyboard callback on the Android dialog's
-decor view. `FocusedInputObserver` then asks React Native for the surface ID of
-that native decor view, which is not part of a Fabric surface. The warning was
-reproduced on a Pixel 9 running Android 16 whenever Dayova opened its create
-type bottom modal. The modal remained visible, but the observer initialized
-with an invalid surface ID.
-
-### What The Patch Changes
-
-`KeyboardAnimationCallback` now accepts an explicit surface ID and passes it to
-`FocusedInputObserver`. The normal non-modal path keeps the package's existing
-surface lookup. For a modal, `ModalAttachedWatcher` supplies the surface ID from
-the Fabric `topShow` event that caused the callback to be installed, rather than
-trying to infer a surface from the dialog's native window hierarchy.
-
-The patch changes only Android surface-ID plumbing. It does not alter keyboard
-animation, focused-input tracking, modal layout, or iOS behavior.
-
-### How To Verify
-
-Build and install the Android debug app, clear Logcat, and open a Dayova bottom
-modal such as the create-type picker:
-
-```powershell
-cd android
-.\gradlew.bat :app:assembleDebug
-adb install -r app\build\outputs\apk\debug\app-debug.apk
-adb logcat -c
-# Open the modal on the device.
-adb logcat -d | Select-String 'UIManagerHelper|Fabric View'
-```
-
-Expected result: the modal opens normally and Logcat contains no
-`UIManagerHelper` surface-ID soft exception. Also focus an input and confirm
-that keyboard avoidance still works.
-
-### How To Update Or Remove
-
-Recheck this patch whenever `react-native-keyboard-controller` is upgraded.
-Remove it when the package resolves modal keyboard events against a
-React-managed surface, or otherwise avoids querying a surface ID from the
-dialog decor view.
-
-Removal checklist:
-
-1. Delete `patches/react-native-keyboard-controller@1.21.9.patch`.
-2. Remove its entry from `patchedDependencies` in `pnpm-workspace.yaml`.
-3. Run `pnpm install`.
-4. Rebuild Android and repeat the modal Logcat verification above.
-
-If the workaround is still required for a new package version, regenerate it
-with:
-
-```sh
-pnpm patch react-native-keyboard-controller@<version>
-# Pass the modal show event's surface ID into the callback and observer.
-pnpm patch-commit "<temporary patch directory printed by pnpm>"
-```
+### Why and what
+
+React Native 0.88.0 still applies the Foojay resolver in its Kotlin settings script.
+The same block caused a standalone settings-compilation failure on Dayova's Windows
+Gradle 9.3.1 environment (`Unresolved reference plugins/id`), also tracked by
+[gradle/gradle#36323](https://github.com/gradle/gradle/issues/36323).
+Remove only that optional JDK provisioning plugin. Developers and EAS workers must
+supply the JDK required by the generated SDK 58 Android project. Autolinking,
+codegen and the application Gradle plugin remain unchanged.
+
+### Verification and removal
+
+Rebuild Android from the SDK 58 source. Recheck this workaround whenever the
+Gradle/React Native toolchain changes, and remove it when standalone settings
+configuration succeeds on Windows without it. A stale Kotlin-DSL cache failure
+is separate: verify with `gradlew.bat help`, then move the affected cache aside
+before rebuilding rather than weakening Gradle checks.
+
 ## `nativewind@4.2.3.patch`
 
 ### Why This Patch Exists
