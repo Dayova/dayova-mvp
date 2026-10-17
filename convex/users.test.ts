@@ -22,6 +22,24 @@ const otherIdentity = {
 	email: "other@example.com",
 };
 
+test.each([
+	15, 210, 240,
+])("persists %i-minute onboarding windows without truncation", async (minutes) => {
+	const t = convexTest(schema, modules).withIdentity(userIdentity);
+	await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	await t.mutation(api.users.saveOnboardingAnswers, {
+		answers: onboardingAnswers({
+			dailySchoolTime: `${minutes} min`,
+			learningTime: "00:00",
+		}),
+	});
+	const endTime = `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+	await expect(t.query(api.learningTimes.listMine, {})).resolves.toMatchObject([
+		{ dayOfWeek: 1, startTime: "00:00", endTime },
+		{ dayOfWeek: 3, startTime: "00:00", endTime },
+	]);
+});
+
 const onboardingAnswers = (
 	overrides: Partial<{
 		state: string;
@@ -701,7 +719,7 @@ test("profile and onboarding writes reject grades outside the product vocabulary
 
 	await t.mutation(api.users.syncCurrentUser, { grade: "9" });
 	await expect(
-		t.mutation(api.users.updateProfile, { grade: "5" }),
+		t.mutation(api.users.updateProfile, { grade: "4" }),
 	).rejects.toThrow("Klassenstufe");
 	await expect(
 		t.mutation(api.users.saveOnboardingAnswers, {
@@ -796,4 +814,26 @@ test("profile sync maps generic legacy values and clears school names", async ()
 				.unique(),
 		),
 	).resolves.toMatchObject({ answer: "gymnasium" });
+});
+
+test("profile email follows Clerk's verified primary address", async () => {
+	const backend = convexTest(schema, modules);
+	const oldToken = backend.withIdentity(userIdentity);
+	await oldToken.mutation(api.users.syncCurrentUser, { name: "User" });
+
+	// A profile write cannot claim an unverified address while the JWT is stale.
+	await oldToken.mutation(api.users.updateProfile, {
+		email: "new@example.com",
+	});
+	await oldToken.mutation(api.users.syncCurrentUser, { name: "User" });
+	await expect(oldToken.query(api.users.getMe, {})).resolves.toMatchObject({
+		email: userIdentity.email,
+	});
+
+	await backend
+		.withIdentity({ ...userIdentity, email: "new@example.com" })
+		.mutation(api.users.syncCurrentUser, { name: "User" });
+	await expect(oldToken.query(api.users.getMe, {})).resolves.toMatchObject({
+		email: "new@example.com",
+	});
 });

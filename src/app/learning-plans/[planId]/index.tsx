@@ -1,5 +1,10 @@
 import { useAction, useConvexAuth, useQuery } from "convex/react";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import {
+	Stack,
+	useFocusEffect,
+	useLocalSearchParams,
+	useRouter,
+} from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	ActivityIndicator,
@@ -32,6 +37,7 @@ import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
+import { ExtraPracticeCard } from "~/features/learning-plans/extra-practice-card";
 import {
 	LEARNING_PATH_PHASE_ICON,
 	type LearningPathNodeIcon,
@@ -54,7 +60,9 @@ import { parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { dismissToOrReplace } from "~/lib/navigation";
+import { getSafeReturnTo, ROUTES } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 const PHASE_LABEL: Record<PlanSession["phase"], string> = {
 	theory: "Theorie",
@@ -149,7 +157,7 @@ export function SessionPreviewCard({
 		? getRepeatActionLabel(session)
 		: session.executionStatus === "started"
 			? "Weiterlernen"
-			: "Lernsession starten";
+			: "Starten";
 	const content = (
 		<View className="gap-2">
 			<View className="flex-row items-start justify-between gap-3">
@@ -185,7 +193,9 @@ export function SessionPreviewCard({
 			<View className="flex-row items-center gap-1.5">
 				<Time04 size={13} color={colors.secondaryText} strokeWidth={2} />
 				<Text className="font-poppins text-body-4 text-secondary-text">
-					{session.dateLabel} · {session.startTime}
+					{session.unscheduled
+						? "Jederzeit starten"
+						: `${session.dateLabel} · ${session.startTime}`}
 				</Text>
 			</View>
 
@@ -288,10 +298,11 @@ export function SessionPreviewCard({
 }
 
 export default function LearningPlanSessionsScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const today = useCurrentLocalDay();
-	const params = useLocalSearchParams<{ planId?: string }>();
+	const params = useLocalSearchParams<{ planId?: string; returnTo?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const { user } = useAuthSession();
 	const { requestAiConsent } = useAiConsent();
@@ -300,6 +311,10 @@ export default function LearningPlanSessionsScreen() {
 		api.learningPlanAi.ensureSessionContent,
 	);
 	const preparingSessionIdRef = useRef<Id<"learningPlanSessions"> | null>(null);
+	const trackFeatureRef = useRef(trackFeature);
+	useEffect(() => {
+		trackFeatureRef.current = trackFeature;
+	}, [trackFeature]);
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
@@ -312,6 +327,18 @@ export default function LearningPlanSessionsScreen() {
 	const selectedSession =
 		snapshot?.sessions.find((session) => session.id === selectedSessionId) ??
 		defaultSession;
+	const visiblePlanId =
+		snapshot && snapshot.sessions.length > 0 ? snapshot.plan.id : undefined;
+	useFocusEffect(
+		useCallback(() => {
+			if (visiblePlanId)
+				trackFeatureRef.current(
+					"learning_plan.content_viewed",
+					"performed",
+					visiblePlanId,
+				);
+		}, [visiblePlanId]),
+	);
 	const selectedSessionIndex =
 		snapshot && selectedSession
 			? snapshot.sessions.findIndex(
@@ -388,8 +415,15 @@ export default function LearningPlanSessionsScreen() {
 		prepareSession(defaultSession.id);
 	}, [defaultSession, prepareSession]);
 
+	useEffect(() => {
+		if (snapshot?.plan.preparationState === "review" && planId)
+			router.replace(`/learning-plans/${planId}/preparation`);
+	}, [snapshot?.plan.preparationState, planId, router]);
 	const goBack = () => {
-		dismissToOrReplace(router, "/learning-plans");
+		dismissToOrReplace(
+			router,
+			getSafeReturnTo(params.returnTo) ?? ROUTES.learningPlans,
+		);
 	};
 
 	return (
@@ -447,6 +481,16 @@ export default function LearningPlanSessionsScreen() {
 				)}
 			</View>
 
+			{snapshot?.plan.preparationState === "ready" ? (
+				<View className="px-4 pb-3">
+					<Button
+						variant="outline"
+						onPress={() => router.push(`/learning-plans/${planId}/preparation`)}
+					>
+						<Text>Termine</Text>
+					</Button>
+				</View>
+			) : null}
 			<ScrollView
 				className="flex-1 bg-background"
 				contentContainerStyle={[
@@ -472,7 +516,8 @@ export default function LearningPlanSessionsScreen() {
 						selectedSessionId={selectedSession.id}
 						sessions={snapshot.sessions}
 						showsAdaptiveContinuation={
-							snapshot.plan.rollingPlanEnabled === true
+							snapshot.plan.rollingPlanEnabled === true &&
+							!snapshot.plan.preparationState
 						}
 						onOpenSession={(session) => {
 							const sessionIndex = snapshot.sessions.findIndex(
@@ -499,11 +544,24 @@ export default function LearningPlanSessionsScreen() {
 								}),
 							);
 						}}
-						onSelectSession={(session) => setSelectedSessionId(session.id)}
+						onSelectSession={(session) => {
+							trackFeature(
+								"learning_plan.session_selected",
+								"performed",
+								session.id,
+							);
+							setSelectedSessionId(session.id);
+						}}
 					/>
 				) : (
 					<View />
 				)}
+				{snapshot?.plan.preparationState === "completed" ? (
+					<ExtraPracticeCard
+						planId={snapshot.plan.id}
+						topics={snapshot.plan.topicMap}
+					/>
+				) : null}
 			</ScrollView>
 		</Screen>
 	);

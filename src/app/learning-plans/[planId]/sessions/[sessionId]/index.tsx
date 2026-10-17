@@ -1,14 +1,16 @@
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-	ActivityIndicator,
-	AppState,
+	Stack,
+	useFocusEffect,
+	useLocalSearchParams,
+	useRouter,
+} from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, AppState, View } from "react-native";
+import {
 	KeyboardAvoidingView,
-	Platform,
-	ScrollView,
-	View,
-} from "react-native";
+	type KeyboardAwareScrollViewRef,
+} from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -17,8 +19,8 @@ import { ScreenHeader } from "~/components/screen-header";
 import { BackButton, Button } from "~/components/ui/button";
 import { ErrorMessage } from "~/components/ui/error-message";
 import { Timer } from "~/components/ui/icon";
+import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
 import { Text } from "~/components/ui/text";
-import { Textarea } from "~/components/ui/textarea";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
@@ -40,6 +42,8 @@ import {
 	getCurrentRunAttempts,
 	type RepeatAttemptBaseline,
 } from "~/features/learning-plans/session-repeat-attempts";
+
+import { TextAnswer } from "~/features/learning-plans/text-answer";
 import { runTheoryTopicPrimaryAction } from "~/features/learning-plans/theory-topic";
 import { TheoryTopicPage } from "~/features/learning-plans/theory-topic-page";
 import type {
@@ -53,6 +57,7 @@ import { logDiagnosticError } from "~/lib/diagnostics";
 import { dismissToOrReplace, useBackIntent } from "~/lib/navigation";
 import { triggerSuccessHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { cn } from "~/lib/utils";
 
@@ -118,38 +123,8 @@ function ActionRow({
 	);
 }
 
-function TextAnswer({
-	value,
-	onChange,
-	placeholder,
-	editable,
-	fillAvailableSpace = false,
-	autoFocus,
-}: {
-	value: string;
-	onChange: (value: string) => void;
-	placeholder: string;
-	editable: boolean;
-	fillAvailableSpace?: boolean;
-	autoFocus?: boolean;
-}) {
-	return (
-		<Textarea
-			autoFocus={(autoFocus ?? fillAvailableSpace) && editable}
-			accessibilityLabel="Antwort"
-			className={cn(
-				"mt-4 px-0 py-2",
-				fillAvailableSpace ? "min-h-[180px] flex-1" : "min-h-40",
-			)}
-			editable={editable}
-			value={value}
-			onChangeText={onChange}
-			placeholder={placeholder}
-		/>
-	);
-}
-
 export default function LearningSessionContentScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const params = useLocalSearchParams<{
@@ -202,11 +177,22 @@ export default function LearningSessionContentScreen() {
 	const didStartTrackingRef = useRef(false);
 	const didRecordOutcomeRef = useRef(false);
 	const advancedPreTheoryQuestionItemIdRef = useRef<string | null>(null);
+	const [isFocused, setIsFocused] = useState(true);
+	useFocusEffect(
+		useCallback(() => {
+			setIsFocused(true);
+			return () => setIsFocused(false);
+		}, []),
+	);
+	const checkpointStudyTime = useMutation(
+		api.learningPlans.checkpointStudyTime,
+	);
+	const restoredStudyTime = useRef(false);
 	const activeStudySecondsRef = useRef(0);
 	const activeStudyStartedAtRef = useRef<number | null>(null);
 	const isStudyInteractionActiveRef = useRef(false);
 	const appStateRef = useRef(AppState.currentState);
-	const contentScrollRef = useRef<ScrollView>(null);
+	const contentScrollRef = useRef<KeyboardAwareScrollViewRef>(null);
 	const startSessionPromiseRef = useRef<ReturnType<typeof startSession> | null>(
 		null,
 	);
@@ -242,7 +228,9 @@ export default function LearningSessionContentScreen() {
 		sessionItems,
 		currentIndex,
 	);
-	const shouldTrackActiveStudy = Boolean(currentItem && !completionPhase);
+	const shouldTrackActiveStudy = Boolean(
+		currentItem && !completionPhase && isFocused,
+	);
 	const isPraxisSession = content?.session.phase === "rehearsal";
 	const isDiagnosticSession = content?.session.sessionPurpose === "diagnostic";
 	const isPairedTheoryQuestion = isPairedTheoryQuestionItem(currentItem);
@@ -359,6 +347,36 @@ export default function LearningSessionContentScreen() {
 		}
 	}, [shouldTrackActiveStudy]);
 
+	useEffect(() => {
+		if (!restoredStudyTime.current && content) {
+			activeStudySecondsRef.current += content.session.activeStudySeconds ?? 0;
+			restoredStudyTime.current = true;
+		}
+	}, [content]);
+	useEffect(() => {
+		if (!sessionId || !isDiagnosticSession) return;
+		const checkpoint = () => {
+			void checkpointStudyTime({
+				sessionId,
+				activeStudySeconds: getActiveStudySeconds(),
+			}).catch(() => {});
+		};
+		const timer = setInterval(checkpoint, 15000);
+		const subscription = AppState.addEventListener("change", (state) => {
+			if (state !== "active") checkpoint();
+		});
+		return () => {
+			clearInterval(timer);
+			subscription.remove();
+			checkpoint();
+		};
+	}, [
+		sessionId,
+		isDiagnosticSession,
+		checkpointStudyTime,
+		getActiveStudySeconds,
+	]);
+
 	usePrepareSessionContent({
 		enabled: Boolean(user && isConvexAuthenticated),
 		sessionId,
@@ -378,8 +396,11 @@ export default function LearningSessionContentScreen() {
 		setErrorMessage(null);
 		try {
 			if (!(await requestAiConsent())) return;
+			trackFeature("learning_session.retry", "attempted", sessionId);
 			await prepareSessionContent({ sessionId });
+			trackFeature("learning_session.retry", "succeeded", sessionId);
 		} catch (error) {
+			trackFeature("learning_session.retry", "failed", sessionId);
 			setErrorMessage(
 				getErrorMessage(
 					error,
@@ -508,6 +529,7 @@ export default function LearningSessionContentScreen() {
 
 	const repeatCurrentQuestion = () => {
 		if (!currentItem || isBusy) return;
+		trackFeature("learning_session.question_repeated", "performed", sessionId);
 		resetItemState();
 		setRepeatingItemId(currentItem.id);
 		setErrorMessage(null);
@@ -596,7 +618,16 @@ export default function LearningSessionContentScreen() {
 					},
 				);
 			}
-			router.dismissTo(getLearningSessionCompletionDestination(planId));
+			const destination =
+				content?.session.sessionPurpose === "diagnostic" &&
+				content.plan.preparationState &&
+				planId
+					? {
+							pathname: "/learning-plans/[planId]/preparation" as const,
+							params: { planId },
+						}
+					: getLearningSessionCompletionDestination(planId);
+			router.dismissTo(destination);
 		} catch (error) {
 			setErrorMessage(
 				getErrorMessage(error, "Der Lernplan konnte nicht geöffnet werden."),
@@ -628,6 +659,7 @@ export default function LearningSessionContentScreen() {
 
 	const continueTheory = () => {
 		if (!content || isBusy) return;
+		trackFeature("learning_session.theory_next", "performed", sessionId);
 		runTheoryTopicPrimaryAction({
 			currentIndex: theoryTopicPosition.topicIndex,
 			total: theoryTopicPosition.total,
@@ -654,6 +686,7 @@ export default function LearningSessionContentScreen() {
 
 	const showPreviousTheoryTopic = () => {
 		if (isBusy || theoryTopicPosition.previousSessionIndex === null) return;
+		trackFeature("learning_session.theory_previous", "performed", sessionId);
 		setErrorMessage(null);
 		setCurrentIndex(theoryTopicPosition.previousSessionIndex);
 	};
@@ -661,6 +694,10 @@ export default function LearningSessionContentScreen() {
 	const submitCurrentAnswer = async (submitAsUnknown = false) => {
 		if (!currentItem || isBusy) return;
 
+		const answerInteraction = submitAsUnknown
+			? "learning_session.answer_unknown"
+			: "learning_session.answer";
+		let didComplete = false;
 		setIsBusy(true);
 		setErrorMessage(null);
 		try {
@@ -675,6 +712,7 @@ export default function LearningSessionContentScreen() {
 			) {
 				return;
 			}
+			trackFeature(answerInteraction, "attempted", sessionId);
 			const attempt =
 				currentItem.kind === "multipleChoice"
 					? await submitAnswer({
@@ -696,25 +734,28 @@ export default function LearningSessionContentScreen() {
 				resetItemState();
 				if (currentIndex < content.items.length - 1) {
 					setCurrentIndex((value) => value + 1);
-					return;
+				} else {
+					setCompletionPhase("rehearsal");
 				}
-				setCompletionPhase("rehearsal");
-				return;
-			}
-			if (isPreTheoryQuestion) {
+			} else if (isPreTheoryQuestion) {
 				if (advancedPreTheoryQuestionItemIdRef.current !== currentItem.id) {
 					advancedPreTheoryQuestionItemIdRef.current = currentItem.id;
 					advancePastCurrentItem();
 				}
-				return;
+			} else {
+				setLocalAttempt(attempt as SessionAnswerAttempt);
 			}
-			setLocalAttempt(attempt as SessionAnswerAttempt);
+			didComplete = true;
 		} catch (error) {
+			trackFeature(answerInteraction, "failed", sessionId);
 			setErrorMessage(
 				getErrorMessage(error, "Die Antwort konnte nicht gespeichert werden."),
 			);
 		} finally {
 			setIsBusy(false);
+		}
+		if (didComplete) {
+			trackFeature(answerInteraction, "succeeded", sessionId);
 		}
 	};
 
@@ -767,12 +808,7 @@ export default function LearningSessionContentScreen() {
 							fontSize: 16,
 							fontWeight: "600",
 						},
-						headerLeft: () => (
-							<BackButton
-								onPress={goBack}
-								className="h-11 min-h-11 w-11 min-w-11"
-							/>
-						),
+						headerLeft: () => <BackButton onPress={goBack} />,
 						headerRight: () =>
 							displayedRemainingSeconds !== null ? (
 								<Text
@@ -829,12 +865,7 @@ export default function LearningSessionContentScreen() {
 									fontSize: 16,
 									fontWeight: "600",
 								},
-								headerLeft: () => (
-									<BackButton
-										onPress={goBack}
-										className="h-11 min-h-11 w-11 min-w-11"
-									/>
-								),
+								headerLeft: () => <BackButton onPress={goBack} />,
 							}
 						: {
 								gestureEnabled: true,
@@ -893,7 +924,7 @@ export default function LearningSessionContentScreen() {
 					) : null}
 				</View>
 			) : null}
-			<ScrollView
+			<KeyboardSafeScrollView
 				ref={contentScrollRef}
 				className="flex-1"
 				bounces={
@@ -904,7 +935,7 @@ export default function LearningSessionContentScreen() {
 					Boolean(visibleAttempt) ||
 					Boolean(completionPhase)
 				}
-				automaticallyAdjustKeyboardInsets={currentItem?.kind === "written"}
+				enabled={currentItem?.kind === "written"}
 				contentContainerStyle={{
 					flexGrow: 1,
 					paddingHorizontal: 32,
@@ -913,8 +944,6 @@ export default function LearningSessionContentScreen() {
 							? 24
 							: Math.max(insets.bottom + 28, 60),
 				}}
-				keyboardShouldPersistTaps="handled"
-				showsVerticalScrollIndicator={false}
 			>
 				{!content || content.items.length === 0 || needsTheoryContentUpgrade ? (
 					<View className="flex-1 items-center justify-center px-4 py-24">
@@ -965,7 +994,7 @@ export default function LearningSessionContentScreen() {
 						onPrimary={
 							completionPhase === "theory"
 								? completeAndLeave
-								: completeAndOpenLearningPlan
+								: () => void completeAndOpenLearningPlan()
 						}
 						isBusy={isBusy}
 					/>
@@ -1008,11 +1037,9 @@ export default function LearningSessionContentScreen() {
 						{errorMessage}
 					</Text>
 				) : null}
-			</ScrollView>
+			</KeyboardSafeScrollView>
 			{showQuestionActions && content ? (
-				<KeyboardAvoidingView
-					behavior={Platform.OS === "ios" ? "padding" : undefined}
-				>
+				<KeyboardAvoidingView behavior="padding">
 					<View
 						className="border-border border-t-hairline bg-background px-8 pt-4"
 						style={{ paddingBottom: Math.max(insets.bottom, 16) }}
