@@ -183,6 +183,14 @@ test("cleanup works with normal CRM disabled, verifies the marker and completes 
 	expect(row).toMatchObject({ stage: "complete", crmDeletionVerified: true });
 	expect(row).not.toHaveProperty("clerkUserId");
 	expect(row).not.toHaveProperty("crmPageId");
+	await expect(
+		t
+			.withIdentity(identity)
+			.mutation(internal.accountDeletion.enqueueVerifiedDeletion, {}),
+	).rejects.toThrow("bereits gelöscht");
+	expect(
+		await t.run((ctx) => ctx.db.query("accountDeletionRequests").take(10)),
+	).toHaveLength(1);
 }, 10_000);
 
 test("lost PATCH response recovers by persisted page ID after the Clerk ID was cleared", async () => {
@@ -270,6 +278,29 @@ test("cleanup yields to an in-flight normal audit instead of racing its PATCH", 
 		}),
 	).toBe("busy");
 	expect(patches()).toBe(0);
+});
+
+test("missing destination does not pin an unreviewable page from an unknown CRM", async () => {
+	const { t } = await fixture();
+	const other = t.withIdentity({
+		...identity,
+		subject: "user_other",
+		tokenIdentifier: "https://test.clerk|user_other",
+	});
+	const userId = await other.mutation(api.users.syncCurrentUser, {});
+	await t.run((ctx) =>
+		ctx.db.insert("crmStudentLinks", { userId, pageId, lastAttemptAt: 1 }),
+	);
+	vi.stubEnv("NOTION_CRM_DATA_SOURCE_ID", undefined);
+	const request = await other.mutation(
+		internal.accountDeletion.enqueueVerifiedDeletion,
+		{},
+	);
+	const row = await t.query(internal.accountDeletion.getRequestForProcessing, {
+		requestId: request.requestId,
+	});
+	expect(row).not.toHaveProperty("crmPageId");
+	expect(row).not.toHaveProperty("crmDataSourceId");
 });
 
 test("cleanup lease preserves normal audit history, progress and destination", async () => {

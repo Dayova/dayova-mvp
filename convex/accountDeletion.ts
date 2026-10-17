@@ -155,18 +155,21 @@ async function enqueueDeletion(
 	requestedAt: number,
 	clerkAlreadyDeleted: boolean,
 ) {
-	await markClerkIdentityDeleted(
-		ctx,
-		ownerTokenIdentifier,
-		clerkUserId,
-		requestedAt,
-	);
+	const tombstone = await getClerkIdentity(ctx, ownerTokenIdentifier);
 	const existing = await ctx.db
 		.query("accountDeletionRequests")
 		.withIndex("by_ownerTokenIdentifier", (q) =>
 			q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
 		)
 		.unique();
+	if (tombstone?.deletedAt !== undefined && !existing)
+		throwUserFacingError("Dieses Konto wurde bereits gelöscht.");
+	await markClerkIdentityDeleted(
+		ctx,
+		ownerTokenIdentifier,
+		clerkUserId,
+		requestedAt,
+	);
 	if (existing) {
 		if (
 			clerkAlreadyDeleted &&
@@ -214,7 +217,9 @@ async function enqueueDeletion(
 		deletedRecords: 0,
 		policyVersion: DELETION_POLICY_VERSION,
 		crmDataSourceId: env.NOTION_CRM_DATA_SOURCE_ID,
-		...(links.length === 1 ? { crmPageId: links[0].pageId } : {}),
+		...(env.NOTION_CRM_DATA_SOURCE_ID && links.length === 1
+			? { crmPageId: links[0].pageId }
+			: {}),
 	});
 	await ctx.scheduler.runAfter(
 		0,
