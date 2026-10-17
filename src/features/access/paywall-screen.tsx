@@ -2,11 +2,12 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { type RefObject, useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import {
 	ArrowRight,
 	CreditCard,
@@ -20,6 +21,7 @@ import { useAccountActions } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { openExternalUrl } from "~/lib/open-external-url";
 import { env } from "~/lib/runtime-config";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 const PAYWALL_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 const BRAND_COLORS = DAYOVA_DESIGN_SYSTEM.colors;
@@ -38,6 +40,7 @@ const primaryPayerIconStyle = {
 };
 
 export function PaywallScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const { deleteAccount, logout } = useAccountActions();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
@@ -51,7 +54,10 @@ export function PaywallScreen() {
 	const [deleteError, setDeleteError] = useState<string | null>(null);
 	const deletionInFlightRef = useRef(false);
 
-	const openSubscription = () => router.push("/subscription");
+	const openSubscription = () => {
+		trackFeature("paywall.subscription_opened");
+		router.push("/subscription");
+	};
 
 	const requestAccountDeletion = () => {
 		setDeleteError(null);
@@ -197,7 +203,7 @@ export function PaywallScreen() {
 						<View className="flex-row flex-wrap justify-center gap-x-4 gap-y-2 px-2 pt-6">
 							<SupportContact context="Zugang zur App">
 								{({ onPress, busy, buttonRef }) => (
-									<Pressable
+									<FeedbackPressable
 										ref={buttonRef}
 										accessibilityLabel="Support"
 										accessibilityRole="button"
@@ -209,7 +215,7 @@ export function PaywallScreen() {
 										<Text className="text-body-4 text-white underline">
 											Support
 										</Text>
-									</Pressable>
+									</FeedbackPressable>
 								)}
 							</SupportContact>
 							<LegalLink
@@ -272,7 +278,7 @@ export function PaywallScreen() {
 
 function CheckoutButton({ onPress }: { onPress: () => void }) {
 	return (
-		<Pressable
+		<FeedbackPressable
 			accessibilityLabel="Tarife im Store auswählen"
 			accessibilityHint="Öffnet die Aboseite mit den verfügbaren Store-Tarifen."
 			accessibilityRole="button"
@@ -307,7 +313,7 @@ function CheckoutButton({ onPress }: { onPress: () => void }) {
 			<View className="h-9 w-9 items-center justify-center rounded-full bg-primary-strong">
 				<ArrowRight size={18} color={WHITE} strokeWidth={2.2} />
 			</View>
-		</Pressable>
+		</FeedbackPressable>
 	);
 }
 
@@ -337,7 +343,7 @@ function ManagementAction({
 		);
 	}
 	return (
-		<Pressable
+		<FeedbackPressable
 			accessibilityLabel={accessibilityLabel}
 			accessibilityRole="button"
 			className="min-h-14 flex-row items-center px-4 py-3 active:bg-system-subtle"
@@ -354,7 +360,7 @@ function ManagementAction({
 				color={BRAND_COLORS.secondaryText}
 				strokeWidth={2}
 			/>
-		</Pressable>
+		</FeedbackPressable>
 	);
 }
 
@@ -372,7 +378,7 @@ function LegalLink({
 	url?: string;
 }) {
 	return (
-		<Pressable
+		<FeedbackPressable
 			ref={buttonRef}
 			accessibilityRole="link"
 			disabled={!url && !onPress}
@@ -386,6 +392,6 @@ function LegalLink({
 			}}
 		>
 			<Text className="text-body-4 text-white underline">{label}</Text>
-		</Pressable>
+		</FeedbackPressable>
 	);
 }
