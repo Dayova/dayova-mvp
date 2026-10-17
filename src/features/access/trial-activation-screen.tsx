@@ -1,22 +1,18 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { useRef, useState } from "react";
-import {
-	ActivityIndicator,
-	Pressable,
-	ScrollView,
-	StyleSheet,
-	View,
-} from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "~/components/ui/button";
 import { ErrorMessage } from "~/components/ui/error-message";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import { Bell, Check, SquareLock } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAccess } from "~/context/AccessContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { openExternalUrl } from "~/lib/open-external-url";
 import { env } from "~/lib/runtime-config";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 const TRIAL_TERMS_VERSION = "2026-07-28-v1";
 const TRIAL_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
@@ -43,6 +39,7 @@ const timelineItems = [
 ] as const;
 
 export function TrialActivationScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const { access, activateTrial } = useAccess();
 	const insets = useSafeAreaInsets();
 	const [isStarting, setIsStarting] = useState(false);
@@ -56,8 +53,11 @@ export function TrialActivationScreen() {
 		setError(null);
 		setIsStarting(true);
 		try {
+			trackFeature("trial.start", "attempted");
 			await activateTrial(TRIAL_TERMS_VERSION);
+			trackFeature("trial.start", "succeeded");
 		} catch {
+			trackFeature("trial.start", "failed");
 			setError("Deine Testphase konnte nicht gestartet werden.");
 		} finally {
 			activationInFlightRef.current = false;
@@ -221,7 +221,7 @@ export function TrialActivationScreen() {
 							Mit „Dayova starten“ akzeptierst du die Bedingungen der Testphase.
 						</Text>
 						<View className="flex-row flex-wrap justify-center gap-x-4 gap-y-1 pt-1">
-							<Pressable
+							<FeedbackPressable
 								accessibilityRole="link"
 								disabled={!env.EXPO_PUBLIC_TERMS_URL}
 								hitSlop={8}
@@ -230,8 +230,8 @@ export function TrialActivationScreen() {
 								<Text className="text-body-4 text-white underline">
 									Nutzungsbedingungen
 								</Text>
-							</Pressable>
-							<Pressable
+							</FeedbackPressable>
+							<FeedbackPressable
 								accessibilityRole="link"
 								disabled={!env.EXPO_PUBLIC_PRIVACY_URL}
 								hitSlop={8}
@@ -240,7 +240,7 @@ export function TrialActivationScreen() {
 								<Text className="text-body-4 text-white underline">
 									Datenschutz
 								</Text>
-							</Pressable>
+							</FeedbackPressable>
 						</View>
 					</View>
 				</View>

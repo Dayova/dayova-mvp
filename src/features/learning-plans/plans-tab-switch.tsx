@@ -1,11 +1,12 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { View } from "react-native";
 import Animated, {
 	useAnimatedStyle,
 	useSharedValue,
 	withSpring,
 } from "react-native-reanimated";
+import { FeedbackTouchableOpacity } from "~/components/ui/feedback-pressable";
 import { Text } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 export type PlanTab = "learningPlans" | "homework";
@@ -92,7 +93,7 @@ export function PlansTabSwitch({
 			{tabs.map((tab) => {
 				const isActive = tab.key === activeTab;
 				return (
-					<TouchableOpacity
+					<FeedbackTouchableOpacity
 						key={tab.key}
 						accessibilityRole="tab"
 						accessibilityState={{ selected: isActive }}
@@ -122,7 +123,7 @@ export function PlansTabSwitch({
 								{tab.label}
 							</Text>
 						</View>
-					</TouchableOpacity>
+					</FeedbackTouchableOpacity>
 				);
 			})}
 		</View>

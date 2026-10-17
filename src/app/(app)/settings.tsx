@@ -16,8 +16,10 @@ import { openExternalUrl } from "~/lib/open-external-url";
 import { ROUTES } from "~/lib/routes";
 import { env } from "~/lib/runtime-config";
 import { getNativeSubscriptionManagementUrl } from "~/lib/store-subscription";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 export default function SettingsScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const { user } = useAuthSession();
 	const profileName = user?.name?.trim();
@@ -56,7 +58,10 @@ export default function SettingsScreen() {
 					<SettingsRow
 						icon={CreditCard}
 						label="Dayova abonnieren"
-						onPress={() => router.push("/subscription")}
+						onPress={() => {
+							trackFeature("settings.subscription_opened");
+							router.push("/subscription");
+						}}
 					/>
 				) : (
 					<SettingsRow
@@ -102,7 +107,10 @@ export default function SettingsScreen() {
 												buttonRef={buttonRef}
 												icon={Mail}
 												label="Support kontaktieren"
-												onPress={onPress}
+												onPress={() => {
+													trackFeature("settings.support_opened");
+													onPress();
+												}}
 												busy={busy}
 												disabled={busy}
 											/>
@@ -113,14 +121,38 @@ export default function SettingsScreen() {
 						}
 						subscriptionCard={subscriptionCard}
 						isStoreSubscriber={isStoreSubscriber}
-						onProfile={() => router.push("/profile")}
-						onLearningTimes={() => router.push("/learning-times")}
+						onProfile={() => {
+							trackFeature("settings.profile_opened");
+							router.push("/profile");
+						}}
+						onLearningTimes={() => {
+							trackFeature("settings.learning_times_opened");
+							router.push("/learning-times");
+						}}
 						onSubjects={() => router.push(ROUTES.personalSubjects)}
-						onNotifications={() => router.push("/notification-settings")}
-						onAppInformation={() => setShowReleaseInformation(true)}
-						onPrivacy={() => openLink("legal", env.EXPO_PUBLIC_PRIVACY_URL)}
-						onTerms={() => openLink("legal", env.EXPO_PUBLIC_TERMS_URL)}
-						openAiConsentSettings={openAiConsentSettings}
+						onNotifications={() => {
+							trackFeature("settings.notifications_opened");
+							router.push("/notification-settings");
+						}}
+						onAppInformation={() => {
+							trackFeature("settings.release_information_opened");
+							setShowReleaseInformation(true);
+						}}
+						onPrivacy={() => {
+							trackFeature("settings.privacy_opened");
+							openLink("legal", env.EXPO_PUBLIC_PRIVACY_URL);
+						}}
+						onTerms={() => {
+							trackFeature("settings.terms_opened");
+							openLink("legal", env.EXPO_PUBLIC_TERMS_URL);
+						}}
+						openAiConsentSettings={() => {
+							trackFeature("settings.ai_privacy_opened");
+							openAiConsentSettings();
+						}}
+						onThemeChanged={() =>
+							trackFeature("settings.theme_changed", "succeeded")
+						}
 						aiConsentStatusLabel={aiConsentStatusLabel}
 						legalError={linkErrors.legal}
 					/>

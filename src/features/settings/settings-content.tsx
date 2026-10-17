@@ -38,6 +38,7 @@ export function SettingsContent({
 	openAiConsentSettings,
 	aiConsentStatusLabel,
 	legalError,
+	onThemeChanged,
 }: {
 	profileName?: string;
 	support: ReactNode;
@@ -46,6 +47,7 @@ export function SettingsContent({
 	isStoreSubscriber: boolean;
 	aiConsentStatusLabel: string;
 	legalError?: string;
+	onThemeChanged?: () => void;
 	onProfile: () => void;
 	onLearningTimes: () => void;
 	onSubjects: () => void;
@@ -109,7 +111,10 @@ export function SettingsContent({
 					trailing={
 						<ThemePreferenceToggle
 							preference={preference}
-							setPreference={setPreference}
+							setPreference={async (value) => {
+								await setPreference(value);
+								onThemeChanged?.();
+							}}
 						/>
 					}
 				/>

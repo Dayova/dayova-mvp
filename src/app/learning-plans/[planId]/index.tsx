@@ -3,7 +3,12 @@ import { SessionPreviewCard } from "~/features/learning-plans/session-preview-ca
 export { SessionPreviewCard } from "~/features/learning-plans/session-preview-card";
 
 import { useAction, useConvexAuth, useQuery } from "convex/react";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import {
+	Stack,
+	useFocusEffect,
+	useLocalSearchParams,
+	useRouter,
+} from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	ActivityIndicator,
@@ -35,6 +40,7 @@ import { parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { dismissToOrReplace } from "~/lib/navigation";
 import { getSafeReturnTo, ROUTES } from "~/lib/routes";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 const screenContentStyle = { rowGap: 28 } satisfies ViewStyle;
 const CURRENT_THEORY_CONTENT_VERSION = 2;
@@ -59,6 +65,7 @@ const getSessionRoute = (
 ) => `/learning-plans/${planId}/sessions/${sessionId}` as const;
 
 export default function LearningPlanSessionsScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const today = useCurrentLocalDay();
@@ -71,6 +78,10 @@ export default function LearningPlanSessionsScreen() {
 		api.learningPlanAi.ensureSessionContent,
 	);
 	const preparingSessionIdRef = useRef<Id<"learningPlanSessions"> | null>(null);
+	const trackFeatureRef = useRef(trackFeature);
+	useEffect(() => {
+		trackFeatureRef.current = trackFeature;
+	}, [trackFeature]);
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
@@ -83,6 +94,18 @@ export default function LearningPlanSessionsScreen() {
 	const selectedSession =
 		snapshot?.sessions.find((session) => session.id === selectedSessionId) ??
 		defaultSession;
+	const visiblePlanId =
+		snapshot && snapshot.sessions.length > 0 ? snapshot.plan.id : undefined;
+	useFocusEffect(
+		useCallback(() => {
+			if (visiblePlanId)
+				trackFeatureRef.current(
+					"learning_plan.content_viewed",
+					"performed",
+					visiblePlanId,
+				);
+		}, [visiblePlanId]),
+	);
 	const selectedSessionIndex =
 		snapshot && selectedSession
 			? snapshot.sessions.findIndex(
@@ -268,7 +291,14 @@ export default function LearningPlanSessionsScreen() {
 							}
 							router.push(getSessionRoute(snapshot.plan.id, session.id));
 						}}
-						onSelectSession={(session) => setSelectedSessionId(session.id)}
+						onSelectSession={(session) => {
+							trackFeature(
+								"learning_plan.session_selected",
+								"performed",
+								session.id,
+							);
+							setSelectedSessionId(session.id);
+						}}
 					/>
 				) : (
 					<View />

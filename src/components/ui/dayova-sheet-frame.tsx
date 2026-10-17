@@ -400,7 +400,7 @@ function DayovaSheetFrame({
 								/>
 							</View>
 						) : null}
-						<View className="min-h-10 flex-row items-start gap-4">
+						<View className="min-h-12 flex-row items-start gap-4">
 							{title ? (
 								<View
 									ref={initialFocusRef}
