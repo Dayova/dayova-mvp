@@ -12,6 +12,10 @@ import NewEntryScreen from "~/app/(creation)/entry/new";
 import NewLearningPlanScreen from "~/app/(creation)/learning-plans/new";
 
 let mockParams: Record<string, string> = {};
+let mockHintVariant: "inline" | "extra" = "inline";
+jest.mock("~/features/learning-plans/hint-validation-preference", () => ({
+	useHintVariant: () => ({ variant: mockHintVariant, error: false }),
+}));
 let mockProgress: {
 	currentStep: number;
 	onBack: () => void;
@@ -70,6 +74,7 @@ const mockAvailability = { status: "available" };
 let mockSnapshot:
 	| {
 			plan: {
+				subject?: string;
 				topicDescription: string;
 				topicItems?: string[];
 				topicAdditionalInfo?: string;
@@ -299,6 +304,7 @@ jest.mock("~/lib/theme", () => ({
 }));
 
 beforeEach(() => {
+	mockHintVariant = "inline";
 	jest.clearAllMocks();
 	mockAvailability.status = "available";
 	mockFiles = {
@@ -1292,4 +1298,148 @@ test("preserves selection boundaries and notes through the unsaved exam back rou
 	expect(
 		screen.getByLabelText("Hinweise zur Prüfung (optional)"),
 	).toHaveDisplayValue("Ohne Hilfsmittel");
+});
+
+test("extra hints are optional, retain scoped edits on Back, and save with the unchanged topics", async () => {
+	mockHintVariant = "extra";
+	mockParams = {
+		learningPlanId: "plan-1",
+		step: "topic",
+		subject: "Alter Fachname",
+	};
+	mockSnapshot = {
+		plan: {
+			subject: "Mathe LK",
+			topicItems: ["Vektoren"],
+			topicAdditionalInfo: "",
+			topicDescription: "Vektoren",
+		},
+		documents: [],
+	};
+	const screen = await render(<NewLearningPlanScreen />);
+	expect(screen.queryByLabelText("Hinweise zur Prüfung (optional)")).toBeNull();
+	expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
+	await fireEvent.press(
+		screen.getByRole("button", {
+			name: "Prüfungsbedingungen oder Hinweise ergänzen (optional)",
+		}),
+	);
+	expect(mockProgress.currentStep).toBe(3);
+	await fireEvent.press(
+		screen.getByRole("button", {
+			name: "Beispiel übernehmen: Ohne Taschenrechner",
+		}),
+	);
+	const scoped = "Analysis ohne Taschenrechner, Stochastik mit Formelsammlung";
+	await fireEvent.changeText(
+		screen.getByLabelText("Hinweise zur Prüfung (optional)"),
+		scoped,
+	);
+	await act(() => mockProgress.onBack());
+	expect(mockRouter.replace).not.toHaveBeenCalled();
+	expect(mockUpdateRequiredTopics).not.toHaveBeenCalled();
+	expect(screen.getByText(scoped)).toBeOnTheScreen();
+	expect(
+		screen.getByRole("button", { name: "Vektoren entfernen" }),
+	).toBeOnTheScreen();
+	await fireEvent.press(
+		screen.getByRole("button", { name: "Hinweise ansehen oder bearbeiten" }),
+	);
+	expect(
+		screen.getByLabelText("Hinweise zur Prüfung (optional)"),
+	).toHaveDisplayValue(scoped);
+	await fireEvent.press(
+		screen.getByRole("button", { name: "Zurück zu den Themen" }),
+	);
+	await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+	expect(mockUpdateRequiredTopics).toHaveBeenCalledWith({
+		id: "plan-1",
+		topicItems: ["Vektoren"],
+		topicAdditionalInfo: scoped,
+		topicDescription: `Vektoren\n${scoped}`,
+	});
+	expect(screen.getByText("Schulmaterial hinzufügen")).toBeOnTheScreen();
+});
+
+test("extra hints can be skipped, cleared and reopened without inventing requirements", async () => {
+	mockHintVariant = "extra";
+	mockParams = { learningPlanId: "plan-1", step: "topic" };
+	mockSnapshot = {
+		plan: {
+			subject: "Deutsch",
+			topicItems: ["Gedichtanalyse"],
+			topicAdditionalInfo: "Textbelege mit Zeilenangaben",
+			topicDescription: "Gedichtanalyse\nTextbelege mit Zeilenangaben",
+		},
+		documents: [],
+	};
+	const screen = await render(<NewLearningPlanScreen />);
+	await fireEvent.press(
+		screen.getByRole("button", { name: "Hinweise ansehen oder bearbeiten" }),
+	);
+	expect(
+		screen.queryByRole("button", {
+			name: "Beispiel übernehmen: Ohne Taschenrechner",
+		}),
+	).toBeNull();
+	await fireEvent.changeText(
+		screen.getByLabelText("Hinweise zur Prüfung (optional)"),
+		"",
+	);
+	await fireEvent.press(
+		screen.getByRole("button", { name: "Zurück zu den Themen" }),
+	);
+	await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+	expect(mockUpdateRequiredTopics).toHaveBeenCalledWith({
+		id: "plan-1",
+		topicItems: ["Gedichtanalyse"],
+		topicAdditionalInfo: "",
+		topicDescription: "Gedichtanalyse",
+	});
+});
+
+test("pause failures from the extra view keep the full editor and a retryable save", async () => {
+	mockHintVariant = "extra";
+	mockParams = {
+		learningPlanId: "plan-1",
+		step: "topic",
+		subject: "Mein Projektfach",
+	};
+	mockSnapshot = {
+		plan: {
+			topicItems: ["Mein Thema"],
+			topicAdditionalInfo: "",
+			topicDescription: "Mein Thema",
+		},
+		documents: [],
+	};
+	const screen = await render(<NewLearningPlanScreen />);
+	await fireEvent.press(
+		screen.getByRole("button", {
+			name: "Prüfungsbedingungen oder Hinweise ergänzen (optional)",
+		}),
+	);
+	const note = "Nur den zweiten Teil mündlich vorbereiten. ".repeat(12);
+	await fireEvent.changeText(
+		screen.getByLabelText("Hinweise zur Prüfung (optional)"),
+		note,
+	);
+	mockUpdateRequiredTopics.mockRejectedValueOnce(
+		new Error("Speichern fehlgeschlagen"),
+	);
+	await act(() => mockProgress.onClose());
+	await act(() => mockPauseProps.onConfirm());
+	expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+	expect(mockPauseProps.errorMessage).toBe("Speichern fehlgeschlagen");
+	expect(
+		screen.getByLabelText("Hinweise zur Prüfung (optional)"),
+	).toHaveDisplayValue(note);
+	await act(() => mockPauseProps.onConfirm());
+	expect(mockUpdateRequiredTopics).toHaveBeenLastCalledWith(
+		expect.objectContaining({
+			topicAdditionalInfo: note,
+			topicItems: ["Mein Thema"],
+		}),
+	);
+	expect(mockRouter.dismissTo).toHaveBeenCalled();
 });

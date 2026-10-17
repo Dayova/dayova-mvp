@@ -12,6 +12,9 @@ import { Text, View } from "react-native";
 import NewLearningPlanScreen from "~/app/(creation)/learning-plans/new";
 
 let mockClose: () => void;
+jest.mock("~/features/learning-plans/hint-validation-preference", () => ({
+	useHintVariant: () => ({ variant: "inline", error: false }),
+}));
 let mockParams: Record<string, string>;
 const mockSave = jest.fn<() => Promise<void>>();
 

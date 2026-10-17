@@ -16,6 +16,8 @@ The rationale and validation plan live in the [Notion decision record](https://a
 
 ## Persistence and compatibility
 
+The optional hints editor now has two testable placements: inline (default) and an optional full-screen subview with a summary/edit action on the topics screen. Both use identical deterministic, subject/topic-aware examples v1 and the same multiline input; no requirement is inferred or preselected. Unknown subjects receive no guessed examples. A sample appends only on explicit tap and never rewrites existing scoped instructions. Back retains edits and does not advance. Non-production moderator settings persist the device assignment across restarts, frozen for each mounted creation flow; production ignores it. [Comparison contract and test protocol](../../../qa/hint-location-comparison-2026-10-17.md). This comparison is distinct from the open search-benefit hypothesis.
+
 - Optional learningPlans fields `topicItems` (chosen titles) and `topicAdditionalInfo` (verbatim additional text) preserve the UI separation and title boundaries through pause, back and reopen. Never split titles at commas or semicolons.
 - `topicDescription` is the validated compatibility projection of both fields, joined with newlines. AI, material analysis and the related calendar entry keep receiving the full scope including conditions. All three are updated in one mutation; reject divergent projections.
 - Old records without structured fields are read as an empty selection plus the intact legacy text and distinct legacy teacher guidance in the free field. Do not invent catalog selections from historical prose. No backfill is needed; fields are optional.

@@ -19,9 +19,11 @@ import {
 	ActionSheet,
 	actionSheetIconColor,
 } from "~/components/ui/action-sheet";
+import { Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import { Attachment, Photo, ScanImage } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
+import { Text } from "~/components/ui/text";
 import { useAuthSession } from "~/context/AuthContext";
 import {
 	getLearningPlanCreationBackIntent,
@@ -35,8 +37,10 @@ import {
 	learningPlanStepPath,
 } from "~/features/learning-plans/creation-routes";
 import { prepareGalleryUploadAsset } from "~/features/learning-plans/gallery-upload";
+import { useHintVariant } from "~/features/learning-plans/hint-validation-preference";
 import { useLearningPlanSetupOrigin } from "~/features/learning-plans/learning-plan-setup-origin";
 import {
+	ExamHintsStep,
 	MaterialUploadStep,
 	RequiredTopicsStep,
 } from "~/features/learning-plans/learning-plan-setup-steps";
@@ -82,6 +86,8 @@ type PendingUploadRequest = {
 };
 
 export default function NewLearningPlanScreen() {
+	const { variant: hintVariant, error: hintVariantError } = useHintVariant();
+	const [isHintViewOpen, setIsHintViewOpen] = useState(false);
 	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const params = useLocalSearchParams<{
@@ -732,6 +738,11 @@ export default function NewLearningPlanScreen() {
 
 	const goBack = () => {
 		if (isBusy || topicActionGateRef.current.isRunning) return true;
+		if (isPauseConfirmationVisible) return true;
+		if (isHintViewOpen) {
+			setIsHintViewOpen(false);
+			return true;
+		}
 		const intent = getLearningPlanCreationBackIntent({
 			step: setupStep,
 			hasSavedDraft: Boolean(learningPlanId),
@@ -784,28 +795,61 @@ export default function NewLearningPlanScreen() {
 	};
 
 	if (!hasExamEntry) return null;
+	if (!hintVariant)
+		return (
+			<Screen>
+				<View className="flex-1 justify-center gap-4 px-8">
+					{hintVariantError ? (
+						<>
+							<Text accessibilityRole="alert">
+								Die Testvariante konnte nicht geladen werden.
+							</Text>
+							<Button onPress={() => router.replace("/hint-validation")}>
+								<Text>Testvariante erneut wählen</Text>
+							</Button>
+						</>
+					) : (
+						<ActivityIndicator accessibilityLabel="Testvariante wird geladen" />
+					)}
+				</View>
+			</Screen>
+		);
+	const changeAdditionalInfo = (value: string) => {
+		hasEditedTopicsRef.current = true;
+		setTopicInput({ ...input, topicAdditionalInfo: value });
+	};
+	const viewKey = isHintViewOpen ? "hints" : setupStep;
+	const hintSubject = snapshot?.plan.subject ?? subject;
 
 	return (
 		<Screen>
 			<Stack.Screen options={{ gestureEnabled: true }} />
 			<ScreenScroll
-				key={setupStep}
+				key={viewKey}
 				includeTopSafeArea={false}
 				topPadding={0}
 				contentContainerStyle={{ flexGrow: 1 }}
 			>
-				<View key={setupStep} className="flex-1">
-					{setupStep === "requiredTopics" ? (
+				<View key={viewKey} className="flex-1">
+					{isHintViewOpen ? (
+						<ExamHintsStep
+							subject={hintSubject}
+							selectedTopics={input.topicItems}
+							additionalInfo={input.topicAdditionalInfo}
+							onChange={changeAdditionalInfo}
+							onDone={() => setIsHintViewOpen(false)}
+							isBusy={isBusy || isPlanSnapshotLoading}
+						/>
+					) : setupStep === "requiredTopics" ? (
 						<RequiredTopicsStep
-							subject={subject}
+							hintVariant={hintVariant}
+							onOpenHints={() => setIsHintViewOpen(true)}
+							subject={hintSubject}
 							searchTopics={searchTopics}
 							canContinue={canContinueTopics}
 							errorMessage={errorMessage}
 							isBusy={isBusy || isPlanSnapshotLoading}
-							onChangeAdditionalInfo={(value) => {
-								hasEditedTopicsRef.current = true;
-								setTopicInput({ ...input, topicAdditionalInfo: value });
-							}}
+							onChangeAdditionalInfo={changeAdditionalInfo}
 							onContinue={() => void continueToMaterial()}
 							additionalInfo={input.topicAdditionalInfo}
 							selectedTopics={input.topicItems}

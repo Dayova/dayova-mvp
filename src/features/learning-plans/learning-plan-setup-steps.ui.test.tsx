@@ -2,6 +2,7 @@ import { describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render } from "@testing-library/react-native";
 import type { Id } from "#convex/_generated/dataModel";
 import {
+	ExamHintsStep,
 	MaterialUploadStep,
 	RequiredTopicsStep,
 } from "./learning-plan-setup-steps";
@@ -39,6 +40,52 @@ jest.mock("~/lib/theme", () => ({
 }));
 
 describe("learning-plan setup steps", () => {
+	test("both placements share the same opt-in examples and preserve long text when adding one", async () => {
+		const note =
+			"Analysis ohne Taschenrechner; Stochastik mit Formelsammlung. ".repeat(8);
+		const change = jest.fn();
+		const screen = await render(
+			<ExamHintsStep
+				subject="Mathe LK"
+				selectedTopics={["Vektoren"]}
+				additionalInfo={note}
+				onChange={change}
+				onDone={jest.fn()}
+				isBusy={false}
+			/>,
+		);
+		expect(change).not.toHaveBeenCalled();
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: "Beispiel übernehmen: Lösungsweg angeben",
+			}),
+		);
+		expect(change).toHaveBeenCalledWith(`${note}\nLösungsweg angeben`);
+		await screen.rerender(
+			<ExamHintsStep
+				subject="Deutsch"
+				selectedTopics={["Gedichtanalyse"]}
+				additionalInfo={note}
+				onChange={change}
+				onDone={jest.fn()}
+				isBusy
+			/>,
+		);
+		expect(screen.getByLabelText("Hinweise zur Prüfung (optional)")).toHaveProp(
+			"editable",
+			false,
+		);
+		expect(
+			screen.getByRole("button", {
+				name: "Beispiel übernehmen: Textbelege mit Zeilenangaben",
+			}),
+		).toBeDisabled();
+		expect(
+			screen.queryByRole("button", {
+				name: "Beispiel übernehmen: Ohne Taschenrechner",
+			}),
+		).toBeNull();
+	});
 	test("collects required exam topics before material upload", async () => {
 		const onChangeTopics = jest.fn();
 		const onContinue = jest.fn();

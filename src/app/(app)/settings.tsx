@@ -22,6 +22,7 @@ import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAccess } from "~/context/AccessContext";
 import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
+import { isHintValidationAvailable } from "~/features/learning-plans/hint-validation-preference";
 import {
 	SettingsCard,
 	SettingsDivider,
@@ -172,6 +173,13 @@ export default function SettingsScreen() {
 						</SettingsSection>
 
 						<SettingsSection title="App">
+							{isHintValidationAvailable ? (
+								<SettingsRow
+									icon={BookOpen}
+									label="Hinweisvergleich (Test)"
+									onPress={() => router.push("/hint-validation")}
+								/>
+							) : null}
 							<SettingsRow
 								icon={Computer}
 								label="App-Informationen"
