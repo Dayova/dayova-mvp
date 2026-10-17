@@ -1,138 +1,79 @@
-import { StyleSheet, View } from "react-native";
-import type { Id } from "#convex/_generated/dataModel";
-import {
-	type DashboardWeekProgress,
-	toDashboardAgendaItem,
-} from "~/features/dashboard/dashboard-agenda";
-import {
-	DashboardAgendaEntryCard,
-	DashboardNextStepCard,
-	DashboardWeeklyProgressCard,
-} from "~/features/dashboard/dashboard-product-cards";
-
-const ARTWORK_WIDTH = 380;
-const ARTWORK_HEIGHT = 242;
-const PREVIEW_DAY_KEY = "2026-08-31";
-
-type IntroTasksArtworkProps = {
-	height?: number;
-	width?: number;
-};
-
-const agendaPreview = toDashboardAgendaItem(PREVIEW_DAY_KEY, {
-	id: "intro-dashboard-task" as Id<"dayEntries">,
-	title: "Mathe lernen",
-	kind: "Hausaufgabe",
-	notes: "Funktionen üben",
-	time: "15:30",
-	durationMinutes: 30,
-});
-
-const nextStepPreview = toDashboardAgendaItem(PREVIEW_DAY_KEY, {
-	id: "intro-dashboard-next-step" as Id<"learningPlanSessions">,
-	relatedLearningPlanSessionId:
-		"intro-dashboard-next-step" as Id<"learningPlanSessions">,
-	title: "Lineare Funktionen verstehen",
-	kind: "Lernsession",
-	time: "16:30",
-	durationMinutes: 30,
-	executionStatus: "notStarted",
-});
-
-const progressPreview = {
-	completedLearningSessions: 4,
-	completedMinutesToday: 30,
-	completionPercent: 57,
-	remainingLearningSessions: 3,
-	totalLearningSessions: 7,
-} satisfies DashboardWeekProgress;
+import { View } from "react-native";
+import { ArrowRight, Check, Clock3 } from "~/components/ui/icon";
+import { Text } from "~/components/ui/text";
+import { useDayovaTheme } from "~/lib/theme";
 
 export function IntroTasksArtwork({
-	width = ARTWORK_WIDTH,
-	height = ARTWORK_HEIGHT,
-}: IntroTasksArtworkProps) {
-	const scale = Math.min(width / ARTWORK_WIDTH, height / ARTWORK_HEIGHT);
-
+	width = 345,
+	height = 380,
+}: {
+	width?: number;
+	height?: number;
+}) {
+	const { colors } = useDayovaTheme();
+	const scale = Math.min(width / 345, height / 380);
 	return (
 		<View
+			testID="intro-tasks-artwork"
 			accessible={false}
 			accessibilityElementsHidden
 			importantForAccessibility="no-hide-descendants"
 			pointerEvents="none"
 			className="items-center justify-center"
-			// The artwork frame dimensions are runtime component inputs.
+			// Native page dimensions bound the decorative composition.
 			style={{ width, height }}
-			testID="intro-tasks-artwork"
 		>
 			<View
-				className="h-[242px] w-[380px]"
-				// The fixed artboard scales to the runtime frame while preserving its geometry.
+				className="h-[380px] w-[345px] justify-center gap-6"
+				// Fixed-size editorial elements scale as one composition.
 				style={{ transform: [{ scale }] }}
-				testID="intro-tasks-product-composition"
 			>
 				<View
-					className="absolute shadow-black/10 shadow-lg"
-					style={artworkGeometry.agenda}
-					testID="intro-tasks-agenda-layer"
+					className="flex-row items-center gap-3 self-start rounded-full bg-primary/10 px-6 py-5"
+					style={{ transform: [{ rotate: "-6deg" }] }}
 				>
-					<DashboardAgendaEntryCard
-						mode="artwork"
-						item={agendaPreview}
-						testID="intro-task-agenda-card"
-					/>
+					<View className="h-4 w-4 rounded-full bg-primary" />
+					<Text
+						allowFontScaling={false}
+						className="font-poppins font-semibold text-heading-2 text-primary-strong"
+					>
+						Heute anfangen
+					</Text>
 				</View>
 				<View
-					className="absolute shadow-black/10 shadow-lg"
-					style={artworkGeometry.progress}
-					testID="intro-tasks-progress-layer"
+					className="flex-row items-center gap-4 self-end rounded-full bg-muted px-6 py-5"
+					style={{ transform: [{ rotate: "5deg" }] }}
 				>
-					<DashboardWeeklyProgressCard
-						mode="artwork"
-						progress={progressPreview}
-						testID="intro-task-progress-card"
-					/>
+					<Clock3 size={35} color={colors.secondaryText} />
+					<View>
+						<Text
+							allowFontScaling={false}
+							className="font-poppins font-semibold text-heading-2 text-text"
+						>
+							30 Minuten
+						</Text>
+						<Text
+							allowFontScaling={false}
+							className="font-poppins text-body-2 text-secondary-text"
+						>
+							für dich und dein Ziel
+						</Text>
+					</View>
 				</View>
 				<View
-					className="absolute shadow-black/15 shadow-xl"
-					style={artworkGeometry.nextStep}
-					testID="intro-tasks-next-step-layer"
+					className="flex-row items-center gap-3 self-start rounded-full bg-ueben-subtle px-6 py-5"
+					style={{ transform: [{ rotate: "-4deg" }] }}
 				>
-					<DashboardNextStepCard
-						mode="artwork"
-						item={nextStepPreview}
-						todayKey={PREVIEW_DAY_KEY}
-						testID="intro-task-next-step-card"
-					/>
+					<Check size={28} color={colors.ueben} />
+					<Text
+						allowFontScaling={false}
+						className="font-poppins font-semibold text-body-1 text-text"
+					>
+						Schritt für Schritt
+					</Text>
+					<ArrowRight size={22} color={colors.ueben} />
 				</View>
 			</View>
 		</View>
 	);
 }
-
-// The onboarding wrapper owns only the overlap, rotation, scale, and shadow.
-// Product structure and tokens stay inside the shared dashboard components.
-const artworkGeometry = StyleSheet.create({
-	agenda: {
-		left: 8,
-		top: 45,
-		width: 220,
-		height: 110,
-		transform: [{ rotate: "-7deg" }],
-		transformOrigin: [0, 0, 0],
-	},
-	progress: {
-		left: 198,
-		top: 10,
-		width: 172,
-		height: 150,
-		transform: [{ rotate: "5deg" }],
-		transformOrigin: [0, 0, 0],
-	},
-	nextStep: {
-		left: 34,
-		top: 121,
-		zIndex: 2,
-		width: 312,
-		height: 110,
-	},
-});

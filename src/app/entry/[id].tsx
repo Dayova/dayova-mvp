@@ -31,6 +31,8 @@ import { ROUTES } from "~/lib/routes";
 import { triggerSuccessHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
 
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
+
 type ParsedNotes = {
 	summary: string[];
 	tasks: string[];
@@ -126,6 +128,7 @@ function NotesCard({ value }: { value?: string }) {
 }
 
 export default function EntryDetailScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const { colors } = useDayovaTheme();
@@ -235,6 +238,11 @@ export default function EntryDetailScreen() {
 				const deletedDayKey = await deleteDayEntry({
 					id: id as Id<"dayEntries">,
 				});
+				trackFeature(
+					isExam ? "exam.remove" : "homework.remove",
+					"succeeded",
+					id,
+				);
 				setIsDeleteVisible(false);
 				router.replace(
 					`/home${deletedDayKey ? `?dayKey=${encodeURIComponent(deletedDayKey)}` : ""}`,
@@ -259,17 +267,28 @@ export default function EntryDetailScreen() {
 		await completionActionGateRef.current.run(async () => {
 			setIsUpdatingCompleted(true);
 			setCompletionFeedback(null);
+			const interaction =
+				entry?.kind === "Hausaufgabe"
+					? isCompleted
+						? "homework.reopen"
+						: "homework.complete"
+					: isCompleted
+						? "entry.reopen"
+						: "entry.complete";
+			trackFeature(interaction, "attempted", id);
 			try {
 				await setDayEntryCompleted({
 					id: id as Id<"dayEntries">,
 					completed: completionAction.nextCompleted,
 				});
+				trackFeature(interaction, "succeeded", id);
 				setCompletionFeedback({
 					message: completionAction.successMessage,
 					tone: "success",
 				});
 				void triggerSuccessHaptic({ platform: process.env.EXPO_OS });
 			} catch {
+				trackFeature(interaction, "failed", id);
 				setCompletionFeedback({
 					message:
 						"Der Status konnte nicht geändert werden. Bitte versuche es erneut.",
@@ -306,6 +325,7 @@ export default function EntryDetailScreen() {
 		const query = [
 			["examDayEntryId", entry.id],
 			["subject", subject],
+			["personalSubjectId", entry.personalSubjectId],
 			["examTypeLabel", examType ?? "Leistungskontrolle"],
 			["examDateKey", entry.dayKey ?? ""],
 			["examDateLabel", plannedDate ?? ""],

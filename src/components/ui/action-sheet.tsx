@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { View } from "react-native";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
+import { FeedbackTouchableOpacity } from "~/components/ui/feedback-pressable";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { cn } from "~/lib/utils";
@@ -36,7 +38,8 @@ function ActionSheet<T extends string>({
 	layout = "row",
 	closeAccessibilityLabel = "Auswahl schließen",
 }: ActionSheetProps<T>) {
-	const isTile = layout === "tile";
+	const { shouldStackInlineContent } = useContentSizeLayout();
+	const isTile = layout === "tile" && !shouldStackInlineContent;
 
 	return (
 		<DayovaSheetFrame
@@ -49,7 +52,7 @@ function ActionSheet<T extends string>({
 			contentClassName={isTile ? "flex-row gap-3" : "gap-3"}
 		>
 			{options.map((option) => (
-				<TouchableOpacity
+				<FeedbackTouchableOpacity
 					key={option.value}
 					accessibilityLabel={
 						option.description
@@ -85,7 +88,6 @@ function ActionSheet<T extends string>({
 									? "text-center font-semibold text-body-1"
 									: "text-body-2",
 							)}
-							numberOfLines={2}
 						>
 							{option.title}
 						</Text>
@@ -95,13 +97,12 @@ function ActionSheet<T extends string>({
 									"font-poppins text-body-4 text-secondary-text",
 									isTile && "text-center",
 								)}
-								numberOfLines={2}
 							>
 								{option.description}
 							</Text>
 						) : null}
 					</View>
-				</TouchableOpacity>
+				</FeedbackTouchableOpacity>
 			))}
 		</DayovaSheetFrame>
 	);
