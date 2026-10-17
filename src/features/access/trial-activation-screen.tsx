@@ -12,6 +12,7 @@ import { useAccess } from "~/context/AccessContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { openExternalUrl } from "~/lib/open-external-url";
 import { env } from "~/lib/runtime-config";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 const TRIAL_TERMS_VERSION = "2026-07-28-v1";
 const TRIAL_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
@@ -38,6 +39,7 @@ const timelineItems = [
 ] as const;
 
 export function TrialActivationScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const { access, activateTrial } = useAccess();
 	const insets = useSafeAreaInsets();
 	const [isStarting, setIsStarting] = useState(false);
@@ -51,8 +53,11 @@ export function TrialActivationScreen() {
 		setError(null);
 		setIsStarting(true);
 		try {
+			trackFeature("trial.start", "attempted");
 			await activateTrial(TRIAL_TERMS_VERSION);
+			trackFeature("trial.start", "succeeded");
 		} catch {
+			trackFeature("trial.start", "failed");
 			setError("Deine Testphase konnte nicht gestartet werden.");
 		} finally {
 			activationInFlightRef.current = false;

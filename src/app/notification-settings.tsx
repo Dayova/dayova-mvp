@@ -43,6 +43,7 @@ import {
 	type NotificationPreferenceKey,
 	removeNotificationPreferencePatchKeys,
 } from "~/lib/notification-preferences";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { cn } from "~/lib/utils";
 
 const OFFSET_OPTIONS = [5, 10, 15, 30, 60];
@@ -133,6 +134,7 @@ function AlwaysOnBadge() {
 }
 
 export default function NotificationSettingsScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
@@ -196,6 +198,17 @@ export default function NotificationSettingsScreen() {
 
 			try {
 				await updatePreferences(patch);
+				try {
+					for (const key of patchKeys)
+						trackFeature(
+							"settings.notification_changed",
+							"succeeded",
+							undefined,
+							key,
+						);
+				} catch {
+					// Analytics must not turn a saved preference into a failed update.
+				}
 			} catch (error) {
 				setOptimisticPreferencePatch((currentPatch) =>
 					removeNotificationPreferencePatchKeys(currentPatch, patchKeys),
@@ -207,7 +220,7 @@ export default function NotificationSettingsScreen() {
 				);
 			}
 		},
-		[updatePreferences],
+		[updatePreferences, trackFeature],
 	);
 
 	const updateSystemNotifications = useCallback(

@@ -74,7 +74,6 @@ import { ErrorMessage } from "~/components/ui/error-message";
 import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import {
-	ArrowLeft,
 	Atom,
 	CalendarDays,
 	Check,
@@ -1924,7 +1923,6 @@ function PasswordResetScreen({
 	initialEmail: string;
 	onCancel: () => void;
 }) {
-	const { colors: COLORS } = useDayovaTheme();
 	const insets = useSafeAreaInsets();
 	const { height } = useWindowDimensions();
 	const reducedMotion = useReducedMotion();
@@ -2171,17 +2169,7 @@ function PasswordResetScreen({
 			>
 				<View className="flex-1 items-center px-8">
 					<View className="w-full flex-row items-center">
-						<FeedbackPressable
-							accessibilityRole="button"
-							accessibilityLabel="Zurück"
-							pressScale={0.92}
-							disabled={isLoading}
-							hitSlop={8}
-							onPress={handleBack}
-							className="h-12 w-12 items-center justify-center rounded-full border border-border bg-surface"
-						>
-							<ArrowLeft size={20} color={COLORS.text} strokeWidth={2.2} />
-						</FeedbackPressable>
+						<BackButton disabled={isLoading} onPress={handleBack} />
 					</View>
 
 					<Image
@@ -2773,8 +2761,6 @@ function AuthProgressHeader({
 			<BackButton
 				accessibilityState={{ disabled }}
 				disabled={disabled}
-				iconSize={18}
-				strokeWidth={2.2}
 				onPress={() => onBack()}
 			/>
 			<View className="flex-1 gap-2">
