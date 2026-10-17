@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import {
 	ActivityIndicator,
 	FlatList as NativeFlatList,
-	Pressable,
 	useWindowDimensions,
 	View,
 } from "react-native";
@@ -21,6 +20,7 @@ import type { Id } from "#convex/_generated/dataModel";
 import { NotificationButton } from "~/components/notification-button";
 import { AnimatedFlowerLoader } from "~/components/ui/animated-flower-loader";
 import { Button } from "~/components/ui/button";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import {
 	ArrowDataTransferHorizontal,
 	ArrowRight,
@@ -44,6 +44,7 @@ import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { ROUTES, withReturnTo } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { cn } from "~/lib/utils";
 
 type ExamAnalysis = NonNullable<
@@ -265,6 +266,7 @@ function ExamSwitcher({
 	onClose: () => void;
 	onSelect: (planId: Id<"learningPlans">) => void;
 }) {
+	const trackFeature = useFeatureAnalytics();
 	const { colors } = useDayovaTheme();
 	const selectedPlan = analysis.selectedPlan;
 	if (!selectedPlan) return null;
@@ -295,7 +297,10 @@ function ExamSwitcher({
 					return plan ? formatExamLabel(plan) : "Prüfung";
 				}}
 				onClose={onClose}
-				onSelect={onSelect}
+				onSelect={(id) => {
+					trackFeature("analysis.exam_selected", "performed", id);
+					onSelect(id);
+				}}
 				options={planIds}
 				selectedValue={selectedPlan.id}
 				title="Prüfung auswählen"
@@ -666,6 +671,7 @@ function TopicList({
 	onOpenTopic: (topicId: string) => void;
 	topics: ExamAnalysis["topics"];
 }) {
+	const trackFeature = useFeatureAnalytics();
 	const { colors } = useDayovaTheme();
 
 	return topics.map((topic, index) => {
@@ -684,7 +690,10 @@ function TopicList({
 					"min-h-20 gap-2 rounded-none bg-card px-5 py-4",
 					index > 0 && "border-border border-t",
 				)}
-				onPress={() => onOpenTopic(topic.id)}
+				onPress={() => {
+					trackFeature("analysis.topic_opened");
+					onOpenTopic(topic.id);
+				}}
 				testID={`topic-row-${topic.id}`}
 				variant="flat"
 			>
@@ -761,6 +770,7 @@ function TopicAnswerFlipCard({
 	cardWidth: number;
 	question: TopicQuestion;
 }) {
+	const trackFeature = useFeatureAnalytics();
 	const [isFlipped, setIsFlipped] = useState(false);
 	const [frontHeight, setFrontHeight] = useState(0);
 	const [backHeight, setBackHeight] = useState(0);
@@ -797,6 +807,7 @@ function TopicAnswerFlipCard({
 
 	const flipCard = () => {
 		const nextFlipped = !isFlipped;
+		if (nextFlipped) trackFeature("analysis.answer_revealed");
 		setIsFlipped(nextFlipped);
 		const targetRotation = nextFlipped ? 180 : 0;
 		rotation.set(
@@ -810,7 +821,7 @@ function TopicAnswerFlipCard({
 	};
 
 	return (
-		<Pressable
+		<FeedbackPressable
 			accessible
 			accessibilityHint={
 				isFlipped
@@ -904,7 +915,7 @@ function TopicAnswerFlipCard({
 					<TopicAnswerFlipHint label="Frage ansehen" />
 				</Surface>
 			</Animated.View>
-		</Pressable>
+		</FeedbackPressable>
 	);
 }
 

@@ -12,11 +12,11 @@ The source picker remained real: selecting **Dateien** opened Android's Document
 
 | Case | Evidence | Observation |
 | --- | --- | --- |
-| Light, font scale 1.0 | [Entry](android-light.png) | Both actions are 147 physical px / 56 dp tall and fit above the bottom system inset. |
-| Light source sheet | [Sheet](android-sheet-light.png) | Scannen and Dateien are equal tiles; title, explanation and close control fit. |
-| Dark, font scale 1.0 | [Entry](android-dark.png) | Neutral action becomes white with dark content, using the existing theme contract. |
-| Dark, font scale 2.0 | [Scrolled entry](android-large-scrolled.png) | Both labels wrap fully. The manual button is reachable at bounds [53,1828][1028,2082], above the bottom system area. |
-| Dark source sheet, font scale 2.0 | [Sheet](android-large-sheet.png) | Sources become full-width rows and remain fully visible. |
+| Light, font scale 1.0 | [Entry](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-378-timetable-entry/android-light.png?raw=true) | Both actions are 147 physical px / 56 dp tall and fit above the bottom system inset. |
+| Light source sheet | [Sheet](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-378-timetable-entry/android-sheet-light.png?raw=true) | Scannen and Dateien are equal tiles; title, explanation and close control fit. |
+| Dark, font scale 1.0 | [Entry](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-378-timetable-entry/android-dark.png?raw=true) | Neutral action becomes white with dark content, using the existing theme contract. |
+| Dark, font scale 2.0 | [Scrolled entry](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-378-timetable-entry/android-large-scrolled.png?raw=true) | Both labels wrap fully. The manual button is reachable at bounds [53,1828][1028,2082], above the bottom system area. |
+| Dark source sheet, font scale 2.0 | [Sheet](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-378-timetable-entry/android-large-sheet.png?raw=true) | Sources become full-width rows and remain fully visible. |
 
 The development-client gear belongs to simulator tooling. The original font scale 1.0 and light system appearance were restored. Temporary entry/resolver changes were restored; the emulator and task-owned Metro server were stopped after inspection.
 

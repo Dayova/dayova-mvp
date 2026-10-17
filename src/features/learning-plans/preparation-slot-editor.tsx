@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Platform, Pressable, View } from "react-native";
+import { Platform, View } from "react-native";
 import type { PreparationSlot } from "#convex/preparationSchedule";
 import {
 	berlinNow,
@@ -11,6 +11,7 @@ import { Button } from "~/components/ui/button";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
 import { DurationPickerSheet } from "~/components/ui/duration-picker-sheet";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import { Text } from "~/components/ui/text";
 import { LEARNING_DAYS } from "~/features/learning-times/learning-time-days";
 import { LearningTimeEditorFields } from "~/features/learning-times/learning-time-editor-fields";
@@ -124,7 +125,7 @@ export function PreparationSlotEditor({
 						</>
 					) : (
 						<>
-							<Pressable
+							<FeedbackPressable
 								accessibilityRole="button"
 								accessibilityLabel={`Datum ändern: ${slotDateLabel(draft.dateKey)}`}
 								onPress={() => open("date")}
@@ -134,7 +135,7 @@ export function PreparationSlotEditor({
 								<Text className="font-poppins text-body-4 text-primary">
 									{slotDateLabel(draft.dateKey)} · Datum ändern
 								</Text>
-							</Pressable>
+							</FeedbackPressable>
 							<LearningTimeEditorFields
 								selectedDay={
 									LEARNING_DAYS[

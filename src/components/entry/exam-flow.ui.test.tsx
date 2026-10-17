@@ -118,20 +118,9 @@ describe("ExamTypePicker custom entry", () => {
 	});
 });
 
-jest.mock("react-native-reanimated", () => {
-	const ReactNative =
-		jest.requireActual<typeof import("react-native")>("react-native");
-	const animationBuilder = {
-		duration: () => animationBuilder,
-	};
-
-	return {
-		__esModule: true,
-		default: { View: ReactNative.View },
-		FadeInDown: animationBuilder,
-		LinearTransition: animationBuilder,
-	};
-});
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+);
 
 jest.mock("~/components/ui/icon", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
@@ -169,24 +158,39 @@ jest.mock("~/features/subjects/subject-picker", () => {
 	return { InlineSubjectPicker };
 });
 
+jest.mock("~/components/ui/inline-date-picker", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	return {
+		InlineDatePicker: (props: Record<string, unknown>) =>
+			React.createElement("InlineDatePicker", {
+				...props,
+				testID: "inline-calendar",
+			}),
+	};
+});
+
 describe("ExamDateSelector", () => {
-	test("presents the selected date as an accessible calendar trigger", async () => {
-		const onOpen = jest.fn();
+	test("shows the calendar immediately and updates the selected date without opening a sheet", async () => {
+		const onSelect = jest.fn();
+		const selectedDate = new Date(2026, 9, 14);
 		const screen = await render(
-			<ExamDateSelector selectedDate={new Date(2026, 7, 14)} onOpen={onOpen} />,
+			<ExamDateSelector selectedDate={selectedDate} onSelect={onSelect} />,
 		);
-
-		const trigger = screen.getByRole("button", {
-			name: "Prüfungsdatum ändern",
-		});
-		expect(trigger.props.accessibilityRole).toBe("button");
-		expect(trigger.props.accessibilityValue).toEqual({
-			text: "14. August 2026",
-		});
-		expect(screen.getByText("Im Kalender auswählen")).toBeOnTheScreen();
-
-		fireEvent.press(trigger);
-
-		expect(onOpen).toHaveBeenCalledTimes(1);
+		expect(screen.queryByText("14. Oktober 2026")).toBeNull();
+		expect(screen.queryByText("Prüfungsdatum")).toBeNull();
+		expect(
+			screen.queryByRole("button", { name: "Prüfungsdatum ändern" }),
+		).toBeNull();
+		const calendar = screen.getByTestId("inline-calendar");
+		expect(calendar.props.value).toEqual(selectedDate);
+		const nextDate = new Date(2026, 10, 2);
+		await fireEvent(calendar, "change", nextDate);
+		expect(onSelect).toHaveBeenCalledWith(nextDate);
+		await screen.rerender(
+			<ExamDateSelector selectedDate={nextDate} onSelect={onSelect} />,
+		);
+		expect(screen.queryByText("2. November 2026")).toBeNull();
+		expect(screen.getByTestId("inline-calendar").props.value).toEqual(nextDate);
+		expect(screen.getByTestId("inline-calendar")).toBeOnTheScreen();
 	});
 });
