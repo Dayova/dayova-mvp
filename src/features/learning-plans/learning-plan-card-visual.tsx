@@ -11,6 +11,7 @@ import { LearningPlanCardFooter } from "~/features/learning-plans/learning-plan-
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
+import { LearningPlanStatusBadge as StatusBadge } from "./learning-plan-status-badge";
 
 type LearningPlanCardStatus = {
 	label: string;
@@ -46,6 +47,7 @@ type ScreenLearningPlanCardVisualProps = {
 	mode?: "screen";
 	model: LearningPlanCardVisualModel;
 	onPress: () => void;
+	onAccessibilityActivate?: () => void;
 	accessibilityLabel: string;
 	accessibilityHint: string;
 };
@@ -59,31 +61,6 @@ type LearningPlanCardVisualProps =
 	| ScreenLearningPlanCardVisualProps
 	| ArtworkLearningPlanCardVisualProps;
 
-function StatusBadge({
-	status,
-	fixedTextScale,
-}: {
-	status: LearningPlanCardStatus;
-	fixedTextScale: boolean;
-}) {
-	return (
-		<View
-			className="min-h-7 justify-center rounded-full px-3 py-1"
-			// Badge colors are semantic runtime values supplied by the card model.
-			style={{ backgroundColor: status.background }}
-		>
-			<Text
-				allowFontScaling={!fixedTextScale}
-				className="font-poppins font-semibold text-body-5"
-				// Badge colors are semantic runtime values supplied by the card model.
-				style={{ color: status.foreground }}
-			>
-				{status.label}
-			</Text>
-		</View>
-	);
-}
-
 export function LearningPlanCardVisual(props: LearningPlanCardVisualProps) {
 	const { colors } = useDayovaTheme();
 	const { model } = props;
@@ -92,6 +69,7 @@ export function LearningPlanCardVisual(props: LearningPlanCardVisualProps) {
 	const shouldReflowCard = !fixedTextScale && shouldStackInlineContent;
 	const card = (
 		<NotchedActionCard
+			cardContentClassName="justify-between"
 			actionIcon={
 				<ArrowUpRight
 					size={24}
@@ -104,6 +82,16 @@ export function LearningPlanCardVisual(props: LearningPlanCardVisualProps) {
 				: {
 						pressType: "card" as const,
 						onPress: props.onPress,
+						accessibilityActions: props.onAccessibilityActivate
+							? [{ name: "activate" as const }]
+							: undefined,
+						onAccessibilityAction: props.onAccessibilityActivate
+							? (event) => {
+									if (event.nativeEvent.actionName === "activate") {
+										props.onAccessibilityActivate?.();
+									}
+								}
+							: undefined,
 						cardAccessibilityLabel: props.accessibilityLabel,
 						cardAccessibilityHint: props.accessibilityHint,
 					})}

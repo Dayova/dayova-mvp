@@ -72,7 +72,7 @@ describe("total study workload suggestion", () => {
 		).toBe(0);
 	});
 
-	test("does not count a learning window that has already started today", () => {
+	test("counts the remaining portion of today's learning window", () => {
 		expect(
 			calculateAvailableStudyMinutes({
 				fromDateKey: "2026-06-02",
@@ -80,7 +80,7 @@ describe("total study workload suggestion", () => {
 				examDateKey: "2026-06-03",
 				learningTimes: [{ dayOfWeek: 2, startTime: "17:00", endTime: "18:00" }],
 			}),
-		).toBe(0);
+		).toBe(59);
 	});
 
 	test("requests enough learning time for the two-session rolling horizon", () => {

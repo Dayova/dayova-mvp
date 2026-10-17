@@ -13,7 +13,7 @@ type RangeStep = {
 
 type FactStep = {
 	kind: "fact";
-	id: "study-time-fact";
+	id: "study-time-fact" | "learning-routine-fact";
 	title: string;
 	description: string;
 };
@@ -96,7 +96,7 @@ export const ONBOARDING_PROFILE_STEPS = [
 	{
 		kind: "fact",
 		id: "study-time-fact",
-		title: "Dein Lernplan braucht echte Zeitfenster.",
+		title: "Du brauchst nicht stundenlang zu lernen.",
 		description: "Dauer, Tage und Uhrzeit werden im Lernplan gespeichert.",
 	},
 	{
@@ -106,6 +106,13 @@ export const ONBOARDING_PROFILE_STEPS = [
 		description:
 			"Wähle alle passenden Tage. Für jeden entsteht dieselbe erste Lernzeit.",
 		field: "studyDays",
+	},
+	{
+		kind: "fact",
+		id: "learning-routine-fact",
+		title: "Du lernst, wenn es dir passt!",
+		description:
+			"Verteilst du Wiederholungen auf mehrere Tage, kannst du dir den Stoff langfristig besser merken als beim Lernen am Stück. Feste Tage und Uhrzeiten geben diesen Wiederholungen einen Platz in deinem Alltag.",
 	},
 	{
 		kind: "time",

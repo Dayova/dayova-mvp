@@ -1,5 +1,6 @@
 import type { ComponentProps } from "react";
-import { TouchableOpacity, View, type ViewProps } from "react-native";
+import { type TouchableOpacity, View, type ViewProps } from "react-native";
+import { FeedbackTouchableOpacity } from "~/components/ui/feedback-pressable";
 import { cn } from "~/lib/utils";
 
 type SurfaceVariant = "default" | "soft" | "flat";
@@ -48,7 +49,7 @@ function ActionSurface({
 	...props
 }: ActionSurfaceProps) {
 	return (
-		<TouchableOpacity
+		<FeedbackTouchableOpacity
 			activeOpacity={activeOpacity}
 			className={cn(
 				"rounded-card bg-card",

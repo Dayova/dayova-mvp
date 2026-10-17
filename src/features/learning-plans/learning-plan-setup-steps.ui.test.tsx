@@ -118,6 +118,7 @@ describe("learning-plan setup steps", () => {
 	});
 
 	test("reveals continue after school material is uploaded", async () => {
+		const onRemoveDocument = jest.fn();
 		const screen = await render(
 			<MaterialUploadStep
 				canUpload
@@ -136,7 +137,7 @@ describe("learning-plan setup steps", () => {
 				isUploading={false}
 				onContinue={jest.fn()}
 				onOpenUpload={jest.fn()}
-				onRemoveDocument={jest.fn()}
+				onRemoveDocument={onRemoveDocument}
 				onSkip={jest.fn()}
 				openingUploadAction={null}
 			/>,
@@ -158,6 +159,11 @@ describe("learning-plan setup steps", () => {
 				name: "Ohne Lernmaterial erstellen",
 			}),
 		).toBeNull();
+		expect(screen.queryByText("Entfernen")).toBeNull();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Arbeitsblatt.pdf entfernen" }),
+		);
+		expect(onRemoveDocument).toHaveBeenCalledWith("document");
 	});
 
 	test("still offers the no-plan path when only an external aid remains", async () => {
