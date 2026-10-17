@@ -13,18 +13,26 @@ pre-existing internal placement-comparison switch remains test-only.
 
 ## Uploaded evidence
 
-All six original files were uploaded through `gh api` to the dedicated archive
-branch `codex/pr-884-evidence-2026-10-18`; do not merge that branch into app source.
-[Archive and capture notes](https://github.com/Dayova/dayova-mvp/blob/1c929959c355fad4d2fa9ffaa701687a78e9f803/README.md).
-[Stable URLs, sizes and SHA-256](topic-hint-layout-assets.json).
-[PR gallery with embedded screenshots and recordings](https://github.com/Dayova/dayova-mvp/pull/884#issuecomment-6241996755).
-No media binaries or capture entry changes are included in the product branch.
+All six originals are now native GitHub attachments in the existing
+[PR gallery](https://github.com/Dayova/dayova-mvp/pull/884#issuecomment-6241996755).
+They were uploaded with official GitHub CLI 2.102.0 using
+`gh pr comment --edit-last --attach` with six repeated attachment flags and the
+existing Gamius00 CLI authentication. The installed 2.92.0 did not expose the
+flag; checking the current official release corrected the earlier conclusion
+that an archive branch was necessary. No browser authentication was needed.
+
+The target body contains six `github.com/user-attachments/assets/` URLs. Browser
+verification confirmed all four images loaded at 1206×2622 and both native video
+players loaded with no media errors, readyState 4 and durations 50.768333 / 52.88
+seconds. [Stable attachment URLs, sizes and SHA-256](topic-hint-layout-assets.json).
+The earlier archive branch remains a backup and must not be merged into app
+source. No media binaries or capture entry changes are in the product branch.
 
 | View | Before | After |
 | --- | --- | --- |
-| Topic search | [PNG](https://github.com/Dayova/dayova-mvp/blob/1c929959c355fad4d2fa9ffaa701687a78e9f803/before-topics.png) | [PNG](https://github.com/Dayova/dayova-mvp/blob/1c929959c355fad4d2fa9ffaa701687a78e9f803/after-topics.png) |
-| Exam hints | [PNG](https://github.com/Dayova/dayova-mvp/blob/1c929959c355fad4d2fa9ffaa701687a78e9f803/before-hints.png) | [PNG](https://github.com/Dayova/dayova-mvp/blob/1c929959c355fad4d2fa9ffaa701687a78e9f803/after-hints.png) |
-| Recording | [MP4, 50.77 seconds](https://github.com/Dayova/dayova-mvp/blob/1c929959c355fad4d2fa9ffaa701687a78e9f803/before.mp4) | [MP4, 52.88 seconds](https://github.com/Dayova/dayova-mvp/blob/1c929959c355fad4d2fa9ffaa701687a78e9f803/after.mp4) |
+| Topic search | [PNG](https://github.com/user-attachments/assets/262d8264-05fc-4d96-abc1-a0077514f256) | [PNG](https://github.com/user-attachments/assets/3996e197-c897-4665-833c-70cc40a776ac) |
+| Exam hints | [PNG](https://github.com/user-attachments/assets/554d083b-d6d3-4c92-ab56-af4eef2f57ca) | [PNG](https://github.com/user-attachments/assets/b0927571-731c-4dc3-9cf2-06fe6b1d1e1b) |
+| Recording | [MP4, 50.77 seconds](https://github.com/user-attachments/assets/1b4fb231-8ffb-4ecb-9b7f-53ba98bfbe8c) | [MP4, 52.88 seconds](https://github.com/user-attachments/assets/bb9911ef-df04-404b-bd46-9936ee0d7e77) |
 
 Before is the previous #884 head `a58b0d7953d11f7394750be47ede3b93908df3b9`,
 not the PR integration base on main. This is incremental follow-up evidence;
@@ -69,11 +77,9 @@ Coverage: 52.88-second video; 53 full-timeline frames sampled at 1 fps (1-second
 ## Guidelines and remaining acceptance
 
 Consulted [03 — Evidence, Review & Merge Checklist](https://app.notion.com/p/3dc2e87228bf81c69e43cadf318c2d9f).
-The four evidence types are present. The user explicitly requested repository
-uploads through GitHub CLI, so these use an archive branch and PR links rather
-than native GitHub comment attachments. The incremental baseline is explicitly
-identified instead of presenting it as main. These are documented limitations
-of guideline compliance; the PR remains draft.
+The four evidence types are present as native GitHub attachments. The remaining
+baseline limitation is explicit: this compares the previous PR head with the
+follow-up rather than the integration base on main. The PR remains draft.
 
 Current-update Android, physical iPhone, VoiceOver/TalkBack, large text, light
 appearance and full signed-in save/reopen acceptance remain open. Existing
