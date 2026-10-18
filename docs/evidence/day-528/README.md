@@ -1,8 +1,36 @@
 # DAY-528 validation
 
-## Concurrent-request follow-up — 18 October 2026
+## Main integration refresh — 18 October 2026
 
-Parent #661 is now `f2c48fe7825f5f87844a774285bb5d0c6d7a3b32`; direct base #748
+Parent #661 is `98574de3a64cb018abc1f464afd1632b41218734`; direct base #748 is
+`3c32c5e5e1cf6ad63bec89bf1d47065623642ee9`. Both include main
+`006f88eb6557f60cf9628edd7604859795b38926`. See the latest #895 head for this
+layer's integration; all sections below describe earlier named snapshots.
+
+The only parent merge conflict was PR workflow routing. The resolution adopts
+main's accepted all-target trigger configuration and retains repository and
+contributor trust gates plus main-only production deployment/publication.
+Formatting-only changes repair two deletion-related CRM test files. The lifecycle
+layer registers its documented standalone local smoke script as a specific Knip
+entry point, consistent with the repository's existing helper entries.
+
+Parent validation passed formatting, lint, unused-code checks, skill validation,
+TypeScript, all **145 Vitest files / 1,141 tests**, **18 Node tests**, and **46
+focused UI tests** covering account deletion and the changed shared controls.
+The combined stack passed formatting, lint/TypeScript, unused-code checks, skill
+validation and all **148 Vitest files / 1,165 tests**. The workflow matches the
+current official EAS schema (its union declarations require `allowUnionTypes`).
+The full local UI runner again stalled in unchanged preparation/session tests;
+a single complete local UI invocation is not claimed. Fresh remote CI must
+validate the resulting heads. Conflict resolution and the narrow formatting/Knip
+changes were manually reviewed.
+
+Existing OTA incompatibility and production policy/device/provider gates remain.
+No production activation or release is part of this integration refresh.
+
+## Earlier concurrent-request follow-up — 18 October 2026
+
+At this snapshot, parent #661 was `f2c48fe7825f5f87844a774285bb5d0c6d7a3b32`; direct base #748
 is `74b37e4c5b8633b423efeea7b342b496953c980d`. Integration commit
 `74810e96aae70d4f12691d87416005d5f01a2e03` carries both into #895.
 

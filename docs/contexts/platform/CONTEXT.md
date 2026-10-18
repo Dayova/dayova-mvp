@@ -23,17 +23,42 @@ _Avoid_: User-facing message, learner error text
 
 ## CI Quality Gate
 
+Decision rationale, acceptance, and the associated cleanup/verification scope
+live in the [canonical Notion decision record](https://app.notion.com/p/3fd2e87228bf81f98b45f94017f0079d).
+The [code-facing reference](adr/0001-enforce-repository-checks-and-limit-typed-linting.md)
+links the historical stacked-PR CI evidence.
+
 `.eas/workflows/ci.yml` uses one `checks` job, displayed as
 `Lint, typecheck, and test`, for trusted pull requests, manual runs, and pushes
-to `main`. Lint, TypeScript, and tests are separate sequential steps. A merge
+to `main`. Formatting, lint, unused code/dependencies, repository skill validation,
+TypeScript, and tests are separate sequential steps. A merge
 therefore checks the resulting `main` commit again under the same visible job
 name instead of skipping a PR-only job and repeating its commands elsewhere.
 
+Pull-request triggers cover every target branch, including stack parents. Do not
+restrict them to `main`: doing so leaves new commits in dependent PRs without CI
+or a current OTA compatibility report. The source and contributor trust gates
+still apply, and deployment/publication remain limited to pushes to `main`.
+
 Pull request checks require the author's GitHub association to be `OWNER`,
-`MEMBER`, or `COLLABORATOR`. Manual runs validate only. Production fingerprinting,
-Convex deployment, and OTA work remain restricted to pushes to `main`.
+`MEMBER`, or `COLLABORATOR`. Manual runs validate only. Trusted same-repository
+PRs also run production fingerprinting and OTA compatibility checks; Convex
+deployment and OTA publication remain restricted to pushes to `main`.
 Both Convex deployment and OTA checks depend on successful `checks`; OTA
 publication also requires successful fingerprinting, deployment, and OTA safety.
+
+Biome owns general linting and formatting for application/backend source, root
+configuration, tests, ESLint rules, scripts, plugins, and local modules. Its
+coverage fixtures must reject invalid code in each of these locations. Generated
+Convex files and installer-owned `skills-lock.json` remain excluded; repository
+skill validation checks the latter.
+
+ESLint owns the React Hooks/Compiler, Dayova UI, and Convex rules. The UI rules
+use syntax-only parsing; Convex retains TypeScript project services because its
+query and explicit-table rules require type information. Keep the integration
+fixtures green when changing either boundary, and retain the independent full
+TypeScript check. Knip remains the unused-code/dependency gate. Replacing an
+engine requires proving equivalent coverage for its specialized rules first.
 
 ## Release Environment
 
