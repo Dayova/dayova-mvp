@@ -12,16 +12,13 @@
 			"convex/**",
 			"plugins/**",
 			"scripts/**",
-			"app.config.cts",
-			"babel.config.js",
-			"biome.jsonc",
-			"components.json",
-			"index.ts",
-			"knip.json",
-			"metro.config.js",
-			"package.json",
-			"tailwind.config.ts",
-			"tsconfig.json",
+			"tests/**",
+			"eslint/**",
+			"modules/**",
+			".vscode/**",
+			"*.{js,cjs,mjs,ts,cts,mts,tsx,json,jsonc}",
+			// Installer-owned metadata is validated by skills:validate.
+			"!skills-lock.json",
 			"!convex/_generated"
 		]
 	},

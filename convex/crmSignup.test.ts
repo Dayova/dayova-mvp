@@ -402,9 +402,12 @@ test("account deletion removes queued CRM creation before it can run", async () 
 	});
 	let done = false;
 	for (let attempt = 0; attempt < 20 && !done; attempt += 1) {
-		({ done } = await t.mutation(internal.accountDeletion.deleteOwnerDataBatch, {
-			requestId,
-		}));
+		({ done } = await t.mutation(
+			internal.accountDeletion.deleteOwnerDataBatch,
+			{
+				requestId,
+			},
+		));
 	}
 	expect(done).toBe(true);
 	expect(

@@ -64,9 +64,7 @@ function parseNpmrcSettingNames(content: string): Set<string> {
 		}
 
 		const separatorIndex = line.indexOf("=");
-		const name = (
-			separatorIndex === -1 ? line : line.slice(0, separatorIndex)
-		)
+		const name = (separatorIndex === -1 ? line : line.slice(0, separatorIndex))
 			.trim()
 			.replace(/\[\]$/, "")
 			.replaceAll("-", "")

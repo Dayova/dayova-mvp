@@ -1265,9 +1265,12 @@ test("account deletion removes the new integration mapping", async () => {
 	});
 	let done = false;
 	for (let attempt = 0; attempt < 20 && !done; attempt += 1) {
-		({ done } = await t.mutation(internal.accountDeletion.deleteOwnerDataBatch, {
-			requestId,
-		}));
+		({ done } = await t.mutation(
+			internal.accountDeletion.deleteOwnerDataBatch,
+			{
+				requestId,
+			},
+		));
 	}
 	expect(done).toBe(true);
 	expect(
