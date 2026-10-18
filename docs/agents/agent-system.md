@@ -82,16 +82,17 @@ The workflow must keep these transitions explicit:
 1. Detect an upstream or local need without mutating the catalog.
 2. Find the owning Linear issue and enumerate affected sources, skills, routes,
    authorizations, and evaluations.
-3. Capture the real baseline and produce a proposed composition diff.
+3. Choose relevant evidence, capture a comparison baseline when useful, and
+   produce a proposed composition diff.
 4. Apply the curated policy, pinned input, patch queue, and metadata overrides.
 5. Update this contract and the governance manifest when their behavior changes.
 6. Run structural checks, affected regression cases, and a bounded dogfood task.
 7. Publish a reviewed GitHub change with the evidence required by
    [DAY-271](https://linear.app/dayova/issue/DAY-271/enforce-before-and-after-screenshots-and-screen-recordings-on-every).
 
-The repository owns the required four-artifact outcome. Use the authenticated
-GitHub CLI's `--attach` support for upload mechanics, following the session's
-GitHub evidence guidance. User-facing plans and pull requests also
+The repository owns the evidence contract below. Use the authenticated GitHub
+CLI's `--attach` support for selected media, following the session's GitHub
+evidence guidance. User-facing plans and pull requests also
 require the distinct Dayova product-quality review tracked by
 [DAY-289](https://linear.app/dayova/issue/DAY-289/add-a-dayova-product-quality-reviewer-for-plans-and-user-facing-pull).
 For internal tooling, documentation, infrastructure, and pure refactors, record
@@ -104,6 +105,40 @@ Source-specific composition remains in
 [`expo-skills.md`](expo-skills.md). Convex source maintenance remains an explicit
 decision in
 [DAY-226](https://linear.app/dayova/issue/DAY-226/decide-and-implement-upstream-update-handling-for-convex-skills).
+
+## Pull-request evidence
+
+Choose evidence that lets a reviewer assess the actual change:
+
+- Static visual changes, such as a button color: before/after screenshots.
+  A recording adds no value unless motion, interaction, or timing also changes.
+- Motion, interaction, or timing changes: before/after recordings when the
+  behavior needs to be seen over time. Add screenshots only when a still
+  comparison helps review a visual change.
+- Performance improvements: comparable before/after measurements using the same
+  scenario and environment. For user-visible latency, prefer recordings with a
+  visible timer. Backend-only performance changes can use benchmarks or traces.
+- Backend, refactor, tooling, or documentation changes with no observable product
+  effect: relevant tests, logs, generated output, or other checks. Screenshots
+  and recordings are not required merely to show a terminal or an unchanged UI.
+
+For mixed changes, cover each affected behavior without collecting redundant
+media. Explain the evidence choice and any limits in the PR. Attach selected
+media directly to the PR; include check results and durable verification links
+there as appropriate. Record the tested revision and environment. Keep generated
+local artifacts ignored or temporary.
+
+When comparison evidence is useful, capture the baseline before editing and
+compare the same scenario on the PR head. For a stacked PR, use its actual parent
+as the baseline. If relevant evidence cannot be obtained, keep the PR draft and
+state what is missing. Omitting irrelevant media is not an evidence blocker.
+Apply `inspect-video-evidence` when making claims from recordings.
+
+The canonical policy is the
+[review and evidence checklist](https://app.notion.com/p/3dc2e87228bf81c69e43cadf318c2d9f).
+[DAY-271](https://linear.app/dayova/issue/DAY-271) owns capture and enforcement;
+the earlier universal four-artifact requirement is superseded by Jakob's
+change-specific evidence policy.
 
 ## Regression loop
 
@@ -151,6 +186,6 @@ keep an obsolete skill merely as historical documentation.
 
 - [DAY-181](https://linear.app/dayova/issue/DAY-181/adopt-graphite-as-the-required-stacked-change-workflow-for-humans-and): branch and Graphite stack workflow.
 - [DAY-269](https://linear.app/dayova/issue/DAY-269/define-when-agents-should-fix-discovered-problems-immediately-vs): fix now, capture/reconcile, or discard.
-- Four-artifact pull-request evidence: [DAY-271](https://linear.app/dayova/issue/DAY-271), [DAY-272](https://linear.app/dayova/issue/DAY-272), [DAY-273](https://linear.app/dayova/issue/DAY-273), [DAY-274](https://linear.app/dayova/issue/DAY-274), [DAY-275](https://linear.app/dayova/issue/DAY-275), [DAY-276](https://linear.app/dayova/issue/DAY-276), and [DAY-277](https://linear.app/dayova/issue/DAY-277).
+- Change-specific pull-request evidence: [DAY-271](https://linear.app/dayova/issue/DAY-271), [DAY-272](https://linear.app/dayova/issue/DAY-272), [DAY-273](https://linear.app/dayova/issue/DAY-273), [DAY-274](https://linear.app/dayova/issue/DAY-274), [DAY-275](https://linear.app/dayova/issue/DAY-275), [DAY-276](https://linear.app/dayova/issue/DAY-276), and [DAY-277](https://linear.app/dayova/issue/DAY-277).
 - [DAY-289](https://linear.app/dayova/issue/DAY-289/add-a-dayova-product-quality-reviewer-for-plans-and-user-facing-pull): Dayova product-quality review.
 - [DAY-334](https://linear.app/dayova/issue/DAY-334/reduce-the-implicit-skill-catalog-and-enforce-a-routing-context-budget): routing-context budget.

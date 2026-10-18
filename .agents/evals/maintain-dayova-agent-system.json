@@ -60,6 +60,34 @@
       "expectedMutation": "keep-maintained-fixtures-in-repository-publish-task-evidence-to-owning-pr-or-issue"
     },
     {
+      "id": "evidence-static-color",
+      "kind": "evidence-selection",
+      "prompt": "Review the evidence plan for a PR that only changes a button color. Animation, interaction, and timing are unchanged. Which artifacts are useful, and is a missing recording a blocker?",
+      "expectedMutation": "read-only-evidence-planning",
+      "expectedEvidence": "Before/after screenshots; no recording requirement or blocker for omitting it."
+    },
+    {
+      "id": "evidence-visible-performance",
+      "kind": "evidence-selection",
+      "prompt": "Review the evidence plan for a PR that makes a learner-visible loading flow faster. How should a reviewer assess the performance claim?",
+      "expectedMutation": "read-only-evidence-planning",
+      "expectedEvidence": "Comparable before/after measurements; prefer recordings with a visible timer on the same scenario and environment. Screenshots only if a static visual change needs review."
+    },
+    {
+      "id": "evidence-backend-only",
+      "kind": "evidence-selection",
+      "prompt": "Review the evidence plan for a backend refactor with unchanged API behavior, no visible UI effect, and no performance claim. Are screenshots or recordings needed?",
+      "expectedMutation": "read-only-evidence-planning",
+      "expectedEvidence": "Relevant tests, logs, or checks; no screenshots or recordings required, and no draft blocker just for absent media."
+    },
+    {
+      "id": "evidence-mixed-stack",
+      "kind": "evidence-selection",
+      "prompt": "Review the evidence plan for a stacked PR that changes both static button styling and a transition animation. Its parent differs from main. Which evidence and baseline should be used, and what if the transition cannot be recorded?",
+      "expectedMutation": "read-only-evidence-planning",
+      "expectedEvidence": "Relevant screenshots for styling and recordings for the animation, using the actual stack parent before editing and the same scenario on the head. Keep draft and explain the missing animation evidence if it cannot be demonstrated."
+    },
+    {
       "id": "authorization-no-parallel-task-system",
       "kind": "mutation-safety",
       "prompt": "Mirror all repository skill tasks into a new Luma task database.",

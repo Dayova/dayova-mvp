@@ -44,7 +44,9 @@ When a concrete unrelated problem is discovered, either fix it completely on a s
 
 ### Pull-request evidence
 
-Every pull request requires a before screenshot, after screenshot, before screen recording, and after screen recording attached directly to the PR. Capture the baseline before editing; for stacked work, the baseline is the PR's actual parent. Use the most meaningful observable surface for non-UI changes. Keep the PR draft and surface the blocker when the four artifacts cannot be produced. The linked evidence program in `docs/agents/agent-system.md` owns capture and enforcement.
+Match PR evidence to the change. Static visual changes need before/after screenshots; recordings are useful when motion, interaction, or timing must be demonstrated. For user-visible performance improvements, prefer before/after recordings with a timer alongside comparable measurements. Backend, refactor, tooling, or documentation changes with no observable product effect can use relevant tests, logs, benchmarks, or other checks without screenshots or recordings.
+
+Explain the evidence choice in the PR and attach any selected media directly. When a before/after comparison is useful, capture the baseline before editing; for stacked work, use the PR's actual parent. Keep the PR draft and explain the gap if evidence needed to assess the change is unavailable. See `docs/agents/agent-system.md` for the evidence contract and owning program.
 
 User-facing plans and pull requests also require the distinct Dayova product-quality review linked from `docs/agents/agent-system.md`; generic code review does not replace it.
 

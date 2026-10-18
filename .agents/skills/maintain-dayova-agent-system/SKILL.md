@@ -16,11 +16,13 @@ kind of truth and one governed path from upstream input to repository behavior.
    any upstream catalog being changed. Finish discovery only when every affected
    skill, source, route, authorization boundary, and evaluation is named.
 2. Inspect the worktree, integration base, existing branch or stack, and current
-   pull request. Reserve the four evidence slots and capture the before screenshot
-   and before screen recording required by the repository delivery policy before
-   editing. For a stacked change, use the
-   actual parent as the baseline. Complete this step only when the base and all
-   four required baseline/head artifact slots are identified.
+   pull request. Choose evidence that demonstrates the change using the contract
+   in `docs/agents/agent-system.md`. Capture a baseline before editing when a
+   before/after comparison is useful; for stacked work, use the actual parent.
+   Internal skill, instruction, or tooling changes with no observable product
+   effect can use the diff, validation results, and behavioral evaluations without
+   screenshots or recordings. Complete this step when the base and relevant
+   evidence are identified.
 3. Classify every proposed fact or action by owner: Notion for durable company
    knowledge and decisions, Linear for executable work, GitHub for code and
    evidence, and repository docs for code-adjacent contracts. Link across owners;
@@ -47,11 +49,11 @@ kind of truth and one governed path from upstream input to repository behavior.
    changed high-risk workflow on a bounded Dayova task. Completion requires the
    structural checks and every in-scope regression to pass.
 8. Review the complete diff and publish through the branch or Graphite stack
-   owned by the work. Keep the pull request draft until its before screenshot,
-   after screenshot, before screen recording, and after screen recording are
-   attached and the relevant Linear issue links the implementation evidence.
-   Completion means the reviewed PR, four artifacts, validations, and Linear
-   acceptance evidence all identify the same delivered scope.
+   owned by the work. Explain the evidence choice in the PR, attach selected media
+   directly, and link the implementation evidence from the relevant Linear issue.
+   Keep the PR draft when evidence needed to assess the change is missing.
+   Completion means the reviewed PR, relevant evidence, validations, and Linear
+   acceptance evidence identify the same delivered scope.
 
 Keep maintained evaluation cases in the repository. Publish dated validation
 reports and sanitized execution traces on the owning PR or Linear issue; keep
