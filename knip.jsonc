@@ -2,8 +2,8 @@
 	"$schema": "https://unpkg.com/knip@6/schema.json",
 	"entry": [
 		"plugins/*.js",
-		// Standalone verification and release helpers documented beside their artifacts.
-		"docs/evidence/**/*.mjs",
+		// Maintained standalone native QA and release helpers.
+		"scripts/native-qa/*.mjs",
 		"release/**/scripts/*.cjs",
 		// Loaded dynamically by jest.requireActual in UI tests.
 		"tests/mocks/*.cjs"
