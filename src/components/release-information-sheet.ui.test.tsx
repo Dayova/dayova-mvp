@@ -10,6 +10,9 @@ const mockInstallation =
 jest.mock("~/lib/running-update-installation", () => ({
 	getRunningUpdateInstallation: () => mockInstallation(),
 }));
+jest.mock("~/lib/theme", () => ({
+	useDayovaTheme: () => ({ colors: { text: "#1A1A1A" } }),
+}));
 jest.mock("expo-application", () => ({
 	nativeApplicationVersion: "1.0.6",
 	nativeBuildVersion: "42",
