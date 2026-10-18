@@ -1,0 +1,14 @@
+appId: ${APP_ID}
+---
+# iOS email keyboards have no dismiss key. Tap non-interactive content to blur
+# the field before asking Maestro to confirm that the keyboard is hidden.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - scrollUntilVisible:
+          element: ${AUTH_HEADING}
+          direction: UP
+          timeout: 10000
+      - tapOn: ${AUTH_HEADING}
+- hideKeyboard

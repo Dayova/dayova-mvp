@@ -51,8 +51,6 @@ describe("iOS Apple sign-in capability", () => {
 
 		const nativeEntitlements = readFileSync(IOS_ENTITLEMENTS_PATH, "utf8");
 
-		expect(nativeEntitlements).not.toContain(
-			"com.apple.developer.applesignin",
-		);
+		expect(nativeEntitlements).not.toContain("com.apple.developer.applesignin");
 	});
 });

@@ -1,0 +1,105 @@
+{
+  "capturedAt": "2026-10-18T12:11:50.9546379Z",
+  "pullRequest": "https://github.com/Dayova/dayova-mvp/pull/846",
+  "baseChange": {
+    "source": "https://api.github.com/repos/Dayova/dayova-mvp/issues/events/33472428563",
+    "eventId": 33472428563,
+    "details": [
+      {
+        "createdAt": "2026-10-16T18:26:52Z",
+        "previousRefName": "main",
+        "currentRefName": "codex/android-screens-startup-race"
+      }
+    ]
+  },
+  "before": {
+    "sha": "337893105195cf8a822b0eea906f355d93da8a5b",
+    "committedAt": "2026-10-16T19:58:30Z",
+    "workflowUrl": "https://github.com/Dayova/dayova-mvp/blob/337893105195cf8a822b0eea906f355d93da8a5b/.eas/workflows/ci.yml#L3-L11",
+    "statusesSource": "https://api.github.com/repos/Dayova/dayova-mvp/commits/337893105195cf8a822b0eea906f355d93da8a5b/statuses?per_page=100",
+    "statuses": [
+      {
+        "id": 56558065712,
+        "context": "CodeRabbit",
+        "state": "success",
+        "description": "Review rate limited",
+        "created_at": "2026-10-16T20:00:03Z",
+        "target_url": null
+      },
+      {
+        "id": 56558059513,
+        "context": "CodeRabbit",
+        "state": "pending",
+        "description": "Review in progress",
+        "created_at": "2026-10-16T19:59:58Z",
+        "target_url": null
+      },
+      {
+        "id": 56557974639,
+        "context": "CodeRabbit",
+        "state": "success",
+        "description": "Review skipped: draft pull request",
+        "created_at": "2026-10-16T19:58:51Z",
+        "target_url": null
+      },
+      {
+        "id": 56557974196,
+        "context": "OTA report freshness",
+        "state": "pending",
+        "description": "Latest commit has no current OTA report; compatibility unconfirmed.",
+        "created_at": "2026-10-16T19:58:51Z",
+        "target_url": "https://github.com/Dayova/dayova-mvp/pull/846/checks"
+      }
+    ],
+    "checkRunsSource": "https://api.github.com/repos/Dayova/dayova-mvp/commits/337893105195cf8a822b0eea906f355d93da8a5b/check-runs?per_page=100&filter=all",
+    "checkRunTotal": 1,
+    "checkRuns": [
+      {
+        "name": "reconcile",
+        "conclusion": "success",
+        "started_at": "2026-10-16T19:58:47Z",
+        "html_url": "https://github.com/Dayova/dayova-mvp/actions/runs/38958855095/job/117168508642"
+      }
+    ]
+  },
+  "after": {
+    "sha": "a8a4861511ae899756570873d662fb4f9d52128f",
+    "commitUrl": "https://github.com/Dayova/dayova-mvp/commit/a8a4861511ae899756570873d662fb4f9d52128f",
+    "statusesSource": "https://api.github.com/repos/Dayova/dayova-mvp/commits/a8a4861511ae899756570873d662fb4f9d52128f/statuses?per_page=100",
+    "selectedStatuses": [
+      {
+        "id": 56559456792,
+        "context": "Continuous Integration / Production OTA gates (@dayova/dayova)",
+        "state": "error",
+        "description": "Job has been canceled.",
+        "created_at": "2026-10-16T20:18:00Z",
+        "target_url": "https://expo.dev/accounts/dayova/projects/dayova/workflows/01a14653-56bc-77a9-8685-0af37252b08a#job-01a14659-6090-79fe-8703-7152015eb3b2"
+      },
+      {
+        "id": 56559034914,
+        "context": "Continuous Integration / Lint, typecheck, and test (@dayova/dayova)",
+        "state": "success",
+        "description": "Job has succeeded.",
+        "created_at": "2026-10-16T20:12:27Z",
+        "target_url": "https://expo.dev/accounts/dayova/projects/dayova/workflows/01a14653-56bc-77a9-8685-0af37252b08a#job-01a14653-5cd3-73f2-8440-d8e3fbb61c1c"
+      },
+      {
+        "id": 56558644251,
+        "context": "Continuous Integration / Lint, typecheck, and test (@dayova/dayova)",
+        "state": "pending",
+        "description": "Job is running.",
+        "created_at": "2026-10-16T20:07:22Z",
+        "target_url": "https://expo.dev/accounts/dayova/projects/dayova/workflows/01a14653-56bc-77a9-8685-0af37252b08a#job-01a14653-5cd3-73f2-8440-d8e3fbb61c1c"
+      },
+      {
+        "id": 56558632029,
+        "context": "Continuous Integration / Lint, typecheck, and test (@dayova/dayova)",
+        "state": "pending",
+        "description": "Job is waiting to start.",
+        "created_at": "2026-10-16T20:07:12Z",
+        "target_url": "https://expo.dev/accounts/dayova/projects/dayova/workflows/01a14653-56bc-77a9-8685-0af37252b08a#job-01a14653-5cd3-73f2-8440-d8e3fbb61c1c"
+      }
+    ]
+  },
+  "interpretation": "Before the routing fix, this stacked PR commit had no Continuous Integration statuses and its OTA freshness status was pending. After removing the base-branch filter, EAS quality CI ran and passed. The first post-fix OTA job was canceled when superseded, not a completed OTA assessment."
+}
