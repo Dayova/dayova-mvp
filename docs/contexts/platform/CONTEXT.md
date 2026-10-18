@@ -23,6 +23,9 @@ _Avoid_: User-facing message, learner error text
 
 ## CI Quality Gate
 
+Decision rationale and the associated cleanup/verification scope are recorded in
+[the repository-checks decision record](adr/0001-enforce-repository-checks-and-limit-typed-linting.md).
+
 `.eas/workflows/ci.yml` uses one `checks` job, displayed as
 `Lint, typecheck, and test`, for trusted pull requests, manual runs, and pushes
 to `main`. Formatting, lint, unused code/dependencies, repository skill validation,
