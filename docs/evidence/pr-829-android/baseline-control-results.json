@@ -1,0 +1,122 @@
+[
+  {
+    "seconds": 5.429,
+    "scenario": "fresh accessibility activation",
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans",
+          "time": 1791218983188
+        }
+      ],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    },
+    "extra": "INSTRUMENTATION_RESULT: found=false\r\nINSTRUMENTATION_CODE: 0\r\n"
+  },
+  {
+    "seconds": 11.092,
+    "scenario": "accessibility activation after short swipe",
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791218990826
+        }
+      ],
+      "pathname": "/learning-plans/jn7ekgp0hcwfesp59s1na3f6218fpssj",
+      "route": "learning-plans/[planId]/index"
+    },
+    "extra": "INSTRUMENTATION_RESULT: click=true\r\nINSTRUMENTATION_RESULT: description=Deutsch, Morgen, 2026-10-21, Wissenscheck · 5–10 Fragen, 0 abgeschlossen · 2 weitere Termine geplant, noch 16 Tage\r\nINSTRUMENTATION_RESULT: focus=false\r\nINSTRUMENTATION_RESULT: found=true\r\nINSTRUMENTATION_CODE: 0\r\n"
+  },
+  {
+    "seconds": 15.148,
+    "scenario": "immediate tap after short swipe 1",
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791218994749
+        }
+      ],
+      "pathname": "/learning-plans/jn7ekgp0hcwfesp59s1na3f6218fpssj",
+      "route": "learning-plans/[planId]/index"
+    },
+    "extra": null
+  },
+  {
+    "seconds": 18.513,
+    "scenario": "immediate tap after short swipe 2",
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791218998263
+        }
+      ],
+      "pathname": "/learning-plans/jn7ekgp0hcwfesp59s1na3f6218fpssj",
+      "route": "learning-plans/[planId]/index"
+    },
+    "extra": null
+  },
+  {
+    "seconds": 22.485,
+    "scenario": "immediate tap after short swipe 3",
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791219002295
+        }
+      ],
+      "pathname": "/learning-plans/jn7ekgp0hcwfesp59s1na3f6218fpssj",
+      "route": "learning-plans/[planId]/index"
+    },
+    "extra": null
+  },
+  {
+    "seconds": 25.852,
+    "scenario": "mostly vertical diagonal drag 1",
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791219005550
+        }
+      ],
+      "pathname": "/learning-plans/jn7ekgp0hcwfesp59s1na3f6218fpssj",
+      "route": "learning-plans/[planId]/index"
+    },
+    "extra": null
+  },
+  {
+    "seconds": 29.172,
+    "scenario": "mostly vertical diagonal drag 2",
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791219008864
+        }
+      ],
+      "pathname": "/learning-plans/jn7ekgp0hcwfesp59s1na3f6218fpssj",
+      "route": "learning-plans/[planId]/index"
+    },
+    "extra": null
+  },
+  {
+    "seconds": 32.75,
+    "scenario": "mostly vertical diagonal drag 3",
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/[planId]/index",
+          "time": 1791219012400
+        }
+      ],
+      "pathname": "/learning-plans/jn7ekgp0hcwfesp59s1na3f6218fpssj",
+      "route": "learning-plans/[planId]/index"
+    },
+    "extra": null
+  }
+]

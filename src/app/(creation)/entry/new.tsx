@@ -1,4 +1,4 @@
-import { useConvex, useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import {
 	type ReactNode,
@@ -24,8 +24,8 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import {
 	ExamDateSelector,
+	ExamSubjectPicker,
 	ExamTypePicker,
-	SingleSelectOption,
 } from "~/components/entry/exam-flow";
 import { BackButton, Button } from "~/components/ui/button";
 import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
@@ -37,39 +37,19 @@ import {
 	FieldLabel,
 	FieldTrigger,
 } from "~/components/ui/field";
-import {
-	BookOpen,
-	Calculator,
-	CalendarDays,
-	Chemistry,
-	ChevronDown,
-	Clock3,
-	Code,
-	Dna,
-	Earth,
-	Football,
-	Language,
-	Maps,
-	Mic,
-	MusicNote,
-	PaintBrush,
-	Pencil,
-	TimeManagement,
-} from "~/components/ui/icon";
+import { CalendarDays, ChevronDown, Clock3 } from "~/components/ui/icon";
 import { shouldUseKeyboardStickyActions } from "~/components/ui/keyboard-safe-scroll";
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
-import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { useAuthSession } from "~/context/AuthContext";
 import { getExamEntryCreationProgress } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
-import { LearningAvailabilityStep } from "~/features/learning-plans/learning-availability-step";
 import { getErrorMessage } from "~/features/learning-plans/utils";
+import { SubjectPickerSheet } from "~/features/subjects/subject-picker";
+import type { SubjectSelection } from "~/features/subjects/use-subject-options";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { getDayKey, parseDayKey, startOfLocalDay } from "~/lib/day-key";
-import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
-import { getExamDatePickerRange } from "~/lib/exam-date";
 import { EXAM_TYPE_OPTIONS } from "~/lib/entry-options";
 import {
 	constrainEndTimeForStart,
@@ -78,19 +58,20 @@ import {
 	MIN_EXAM_DURATION_MINUTES,
 	shiftEndTimeForStartChange,
 } from "~/lib/entry-time";
-import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
-import { ROUTES, withReturnTo } from "~/lib/routes";
+import { formatAccessibleExamDate } from "~/lib/exam-date";
+import {
+	dismissToOrReplace,
+	goBackOrReplace,
+	useBackIntent,
+} from "~/lib/navigation";
+import { ROUTES } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { cn } from "~/lib/utils";
 
 type EntryType = "homework" | "exam";
-type EntryStep =
-	| "basics"
-	| "planning"
-	| "learningAvailability"
-	| "examType"
-	| "examDetails";
+type EntryStep = "basics" | "planning" | "examType" | "examDetails";
 type PickerTarget =
 	| "dueDate"
 	| "plannedDate"
@@ -98,44 +79,11 @@ type PickerTarget =
 	| "plannedEndTime";
 type SelectTarget = "subject";
 
-const SUBJECT_OPTIONS = [
-	"Mathematik",
-	"Deutsch",
-	"Englisch",
-	"Biologie",
-	"Chemie",
-	"Physik",
-	"Geschichte",
-	"Erdkunde",
-	"Sozialkunde",
-	"Informatik",
-	"Kunst",
-	"Musik",
-	"Sport",
-];
-
 const KEYBOARD_DISMISS_FALLBACK_MS = 280;
-const SELECTED_OPTION_ICON_COLOR = DAYOVA_DESIGN_SYSTEM.colors.primary;
 const EXAM_DURATION_OPTIONS = {
 	minimumMinutes: MIN_EXAM_DURATION_MINUTES,
 	maximumMinutes: MAX_EXAM_DURATION_MINUTES,
 } as const;
-
-const subjectIconByOption = {
-	Mathematik: Calculator,
-	Deutsch: Pencil,
-	Englisch: Language,
-	Biologie: Dna,
-	Chemie: Chemistry,
-	Physik: Earth,
-	Geschichte: TimeManagement,
-	Erdkunde: Maps,
-	Sozialkunde: Mic,
-	Informatik: Code,
-	Kunst: PaintBrush,
-	Musik: MusicNote,
-	Sport: Football,
-} satisfies Record<(typeof SUBJECT_OPTIONS)[number], typeof BookOpen>;
 
 const parseDateKey = (value?: string) => {
 	return parseDayKey(value) ?? startOfLocalDay(new Date());
@@ -160,14 +108,6 @@ const formatCompactDate = (date: Date) =>
 		month: "long",
 		year: "numeric",
 	}).format(date);
-
-const getAvailabilityCheckTime = () => {
-	const now = new Date();
-	return {
-		dayKey: getDayKey(now),
-		timeMinutes: now.getHours() * 60 + now.getMinutes(),
-	};
-};
 
 const homeworkSuccessPath = ({
 	dayKey,
@@ -276,8 +216,8 @@ function StickyActionFooter({
 }
 
 export default function NewEntryScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
-	const convex = useConvex();
 	const insets = useSafeAreaInsets();
 	const { colors } = useDayovaTheme();
 	const fieldIconColor = colors.secondaryText;
@@ -285,6 +225,7 @@ export default function NewEntryScreen() {
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const createDayEntry = useMutation(api.dayEntries.create);
+	const updatePendingExam = useMutation(api.dayEntries.updatePendingExam);
 	const { capture } = useValidationAnalytics();
 	const params = useLocalSearchParams<{
 		type?: string;
@@ -292,19 +233,35 @@ export default function NewEntryScreen() {
 		dayLabel?: string;
 		step?: string;
 		subject?: string;
+		personalSubjectId?: string;
+		subjectIsOneTime?: string;
 		examTypeLabel?: string;
+		examDayEntryId?: string;
+		durationMinutes?: string;
+		topicDescription?: string;
 	}>();
 	const entryType: EntryType = params.type === "exam" ? "exam" : "homework";
 	const isHomework = entryType === "homework";
+	const savedExamIdRef = useRef(
+		!isHomework
+			? (params.examDayEntryId as Id<"dayEntries"> | undefined)
+			: undefined,
+	);
 	const [initialDate] = useState(() => parseDateKey(params.dayKey));
 
 	const [step, setStep] = useState<EntryStep>(() => {
 		if (isHomework) return "basics";
-		return params.step === "learningAvailability"
-			? "learningAvailability"
+		return params.step === "basics" || params.step === "learningAvailability"
+			? "basics"
 			: "examType";
 	});
 	const [subject, setSubject] = useState(params.subject ?? "");
+	const [personalSubjectId, setPersonalSubjectId] = useState<
+		Id<"personalSubjects"> | undefined
+	>(() => params.personalSubjectId as Id<"personalSubjects"> | undefined);
+	const [subjectIsOneTime, setSubjectIsOneTime] = useState(
+		params.subjectIsOneTime === "true",
+	);
 	const [examTypeLabel, setExamTypeLabel] = useState(
 		params.examTypeLabel ?? "",
 	);
@@ -318,17 +275,18 @@ export default function NewEntryScreen() {
 	});
 	const [plannedEndTime, setPlannedEndTime] = useState(() => {
 		const next = new Date();
-		next.setHours(16, 30, 0, 0);
+		const duration =
+			!isHomework && Number.isFinite(Number(params.durationMinutes))
+				? Math.min(
+						MAX_EXAM_DURATION_MINUTES,
+						Math.max(MIN_EXAM_DURATION_MINUTES, Number(params.durationMinutes)),
+					)
+				: 30;
+		next.setHours(16, duration, 0, 0);
 		return next;
 	});
 	const [isCreating, setIsCreating] = useState(false);
-	const [
-		isCheckingLearningPlanAvailability,
-		setIsCheckingLearningPlanAvailability,
-	] = useState(false);
-	const [availabilityCheckTime, setAvailabilityCheckTime] = useState(
-		getAvailabilityCheckTime,
-	);
+	const [isStartingLearningPlan, setIsStartingLearningPlan] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
 	const [selectTarget, setSelectTarget] = useState<SelectTarget | null>(null);
@@ -346,6 +304,16 @@ export default function NewEntryScreen() {
 	const entryCreationGateRef = useRef(createAsyncActionGate());
 
 	const trimmedSubject = subject.trim();
+	const subjectSelection: SubjectSelection = {
+		name: subject,
+		...(personalSubjectId ? { personalSubjectId } : {}),
+		...(subjectIsOneTime ? { isOneTime: true } : {}),
+	};
+	const selectSubject = (selection: SubjectSelection) => {
+		setSubject(selection.name);
+		setPersonalSubjectId(selection.personalSubjectId);
+		setSubjectIsOneTime(selection.isOneTime === true);
+	};
 	const trimmedExamType = examTypeLabel.trim();
 	const selectedExamType = EXAM_TYPE_OPTIONS.find(
 		(examType) => examType === trimmedExamType,
@@ -359,28 +327,12 @@ export default function NewEntryScreen() {
 	const canCreateHomework = trimmedSubject.length > 0;
 	const canCreateExam = trimmedSubject.length > 0 && trimmedExamType.length > 0;
 	const canWriteEntries = Boolean(user && isConvexAuthenticated);
-	const todayDayKey = availabilityCheckTime.dayKey;
-	const examDayKey = getDayKey(plannedDate);
-	const schedulingAvailability = useQuery(
-		api.learningPlans.getSchedulingAvailability,
-		user && isConvexAuthenticated && !isHomework
-			? {
-					fromDateKey: todayDayKey,
-					fromTimeMinutes: availabilityCheckTime.timeMinutes,
-					examDateKey: examDayKey,
-				}
-			: "skip",
-	);
-	const isLearningTimeCheckLoading = schedulingAvailability === undefined;
-	const hasUsableLearningTime = schedulingAvailability?.status === "available";
 	const examStepTitle =
 		step === "examType"
 			? "Welche Art von Prüfung ist es?"
 			: step === "examDetails"
 				? "Welches Fach ist es?"
-				: step === "basics"
-					? "Wann findet die Prüfung statt?"
-					: "Ist genug Lernzeit eingeplant?";
+				: "Wann findet die Prüfung statt?";
 	const clearPendingModalOpen = useCallback(() => {
 		keyboardHideSubscriptionRef.current?.remove();
 		keyboardHideSubscriptionRef.current = null;
@@ -397,33 +349,6 @@ export default function NewEntryScreen() {
 	}, []);
 
 	useEffect(() => clearPendingModalOpen, [clearPendingModalOpen]);
-
-	useEffect(() => {
-		if (isHomework) return;
-
-		let refreshInterval: ReturnType<typeof setInterval> | null = null;
-		const refresh = () => {
-			setAvailabilityCheckTime((current) => {
-				const next = getAvailabilityCheckTime();
-				return current.dayKey === next.dayKey &&
-					current.timeMinutes === next.timeMinutes
-					? current
-					: next;
-			});
-		};
-		const refreshTimeout = setTimeout(
-			() => {
-				refresh();
-				refreshInterval = setInterval(refresh, 60_000);
-			},
-			60_000 - (Date.now() % 60_000),
-		);
-
-		return () => {
-			clearTimeout(refreshTimeout);
-			if (refreshInterval) clearInterval(refreshInterval);
-		};
-	}, [isHomework]);
 
 	const openAfterKeyboardDismiss = useCallback(
 		(open: () => void) => {
@@ -536,13 +461,22 @@ export default function NewEntryScreen() {
 			: `${trimmedSubject} ${trimmedExamType}`;
 		let createdEntryId: Id<"dayEntries"> | null = null;
 
+		const interaction = isHomework
+			? "homework.create"
+			: savedExamIdRef.current
+				? "exam.update"
+				: "exam.create";
+
 		try {
+			trackFeature(interaction, "attempted");
 			setIsCreating(true);
 			setErrorMessage(null);
-			createdEntryId = await createDayEntry({
+			const entryFields = {
 				dayKey: nextDayKey,
 				title: entryTitle,
 				subject: trimmedSubject,
+				...(personalSubjectId ? { personalSubjectId } : {}),
+				...(subjectIsOneTime ? { subjectIsOneTime: true } : {}),
 				kind: isHomework ? "Hausaufgabe" : "Leistungskontrolle",
 				...(trimmedNote ? { notes: trimmedNote } : {}),
 				...(isHomework
@@ -555,7 +489,25 @@ export default function NewEntryScreen() {
 				plannedDateLabel: formatDate(plannedDate),
 				durationMinutes: resolvedDurationMinutes,
 				...(!isHomework ? { examTypeLabel: trimmedExamType } : {}),
-			});
+			};
+			const savedExamId = savedExamIdRef.current;
+			if (!isHomework && savedExamId) {
+				await updatePendingExam({
+					id: savedExamId,
+					dayKey: nextDayKey,
+					subject: trimmedSubject,
+					personalSubjectId: personalSubjectId ?? null,
+					subjectIsOneTime,
+					examTypeLabel: trimmedExamType,
+					plannedDateLabel: formatDate(plannedDate),
+					durationMinutes: resolvedDurationMinutes,
+				});
+				createdEntryId = savedExamId;
+			} else {
+				createdEntryId = await createDayEntry(entryFields);
+				if (!isHomework) savedExamIdRef.current = createdEntryId;
+			}
+			trackFeature(interaction, "succeeded", createdEntryId);
 			if (isHomework) {
 				void capture("homework_created", {
 					day_entry_id: createdEntryId,
@@ -563,7 +515,7 @@ export default function NewEntryScreen() {
 					due_day_key: getDayKey(dueDate),
 					duration_minutes: resolvedDurationMinutes,
 				});
-			} else if (selectedExamType) {
+			} else if (selectedExamType && !savedExamId) {
 				void capture("exam_created", {
 					day_entry_id: createdEntryId,
 					planned_day_key: nextDayKey,
@@ -572,6 +524,7 @@ export default function NewEntryScreen() {
 				});
 			}
 		} catch (error) {
+			trackFeature(interaction, "failed");
 			setErrorMessage(
 				getErrorMessage(error, "Der Eintrag konnte nicht gespeichert werden."),
 			);
@@ -613,45 +566,35 @@ export default function NewEntryScreen() {
 	const createLearningPlan = async () => {
 		if (
 			!canCreateExam ||
-			!hasUsableLearningTime ||
 			isCreating ||
-			isCheckingLearningPlanAvailability ||
+			isStartingLearningPlan ||
 			!canWriteEntries
 		) {
 			return;
 		}
 
 		await entryCreationGateRef.current.run(async () => {
-			setIsCheckingLearningPlanAvailability(true);
+			setIsStartingLearningPlan(true);
 			setErrorMessage(null);
 			try {
-				const latestCheckTime = getAvailabilityCheckTime();
-				const latestAvailability = await convex.query(
-					api.learningPlans.getSchedulingAvailability,
-					{
-						fromDateKey: latestCheckTime.dayKey,
-						fromTimeMinutes: latestCheckTime.timeMinutes,
-						examDateKey: getDayKey(plannedDate),
-					},
-				);
-				if (latestAvailability.status !== "available") {
-					setAvailabilityCheckTime(latestCheckTime);
-					goToStep("learningAvailability");
-					return;
-				}
-
 				const createdExam = await createEntryWithinGate({
 					redirectToHome: false,
 				});
 				if (!createdExam?.createdEntryId) return;
 
 				const query = [
+					["fromExamEntry", "true"],
 					["examDayEntryId", createdExam.createdEntryId],
 					["subject", trimmedSubject],
+					...(personalSubjectId
+						? [["personalSubjectId", personalSubjectId] as const]
+						: []),
+					...(subjectIsOneTime ? [["subjectIsOneTime", "true"] as const] : []),
 					["examTypeLabel", trimmedExamType],
 					["examDateKey", getDayKey(plannedDate)],
 					["examDateLabel", formatDate(plannedDate)],
 					["durationMinutes", `${scheduledDurationMinutes}`],
+					["topicDescription", params.topicDescription ?? ""],
 				]
 					.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
 					.join("&");
@@ -660,45 +603,23 @@ export default function NewEntryScreen() {
 				setErrorMessage(
 					getErrorMessage(
 						error,
-						"Deine freie Lernzeit konnte nicht geprüft werden. Bitte versuche es erneut.",
+						"Deine Prüfung konnte nicht gespeichert werden. Bitte versuche es erneut.",
 					),
 				);
 			} finally {
-				setIsCheckingLearningPlanAvailability(false);
+				setIsStartingLearningPlan(false);
 			}
 		});
 	};
 
-	const saveExamWithoutPlan = async () => {
-		const createdExam = await createEntry({ redirectToHome: false });
-		if (!createdExam?.createdEntryId) return;
-
-		router.replace(`/entry/${createdExam.createdEntryId}`);
-	};
-
-	const goToStep = useCallback((nextStep: EntryStep) => {
-		scrollViewRef.current?.scrollTo({ y: 0, animated: false });
-		setStep(nextStep);
-	}, []);
-
-	const continueFromExamDate = () => {
-		if (schedulingAvailability === undefined) return;
-		goToStep("learningAvailability");
-	};
-
-	const openLearningTimes = () => {
-		const query = [
-			["type", "exam"],
-			["dayKey", examDayKey],
-			["step", "learningAvailability"],
-			["subject", trimmedSubject],
-			["examTypeLabel", trimmedExamType],
-		]
-			.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-			.join("&");
-		const returnTo = `/entry/new?${query}`;
-		router.push(withReturnTo(ROUTES.learningTimes, returnTo));
-	};
+	const goToStep = useCallback(
+		(nextStep: EntryStep) => {
+			scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+			trackFeature("entry.step_changed", "performed", undefined, nextStep);
+			setStep(nextStep);
+		},
+		[trackFeature],
+	);
 
 	const handleBack = useCallback(() => {
 		if (selectTarget) {
@@ -716,11 +637,6 @@ export default function NewEntryScreen() {
 			return true;
 		}
 
-		if (step === "learningAvailability") {
-			goToStep("basics");
-			return true;
-		}
-
 		if (step === "basics" && !isHomework) {
 			goToStep("examDetails");
 			return true;
@@ -732,23 +648,30 @@ export default function NewEntryScreen() {
 		}
 
 		if (step === "examType") {
-			goBackOrReplace(router, "/home");
+			goBackOrReplace(router, ROUTES.home);
 			return true;
 		}
 
-		goBackOrReplace(router, "/home");
+		goBackOrReplace(router, ROUTES.home);
 		return true;
 	}, [goToStep, isHomework, pickerTarget, router, selectTarget, step]);
 
-	useBackIntent(
+	const runBackIntent = useBackIntent(
 		Boolean(selectTarget || pickerTarget || !isHomework || step !== "basics"),
 		handleBack,
+		{
+			allowRouteRemoval:
+				!selectTarget &&
+				!pickerTarget &&
+				(step === "examType" || (isHomework && step === "basics")),
+		},
 	);
 	useLearningPlanCreationProgress({
 		active: !isHomework,
 		currentStep: getExamEntryCreationProgress(step),
-		onBack: handleBack,
-		title: "Prüfung eintragen",
+		onBack: runBackIntent,
+		onClose: () => dismissToOrReplace(router, ROUTES.home),
+		closeDisabled: isStartingLearningPlan || isCreating,
 	});
 
 	const scrollToFocusedField = useCallback((offsetY: number) => {
@@ -783,19 +706,12 @@ export default function NewEntryScreen() {
 					: pickerTarget === "plannedEndTime"
 						? plannedEndTime
 						: plannedDate;
-		const isExamDatePicker = !isHomework && pickerTarget === "plannedDate";
-		const examDateRange = isExamDatePicker
-			? getExamDatePickerRange({ selectedDate: plannedDate })
-			: null;
 
 		return (
 			<DateTimePickerSheet
-				display={isExamDatePicker ? "inline" : undefined}
 				visible
 				value={value}
 				mode={mode}
-				minimumDate={examDateRange?.minimumDate}
-				maximumDate={examDateRange?.maximumDate}
 				onChange={handlePickerChange}
 				onClose={closePicker}
 			/>
@@ -806,26 +722,11 @@ export default function NewEntryScreen() {
 		if (!selectTarget) return null;
 
 		return (
-			<SelectSheet
+			<SubjectPickerSheet
 				visible
-				title="Schulfach auswählen"
-				options={SUBJECT_OPTIONS}
-				selectedValue={subject}
+				selected={subjectSelection}
 				onClose={closeSelect}
-				onSelect={setSubject}
-				renderOptionIcon={(option, isSelected) => {
-					const SubjectIcon =
-						subjectIconByOption[option as keyof typeof subjectIconByOption] ??
-						BookOpen;
-
-					return (
-						<SubjectIcon
-							size={19}
-							color={isSelected ? SELECTED_OPTION_ICON_COLOR : fieldIconColor}
-							strokeWidth={2}
-						/>
-					);
-				}}
+				onSelect={selectSubject}
 			/>
 		);
 	};
@@ -853,7 +754,7 @@ export default function NewEntryScreen() {
 				{isHomework ? (
 					step === "basics" ? (
 						<>
-							<HomeworkScreenHeader title="Abgabe" onBack={handleBack} />
+							<HomeworkScreenHeader title="Abgabe" onBack={runBackIntent} />
 							<View className="mb-7">
 								<Text className="font-poppins font-semibold text-body-3 text-text">
 									Hausaufgabe eintragen
@@ -916,7 +817,7 @@ export default function NewEntryScreen() {
 						</>
 					) : (
 						<>
-							<HomeworkScreenHeader title="Erledigen" onBack={handleBack} />
+							<HomeworkScreenHeader title="Erledigen" onBack={runBackIntent} />
 							<View className="mb-5">
 								<Text className="font-poppins font-semibold text-body-3 text-text">
 									Hausaufgabe eintragen
@@ -980,12 +881,7 @@ export default function NewEntryScreen() {
 							{step === "basics" ? (
 								<ExamDateSelector
 									selectedDate={plannedDate}
-									onOpen={() => openPicker("plannedDate")}
-								/>
-							) : step === "learningAvailability" ? (
-								<LearningAvailabilityStep
-									availabilityStatus={schedulingAvailability?.status ?? null}
-									examDateLabel={formatCompactDate(plannedDate)}
+									onSelect={(date) => setPlannedDate(startOfLocalDay(date))}
 								/>
 							) : step === "examType" ? (
 								<ExamTypePicker
@@ -993,24 +889,10 @@ export default function NewEntryScreen() {
 									onSelect={setExamTypeLabel}
 								/>
 							) : (
-								<View className="gap-3" accessibilityRole="radiogroup">
-									{SUBJECT_OPTIONS.map((option) => {
-										const SubjectIcon =
-											subjectIconByOption[
-												option as keyof typeof subjectIconByOption
-											] ?? BookOpen;
-
-										return (
-											<SingleSelectOption
-												key={option}
-												Icon={SubjectIcon}
-												label={option}
-												selected={subject === option}
-												onPress={() => setSubject(option)}
-											/>
-										);
-									})}
-								</View>
+								<ExamSubjectPicker
+									selectedValue={subjectSelection}
+									onSelect={selectSubject}
+								/>
 							)}
 						</Animated.View>
 					</>
@@ -1046,56 +928,6 @@ export default function NewEntryScreen() {
 							<Text>Weiter</Text>
 						</Button>
 					</StickyActionFooter>
-				) : step === "learningAvailability" ? (
-					<StickyActionFooter bottomInset={insets.bottom}>
-						{errorMessage ? (
-							<Text
-								accessibilityRole="alert"
-								accessibilityLiveRegion="polite"
-								className="mb-3 text-center font-poppins text-body-4 text-destructive"
-							>
-								{errorMessage}
-							</Text>
-						) : null}
-						<View className="gap-3">
-							<Button
-								className="w-full"
-								disabled={
-									schedulingAvailability === undefined ||
-									isCreating ||
-									isCheckingLearningPlanAvailability ||
-									!canWriteEntries
-								}
-								onPress={() => {
-									if (hasUsableLearningTime) {
-										void createLearningPlan();
-										return;
-									}
-									openLearningTimes();
-								}}
-							>
-								{schedulingAvailability === undefined ||
-								isCheckingLearningPlanAvailability ? (
-									<ActivityIndicator color="#FFFFFF" />
-								) : (
-									<Text>
-										{hasUsableLearningTime ? "Weiter" : "Lernzeit eintragen"}
-									</Text>
-								)}
-							</Button>
-							{schedulingAvailability !== undefined &&
-							!hasUsableLearningTime ? (
-								<Button
-									className="w-full"
-									variant="neutral"
-									disabled={isCreating || !canWriteEntries}
-									onPress={() => void saveExamWithoutPlan()}
-								>
-									<Text>Ohne Lernplan speichern</Text>
-								</Button>
-							) : null}
-						</View>
-					</StickyActionFooter>
 				) : (
 					<StickyActionFooter bottomInset={insets.bottom}>
 						{errorMessage ? (
@@ -1110,15 +942,13 @@ export default function NewEntryScreen() {
 						<Button
 							className="w-full"
 							accessibilityState={{
-								busy: step === "basics" && isLearningTimeCheckLoading,
+								busy: step === "basics" && isStartingLearningPlan,
 							}}
 							disabled={
 								(step === "examType" && !trimmedExamType) ||
 								(step === "examDetails" && !trimmedSubject) ||
 								(step === "basics" &&
-									(isLearningTimeCheckLoading ||
-										isCreating ||
-										!canWriteEntries))
+									(isStartingLearningPlan || isCreating || !canWriteEntries))
 							}
 							onPress={() => {
 								if (step === "examType") {
@@ -1130,14 +960,18 @@ export default function NewEntryScreen() {
 									return;
 								}
 								if (step === "basics") {
-									continueFromExamDate();
+									void createLearningPlan();
 								}
 							}}
 						>
-							{step === "basics" && isLearningTimeCheckLoading ? (
+							{step === "basics" && isStartingLearningPlan ? (
 								<ActivityIndicator color="#FFFFFF" />
 							) : (
-								<Text>Weiter</Text>
+								<Text className="shrink text-center">
+									{step === "basics" && Platform.OS !== "android"
+										? `Weiter mit ${formatAccessibleExamDate(plannedDate)}`
+										: "Weiter"}
+								</Text>
 							)}
 						</Button>
 					</StickyActionFooter>

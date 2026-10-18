@@ -5,27 +5,18 @@ import { File } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useMemo, useRef, useState } from "react";
-import {
-	ActivityIndicator,
-	Platform,
-	View,
-	type ViewStyle,
-} from "react-native";
+import { ActivityIndicator, Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
+import { ActionSheet } from "~/components/ui/action-sheet";
 import { Button } from "~/components/ui/button";
 import {
 	type DateTimePickerEvent,
 	DateTimePickerSheet,
 } from "~/components/ui/date-time-picker-sheet";
-import {
-	Attachment,
-	CalendarDays,
-	Check,
-	ScanImage,
-} from "~/components/ui/icon";
+import { Attachment, Check, ScanImage } from "~/components/ui/icon";
 import {
 	PortraitContent,
 	useContentSizeLayout,
@@ -37,6 +28,8 @@ import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
 import { getUploadFailureMessage } from "~/features/learning-plans/utils";
+import { SubjectPickerSheet } from "~/features/subjects/subject-picker";
+import type { SubjectSelection } from "~/features/subjects/use-subject-options";
 import {
 	createEmptyTimetableLesson,
 	getTimetableLessonError,
@@ -45,11 +38,13 @@ import {
 	TIMETABLE_WEEKDAYS,
 	type TimetableLessonDraft,
 } from "~/features/timetable/timetable-editor";
+import { TimetableEntry } from "~/features/timetable/timetable-entry";
 import { TimetableWeekEditor } from "~/features/timetable/timetable-week-editor";
 import { ROUTES } from "~/lib/routes";
 import { triggerSuccessHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
 import { validateUploadFile } from "~/lib/upload-policy";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { getUserFacingErrorMessage } from "~/lib/user-facing-errors";
 
 const TIMETABLE_FILE_TYPES = [
@@ -63,10 +58,7 @@ const UPLOAD_COMPLETION_FAILURE_MESSAGE =
 	"Die Datei wurde übertragen, aber Dayova konnte den Upload nicht abschließen. Bitte versuche es erneut.";
 const TIMETABLE_WEEKDAY_VALUES = TIMETABLE_WEEKDAYS.map((day) => day.value);
 
-// This is a native rendering control with no NativeWind equivalent.
-const continuousBorderStyle = {
-	borderCurve: "continuous",
-} satisfies ViewStyle;
+type ImportSource = "camera" | "files";
 
 type TimePickerTarget = {
 	lessonKey: string;
@@ -97,28 +89,6 @@ const formatTime = (date: Date) =>
 		.getMinutes()
 		.toString()
 		.padStart(2, "0")}`;
-
-function TimetableIntro() {
-	const { colors } = useDayovaTheme();
-
-	return (
-		<View
-			className="overflow-hidden rounded-card border border-border bg-card p-6"
-			style={continuousBorderStyle}
-		>
-			<View className="h-14 w-14 items-center justify-center rounded-full bg-system-subtle">
-				<CalendarDays size={26} color={colors.primaryStrong} strokeWidth={2} />
-			</View>
-			<Text className="mt-5 font-poppins font-semibold text-heading-2 text-text">
-				Deine Schulzeiten im Tagesplan
-			</Text>
-			<Text className="mt-3 font-poppins text-body-3 text-secondary-text">
-				Lade ein Bild oder PDF hoch. Prüfe die erkannten Stunden, bevor sie bei
-				„Heute“ erscheinen und Lernzeiten blockieren.
-			</Text>
-		</View>
-	);
-}
 
 function TimetableStatus({
 	status,
@@ -177,48 +147,10 @@ function TimetableStatus({
 	return null;
 }
 
-function TimetableSourceActions({
-	isBusy,
-	isProcessing,
-	onPickFile,
-	onTakePhoto,
-}: {
-	isBusy: boolean;
-	isProcessing: boolean;
-	onPickFile: () => void;
-	onTakePhoto: () => void;
-}) {
-	const { colors } = useDayovaTheme();
-
-	return (
-		<View className="flex-row gap-3">
-			<Button
-				accessibilityLabel="Stundenplan als Datei auswählen"
-				className="flex-1 px-4"
-				size="sm"
-				disabled={isBusy || isProcessing}
-				onPress={onPickFile}
-			>
-				<Attachment size={19} color="#FFFFFF" strokeWidth={2} />
-				<Text>Datei</Text>
-			</Button>
-			<Button
-				accessibilityLabel="Stundenplan fotografieren"
-				className="flex-1 px-4"
-				size="sm"
-				variant="neutral"
-				disabled={isBusy || isProcessing}
-				onPress={onTakePhoto}
-			>
-				<ScanImage size={19} color={colors.background} strokeWidth={2} />
-				<Text>Foto</Text>
-			</Button>
-		</View>
-	);
-}
-
 export default function TimetableScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
+	const { colors } = useDayovaTheme();
 	const insets = useSafeAreaInsets();
 	const contentSizeLayout = useContentSizeLayout({
 		requestedHorizontalPadding: 24,
@@ -241,12 +173,19 @@ export default function TimetableScreen() {
 		timetableState?.draft ?? timetableState?.active ?? null;
 	const [editor, setEditor] = useState<EditorSession | null>(null);
 	const [isBusy, setIsBusy] = useState(false);
+	const [isImportSheetVisible, setIsImportSheetVisible] = useState(false);
+	const [openingImportSource, setOpeningImportSource] =
+		useState<ImportSource | null>(null);
+	const pendingImportSourceRef = useRef<ImportSource | null>(null);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [timePickerTarget, setTimePickerTarget] =
 		useState<TimePickerTarget | null>(null);
 	const [dayPickerLessonKey, setDayPickerLessonKey] = useState<string | null>(
 		null,
 	);
+	const [subjectPickerLessonKey, setSubjectPickerLessonKey] = useState<
+		string | null
+	>(null);
 	const [selectedDay, setSelectedDay] = useState(1);
 	const taskInFlightRef = useRef(false);
 	const manualLessonKeyRef = useRef(0);
@@ -257,6 +196,10 @@ export default function TimetableScreen() {
 				key: lesson.id,
 				dayOfWeek: lesson.dayOfWeek,
 				subject: lesson.subject,
+				...(lesson.personalSubjectId
+					? { personalSubjectId: lesson.personalSubjectId }
+					: {}),
+				...(lesson.subjectIsOneTime ? { subjectIsOneTime: true } : {}),
 				startTime: lesson.startTime,
 				endTime: lesson.endTime,
 				room: lesson.room ?? "",
@@ -269,11 +212,19 @@ export default function TimetableScreen() {
 			: serverLessons;
 	const validationError = getTimetableLessonError(lessons);
 	const isProcessing = selectedTimetable?.status === "processing";
+	const isImportDisabled =
+		!user ||
+		!isAuthenticated ||
+		timetableState === undefined ||
+		isBusy ||
+		isProcessing ||
+		openingImportSource !== null;
 	const canSave =
 		Boolean(selectedTimetable) &&
 		!validationError &&
 		!isBusy &&
 		!isProcessing &&
+		!openingImportSource &&
 		isAuthenticated;
 
 	const updateLessons = (
@@ -332,6 +283,7 @@ export default function TimetableScreen() {
 	const addManualLesson = (dayOfWeek = selectedDay) => {
 		void runTask(async () => {
 			const timetableId = selectedTimetable?.id ?? (await ensureDraft());
+			trackFeature("timetable.lesson_added");
 			manualLessonKeyRef.current += 1;
 			const currentLessons =
 				selectedTimetable?.id === timetableId ? lessons : [];
@@ -350,66 +302,73 @@ export default function TimetableScreen() {
 
 	const uploadAndExtract = async (asset: UploadAsset) => {
 		if (!(await requestAiConsent())) return;
-		const file = new File(asset.uri);
-		const fileSizeBytes = asset.size ?? file.info().size ?? 0;
-		const fileType = asset.mimeType || "application/octet-stream";
-		const validation = validateUploadFile({
-			name: asset.name,
-			size: fileSizeBytes,
-		});
-		if (!validation.valid) throw new Error(validation.message);
-
-		const timetableId = await ensureDraft();
-		const uploadData = await generateUploadUrl({ timetableId });
-		const controller = new AbortController();
-		const timeout = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
-		let response: Response;
+		trackFeature("timetable.import", "attempted");
 		try {
-			response = await fetch(uploadData.uploadUrl, {
-				method: uploadData.storageProvider === "r2" ? "PUT" : "POST",
-				headers: { "Content-Type": fileType },
-				body: file,
-				signal: controller.signal,
+			const file = new File(asset.uri);
+			const fileSizeBytes = asset.size ?? file.info().size ?? 0;
+			const fileType = asset.mimeType || "application/octet-stream";
+			const validation = validateUploadFile({
+				name: asset.name,
+				size: fileSizeBytes,
 			});
-		} finally {
-			clearTimeout(timeout);
-		}
-		const responseBody = await response.text();
-		if (!response.ok) {
-			throw new Error(
-				getUploadFailureMessage(
-					uploadData.storageProvider,
-					response,
-					responseBody,
-				),
-			);
-		}
-		let storageId = uploadData.storageId;
-		if (!storageId) {
-			try {
-				storageId =
-					(JSON.parse(responseBody) as { storageId?: string }).storageId ??
-					null;
-			} catch {
-				storageId = null;
-			}
-		}
-		if (!storageId) throw new Error(UPLOAD_COMPLETION_FAILURE_MESSAGE);
+			if (!validation.valid) throw new Error(validation.message);
 
-		await registerUploadedDocument({
-			timetableId,
-			uploadToken: uploadData.uploadToken,
-			storageId,
-			fileName: asset.name,
-			fileType,
-			fileSizeBytes,
-		});
-		await extractTimetable({ timetableId });
-		setEditor(null);
+			const timetableId = await ensureDraft();
+			const uploadData = await generateUploadUrl({ timetableId });
+			const controller = new AbortController();
+			const timeout = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
+			let response: Response;
+			try {
+				response = await fetch(uploadData.uploadUrl, {
+					method: uploadData.storageProvider === "r2" ? "PUT" : "POST",
+					headers: { "Content-Type": fileType },
+					body: file,
+					signal: controller.signal,
+				});
+			} finally {
+				clearTimeout(timeout);
+			}
+			const responseBody = await response.text();
+			if (!response.ok) {
+				throw new Error(
+					getUploadFailureMessage(
+						uploadData.storageProvider,
+						response,
+						responseBody,
+					),
+				);
+			}
+			let storageId = uploadData.storageId;
+			if (!storageId) {
+				try {
+					storageId =
+						(JSON.parse(responseBody) as { storageId?: string }).storageId ??
+						null;
+				} catch {
+					storageId = null;
+				}
+			}
+			if (!storageId) throw new Error(UPLOAD_COMPLETION_FAILURE_MESSAGE);
+
+			await registerUploadedDocument({
+				timetableId,
+				uploadToken: uploadData.uploadToken,
+				storageId,
+				fileName: asset.name,
+				fileType,
+				fileSizeBytes,
+			});
+			await extractTimetable({ timetableId });
+			trackFeature("timetable.import", "succeeded", timetableId);
+			setEditor(null);
+		} catch (error) {
+			trackFeature("timetable.import", "failed");
+			throw error;
+		}
 	};
 
 	const pickFile = () => {
-		void runTask(async () => {
+		return runTask(async () => {
 			const result = await DocumentPicker.getDocumentAsync({
 				type: TIMETABLE_FILE_TYPES,
 				multiple: false,
@@ -428,7 +387,7 @@ export default function TimetableScreen() {
 	};
 
 	const takePhoto = () => {
-		void runTask(async () => {
+		return runTask(async () => {
 			const permission = await ImagePicker.requestCameraPermissionsAsync();
 			if (!permission.granted) {
 				throw new Error(
@@ -451,19 +410,64 @@ export default function TimetableScreen() {
 		});
 	};
 
+	const openImportSheet = () => {
+		if (isImportDisabled || taskInFlightRef.current) return;
+		setIsImportSheetVisible(true);
+	};
+
+	const closeImportSheet = () => {
+		pendingImportSourceRef.current = null;
+		setOpeningImportSource(null);
+		setIsImportSheetVisible(false);
+	};
+
+	const chooseImportSource = (source: ImportSource) => {
+		if (
+			isImportDisabled ||
+			taskInFlightRef.current ||
+			pendingImportSourceRef.current
+		)
+			return;
+		pendingImportSourceRef.current = source;
+		setOpeningImportSource(source);
+		setIsImportSheetVisible(false);
+	};
+
+	const runPendingImport = () => {
+		const source = pendingImportSourceRef.current;
+		pendingImportSourceRef.current = null;
+		if (!source) return;
+		if (!user || !isAuthenticated || isBusy || isProcessing) {
+			setOpeningImportSource(null);
+			return;
+		}
+		// Native pickers must wait for the sheet's actual dismissal, especially on iOS.
+		const importTask = source === "files" ? pickFile() : takePhoto();
+		void importTask.finally(() => setOpeningImportSource(null));
+	};
+
 	const save = () => {
 		if (!selectedTimetable || validationError) return;
 		void runTask(async () => {
+			trackFeature("timetable.save", "attempted");
 			await saveAndActivate({
 				timetableId: selectedTimetable.id,
 				lessons: sortTimetableLessons(lessons).map((lesson) => ({
 					dayOfWeek: lesson.dayOfWeek,
 					subject: lesson.subject,
+					...(lesson.personalSubjectId
+						? { personalSubjectId: lesson.personalSubjectId }
+						: {}),
+					...(lesson.subjectIsOneTime ? { subjectIsOneTime: true } : {}),
 					startTime: lesson.startTime,
 					endTime: lesson.endTime,
 					...(lesson.room.trim() ? { room: lesson.room.trim() } : {}),
 				})),
+			}).catch((error: unknown) => {
+				trackFeature("timetable.save", "failed", selectedTimetable.id);
+				throw error;
 			});
+			trackFeature("timetable.save", "succeeded", selectedTimetable.id);
 			setEditor(null);
 			router.replace(ROUTES.home);
 			void triggerSuccessHaptic({ platform: Platform.OS });
@@ -480,11 +484,11 @@ export default function TimetableScreen() {
 	const activeDayPickerLesson = dayPickerLessonKey
 		? lessons.find((lesson) => lesson.key === dayPickerLessonKey)
 		: null;
+	const activeSubjectPickerLesson = subjectPickerLessonKey
+		? lessons.find((lesson) => lesson.key === subjectPickerLessonKey)
+		: null;
 	const isAddDisabled =
-		!isAuthenticated ||
-		isBusy ||
-		isProcessing ||
-		lessons.length >= MAX_TIMETABLE_LESSONS;
+		isImportDisabled || lessons.length >= MAX_TIMETABLE_LESSONS;
 	const saveAccessibilityLabel =
 		selectedTimetable?.status === "active"
 			? "Änderungen am Stundenplan speichern"
@@ -570,24 +574,13 @@ export default function TimetableScreen() {
 					) : null}
 
 					{lessons.length === 0 ? (
-						<>
-							<TimetableIntro />
-							<TimetableSourceActions
-								isBusy={isBusy}
-								isProcessing={isProcessing}
-								onPickFile={pickFile}
-								onTakePhoto={takePhoto}
-							/>
-							<Button
-								accessibilityLabel="Unterrichtsstunde manuell hinzufügen"
-								disabled={isAddDisabled}
-								size="sm"
-								variant="outline"
-								onPress={() => addManualLesson(selectedDay)}
-							>
-								<Text>Stunde manuell hinzufügen</Text>
-							</Button>
-						</>
+						<TimetableEntry
+							isImportDisabled={isImportDisabled}
+							isManualDisabled={isAddDisabled}
+							isOpeningImport={openingImportSource !== null}
+							onImport={openImportSheet}
+							onAddManualLesson={() => addManualLesson(selectedDay)}
+						/>
 					) : (
 						<>
 							{validationError ? (
@@ -606,10 +599,14 @@ export default function TimetableScreen() {
 								lessons={lessons}
 								selectedDay={selectedDay}
 								isAddDisabled={isAddDisabled}
-								onSelectedDayChange={setSelectedDay}
+								onSelectedDayChange={(day) => {
+									trackFeature("timetable.day_selected");
+									setSelectedDay(day);
+								}}
 								onAddLesson={addManualLesson}
 								onChangeLesson={updateLesson}
 								onRemoveLesson={(lessonKey) => {
+									trackFeature("timetable.lesson_removed");
 									if (!selectedTimetable) return;
 									updateLessons(selectedTimetable.id, (current) =>
 										current.filter((lesson) => lesson.key !== lessonKey),
@@ -619,20 +616,65 @@ export default function TimetableScreen() {
 									setTimePickerTarget({ lessonKey, field })
 								}
 								onOpenDayPicker={setDayPickerLessonKey}
+								onOpenSubjectPicker={setSubjectPickerLessonKey}
 							/>
 
 							<View className="border-border border-t pt-5">
-								<TimetableSourceActions
-									isBusy={isBusy}
-									isProcessing={isProcessing}
-									onPickFile={pickFile}
-									onTakePhoto={takePhoto}
-								/>
+								<Button
+									accessibilityLabel="Neuen Stundenplan importieren"
+									accessibilityHint="Öffnet die Auswahl zum Scannen oder Hochladen."
+									className="shadow-none"
+									disabled={isImportDisabled}
+									variant="ghost"
+									onPress={openImportSheet}
+								>
+									<Attachment size={20} color={colors.text} strokeWidth={2} />
+									<Text className="shrink text-center">
+										Neuen Plan importieren
+									</Text>
+								</Button>
 							</View>
 						</>
 					)}
 				</View>
 			</ScreenScroll>
+
+			<ActionSheet<ImportSource>
+				visible={isImportSheetVisible}
+				title="Stundenplan importieren"
+				description="Fotografiere deinen Stundenplan oder wähle ein Bild oder PDF."
+				layout={contentSizeLayout.shouldStackInlineContent ? "row" : "tile"}
+				onSelect={chooseImportSource}
+				onClose={closeImportSheet}
+				onDismiss={runPendingImport}
+				closeAccessibilityLabel="Stundenplan-Import schließen"
+				options={[
+					{
+						value: "camera",
+						title: "Scannen",
+						disabled: isImportDisabled,
+						icon: (
+							<ScanImage
+								size={28}
+								color={colors.primaryStrong}
+								strokeWidth={1.8}
+							/>
+						),
+					},
+					{
+						value: "files",
+						title: "Dateien",
+						disabled: isImportDisabled,
+						icon: (
+							<Attachment
+								size={28}
+								color={colors.primaryStrong}
+								strokeWidth={1.8}
+							/>
+						),
+					},
+				]}
+			/>
 
 			<DateTimePickerSheet
 				visible={Boolean(timePickerTarget)}
@@ -658,6 +700,30 @@ export default function TimetableScreen() {
 					setSelectedDay(dayOfWeek);
 				}}
 				onClose={() => setDayPickerLessonKey(null)}
+			/>
+
+			<SubjectPickerSheet
+				visible={Boolean(activeSubjectPickerLesson)}
+				selected={{
+					name: activeSubjectPickerLesson?.subject ?? "",
+					...(activeSubjectPickerLesson?.personalSubjectId
+						? {
+								personalSubjectId: activeSubjectPickerLesson.personalSubjectId,
+							}
+						: {}),
+					...(activeSubjectPickerLesson?.subjectIsOneTime
+						? { isOneTime: true }
+						: {}),
+				}}
+				onSelect={(selection: SubjectSelection) => {
+					if (!activeSubjectPickerLesson) return;
+					updateLesson(activeSubjectPickerLesson.key, {
+						subject: selection.name,
+						personalSubjectId: selection.personalSubjectId,
+						subjectIsOneTime: selection.isOneTime,
+					});
+				}}
+				onClose={() => setSubjectPickerLessonKey(null)}
 			/>
 		</Screen>
 	);

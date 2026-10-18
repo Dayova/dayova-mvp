@@ -12,7 +12,8 @@ Notion is Dayova's main internal documentation and knowledge workspace. Keep thi
   provider UI, dependencies, or native capabilities without a new product and
   authentication decision that covers cross-platform account linking and
   account lifecycle behavior.
-- Launch onboarding restores a three-page product explanation, then collects
+- Launch onboarding opens with four product explanation pages (getting started, learning times,
+  material upload, and the scheduled learning path), then collects
   duration, recurring weekdays, and a start time. After authentication these
   values create the `userLearningTimes` windows consumed by learning-plan
   scheduling; local copy changes alone are not accepted as personalization.
@@ -22,7 +23,7 @@ Notion is Dayova's main internal documentation and knowledge workspace. Keep thi
 - Onboarding profile/account steps are native history entries in the existing
   auth stack. Answers and field errors live above route screens; the route
   history, not a parallel `activeIndex`, owns forward/back navigation. The
-  three homogeneous intro pages remain one native pager route, and a cold
+  four homogeneous intro pages remain one native pager route, and a cold
   direct step URL falls back to the auth choice. See
   [mobile-app ADR 0003](../mobile-app/adr/0003-model-onboarding-as-native-stack-history.md).
 - Clerk `unsafeMetadata.schoolType` stores only the stable bounded `Schulart`
@@ -38,6 +39,14 @@ Notion is Dayova's main internal documentation and knowledge workspace. Keep thi
   onboarding retries and the trial handoff, and `useAccountActions` for other
   authenticated account mutations. Screens must not depend on a broader auth
   surface than they use.
+- Profile readiness records the successful initial sync for the current account.
+  Same-account profile refreshes keep that readiness while saving updated fields;
+  sign-out and account changes reset it. Background work must not restart the
+  global route-loading mask. Access-query refreshes retain the last verified
+  result for the current mounted account, bounded by the existing expiry/offline
+  policy, and apply confirmed denials immediately. Initial loading and confirmed
+  authentication loss still mask protected routes. `session-refresh.ui.test.tsx`
+  exercises these contracts through the real auth, access, and navigation providers.
 - Native Clerk tokens always use Clerk's secure persistent Expo token cache.
   There is no `Angemeldet bleiben` preference or memory-only cache path.
 - Pending onboarding persistence uses a separate outbox. Native builds store it

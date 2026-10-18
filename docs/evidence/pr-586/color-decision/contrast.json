@@ -1,0 +1,261 @@
+{
+  "method": "WCAG 2.2 sRGB relative luminance; opaque settled token colors, not anti-aliased edge pixels or animation frames. Outline is supplementary to the check shape; its number is not a whole-control conformance verdict.",
+  "rows": [
+    {
+      "theme": "light",
+      "option": "A-original",
+      "element": "letter",
+      "foreground": "#FFFFFF",
+      "background": "#00BAFF",
+      "ratio": 2.2181,
+      "reference_threshold": 4.5,
+      "meets_threshold": false
+    },
+    {
+      "theme": "light",
+      "option": "A-original",
+      "element": "checkmark",
+      "foreground": "#FFFFFF",
+      "background": "#00BAFF",
+      "ratio": 2.2181,
+      "reference_threshold": 3.0,
+      "meets_threshold": false
+    },
+    {
+      "theme": "light",
+      "option": "A-original",
+      "element": "answer text",
+      "foreground": "#00BAFF",
+      "background": "#F1F7FB",
+      "ratio": 2.0531,
+      "reference_threshold": 4.5,
+      "meets_threshold": false
+    },
+    {
+      "theme": "light",
+      "option": "A-original",
+      "element": "outline (supplementary)",
+      "foreground": "#00BAFF",
+      "background": "#F1F7FB",
+      "ratio": 2.0531,
+      "reference_threshold": 3.0,
+      "meets_threshold": false
+    },
+    {
+      "theme": "light",
+      "option": "B-current",
+      "element": "letter",
+      "foreground": "#1A1A1A",
+      "background": "#00BAFF",
+      "ratio": 7.8465,
+      "reference_threshold": 4.5,
+      "meets_threshold": true
+    },
+    {
+      "theme": "light",
+      "option": "B-current",
+      "element": "checkmark",
+      "foreground": "#1A1A1A",
+      "background": "#00BAFF",
+      "ratio": 7.8465,
+      "reference_threshold": 3.0,
+      "meets_threshold": true
+    },
+    {
+      "theme": "light",
+      "option": "B-current",
+      "element": "answer text",
+      "foreground": "#1A1A1A",
+      "background": "#F1F7FB",
+      "ratio": 16.1093,
+      "reference_threshold": 4.5,
+      "meets_threshold": true
+    },
+    {
+      "theme": "light",
+      "option": "B-current",
+      "element": "outline (supplementary)",
+      "foreground": "#00BAFF",
+      "background": "#F1F7FB",
+      "ratio": 2.0531,
+      "reference_threshold": 3.0,
+      "meets_threshold": false
+    },
+    {
+      "theme": "light",
+      "option": "C-white-on-darker-blue",
+      "element": "letter",
+      "foreground": "#FFFFFF",
+      "background": "#007DA8",
+      "ratio": 4.6678,
+      "reference_threshold": 4.5,
+      "meets_threshold": true
+    },
+    {
+      "theme": "light",
+      "option": "C-white-on-darker-blue",
+      "element": "checkmark",
+      "foreground": "#FFFFFF",
+      "background": "#007DA8",
+      "ratio": 4.6678,
+      "reference_threshold": 3.0,
+      "meets_threshold": true
+    },
+    {
+      "theme": "light",
+      "option": "C-white-on-darker-blue",
+      "element": "answer text",
+      "foreground": "#1A1A1A",
+      "background": "#F1F7FB",
+      "ratio": 16.1093,
+      "reference_threshold": 4.5,
+      "meets_threshold": true
+    },
+    {
+      "theme": "light",
+      "option": "C-white-on-darker-blue",
+      "element": "outline (supplementary)",
+      "foreground": "#007DA8",
+      "background": "#F1F7FB",
+      "ratio": 4.3205,
+      "reference_threshold": 3.0,
+      "meets_threshold": true
+    },
+    {
+      "theme": "light",
+      "option": "existing primaryStrong sanity check",
+      "element": "white letter",
+      "foreground": "#FFFFFF",
+      "background": "#00A0E6",
+      "ratio": 2.9285
+    },
+    {
+      "theme": "dark",
+      "option": "A-original",
+      "element": "letter",
+      "foreground": "#FFFFFF",
+      "background": "#00BAFF",
+      "ratio": 2.2181,
+      "reference_threshold": 4.5,
+      "meets_threshold": false
+    },
+    {
+      "theme": "dark",
+      "option": "A-original",
+      "element": "checkmark",
+      "foreground": "#FFFFFF",
+      "background": "#00BAFF",
+      "ratio": 2.2181,
+      "reference_threshold": 3.0,
+      "meets_threshold": false
+    },
+    {
+      "theme": "dark",
+      "option": "A-original",
+      "element": "answer text",
+      "foreground": "#00BAFF",
+      "background": "#102E42",
+      "ratio": 6.3477,
+      "reference_threshold": 4.5,
+      "meets_threshold": true
+    },
+    {
+      "theme": "dark",
+      "option": "A-original",
+      "element": "outline (supplementary)",
+      "foreground": "#00BAFF",
+      "background": "#102E42",
+      "ratio": 6.3477,
+      "reference_threshold": 3.0,
+      "meets_threshold": true
+    },
+    {
+      "theme": "dark",
+      "option": "B-current",
+      "element": "letter",
+      "foreground": "#1A1A1A",
+      "background": "#00BAFF",
+      "ratio": 7.8465,
+      "reference_threshold": 4.5,
+      "meets_threshold": true
+    },
+    {
+      "theme": "dark",
+      "option": "B-current",
+      "element": "checkmark",
+      "foreground": "#1A1A1A",
+      "background": "#00BAFF",
+      "ratio": 7.8465,
+      "reference_threshold": 3.0,
+      "meets_threshold": true
+    },
+    {
+      "theme": "dark",
+      "option": "B-current",
+      "element": "answer text",
+      "foreground": "#EEEBE8",
+      "background": "#102E42",
+      "ratio": 11.8565,
+      "reference_threshold": 4.5,
+      "meets_threshold": true
+    },
+    {
+      "theme": "dark",
+      "option": "B-current",
+      "element": "outline (supplementary)",
+      "foreground": "#00BAFF",
+      "background": "#102E42",
+      "ratio": 6.3477,
+      "reference_threshold": 3.0,
+      "meets_threshold": true
+    },
+    {
+      "theme": "dark",
+      "option": "C-white-on-darker-blue",
+      "element": "letter",
+      "foreground": "#FFFFFF",
+      "background": "#007DA8",
+      "ratio": 4.6678,
+      "reference_threshold": 4.5,
+      "meets_threshold": true
+    },
+    {
+      "theme": "dark",
+      "option": "C-white-on-darker-blue",
+      "element": "checkmark",
+      "foreground": "#FFFFFF",
+      "background": "#007DA8",
+      "ratio": 4.6678,
+      "reference_threshold": 3.0,
+      "meets_threshold": true
+    },
+    {
+      "theme": "dark",
+      "option": "C-white-on-darker-blue",
+      "element": "answer text",
+      "foreground": "#EEEBE8",
+      "background": "#102E42",
+      "ratio": 11.8565,
+      "reference_threshold": 4.5,
+      "meets_threshold": true
+    },
+    {
+      "theme": "dark",
+      "option": "C-white-on-darker-blue",
+      "element": "outline (supplementary)",
+      "foreground": "#007DA8",
+      "background": "#102E42",
+      "ratio": 3.0163,
+      "reference_threshold": 3.0,
+      "meets_threshold": true
+    },
+    {
+      "theme": "dark",
+      "option": "existing primaryStrong sanity check",
+      "element": "white letter",
+      "foreground": "#FFFFFF",
+      "background": "#29BEFF",
+      "ratio": 2.1204
+    }
+  ]
+}

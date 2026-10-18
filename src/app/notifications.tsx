@@ -1,12 +1,7 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import {
-	ActivityIndicator,
-	Linking,
-	TouchableOpacity,
-	View,
-} from "react-native";
+import { ActivityIndicator, Linking, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
 	Easing,
@@ -24,6 +19,7 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { NotificationDeliveryInfoSheet } from "~/components/notification-delivery-info-sheet";
 import { ScreenHeader as Header } from "~/components/screen-header";
+import { FeedbackTouchableOpacity } from "~/components/ui/feedback-pressable";
 import {
 	BellOff,
 	BookOpen,
@@ -236,7 +232,6 @@ function NotificationCard({
 			className="my-1 rounded-[24px]"
 			exiting={NOTIFICATION_EXIT}
 			layout={NOTIFICATION_LAYOUT}
-			style={{ boxShadow: "0 8px 18px rgba(20, 28, 48, 0.08)" }}
 		>
 			<Animated.View
 				pointerEvents="none"
@@ -264,7 +259,7 @@ function NotificationCard({
 					onLayout={({ nativeEvent }) => {
 						cardWidth.set(nativeEvent.layout.width);
 					}}
-					className="flex-row gap-3 rounded-[24px] bg-card px-4 py-6"
+					className="flex-row gap-3 rounded-[24px] border border-border bg-card px-4 py-6"
 					// Reanimated swipe offset is runtime state.
 					style={cardAnimatedStyle}
 				>
@@ -362,7 +357,7 @@ export default function NotificationsScreen() {
 				<View className="gap-5">
 					<CategoryTabs value={category} onChange={setCategory} />
 					{pushDeliveryState.showDisabledStatus ? (
-						<TouchableOpacity
+						<FeedbackTouchableOpacity
 							accessibilityLabel="Push-Mitteilungen sind aus. Details öffnen"
 							accessibilityRole="button"
 							activeOpacity={0.72}
@@ -377,7 +372,7 @@ export default function NotificationsScreen() {
 							<Text className="font-poppins font-semibold text-body-4 text-secondary-text">
 								Push aus
 							</Text>
-						</TouchableOpacity>
+						</FeedbackTouchableOpacity>
 					) : null}
 
 					{inbox === null ? (

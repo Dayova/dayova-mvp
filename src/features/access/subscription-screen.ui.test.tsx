@@ -3,7 +3,34 @@ import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import { SubscriptionScreen } from "./subscription-screen";
 
+jest.mock("~/lib/theme", () => ({
+	useDayovaTheme: () => ({ colors: { text: "#1A1A1A" } }),
+}));
+
+jest.mock("~/components/ui/icon", () => ({
+	ArrowLeft: () => null,
+	Check: () => null,
+}));
+
 const mockBack = jest.fn();
+const mockTrackFeature = jest.fn();
+jest.mock("~/lib/use-feature-analytics", () => ({
+	useFeatureAnalytics: () => mockTrackFeature,
+}));
+const mockOpenExternalUrl = jest.fn(async (_url?: string) => true);
+
+jest.mock("~/lib/open-external-url", () => ({
+	openExternalUrl: (url?: string) => mockOpenExternalUrl(url),
+}));
+jest.mock("~/components/ui/dayova-sheet-frame", () => ({
+	DayovaSheetFrame: ({
+		visible,
+		children,
+	}: {
+		visible: boolean;
+		children: ReactNode;
+	}) => (visible ? children : null),
+}));
 const mockReplace = jest.fn();
 const storePlans = [
 	{
@@ -22,7 +49,9 @@ const storePlans = [
 	},
 ];
 const mockGetPlans = jest.fn(async () => storePlans);
-const mockPurchase = jest.fn(async () => ({ status: "purchased" as const }));
+const mockPurchase = jest.fn<
+	() => Promise<{ status: "purchased" | "cancelled" | "notEntitled" }>
+>(async () => ({ status: "purchased" }));
 const mockRestore = jest.fn(async () => ({ status: "purchased" as const }));
 const mockRefreshPaidAccess = jest.fn(async () => true);
 let mockCanGoBack = true;
@@ -98,6 +127,27 @@ jest.mock("~/lib/runtime-config", () => ({
 }));
 
 describe("SubscriptionScreen", () => {
+	test.each([
+		"failed",
+		"empty",
+	])("offers contact support when Store plans are %s", async (state) => {
+		if (state === "failed")
+			mockGetPlans.mockRejectedValueOnce(new Error("Store unavailable"));
+		else mockGetPlans.mockResolvedValueOnce([]);
+		const screen = await render(<SubscriptionScreen />);
+		const contact = await screen.findByRole("button", {
+			name: "Support kontaktieren",
+		});
+		expect(screen.getByTestId("subscription-checkout-button")).toBeDisabled();
+		await fireEvent.press(contact);
+		expect(mockOpenExternalUrl).toHaveBeenCalledWith(
+			expect.stringContaining("mailto:kontakt@dayova.de?"),
+		);
+		expect(
+			decodeURIComponent(mockOpenExternalUrl.mock.calls[0][0] ?? ""),
+		).toContain("Bereich: Abonnement");
+	});
+
 	test("shows only localized Store plans and complete billing amounts", async () => {
 		const screen = await render(<SubscriptionScreen />);
 
@@ -135,9 +185,50 @@ describe("SubscriptionScreen", () => {
 
 		await waitFor(() => {
 			expect(mockPurchase).toHaveBeenCalledWith("annual");
+			expect(mockTrackFeature).toHaveBeenCalledWith(
+				"subscription.checkout",
+				"attempted",
+				undefined,
+				"annual",
+			);
+			expect(mockTrackFeature).toHaveBeenCalledWith(
+				"subscription.checkout",
+				"succeeded",
+				undefined,
+				"annual",
+			);
 			expect(mockRefreshPaidAccess).toHaveBeenCalledTimes(1);
 			expect(mockReplace).toHaveBeenCalledWith("/subscription-success");
 		});
+	});
+
+	test("records cancellation without reporting a successful purchase", async () => {
+		mockPurchase.mockResolvedValue({ status: "cancelled" });
+		const screen = await render(<SubscriptionScreen />);
+		await screen.findByRole("radio", { name: /Jährlich, 155,88 €/ });
+		await act(async () =>
+			fireEvent.press(screen.getByTestId("subscription-checkout-button")),
+		);
+		expect(mockTrackFeature.mock.calls).toEqual([
+			["subscription.checkout", "attempted", undefined, "monthly"],
+			["subscription.checkout", "cancelled", undefined, "monthly"],
+		]);
+		expect(mockRefreshPaidAccess).not.toHaveBeenCalled();
+	});
+	test("keeps unconfirmed access pending instead of claiming paid conversion", async () => {
+		mockRefreshPaidAccess.mockResolvedValue(false);
+		const screen = await render(<SubscriptionScreen />);
+		await screen.findByRole("radio", { name: /Jährlich, 155,88 €/ });
+		await act(async () =>
+			fireEvent.press(screen.getByTestId("subscription-checkout-button")),
+		);
+		expect(mockTrackFeature).toHaveBeenLastCalledWith(
+			"subscription.checkout",
+			"pending",
+			undefined,
+			"monthly",
+		);
+		expect(mockReplace).not.toHaveBeenCalled();
 	});
 
 	test("restores existing purchases without replaying the welcome screen", async () => {

@@ -1,7 +1,8 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import { router } from "expo-router";
-import { TouchableOpacity, View } from "react-native";
+import { View } from "react-native";
 import { api } from "#convex/_generated/api";
+import { FeedbackTouchableOpacity } from "~/components/ui/feedback-pressable";
 import { Bell } from "~/components/ui/icon";
 import { useAuthSession } from "~/context/AuthContext";
 import { useDayovaTheme } from "~/lib/theme";
@@ -17,7 +18,8 @@ export function NotificationButton() {
 	const hasUnread = unreadSummary?.hasUnread === true;
 
 	return (
-		<TouchableOpacity
+		<FeedbackTouchableOpacity
+			pressScale={0.92}
 			activeOpacity={0.86}
 			accessibilityRole="button"
 			accessibilityLabel={
@@ -26,12 +28,7 @@ export function NotificationButton() {
 					: "In-App-Mitteilungen öffnen"
 			}
 			onPress={() => router.push("/notifications")}
-			className="h-14 w-14 items-center justify-center rounded-full bg-card"
-			style={{
-				borderWidth: 1,
-				borderColor: colors.border,
-				boxShadow: "0 10px 22px rgba(21, 29, 48, 0.08)",
-			}}
+			className="h-14 w-14 items-center justify-center rounded-full border border-border bg-card"
 		>
 			<Bell size={22} color={colors.text} strokeWidth={2.2} />
 			{hasUnread ? (
@@ -50,6 +47,6 @@ export function NotificationButton() {
 					}}
 				/>
 			) : null}
-		</TouchableOpacity>
+		</FeedbackTouchableOpacity>
 	);
 }
