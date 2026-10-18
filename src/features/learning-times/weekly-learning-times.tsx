@@ -1,6 +1,7 @@
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 import { Button } from "~/components/ui/button";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import { Clock3, Pencil } from "~/components/ui/icon";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Surface } from "~/components/ui/surface";
@@ -115,7 +116,7 @@ function WeeklyLearningTimes({
 									shouldStackInlineContent && "mt-2 self-end",
 								)}
 							>
-								<Pressable
+								<FeedbackPressable
 									accessibilityLabel={`${label} bearbeiten`}
 									accessibilityHint="Weitere Aktion: Lernzeit löschen."
 									accessibilityActions={[
@@ -132,7 +133,7 @@ function WeeklyLearningTimes({
 									onPress={() => onEdit(entry)}
 								>
 									<Pencil size={19} color={colors.text} strokeWidth={2} />
-								</Pressable>
+								</FeedbackPressable>
 							</View>
 						</Surface>
 					</ReanimatedSwipeable>

@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from "react";
-import { ActivityIndicator, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import { Button } from "~/components/ui/button";
+import { FeedbackTouchableOpacity } from "~/components/ui/feedback-pressable";
 import {
 	FieldAccessory,
 	FieldLabel,
@@ -73,9 +74,10 @@ export function MaterialCard({
 					{formatFileSize(size)}
 				</Text>
 			</View>
-			<TouchableOpacity
+			<FeedbackTouchableOpacity
 				accessibilityHint="Entfernt dieses hochgeladene Material aus dem Lernplan."
 				accessibilityLabel={`${name} entfernen`}
+				pressScale={0.92}
 				accessibilityRole="button"
 				activeOpacity={0.75}
 				hitSlop={8}
@@ -83,7 +85,7 @@ export function MaterialCard({
 				className="h-9 w-9 items-center justify-center rounded-full bg-black/5"
 			>
 				<X size={16} color={colors.text} strokeWidth={2.3} />
-			</TouchableOpacity>
+			</FeedbackTouchableOpacity>
 		</Surface>
 	);
 }
@@ -206,7 +208,7 @@ export function SessionEditForm({
 				{isPhaseMenuOpen ? (
 					<View className="mt-2 gap-2">
 						{sessionPhaseOptions.map((phase) => (
-							<TouchableOpacity
+							<FeedbackTouchableOpacity
 								key={phase}
 								accessibilityLabel={`Lernphase ${getSessionPhaseLabel(phase)} auswählen`}
 								accessibilityRole="button"
@@ -226,7 +228,7 @@ export function SessionEditForm({
 								<Text className="font-poppins text-body-3 text-text/70">
 									{getSessionPhaseLabel(phase)}
 								</Text>
-							</TouchableOpacity>
+							</FeedbackTouchableOpacity>
 						))}
 					</View>
 				) : null}

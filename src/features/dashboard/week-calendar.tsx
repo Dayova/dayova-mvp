@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { useWindowDimensions, View } from "react-native";
 import Animated, {
 	Easing,
 	useAnimatedStyle,
@@ -7,6 +7,7 @@ import Animated, {
 	useSharedValue,
 	withTiming,
 } from "react-native-reanimated";
+import { FeedbackTouchableOpacity } from "~/components/ui/feedback-pressable";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 import { parseDayKey } from "~/lib/day-key";
@@ -170,7 +171,7 @@ export function WeekCalendar({
 	const { shouldStackInlineContent: stackForText } = useContentSizeLayout();
 	const artwork = mode === "artwork";
 	const shouldStackInlineContent = !artwork && stackForText;
-	const Control = artwork ? View : TouchableOpacity;
+	const Control = artwork ? View : FeedbackTouchableOpacity;
 	return (
 		<View
 			className={cn("pb-3", shouldStackInlineContent ? "gap-3" : "flex-row")}
