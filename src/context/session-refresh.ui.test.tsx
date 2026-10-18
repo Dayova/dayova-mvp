@@ -25,8 +25,12 @@ const makeUser = (id = "user_123") => ({
 let mockClerkUser: ReturnType<typeof makeUser> | null = makeUser();
 const mockClerk = { loaded: true, session: { currentTask: null } };
 const mockClear = jest.fn();
-const mockSync = jest.fn<() => Promise<unknown>>(async () => ({}));
-const mockEntitlementSync = jest.fn(async () => ({ active: true }));
+const mockSync = jest.fn<(_args: Record<string, unknown>) => Promise<unknown>>(
+	async () => ({}),
+);
+const mockEntitlementSync = jest.fn(async (_args: Record<string, never>) => ({
+	active: true,
+}));
 const mockReplace = jest.fn();
 const mockRouter = { replace: mockReplace };
 let mockPathname = "/learning-plans/example";

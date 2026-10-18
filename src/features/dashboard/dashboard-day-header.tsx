@@ -49,5 +49,4 @@ function DashboardDayHeader({
 	);
 }
 
-export type { DashboardDayHeaderProps };
 export { DashboardDayHeader };

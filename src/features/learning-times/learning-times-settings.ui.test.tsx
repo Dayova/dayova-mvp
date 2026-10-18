@@ -21,7 +21,15 @@ let mockEntries: (typeof monday)[] | undefined;
 let mockAuthenticated = true;
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
-const mockSave = jest.fn<() => Promise<void>>();
+const mockSave =
+	jest.fn<
+		(_args: {
+			id?: string;
+			dayOfWeek: number;
+			startTime: string;
+			endTime: string;
+		}) => Promise<void>
+	>();
 const mockRemove = jest.fn<(args: { id: string }) => Promise<void>>();
 const mockTrackFeature = jest.fn();
 const mockSwipeClose = jest.fn();
