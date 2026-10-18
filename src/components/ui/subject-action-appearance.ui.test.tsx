@@ -74,7 +74,7 @@ test.each([
 	expect(
 		screen.getByRole("button", { name: "Löschen" }).props.className,
 	).toContain(
-		actionAppearance === "outlined" ? "bg-danger-subtle" : "bg-button-neutral",
+		actionAppearance === "outlined" ? "bg-danger-subtle" : "bg-destructive",
 	);
 	expect(
 		screen.getByRole("button", { name: "Abbrechen" }).props.className,
