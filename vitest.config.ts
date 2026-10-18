@@ -23,6 +23,9 @@ export default defineConfig({
 		},
 	},
 	test: {
+		// Several suites spawn Expo/Node processes. Keep them from exhausting the
+		// worker's CPU and memory when the whole repository runs in CI.
+		maxWorkers: 2,
 		watchTriggerPatterns: [
 			{
 				pattern: /\/(?:app\.config\.cts|metro\.config\.js)$/,
@@ -39,6 +42,7 @@ export default defineConfig({
 				},
 				test: {
 					name: "unit",
+					testTimeout: 30_000,
 					environment: "edge-runtime",
 					globals: true,
 					include: testIncludes,
@@ -54,6 +58,7 @@ export default defineConfig({
 				},
 				test: {
 					name: "expo-config-contract",
+					testTimeout: 30_000,
 					environment: "node",
 					globalSetup: ["./tests/helpers/expo-config-global-setup.ts"],
 					globals: true,

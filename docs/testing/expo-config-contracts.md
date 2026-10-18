@@ -33,7 +33,7 @@ OTA preflight rejects missing workflow fingerprints before reading the baseline
 or starting Expo. Its regression tests cover both platforms and verify that no
 child process starts for missing inputs. The production-manifest assertions
 still use the real shared Expo output. This avoids a redundant config process
-inside an ordinary five-second unit test.
+inside an ordinary unit test.
 
 Local measurements on macOS before this change showed five concurrent config
 processes finishing in 2.6–3.8 seconds each. A sequential cold resolution of the
@@ -49,9 +49,10 @@ For a resource-constrained machine, run only these contracts with:
 pnpm test:unit:expo-config
 ```
 
-For the complete Vitest suite, use `pnpm test:unit:vitest`. Reducing the full
-suite to two workers remains supported when an emulator or native build is also
-running:
+For the complete Vitest suite, use `pnpm test:unit:vitest`. Both projects retain
+main's existing two-worker ceiling and 30-second per-test timeout. These limits
+are separate from the 60-second configuration subprocess timeout. To select the
+same worker ceiling explicitly when an emulator or native build is also running:
 
 ```sh
 pnpm exec vitest run --maxWorkers=2

@@ -42,9 +42,11 @@ jest.mock("@clerk/expo", () => ({
 	useClerk: () => mockClerk,
 	useUser: () => ({ user: mockClerkUser, isLoaded: true }),
 	useSignIn: () => ({}),
+	useReverification: (callback: unknown) => callback,
 	isClerkAPIResponseError: () => false,
 }));
 jest.mock("convex/react", () => ({
+	useConvex: () => ({ url: "https://test.convex.cloud" }),
 	useMutation: () => mockSync,
 	useAction: () => mockEntitlementSync,
 	useConvexAuth: () => ({ isAuthenticated: mockAuthenticated }),
@@ -59,6 +61,7 @@ jest.mock("~/context/OnboardingContext", () => ({
 }));
 jest.mock("~/lib/analytics", () => ({ isPostHogConfigured: false }));
 jest.mock("~/lib/diagnostics", () => ({ logDiagnosticError: jest.fn() }));
+jest.mock("~/lib/runtime-config", () => ({ env: {} }));
 jest.mock("~/lib/pending-onboarding-sync-secure-store", () => ({
 	getOnboardingAccountFingerprint: async () => "test-fingerprint",
 	pendingOnboardingSyncOutbox: { resume: async () => ({ status: "none" }) },
