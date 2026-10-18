@@ -16,6 +16,14 @@ const publicEnvSchema = {
 	EXPO_PUBLIC_SUPPORT_URL: z.string().url().optional(),
 } as const;
 
+const releaseConvexUrlSchema = z
+	.string()
+	.url()
+	.refine(
+		(value) => /^https:\/\//i.test(value),
+		"Must use HTTPS for releases.",
+	);
+
 type PublicRuntimeConfigKey = keyof typeof publicEnvSchema;
 export type ReleasePlatform = "android" | "ios";
 
@@ -151,7 +159,14 @@ export const createPublicEnv = (
 ) =>
 	createEnv({
 		clientPrefix: "EXPO_PUBLIC_",
-		client: publicEnvSchema,
+		client:
+			options.context === "release"
+				? {
+						...publicEnvSchema,
+						EXPO_PUBLIC_CONVEX_URL: releaseConvexUrlSchema,
+						EXPO_PUBLIC_CONVEX_SITE_URL: releaseConvexUrlSchema.optional(),
+					}
+				: publicEnvSchema,
 		runtimeEnvStrict: toStrictPublicRuntimeConfig(runtimeEnv),
 		emptyStringAsUndefined: true,
 		skipValidation:

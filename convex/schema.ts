@@ -169,6 +169,7 @@ export default defineSchema({
 		completedAt: v.optional(v.number()),
 	})
 		.index("by_requestId", ["requestId"])
+		.index("by_status_and_completedAt", ["status", "completedAt"])
 		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
 	crmStudentSignups: defineTable({
 		userId: v.id("users"),

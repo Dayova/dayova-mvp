@@ -24,6 +24,94 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
+test("expires only completed audits after 30 days, preserving unresolved debugging data", async () => {
+	const backend = convexTest(schema, modules);
+	const day = 24 * 60 * 60 * 1000;
+	const now = Date.now();
+	await backend.run(async (ctx) => {
+		const base = {
+			stage: "complete" as const,
+			status: "completed" as const,
+			attemptCount: 0,
+			deletedRecords: 5,
+			policyVersion: "DAY-357-draft-2026-09-18",
+			requestedAt: now - 400 * day,
+			updatedAt: now - 31 * day,
+		};
+		await ctx.db.insert("accountDeletionRequests", {
+			...base,
+			requestId: "expired-audit",
+			completedAt: now - 30 * day,
+		});
+		await ctx.db.insert("accountDeletionRequests", {
+			...base,
+			requestId: "recent-completion",
+			completedAt: now - 29 * day,
+		});
+		for (const status of [
+			"queued",
+			"processing",
+			"retryScheduled",
+			"manualReview",
+		] as const) {
+			await ctx.db.insert("accountDeletionRequests", {
+				...base,
+				requestId: status,
+				status,
+				stage: "deletePostHog",
+				lastErrorCode: "deletePostHog_http_503",
+				ownerTokenIdentifier: `test:${status}`,
+			});
+		}
+	});
+	expect(
+		await backend.mutation(internal.accountDeletion.purgeCompletedAudits, {}),
+	).toBe(1);
+	const remaining = await backend.run((ctx) =>
+		ctx.db.query("accountDeletionRequests").take(10),
+	);
+	expect(remaining.map((row) => row.requestId)).toEqual([
+		"recent-completion",
+		"queued",
+		"processing",
+		"retryScheduled",
+		"manualReview",
+	]);
+	expect(
+		remaining
+			.slice(1)
+			.every((row) => row.lastErrorCode === "deletePostHog_http_503"),
+	).toBe(true);
+});
+
+test("purges completed audit backlogs in bounded repeatable batches", async () => {
+	const backend = convexTest(schema, modules);
+	await backend.run(async (ctx) => {
+		for (let index = 0; index < 101; index++) {
+			await ctx.db.insert("accountDeletionRequests", {
+				requestId: `expired-${index}`,
+				status: "completed",
+				stage: "complete",
+				attemptCount: 0,
+				deletedRecords: 0,
+				policyVersion: "old-policy",
+				requestedAt: 1,
+				updatedAt: 2,
+				completedAt: 2,
+			});
+		}
+	});
+	expect(
+		await backend.mutation(internal.accountDeletion.purgeCompletedAudits, {}),
+	).toBe(100);
+	expect(
+		await backend.mutation(internal.accountDeletion.purgeCompletedAudits, {}),
+	).toBe(1);
+	expect(
+		await backend.mutation(internal.accountDeletion.purgeCompletedAudits, {}),
+	).toBe(0);
+});
+
 test("HTTP password verification propagates identity without fva", async () => {
 	vi.stubEnv("CLERK_SECRET_KEY", "test-server-key");
 	const verify = vi.fn().mockResolvedValue(Response.json({ verified: true }));
@@ -71,7 +159,7 @@ test("accepts one idempotent verified internal deletion request", async () => {
 		ownerTokenIdentifier: userIdentity.tokenIdentifier,
 		status: "queued",
 		stage: "revokeSessions",
-		policyVersion: "DAY-357-draft-2026-09-18",
+		policyVersion: "DAY-357-approved-2026-10-18",
 	});
 	expect(first.requestId).toMatch(
 		/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
