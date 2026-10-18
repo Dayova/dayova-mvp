@@ -566,7 +566,7 @@ export function OnboardingScreen() {
 
 	const handleIntroBack = useCallback(() => {
 		if (activeIntroIndex === 0) {
-			goBackOrReplace(router, "/");
+			router.replace("/");
 			return true;
 		}
 		updateIntroIndex(Math.max(activeIntroIndex - 1, 0));

@@ -1110,11 +1110,12 @@ describe("OnboardingScreen", () => {
 		mockStackScreens.length = 0;
 	});
 
-	test("offers a visible way back from registration and each intro page", async () => {
+	test("returns the first intro page to the authentication choice even with history", async () => {
 		const screen = await render(<OnboardingScreen />);
 
 		await fireEvent.press(screen.getByRole("button", { name: "Zurück" }));
-		expect(mockRouter.back).toHaveBeenCalledTimes(1);
+		expect(mockRouter.replace).toHaveBeenCalledWith("/");
+		expect(mockRouter.back).not.toHaveBeenCalled();
 
 		mockRouter.back.mockClear();
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
