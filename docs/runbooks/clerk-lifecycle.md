@@ -153,9 +153,10 @@ original `requestedAt`, without changing their accepted policy version. This
 repair is transactional and idempotent and runs before provider or data deletion.
 Missing identity fields or a conflicting existing Clerk identity go directly to
 `manualReview` (`legacy_identity_missing` / `legacy_identity_mismatch`); repair
-those only from verified identity evidence. A missing CRM destination likewise
-stops processing (`legacy_crm_destination_missing`), even when a source is now
-configured. Review the intended retained-contact source, then call
+those only from verified identity evidence. A missing CRM destination stops at
+`deleteNotion` (`legacy_crm_destination_missing`), even when a source is now
+configured; earlier Clerk, provider and app-data cleanup proceeds. Review the
+intended retained-contact source, then call
 `accountDeletion:retryRequest` with that exact configured `crmDataSourceId`.
 The retry cannot bind another source or redirect an existing destination/page.
 The resumed worker repairs the barrier before continuing, including for legacy

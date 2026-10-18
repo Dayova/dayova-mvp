@@ -2,7 +2,7 @@
 
 import { convexTest } from "convex-test";
 import { afterEach, expect, test, vi } from "vitest";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -12,6 +12,65 @@ afterEach(() => {
 	vi.useRealTimers();
 	vi.unstubAllEnvs();
 	vi.unstubAllGlobals();
+});
+
+test("missing CRM configuration pauses only after Clerk and app-data deletion", async () => {
+	vi.useFakeTimers();
+	vi.stubEnv("CLERK_SECRET_KEY", "test-server-key");
+	vi.stubEnv("NOTION_CRM_DATA_SOURCE_ID", "");
+	vi.stubEnv("REVENUECAT_SECRET_API_KEY", "");
+	vi.stubEnv("POSTHOG_PERSONAL_API_KEY", "");
+	vi.stubEnv("POSTHOG_PROJECT_ID", "");
+	const fetch = vi.fn(async (url: string) => {
+		if (url.startsWith("https://api.clerk.com/v1/sessions?"))
+			return Response.json([]);
+		if (url === "https://api.clerk.com/v1/users/test-user")
+			return Response.json({ deleted: true });
+		throw new Error("Unexpected provider call");
+	});
+	vi.stubGlobal("fetch", fetch);
+	const backend = convexTest(schema, modules);
+	const userId = await backend
+		.withIdentity({
+			subject: "test-user",
+			tokenIdentifier: "test:user",
+			email: "test-user@example.com",
+		})
+		.mutation(api.users.syncCurrentUser, {});
+	const requestId = "missing-crm-source";
+	await backend.run((ctx) =>
+		ctx.db.insert("accountDeletionRequests", {
+			requestId,
+			ownerTokenIdentifier: "test:user",
+			clerkUserId: "test-user",
+			status: "queued",
+			stage: "revokeSessions",
+			attemptCount: 0,
+			deletedRecords: 0,
+			policyVersion: "legacy-policy",
+			requestedAt: 1000,
+			updatedAt: 1000,
+		}),
+	);
+	await backend.action(internal.accountDeletionActions.processDeletionRequest, {
+		requestId,
+	});
+	await backend.finishAllScheduledFunctions(vi.runAllTimers);
+	expect(fetch).toHaveBeenCalledWith(
+		"https://api.clerk.com/v1/users/test-user",
+		expect.objectContaining({ method: "DELETE" }),
+	);
+	expect(await backend.run((ctx) => ctx.db.get("users", userId))).toBeNull();
+	expect(
+		await backend.query(internal.accountDeletion.getRequestForProcessing, {
+			requestId,
+		}),
+	).toMatchObject({
+		status: "manualReview",
+		stage: "deleteNotion",
+		clerkStatus: "completed",
+		lastErrorCode: "legacy_crm_destination_missing",
+	});
 });
 
 test.each([
@@ -67,7 +126,6 @@ test("competing final data batches schedule only one Notion continuation", async
 			requestId: "competing-data-workers",
 			ownerTokenIdentifier: "test:user",
 			clerkUserId: "test-user",
-			crmDataSourceId: "test-source",
 			status: "processing",
 			stage: "deleteData",
 			attemptCount: 0,
@@ -126,7 +184,6 @@ test.each([
 			requestId: "competing-workers",
 			ownerTokenIdentifier: "test:user",
 			clerkUserId: "test-user",
-			crmDataSourceId: "test-source",
 			status: "processing",
 			stage,
 			attemptCount: 0,

@@ -360,7 +360,7 @@ export const prepareRequestForProcessing = internalMutation({
 					request.clerkUserId,
 					request.requestedAt,
 				);
-				if (!request.crmDataSourceId)
+				if (request.stage === "deleteNotion" && !request.crmDataSourceId)
 					errorCode = "legacy_crm_destination_missing";
 			}
 		}
