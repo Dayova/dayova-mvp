@@ -40,9 +40,10 @@ into view after layout; reduced motion reveals them without animation. Removal
 and resizing do not force a scroll. Long chip labels wrap within the row width
 so the full text and remove action remain reachable. The entered nonblank title is immediately
 selectable below the input using the same checkbox row, merging exact catalog
-matches without duplicate choices. A separate optional textarea is presented
-for exam conditions and special instructions; existing free text stays editable
-and selections never change its contents. See the
+matches without duplicate choices. The subsequent hint page uses the same search and removable-choice pattern,
+with six topic-ranked suggestions and a quiet “Weitere Hinweise” action.
+Existing hint lines remain removable; custom text can be added through search.
+Changing topics never changes the selected hints. See the
 [topic-input contract](../product/adr/inline-topic-search-with-free-scope.md).
 
 All app switches must use `Switch` from `src/components/ui/switch`. Do not

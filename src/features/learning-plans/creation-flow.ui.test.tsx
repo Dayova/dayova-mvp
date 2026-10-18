@@ -384,12 +384,28 @@ async function openHints(screen: Awaited<ReturnType<typeof render>>) {
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 	expect(screen.getByLabelText("Hinweise suchen")).toBeOnTheScreen();
 }
-async function editHints(screen: Awaited<ReturnType<typeof render>>) {
-	await openHints(screen);
-	if (!screen.queryByLabelText("Hinweise zur Prüfung (optional)"))
-		await fireEvent.press(
-			screen.getByRole("button", { name: "Hinweise bearbeiten" }),
-		);
+function expectHints(
+	screen: Awaited<ReturnType<typeof render>>,
+	value: string,
+) {
+	for (const line of value.split("\n").filter((line) => line.trim())) {
+		expect(
+			screen.getByRole("button", { name: `${line} entfernen` }),
+		).toBeOnTheScreen();
+	}
+	if (!value)
+		expect(
+			screen.queryAllByRole("button", { name: / entfernen$/ }),
+		).toHaveLength(0);
+}
+async function replaceHints(
+	screen: Awaited<ReturnType<typeof render>>,
+	value: string,
+) {
+	for (const chip of screen.getAllByRole("button", { name: / entfernen$/ })) {
+		await fireEvent.press(chip);
+	}
+	if (value) await addHint(screen, value);
 }
 async function addHint(
 	screen: Awaited<ReturnType<typeof render>>,
@@ -414,10 +430,8 @@ describe("exam creation across the topics boundary", () => {
 		};
 		mockSnapshot = { plan: { topicDescription: saved }, documents: [] };
 		const screen = await render(<NewLearningPlanScreen />);
-		await editHints(screen);
-		expect(
-			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
-		).toHaveDisplayValue(saved);
+		await openHints(screen);
+		expectHints(screen, saved);
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		expect(mockUpdateRequiredTopics).toHaveBeenCalledWith({
 			id: "plan-1",
@@ -448,11 +462,9 @@ describe("exam creation across the topics boundary", () => {
 			documents: [],
 		};
 		await screen.rerender(<NewLearningPlanScreen />);
-		await editHints(screen);
-		expect(
-			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
-		).toHaveDisplayValue("Genetik und Vererbung");
-		expect(screen.getByLabelText("Hinweise zur Prüfung (optional)")).toHaveProp(
+		await openHints(screen);
+		expectHints(screen, "Genetik und Vererbung");
+		expect(screen.getByLabelText("Hinweise suchen")).toHaveProp(
 			"editable",
 			true,
 		);
@@ -528,10 +540,8 @@ describe("exam creation across the topics boundary", () => {
 			topicAdditionalInfo: original,
 		});
 		await act(() => mockProgress.onBack());
-		await editHints(screen);
-		expect(
-			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
-		).toHaveDisplayValue(original);
+		await openHints(screen);
+		expectHints(screen, original);
 	});
 	test.each([
 		{
@@ -776,11 +786,8 @@ describe("exam creation across the topics boundary", () => {
 				}),
 		);
 		const screen = await render(<NewLearningPlanScreen />);
-		await editHints(screen);
-		await fireEvent.changeText(
-			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
-			"Genetik und Vererbung",
-		);
+		await openHints(screen);
+		await replaceHints(screen, "Genetik und Vererbung");
 		await act(() => mockProgress.onClose());
 		await act(() => {
 			mockPauseProps.onConfirm();
@@ -816,20 +823,14 @@ describe("exam creation across the topics boundary", () => {
 			new Error("Speichern fehlgeschlagen"),
 		);
 		const screen = await render(<NewLearningPlanScreen />);
-		await editHints(screen);
-		await fireEvent.changeText(
-			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
-			"Genetik und Vererbung",
-		);
+		await openHints(screen);
+		await replaceHints(screen, "Genetik und Vererbung");
 		await act(() => mockProgress.onClose());
 		await act(() => mockPauseProps.onConfirm());
 		await waitFor(() => expect(mockPauseProps.errorMessage).toBeTruthy());
 		expect(mockPauseVisible).toBe(true);
 		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
-		expect(screen.getByLabelText("Hinweise zur Prüfung (optional)")).toHaveProp(
-			"value",
-			"Genetik und Vererbung",
-		);
+		expectHints(screen, "Genetik und Vererbung");
 		await act(() => mockPauseProps.onConfirm());
 		await waitFor(() =>
 			expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans"),
@@ -887,21 +888,15 @@ describe("exam creation across the topics boundary", () => {
 			documents: [],
 		};
 		const screen = await render(<NewLearningPlanScreen />);
-		await editHints(screen);
-		await fireEvent.changeText(
-			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
-			"",
-		);
+		await openHints(screen);
+		await replaceHints(screen, "");
 		await act(() => mockProgress.onClose());
 		await act(() => mockPauseProps.onConfirm());
 		await waitFor(() => expect(mockPauseProps.errorMessage).toBeTruthy());
 		expect(mockPauseVisible).toBe(true);
 		expect(mockUpdateRequiredTopics).not.toHaveBeenCalled();
 		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
-		expect(screen.getByLabelText("Hinweise zur Prüfung (optional)")).toHaveProp(
-			"value",
-			"",
-		);
+		expectHints(screen, "");
 	});
 
 	test("uploads gallery photos without library-wide permission", async () => {
@@ -1258,10 +1253,8 @@ test("saves an own topic straight from the search with independent notes and res
 	expect(
 		reopened.getByRole("button", { name: "Kostenstellenrechnung entfernen" }),
 	).toBeOnTheScreen();
-	await editHints(reopened);
-	expect(
-		reopened.getByLabelText("Hinweise zur Prüfung (optional)"),
-	).toHaveDisplayValue("Ohne Taschenrechner");
+	await openHints(reopened);
+	expectHints(reopened, "Ohne Taschenrechner");
 });
 
 test("saved choices and hints override stale route metadata across both pages", async () => {
@@ -1287,14 +1280,9 @@ test("saved choices and hints override stale route metadata across both pages", 
 	await fireEvent.press(
 		screen.getByRole("button", { name: "Bilanz entfernen" }),
 	);
-	await editHints(screen);
-	expect(
-		screen.getByLabelText("Hinweise zur Prüfung (optional)"),
-	).toHaveDisplayValue("Ohne Hilfsmittel");
-	await fireEvent.changeText(
-		screen.getByLabelText("Hinweise zur Prüfung (optional)"),
-		"Inventur ohne Hilfsmittel",
-	);
+	await openHints(screen);
+	expectHints(screen, "Ohne Hilfsmittel");
+	await replaceHints(screen, "Inventur ohne Hilfsmittel");
 	await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 	expect(mockUpdateRequiredTopics).toHaveBeenCalledWith({
 		id: "plan-1",
@@ -1348,9 +1336,7 @@ test("topics then hints then material form separate pages, with Back preserving 
 	expect(screen.queryByLabelText("Themen suchen")).toBeNull();
 	expect(screen.queryByLabelText("Hinweise zur Prüfung (optional)")).toBeNull();
 	expect(mockUpdateRequiredTopics).not.toHaveBeenCalled();
-	await fireEvent.press(
-		screen.getByRole("checkbox", { name: "Ohne Taschenrechner" }),
-	);
+	await addHint(screen, "Ohne Taschenrechner");
 	const scoped = "Analysis ohne Taschenrechner, Stochastik mit Formelsammlung";
 	await addHint(screen, scoped);
 	await act(() => mockProgress.onBack());

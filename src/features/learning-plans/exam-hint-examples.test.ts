@@ -2,30 +2,62 @@ import { describe, expect, test } from "vitest";
 import { appendExamHint, getExamHintExamples } from "./exam-hint-examples";
 
 describe("reviewed contextual hint examples", () => {
-	test("keeps math and German examples separate and responds to explicit topics", () => {
-		expect(getExamHintExamples("Mathe LK", ["Vektoren"])).toEqual([
-			"Ohne Taschenrechner",
-			"Lösungsweg angeben",
-			"Skizzen beschriften",
-		]);
+	test("ranks selected topics before subject fallbacks", () => {
+		const geometry = getExamHintExamples("Mathe LK", ["Vektoren"]);
+		expect(geometry).toContain("Skizzen beschriften");
+		expect(geometry.indexOf("Skizzen beschriften")).toBeLessThan(
+			geometry.indexOf("Ohne Taschenrechner"),
+		);
 		expect(getExamHintExamples("Mathe", ["Brüche"])).not.toContain(
 			"Skizzen beschriften",
 		);
-		expect(getExamHintExamples("Deutsch", ["Gedichtanalyse"])).toEqual([
-			"Textbelege mit Zeilenangaben",
-			"Nur die behandelten Kapitel",
-		]);
+		const poetry = getExamHintExamples("Deutsch", ["Gedichtanalyse"]);
+		expect(poetry[0]).toBe("Versangaben verwenden");
+		expect(poetry).not.toContain("Ohne Taschenrechner");
+		expect(poetry).not.toContain("Erzählperspektive berücksichtigen");
 	});
-	test("supports personal accounting, combined subjects and neutral unknown subjects", () => {
-		expect(getExamHintExamples("Rechnungswesen", ["Bilanz"])).toContain(
+	test("handles aliases, multiple topics, umlauts and unknown subjects", () => {
+		expect(getExamHintExamples("Wirtschaft und Recht", ["Bilanz"])[0]).toBe(
 			"Buchungssätze mit Kontonummern angeben",
 		);
-		expect(getExamHintExamples("Wirtschaft und Recht", ["Bilanz"])).toContain(
-			"Buchungssätze mit Kontonummern angeben",
+		expect(getExamHintExamples("Rechnungswesen", ["Buchungssätze"])).toContain(
+			"Soll und Haben kennzeichnen",
 		);
-		expect(getExamHintExamples("Mein Projektfach", ["Vektoren"])).toEqual([]);
+		expect(getExamHintExamples("Mathe LK", ["Brueche", "Vektoren"])).toEqual(
+			expect.arrayContaining([
+				"Brüche vollständig kürzen",
+				"Skizzen beschriften",
+			]),
+		);
+		expect(getExamHintExamples("Mein Projektfach", ["Vektoren"])).toContain(
+			"Skizzen beschriften",
+		);
+		expect(getExamHintExamples("Mein Projektfach", ["Unbekannt"])).toEqual([]);
 		expect(getExamHintExamples("Deutsch", ["Bilanz"])).not.toContain(
-			"Ohne Taschenrechner",
+			"Buchungssätze mit Kontonummern angeben",
+		);
+		expect(
+			getExamHintExamples("Biologie", ["Allgemeine Grundlagen"]),
+		).not.toContain("Kreuzungsschema angeben");
+	});
+	test("searches the full catalog before limiting results, including aliases", () => {
+		expect(
+			getExamHintExamples("Deutsch", ["Gedichtanalyse"], "rechner"),
+		).toContain("Ohne Taschenrechner");
+		expect(getExamHintExamples("Mathematik", ["Brüche"], "SQL")).toContain(
+			"SQL-Abfragen angeben",
+		);
+		expect(getExamHintExamples("Mathematik", [], "OHiMi")).toEqual([
+			"Ohne Hilfsmittel",
+		]);
+		expect(getExamHintExamples("Mathematik", [], "Formelblatt")).toContain(
+			"Formelsammlung erlaubt",
+		);
+		expect(
+			getExamHintExamples("Deutsch", [], "  TEXTBELEGE   ZEILEN "),
+		).toEqual(["Textbelege mit Zeilenangaben"]);
+		expect(getExamHintExamples("Deutsch", [], "unbekannter hinweis")).toEqual(
+			[],
 		);
 	});
 	test("never rewrites scoped instructions or silently changes no aids into no calculator", () => {

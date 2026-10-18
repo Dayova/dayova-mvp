@@ -108,8 +108,8 @@ describe("learning-plan setup steps", () => {
 		);
 		expect(screen.getByLabelText("Hinweise suchen")).toHaveDisplayValue("");
 		expect(
-			screen.getByRole("checkbox", { name: "Lösungsweg angeben" }),
-		).toBeChecked();
+			screen.getByRole("button", { name: "Lösungsweg angeben entfernen" }),
+		).toBeOnTheScreen();
 		await fireEvent.press(
 			screen.getByRole("checkbox", { name: "Skizzen beschriften" }),
 		);
@@ -127,11 +127,60 @@ describe("learning-plan setup steps", () => {
 			screen.getByRole("button", { name: "Lösungsweg angeben entfernen" }),
 		);
 		expect(
-			screen.getByRole("checkbox", { name: "Lösungsweg angeben" }),
-		).not.toBeChecked();
+			screen.queryByRole("button", { name: "Lösungsweg angeben entfernen" }),
+		).toBeNull();
 		expect(changes).toHaveBeenLastCalledWith(
 			"Teil 1 ohne Hilfsmittel; Teil 2 mit Formelsammlung.\nSkizzen beschriften\nNur Aufgabe 3 mit Rechner",
 		);
+	});
+
+	test("reveals more topic hints and searches beyond the initial suggestions", async () => {
+		const change = jest.fn();
+		const screen = await render(
+			<ExamHintsEditor
+				subject="Mathematik"
+				selectedTopics={["Vektoren"]}
+				value=""
+				onChange={change}
+			/>,
+		);
+		expect(screen.getAllByRole("checkbox")).toHaveLength(6);
+		expect(
+			screen.queryByRole("checkbox", { name: "Lösungsweg angeben" }),
+		).toBeNull();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Weitere Hinweise" }),
+		);
+		expect(
+			screen.getByRole("checkbox", { name: "Lösungsweg angeben" }),
+		).toBeOnTheScreen();
+		await fireEvent.changeText(screen.getByLabelText("Hinweise suchen"), "SQL");
+		await fireEvent.press(
+			screen.getByRole("checkbox", { name: "SQL-Abfragen angeben" }),
+		);
+		expect(change).toHaveBeenLastCalledWith("SQL-Abfragen angeben");
+		expect(screen.getAllByRole("checkbox")).toHaveLength(6);
+		await screen.rerender(
+			<ExamHintsEditor
+				subject="Deutsch"
+				selectedTopics={["Gedichtanalyse"]}
+				value="SQL-Abfragen angeben"
+				onChange={change}
+				disabled
+			/>,
+		);
+		expect(
+			screen.getByRole("button", { name: "SQL-Abfragen angeben entfernen" }),
+		).toBeDisabled();
+		expect(
+			screen.getByRole("button", { name: "Weitere Hinweise" }),
+		).toBeDisabled();
+		expect(
+			screen.getByRole("checkbox", { name: "Versangaben verwenden" }),
+		).toBeOnTheScreen();
+		expect(
+			screen.queryByRole("checkbox", { name: "Skizzen beschriften" }),
+		).toBeNull();
 	});
 
 	test("preserves legacy whitespace and scoped conditions when removing a hint", async () => {

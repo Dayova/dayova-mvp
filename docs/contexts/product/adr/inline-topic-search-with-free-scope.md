@@ -9,7 +9,7 @@ The rationale and validation plan live in the [Notion decision record](https://a
 - Search directly in the topic step. Results are reversible checkbox selections, using shared SelectionControl semantics and styling.
 - Immediately below the input, the entered nonblank title is selectable without waiting for a catalog result. It uses ordinary `topicItems` and the same reversible choice/chip behavior, including provider errors and input beyond the catalog search limit. Never silently truncate it or add global/provider records. An exact normalized catalog match occupies this same row; a late response must not duplicate or rewrite a chosen title. Show at most four matching catalog suggestions, counting the exact match toward this limit. The subject affects ranking, never eligibility: retain cross-subject matches after matches for the current subject, without an additional section or expansion action. The custom entered title remains available separately when no exact match exists. The existing meaningful-scope validation still applies.
 - Show every selected title as a removable chip even when the query changes, clears, fails, or yields no results. Removing a chip unchecks its matching result. Match normalized complete titles, never substrings or inferred meanings.
-- The first page contains topic search only. Weiter opens a second page for optional hints, using the same search field, removable chips and shared exam/subject selection cards. Hints support filtering, multiple explicit selections and custom entries. Existing newline-separated hints become removable selections; commas and prose are never split or interpreted. A quiet edit action retains access to the complete legacy text. Topic choices never rewrite hints.
+- The first page contains topic search only. Weiter opens a second page for optional hints, using the same search field, removable chips and shared exam/subject selection cards. Hints support filtering, multiple explicit selections and custom entries. Existing newline-separated hints become removable selections; commas and prose are never split or interpreted. The separate full-text edit action was removed at the user’s request; existing lines remain removable and replacement text can be added through search. Topic choices never rewrite hints.
 - Search remains optional. A meaningful catalog/own selection, free entry, or combination can continue; an empty scope and known placeholders cannot. Conditions alone are not evidence that the true exam scope is complete; Julius must evaluate completeness against school requirements.
 - Catalog search accepts three to 100 characters and debounces new requests by 120 ms. Exact local cache hits and already running requests skip that delay. Query edits and matching cached titles commit together so an unchanged suggestion never disappears for an intermediate frame. Background refreshes do not insert a loading row above retained suggestions. Known matching titles may appear immediately while an authoritative search refreshes in the background, including after backspacing; this preview never suppresses the new request or invents an empty result. The same title/context ranking applies to both paths. Keep the same four-suggestion limit for cached previews and final results; keep 30 local cache entries, each valid for five minutes. Search failures never block editing or a valid scope; known matches remain selectable when refreshing fails. Saving and snapshot loading disable search, selection/removal and editing.
 - No second subject picker. Personal subjects retain their IDs, ownership, reuse and management. Derive search context internally from the current subject name; exact title matches remain available across subjects. No provider IDs or categories become subject identity.
@@ -40,3 +40,25 @@ Earlier append-to-text galleries document earlier revisions, not this interactio
 ## Search recovery (18 October 2026)
 
 Both provider filtering and provisional client ranking use the same title matcher. Literal title matches remain preferred within each subject group. Single-word queries of 5–40 German letters also accept one inserted, deleted, substituted or adjacent-transposed letter in a title word prefix; short and multiword queries stay literal. Description-only matches remain excluded. When no literal title survives, try one shorter-prefix provider page under the original eight-second deadline (at most six total pages), retaining the original term for relevance and ranking. A failed optional expansion preserves usable initial candidates; with no candidates it remains a recoverable search error. This is a bounded typing aid, not unrestricted semantic search or guaranteed catalog coverage. Cache version v3 avoids reusing old strict-match empty responses. Learner-entered and selected spelling remains unchanged.
+
+## Topic-based hint catalog (18 October 2026)
+
+Following explicit user feedback, the local hint catalog now supplies optional
+instruction templates across school subjects. The selected topic titles are
+matched against explicit normalized word prefixes; matching topic groups rank
+above subject-wide fallbacks. Known subject context constrains unsolicited
+suggestions. Unknown subjects can use explicit topic matches without changing
+their subject identity; unknown topics use only known-subject fallbacks.
+
+Search covers all catalog labels before the display limit, including other
+subjects, with a small explicit alias list (Rechner, OHiMi, Formelblatt, Zeilen).
+Six suggestions appear initially; “Weitere Hinweise” reveals six more. A changed
+subject, topic list or query resets the visible count. Existing selections and
+custom input remain available independently of ranking. No hint is automatically
+selected, no topic choice rewrites saved notes, and no network or model call is
+needed. Catalog gaps are handled through custom input, not inferred rules.
+
+The labels describe possible teacher instructions, not verified requirements for
+any particular exam. Adding catalog coverage requires explicit topic keys and
+appropriate subject context in `exam-hint-catalog.ts`. Substring matches inside
+unrelated topic words must not become new automatic associations.

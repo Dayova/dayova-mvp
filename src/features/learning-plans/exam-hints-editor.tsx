@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { View } from "react-native";
+import { Button } from "~/components/ui/button";
 import { SearchField } from "~/components/ui/search-field";
+import { Text } from "~/components/ui/text";
 import { appendExamHint, getExamHintExamples } from "./exam-hint-examples";
 import {
 	SearchSelectionChip,
@@ -29,6 +31,7 @@ export function ExamHintsEditor({
 	disabled?: boolean;
 }) {
 	const [query, setQuery] = useState("");
+	const [expanded, setExpanded] = useState({ key: "", count: 6 });
 	const term = query.trim();
 	// Line boundaries are already used by appendExamHint. Never split conditions
 	// at commas or reinterpret legacy prose, and retain untouched whitespace.
@@ -36,9 +39,13 @@ export function ExamHintsEditor({
 	const selections = lines
 		.map((text, index) => ({ text, index }))
 		.filter((item) => item.text.trim());
-	const examples = getExamHintExamples(subject, selectedTopics).filter(
-		(example) => hintKey(example).includes(hintKey(term)),
-	);
+	const examples = getExamHintExamples(subject, selectedTopics, term);
+	const resultKey = JSON.stringify([subject, selectedTopics, term]);
+	if (expanded.key !== resultKey) {
+		setExpanded({ key: resultKey, count: 6 });
+	}
+	const visibleCount = expanded.key === resultKey ? expanded.count : 6;
+	const visibleExamples = examples.slice(0, visibleCount);
 	const remove = (index: number) => {
 		if (!disabled) onChange(lines.filter((_, i) => i !== index).join("\n"));
 	};
@@ -76,7 +83,7 @@ export function ExamHintsEditor({
 			) : null}
 			{examples.length > 0 ? (
 				<View className="mt-1 gap-2">
-					{examples.map((example) => {
+					{visibleExamples.map((example) => {
 						const selection = selected(example);
 						return (
 							<SearchSuggestion
@@ -90,6 +97,18 @@ export function ExamHintsEditor({
 							/>
 						);
 					})}
+					{examples.length > visibleCount ? (
+						<Button
+							variant="ghost"
+							disabled={disabled}
+							accessibilityLabel="Weitere Hinweise"
+							onPress={() =>
+								setExpanded({ key: resultKey, count: visibleCount + 6 })
+							}
+						>
+							<Text>Weitere Hinweise</Text>
+						</Button>
+					) : null}
 				</View>
 			) : null}
 			{term &&
