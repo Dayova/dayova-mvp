@@ -53,7 +53,7 @@ export function ExamHintsEditor({
 		<View className="mt-6 gap-3">
 			<SearchField
 				accessibilityLabel="Hinweise suchen"
-				placeholder="Hinweis suchen oder eingeben"
+				placeholder="Hinweis suchen oder hinzufügen"
 				value={query}
 				onChangeText={setQuery}
 				editable={!disabled}
