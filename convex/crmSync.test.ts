@@ -931,6 +931,7 @@ test("OS observations accumulate per authenticated account and only new platform
 	try {
 		vi.stubEnv("NOTION_CRM_MODE", "off");
 		const userId = await authenticated.mutation(api.users.syncCurrentUser, {
+			birthDate: "01.01.2000",
 			operatingSystem: "Android",
 		});
 		vi.stubEnv("NOTION_CRM_MODE", "live");
@@ -968,7 +969,10 @@ test("OS observations accumulate per authenticated account and only new platform
 				tokenIdentifier: "issuer|user_other",
 				email: "other@example.com",
 			})
-			.mutation(api.users.syncCurrentUser, { operatingSystem: "iOS" });
+			.mutation(api.users.syncCurrentUser, {
+				birthDate: "01.01.2000",
+				operatingSystem: "iOS",
+			});
 		expect(
 			await t.run((ctx) => ctx.db.get("users", otherUserId)),
 		).toMatchObject({ operatingSystems: ["iOS"] });

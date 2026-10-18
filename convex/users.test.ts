@@ -9,6 +9,22 @@ import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
 type TestBackend = ReturnType<ReturnType<typeof convexTest>["withIdentity"]>;
+type SyncTestUserArgs = {
+	name?: string;
+	phone?: string;
+	birthDate?: string;
+	grade?: string;
+	schoolType?: string;
+	state?: string;
+	avatarUrl?: string;
+	validationStudentCode?: string;
+};
+
+const syncTestUser = (t: TestBackend, args: SyncTestUserArgs = {}) =>
+	t.mutation(api.users.syncCurrentUser, {
+		birthDate: "01.01.2000",
+		...args,
+	});
 
 const userIdentity = {
 	subject: "user",
@@ -26,7 +42,7 @@ test.each([
 	15, 210, 240,
 ])("persists %i-minute onboarding windows without truncation", async (minutes) => {
 	const t = convexTest(schema, modules).withIdentity(userIdentity);
-	await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	await syncTestUser(t, { name: "User" });
 	await t.mutation(api.users.saveOnboardingAnswers, {
 		answers: onboardingAnswers({
 			dailySchoolTime: `${minutes} min`,
@@ -89,7 +105,7 @@ test("onboarding persists canonical learning times visible to settings and plans
 	const backend = convexTest(schema, modules);
 	const t = backend.withIdentity(userIdentity);
 	const otherT = backend.withIdentity(otherIdentity);
-	await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	await syncTestUser(t, { name: "User" });
 
 	await t.mutation(api.users.saveOnboardingAnswers, {
 		answers: onboardingAnswers(),
@@ -134,7 +150,7 @@ test("onboarding persists canonical learning times visible to settings and plans
 
 test("release onboarding payload creates operational windows without decorative answers", async () => {
 	const t = convexTest(schema, modules).withIdentity(userIdentity);
-	const userId = await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	const userId = await syncTestUser(t, { name: "User" });
 
 	await t.mutation(api.users.saveOnboardingAnswers, {
 		answers: {
@@ -179,7 +195,7 @@ test("release onboarding payload creates operational windows without decorative 
 
 test("accepts but never persists legacy decorative answers from installed clients", async () => {
 	const t = convexTest(schema, modules).withIdentity(userIdentity);
-	const userId = await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	const userId = await syncTestUser(t, { name: "User" });
 	const legacyPayload = {
 		...onboardingAnswers(),
 		studyTime: "30 min",
@@ -219,7 +235,7 @@ test("accepts but never persists legacy decorative answers from installed client
 
 test("compact onboarding persists profile context without inventing learning times", async () => {
 	const t = convexTest(schema, modules).withIdentity(userIdentity);
-	const userId = await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	const userId = await syncTestUser(t, { name: "User" });
 
 	await t.mutation(api.users.saveOnboardingAnswers, {
 		answers: {
@@ -250,7 +266,7 @@ test("compact onboarding persists profile context without inventing learning tim
 
 test("onboarding synchronization is idempotent and preserves later settings edits", async () => {
 	const t = convexTest(schema, modules).withIdentity(userIdentity);
-	await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	await syncTestUser(t, { name: "User" });
 
 	await t.mutation(api.users.saveOnboardingAnswers, {
 		answers: onboardingAnswers(),
@@ -282,7 +298,7 @@ test("onboarding synchronization is idempotent and preserves later settings edit
 
 test("invalid derived ranges roll back onboarding persistence", async () => {
 	const t = convexTest(schema, modules).withIdentity(userIdentity);
-	const userId = await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	const userId = await syncTestUser(t, { name: "User" });
 
 	await expect(
 		t.mutation(api.users.saveOnboardingAnswers, {
@@ -305,7 +321,7 @@ test("invalid derived ranges roll back onboarding persistence", async () => {
 
 test("invalid onboarding is rejected when settings already contain learning times", async () => {
 	const t = convexTest(schema, modules).withIdentity(userIdentity);
-	const userId = await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	const userId = await syncTestUser(t, { name: "User" });
 	await t.mutation(api.learningTimes.upsertMine, {
 		dayOfWeek: 2,
 		startTime: "17:00",
@@ -335,7 +351,7 @@ test("invalid onboarding is rejected when settings already contain learning time
 
 test("returning users are lazily backfilled from complete legacy answers", async () => {
 	const t = convexTest(schema, modules).withIdentity(userIdentity);
-	const userId = await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	const userId = await syncTestUser(t, { name: "User" });
 	await t.run(async (ctx) => {
 		for (let index = 0; index < 10; index += 1) {
 			const questionId = await ctx.db.insert("onboardingQuestions", {
@@ -357,8 +373,8 @@ test("returning users are lazily backfilled from complete legacy answers", async
 		dailySchoolTime: "60 min",
 	});
 
-	await t.mutation(api.users.syncCurrentUser, { name: "User" });
-	await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	await syncTestUser(t, { name: "User" });
+	await syncTestUser(t, { name: "User" });
 
 	await expect(t.query(api.learningTimes.listMine, {})).resolves.toMatchObject([
 		{ dayOfWeek: 5, startTime: "18:00", endTime: "19:00" },
@@ -370,10 +386,9 @@ test("legacy recovery treats duplicate historical rows as ambiguous", async () =
 	const duplicateQuestionT = convexTest(schema, modules).withIdentity(
 		userIdentity,
 	);
-	const duplicateQuestionUserId = await duplicateQuestionT.mutation(
-		api.users.syncCurrentUser,
-		{ name: "User" },
-	);
+	const duplicateQuestionUserId = await syncTestUser(duplicateQuestionT, {
+		name: "User",
+	});
 	await seedLegacyLearningTimeAnswers(
 		duplicateQuestionT,
 		duplicateQuestionUserId,
@@ -393,7 +408,7 @@ test("legacy recovery treats duplicate historical rows as ambiguous", async () =
 	});
 
 	await expect(
-		duplicateQuestionT.mutation(api.users.syncCurrentUser, { name: "User" }),
+		syncTestUser(duplicateQuestionT, { name: "User" }),
 	).resolves.toBe(duplicateQuestionUserId);
 	await expect(
 		duplicateQuestionT.query(api.learningTimes.listMine, {}),
@@ -407,7 +422,7 @@ test("legacy recovery treats duplicate historical rows as ambiguous", async () =
 		if (!duplicateQuestion) throw new Error("Expected a duplicate question.");
 		await ctx.db.delete("onboardingQuestions", duplicateQuestion._id);
 	});
-	await duplicateQuestionT.mutation(api.users.syncCurrentUser, {
+	await syncTestUser(duplicateQuestionT, {
 		name: "User",
 	});
 	await expect(
@@ -417,10 +432,9 @@ test("legacy recovery treats duplicate historical rows as ambiguous", async () =
 	const duplicateAnswerT = convexTest(schema, modules).withIdentity(
 		userIdentity,
 	);
-	const duplicateAnswerUserId = await duplicateAnswerT.mutation(
-		api.users.syncCurrentUser,
-		{ name: "User" },
-	);
+	const duplicateAnswerUserId = await syncTestUser(duplicateAnswerT, {
+		name: "User",
+	});
 	await seedLegacyLearningTimeAnswers(duplicateAnswerT, duplicateAnswerUserId, {
 		studyDays: "Freitag",
 		learningTime: "18:00",
@@ -439,9 +453,9 @@ test("legacy recovery treats duplicate historical rows as ambiguous", async () =
 		});
 	});
 
-	await expect(
-		duplicateAnswerT.mutation(api.users.syncCurrentUser, { name: "User" }),
-	).resolves.toBe(duplicateAnswerUserId);
+	await expect(syncTestUser(duplicateAnswerT, { name: "User" })).resolves.toBe(
+		duplicateAnswerUserId,
+	);
 	await expect(
 		duplicateAnswerT.query(api.learningTimes.listMine, {}),
 	).resolves.toEqual([]);
@@ -449,27 +463,27 @@ test("legacy recovery treats duplicate historical rows as ambiguous", async () =
 
 test("legacy recovery never resurrects learning times removed in settings", async () => {
 	const t = convexTest(schema, modules).withIdentity(userIdentity);
-	const userId = await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	const userId = await syncTestUser(t, { name: "User" });
 	await seedLegacyLearningTimeAnswers(t, userId, {
 		studyDays: "Freitag",
 		learningTime: "18:00",
 		dailySchoolTime: "60 min",
 	});
 
-	await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	await syncTestUser(t, { name: "User" });
 	const learningTimes = await t.query(api.learningTimes.listMine, {});
 	expect(learningTimes).toHaveLength(1);
 	await t.mutation(api.learningTimes.removeMine, {
 		id: learningTimes[0].id,
 	});
 
-	await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	await syncTestUser(t, { name: "User" });
 	await expect(t.query(api.learningTimes.listMine, {})).resolves.toEqual([]);
 });
 
 test("completed onboarding never resurrects learning times removed in settings", async () => {
 	const t = convexTest(schema, modules).withIdentity(userIdentity);
-	await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	await syncTestUser(t, { name: "User" });
 	await t.mutation(api.users.saveOnboardingAnswers, {
 		answers: onboardingAnswers(),
 	});
@@ -482,13 +496,13 @@ test("completed onboarding never resurrects learning times removed in settings",
 		});
 	}
 
-	await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	await syncTestUser(t, { name: "User" });
 	await expect(t.query(api.learningTimes.listMine, {})).resolves.toEqual([]);
 });
 
 test("future legacy backfill versions are not downgraded or rerun", async () => {
 	const t = convexTest(schema, modules).withIdentity(userIdentity);
-	const userId = await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	const userId = await syncTestUser(t, { name: "User" });
 	await t.run(async (ctx) => {
 		await ctx.db.patch("users", userId, {
 			learningTimesBackfillVersion: 2,
@@ -504,7 +518,7 @@ test("future legacy backfill versions are not downgraded or rerun", async () => 
 			id: learningTime.id,
 		});
 	}
-	await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	await syncTestUser(t, { name: "User" });
 	await expect(t.query(api.learningTimes.listMine, {})).resolves.toEqual([]);
 	await t.run(async (ctx) => {
 		const user = await ctx.db.get("users", userId);
@@ -514,7 +528,7 @@ test("future legacy backfill versions are not downgraded or rerun", async () => 
 
 test("settings changes close an incomplete legacy recovery window", async () => {
 	const t = convexTest(schema, modules).withIdentity(userIdentity);
-	const userId = await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	const userId = await syncTestUser(t, { name: "User" });
 	await seedLegacyLearningTimeAnswers(t, userId, {
 		studyDays: "Freitag",
 		learningTime: "18:00",
@@ -530,13 +544,13 @@ test("settings changes close an incomplete legacy recovery window", async () => 
 		dailySchoolTime: "60 min",
 	});
 
-	await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	await syncTestUser(t, { name: "User" });
 	await expect(t.query(api.learningTimes.listMine, {})).resolves.toEqual([]);
 });
 
 test("legacy recovery leaves manual settings authoritative and skips unsafe answers", async () => {
 	const t = convexTest(schema, modules).withIdentity(userIdentity);
-	const userId = await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	const userId = await syncTestUser(t, { name: "User" });
 	await t.mutation(api.learningTimes.upsertMine, {
 		dayOfWeek: 2,
 		startTime: "17:00",
@@ -548,13 +562,13 @@ test("legacy recovery leaves manual settings authoritative and skips unsafe answ
 		dailySchoolTime: "60 min",
 	});
 
-	await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	await syncTestUser(t, { name: "User" });
 	await expect(t.query(api.learningTimes.listMine, {})).resolves.toMatchObject([
 		{ dayOfWeek: 2, startTime: "17:00", endTime: "18:00" },
 	]);
 
 	const unsafeT = convexTest(schema, modules).withIdentity(otherIdentity);
-	const unsafeUserId = await unsafeT.mutation(api.users.syncCurrentUser, {
+	const unsafeUserId = await syncTestUser(unsafeT, {
 		name: "Other",
 	});
 	await seedLegacyLearningTimeAnswers(unsafeT, unsafeUserId, {
@@ -562,7 +576,7 @@ test("legacy recovery leaves manual settings authoritative and skips unsafe answ
 		learningTime: "23:30",
 		dailySchoolTime: "60 min",
 	});
-	await unsafeT.mutation(api.users.syncCurrentUser, { name: "Other" });
+	await syncTestUser(unsafeT, { name: "Other" });
 	await expect(unsafeT.query(api.learningTimes.listMine, {})).resolves.toEqual(
 		[],
 	);
@@ -580,7 +594,7 @@ test("bounded school types survive authenticated profile and onboarding writes",
 	] as const;
 	const t = convexTest(schema, modules).withIdentity(userIdentity);
 
-	const userId = await t.mutation(api.users.syncCurrentUser, {});
+	const userId = await syncTestUser(t, {});
 	for (const schoolType of supportedSchoolTypes) {
 		await expect(
 			t.mutation(api.users.updateProfile, { schoolType }),
@@ -622,7 +636,7 @@ test("bounded school types survive authenticated profile and onboarding writes",
 test("grade 13 survives the authenticated Convex profile round trip", async () => {
 	const t = convexTest(schema, modules).withIdentity(userIdentity);
 
-	const userId = await t.mutation(api.users.syncCurrentUser, { grade: "13" });
+	const userId = await syncTestUser(t, { grade: "13" });
 
 	await expect(t.query(api.users.getMe, {})).resolves.toMatchObject({
 		grade: "13",
@@ -652,7 +666,7 @@ test("grade 13 survives the authenticated Convex profile round trip", async () =
 test("bounded federal states stay selectable and survive profile and onboarding writes", async () => {
 	const t = convexTest(schema, modules).withIdentity(userIdentity);
 
-	const userId = await t.mutation(api.users.syncCurrentUser, {
+	const userId = await syncTestUser(t, {
 		state: "Mecklenburg-Vorpommern",
 	});
 	await expect(t.query(api.users.getMe, {})).resolves.toMatchObject({
@@ -695,11 +709,11 @@ test("bounded federal states stay selectable and survive profile and onboarding 
 test("profile and onboarding writes reject values outside the federal-state vocabulary", async () => {
 	const t = convexTest(schema, modules).withIdentity(userIdentity);
 
-	await expect(
-		t.mutation(api.users.syncCurrentUser, { state: "private state" }),
-	).rejects.toThrow("Bundesland");
+	await expect(syncTestUser(t, { state: "private state" })).rejects.toThrow(
+		"Bundesland",
+	);
 
-	await t.mutation(api.users.syncCurrentUser, { state: "Bayern" });
+	await syncTestUser(t, { state: "Bayern" });
 	await expect(
 		t.mutation(api.users.updateProfile, { state: "Atlantis" }),
 	).rejects.toThrow("Bundesland");
@@ -710,14 +724,60 @@ test("profile and onboarding writes reject values outside the federal-state voca
 	).rejects.toThrow("Bundesland");
 });
 
+test("profile writes reject an under-13 birth date", async () => {
+	const currentYear = new Date().getFullYear();
+	const underThirteenBirthDate = `01.01.${currentYear - 12}`;
+	const eligibleBirthDate = `01.01.${currentYear - 13}`;
+	const t = convexTest(schema, modules).withIdentity(userIdentity);
+	await expect(t.mutation(api.users.syncCurrentUser, {})).rejects.toThrow(
+		"Geburtsdatum",
+	);
+	await expect(syncTestUser(t, { birthDate: "   " })).rejects.toThrow(
+		"Geburtsdatum",
+	);
+
+	await expect(
+		syncTestUser(t, {
+			birthDate: underThirteenBirthDate,
+		}),
+	).rejects.toThrow("mindestens 13 Jahre");
+
+	const userId = await syncTestUser(t, {
+		birthDate: eligibleBirthDate,
+	});
+	await expect(
+		t.mutation(api.users.updateProfile, {
+			birthDate: underThirteenBirthDate,
+		}),
+	).rejects.toThrow("mindestens 13 Jahre");
+
+	await t.run(async (ctx) => {
+		await ctx.db.patch("users", userId, {
+			birthDate: underThirteenBirthDate,
+		});
+	});
+	await expect(
+		t.mutation(api.users.updateProfile, {
+			birthDate: "   ",
+			name: "Updated",
+		}),
+	).rejects.toThrow("mindestens 13 Jahre");
+	await expect(
+		syncTestUser(t, {
+			birthDate: "   ",
+			name: "Synced",
+		}),
+	).rejects.toThrow("mindestens 13 Jahre");
+});
+
 test("profile and onboarding writes reject grades outside the product vocabulary", async () => {
 	const t = convexTest(schema, modules).withIdentity(userIdentity);
 
-	await expect(
-		t.mutation(api.users.syncCurrentUser, { grade: "14" }),
-	).rejects.toThrow("Klassenstufe");
+	await expect(syncTestUser(t, { grade: "14" })).rejects.toThrow(
+		"Klassenstufe",
+	);
 
-	await t.mutation(api.users.syncCurrentUser, { grade: "9" });
+	await syncTestUser(t, { grade: "9" });
 	await expect(
 		t.mutation(api.users.updateProfile, { grade: "4" }),
 	).rejects.toThrow("Klassenstufe");
@@ -732,12 +792,12 @@ test("profile and onboarding writes reject free-text school names", async () => 
 	const t = convexTest(schema, modules).withIdentity(userIdentity);
 
 	await expect(
-		t.mutation(api.users.syncCurrentUser, {
+		syncTestUser(t, {
 			schoolType: "Goethe-Gymnasium Dresden",
 		}),
 	).rejects.toThrow("Schulart");
 
-	await t.mutation(api.users.syncCurrentUser, { schoolType: "gymnasium" });
+	await syncTestUser(t, { schoolType: "gymnasium" });
 	await expect(
 		t.mutation(api.users.updateProfile, {
 			schoolType: "Realschule am Stadtpark",
@@ -779,7 +839,7 @@ test("profile sync maps generic legacy values and clears school names", async ()
 		};
 	});
 
-	await t.mutation(api.users.syncCurrentUser, {});
+	await syncTestUser(t, {});
 	expect(await t.query(api.users.getMe, {})).not.toHaveProperty("schoolType");
 	await expect(
 		t.run(async (ctx) =>
@@ -800,7 +860,7 @@ test("profile sync maps generic legacy values and clears school names", async ()
 			answer: "Gymnasium",
 		});
 	});
-	await t.mutation(api.users.syncCurrentUser, {});
+	await syncTestUser(t, {});
 	await expect(t.query(api.users.getMe, {})).resolves.toMatchObject({
 		schoolType: "gymnasium",
 	});
@@ -819,7 +879,7 @@ test("profile sync maps generic legacy values and clears school names", async ()
 test("profile email follows Clerk's verified primary address", async () => {
 	const backend = convexTest(schema, modules);
 	const oldToken = backend.withIdentity(userIdentity);
-	await oldToken.mutation(api.users.syncCurrentUser, { name: "User" });
+	await syncTestUser(oldToken, { name: "User" });
 
 	// A profile write cannot claim an unverified address while the JWT is stale.
 	await oldToken.mutation(api.users.updateProfile, {

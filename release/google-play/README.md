@@ -21,6 +21,11 @@ Do not repeat the completed submission.
 no data is collected, and Apple's configured privacy/support URLs return 404.
 These were verified without changing the live declarations or website.
 
+The Play-delivered version code 23 predates DAY-357's 13+ registration gate.
+The new source gate needs an inspected replacement binary and real-device tests
+for under-13 learners and the exact 13th birthday before enforcement can be
+claimed for the distributed app.
+
 | Area | Current evidence | Remaining completion |
 | --- | --- | --- |
 | Play account and app | Verified Organization account, developer account ID `4912315867079102345`, app ID `4976075040375716512`, package `com.dayova`, production track ID `4697718440238285251`. The Dayova Organization payments profile is reachable by the release operator as Payments Center admin and primary contact; Payments Center showed no alerts on 2026-08-23. | Julius, as the original Play account owner, must still open Play Console's owner-only Payments profile page and confirm or resolve its previously reported “Action required with your payments account” item. Payments Center admin access does not grant access to that Play-only page. The item did not block review submission. |

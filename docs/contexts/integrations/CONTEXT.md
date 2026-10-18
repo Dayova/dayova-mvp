@@ -6,6 +6,13 @@ Notion is Dayova's main internal documentation and knowledge workspace. Linear o
 
 Linear workspace `dayova`, team `Dayova` (`DAY`), is the source of truth for issues and PRDs. GitHub Issues for `Dayova/dayova-mvp` is a bidirectionally synced compatibility surface, and linked pull requests drive Linear workflow status automation. Agent-facing operation rules live in `docs/agents/issue-tracker.md`.
 
+The implementation-facing mobile data inventory, proposed legal bases,
+retention schedule, deletion contract, SDK/processor register, and release gates
+live in [the mobile privacy data contract](mobile-privacy-data-contract.md).
+Its proposed policy values remain unapproved until the linked Notion decision
+record is signed by the accountable controller/privacy owner:
+[DAY-357 mobile privacy approval](https://app.notion.com/p/3c82e87228bf81e1b3efe45d3e8e7d07).
+
 ## Language
 
 **PostHog Student Profile**:

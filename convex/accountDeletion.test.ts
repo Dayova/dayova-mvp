@@ -25,9 +25,11 @@ test("deletes the authenticated account data in bounded batches", async () => {
 	const other = backend.withIdentity(otherIdentity);
 	const userId = await user.mutation(api.users.syncCurrentUser, {
 		name: "Delete Me",
+		birthDate: "01.01.2000",
 	});
 	const otherUserId = await other.mutation(api.users.syncCurrentUser, {
 		name: "Keep Me",
+		birthDate: "01.01.2000",
 	});
 
 	await backend.run(async (ctx) => {

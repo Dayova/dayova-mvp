@@ -1,4 +1,5 @@
 import type { OnboardingAnswers } from "~/context/OnboardingContext";
+import { getBirthDateError } from "~/lib/age-assurance";
 import { meetsPasswordRequirements } from "~/lib/password-validation";
 import {
 	getOnboardingLearningTimeValidationError,
@@ -57,6 +58,10 @@ export function getOnboardingStepDecision(
 		}
 	}
 
+	if (step.kind === "wheel" && step.field === "birthDate") {
+		return { action: "advance", error: getBirthDateError(answers.birthDate) };
+	}
+
 	if (
 		(step.kind === "days" ||
 			step.kind === "range" ||
@@ -104,6 +109,7 @@ export const getOnboardingRegistrationPayload = (
 	name: answers.name.trim(),
 	email: answers.email.trim().toLowerCase(),
 	password: answers.password,
+	birthDate: answers.birthDate,
 	grade: answers.grade,
 	schoolType: answers.schoolType || undefined,
 	state: answers.state,

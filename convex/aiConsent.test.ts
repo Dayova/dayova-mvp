@@ -16,7 +16,10 @@ const userIdentity = {
 
 test("requires a current explicit consent before AI processing", async () => {
 	const backend = convexTest(schema, modules).withIdentity(userIdentity);
-	await backend.mutation(api.users.syncCurrentUser, { name: "Student" });
+	await backend.mutation(api.users.syncCurrentUser, {
+		name: "Student",
+		birthDate: "01.01.2000",
+	});
 
 	expect(await backend.query(api.aiConsent.getMine, {})).toEqual({
 		status: "notSet",
@@ -57,7 +60,10 @@ test("requires a current explicit consent before AI processing", async () => {
 
 test("rejects stale or invented consent text versions", async () => {
 	const backend = convexTest(schema, modules).withIdentity(userIdentity);
-	await backend.mutation(api.users.syncCurrentUser, { name: "Student" });
+	await backend.mutation(api.users.syncCurrentUser, {
+		name: "Student",
+		birthDate: "01.01.2000",
+	});
 
 	await expect(
 		backend.mutation(api.aiConsent.setDecision, {

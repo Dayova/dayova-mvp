@@ -179,7 +179,7 @@ test("trial and verified purchase changes schedule CRM updates; identical snapsh
 	vi.stubEnv("NOTION_CRM_MODE", "off");
 	const t = convexTest(schema, modules);
 	const auth = t.withIdentity(identity);
-	await auth.mutation(api.users.syncCurrentUser, {});
+	await auth.mutation(api.users.syncCurrentUser, { birthDate: "01.01.2000" });
 	vi.stubEnv("NOTION_CRM_MODE", "live");
 	const scheduledCrm = () =>
 		t.run(async (ctx) =>
@@ -232,7 +232,9 @@ test("a verified RevenueCat snapshot without period type clears a stale trial la
 	vi.setSystemTime(now);
 	vi.stubEnv("NOTION_CRM_MODE", "off");
 	const t = convexTest(schema, modules);
-	await t.withIdentity(identity).mutation(api.users.syncCurrentUser, {});
+	await t
+		.withIdentity(identity)
+		.mutation(api.users.syncCurrentUser, { birthDate: "01.01.2000" });
 	await t.mutation(internal.entitlements.applyRevenueCatSnapshot, {
 		ownerTokenIdentifier: identity.tokenIdentifier,
 		active: true,
@@ -273,7 +275,7 @@ test.each([
 	vi.useFakeTimers();
 	vi.stubEnv("NOTION_CRM_MODE", mode);
 	const t = convexTest(schema, modules).withIdentity(identity);
-	await t.mutation(api.users.syncCurrentUser, {});
+	await t.mutation(api.users.syncCurrentUser, { birthDate: "01.01.2000" });
 	await t.mutation(api.entitlements.activateMyTrial, { termsVersion: "test" });
 	await t.mutation(internal.entitlements.applyRevenueCatSnapshot, {
 		ownerTokenIdentifier: identity.tokenIdentifier,
@@ -296,7 +298,7 @@ test("RevenueCat store trial becomes Paid after a verified normal period, withou
 	vi.stubEnv("NOTION_CRM_MODE", "off");
 	vi.stubEnv("REVENUECAT_SECRET_API_KEY", "test-only");
 	const t = convexTest(schema, modules).withIdentity(identity);
-	await t.mutation(api.users.syncCurrentUser, {});
+	await t.mutation(api.users.syncCurrentUser, { birthDate: "01.01.2000" });
 	let period = "trial";
 	vi.stubGlobal(
 		"fetch",

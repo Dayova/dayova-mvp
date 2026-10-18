@@ -17,6 +17,16 @@ This is a conservative engineering inventory for the Play Console form. It is
 policy, processor contracts, retention schedule, target audience, and the exact
 release build for the current review and every future update.
 
+The Play-delivered version code 23 predates DAY-357's 13+ registration gate.
+The proposed source change rejects under-13 birth dates in onboarding, before
+Clerk identity creation, and at Convex profile writes. This does not establish
+enforcement in the distributed build; inspect a replacement AAB and test the
+under-13 and exact-13th-birthday boundaries on devices. The detailed
+cross-platform inventory and proposed legal and retention decisions remain in
+the [mobile privacy data contract](../../docs/contexts/integrations/mobile-privacy-data-contract.md).
+Its version-20 AAB findings are historical evidence and require rechecking
+against the current production artifact.
+
 The August handoff records submission of Data safety and deletion declarations.
 The live no-collection answer does not substantiate that deletion claim. Neither
 the historical record nor store approval is evidence that the policy, public

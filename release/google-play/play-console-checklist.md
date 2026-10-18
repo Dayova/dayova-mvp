@@ -72,7 +72,7 @@ Console lists ten actioned declarations with no outstanding prompts on September
 | App access | Actioned; historical instructions specify a synthetic account with permanent `dayova_full_access` | Reviewer login was not exercised. Credentials remain in Console. |
 | Ads / Advertising ID | No / No | Actioned; summaries inspected. |
 | Content rating | USK all ages; PEGI 3, among other ratings | Actioned; different from the target-audience field. |
-| Target audience and content | 13–15, 16–17, 18+ | Actioned; DAY-357 still owns reconciliation with actual product/marketing scope. |
+| Target audience and content | 13–15, 16–17, 18+ | Actioned; DAY-357 still owns reconciliation with actual product/marketing scope. Play-delivered version code 23 predates the 13+ registration gate; inspect a replacement binary and test under-13 and exact-13th-birthday registration before claiming enforcement. |
 | Data safety | **No collection/sharing** | **Incorrect no-collection claim**, confirmed in the saved form and public declaration. Reconcile with the engineering inventory before correcting the declaration. |
 | Government apps | No | Actioned; summary inspected. |
 | Financial features | No | Actioned; summary inspected. |

@@ -8,6 +8,16 @@ import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
 type TestBackend = ReturnType<ReturnType<typeof convexTest>["withIdentity"]>;
+type SyncTestUserArgs = {
+	name?: string;
+	validationStudentCode?: string;
+};
+
+const syncTestUser = (t: TestBackend, args: SyncTestUserArgs = {}) =>
+	t.mutation(api.users.syncCurrentUser, {
+		birthDate: "01.01.2000",
+		...args,
+	});
 
 const studentIdentity = {
 	subject: "student",
@@ -104,7 +114,7 @@ const createAcceptedPlanWithSession = async (t: TestBackend) => {
 
 test("validation next-day returns are captured once per local day", async () => {
 	const t = convexTest(schema, modules).withIdentity(studentIdentity);
-	await t.mutation(api.users.syncCurrentUser, {
+	await syncTestUser(t, {
 		name: "Student",
 		validationStudentCode: "STU-001",
 	});
@@ -134,7 +144,7 @@ test("validation next-day returns are captured once per local day", async () => 
 
 test("validation activity rejects malformed local day keys", async () => {
 	const t = convexTest(schema, modules).withIdentity(studentIdentity);
-	await t.mutation(api.users.syncCurrentUser, {
+	await syncTestUser(t, {
 		name: "Student",
 	});
 
@@ -153,7 +163,7 @@ test("validation activity rejects malformed local day keys", async () => {
 test("validation daily overview is founder-only and records attribution", async () => {
 	const t = convexTest(schema, modules);
 	const studentT = t.withIdentity(studentIdentity);
-	await studentT.mutation(api.users.syncCurrentUser, {
+	await syncTestUser(studentT, {
 		name: "Student",
 		validationStudentCode: "STU-001",
 	});
@@ -166,7 +176,7 @@ test("validation daily overview is founder-only and records attribution", async 
 	).rejects.toThrow("Kein Zugriff auf die Validierungsübersicht.");
 
 	const founderT = t.withIdentity(founderIdentity);
-	const founderUserId = await founderT.mutation(api.users.syncCurrentUser, {
+	const founderUserId = await syncTestUser(founderT, {
 		name: "Founder",
 	});
 	await t.run(async (ctx) => {

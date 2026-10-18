@@ -26,6 +26,7 @@ import {
 } from "~/lib/analytics";
 import type { OnboardingCompletionStatus } from "~/lib/auth-routing";
 import { runWithAuthSettleRetries } from "~/lib/auth-settle-retry";
+import { normalizeEligibleBirthDateIfPresent } from "~/lib/age-assurance";
 import {
 	getDefinedProfileFields as definedProfileFields,
 	prepareClerkRegistration,
@@ -95,6 +96,7 @@ type LoginInput = {
 type UpdateProfileInput = {
 	email: string;
 	name: string;
+	birthDate?: string;
 	grade: string;
 	schoolType?: SupportedSchoolType;
 	state: string;
@@ -651,6 +653,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			...definedProfileFields({
 				name: pendingProfile?.name ?? user.name,
 				phone: pendingProfile?.phone ?? user.phone,
+				birthDate: pendingProfile?.birthDate ?? user.birthDate,
 				grade: pendingProfile?.grade ?? user.grade,
 				schoolType: pendingProfile?.schoolType ?? user.schoolType,
 				state: pendingProfile?.state ?? user.state,
@@ -1254,6 +1257,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		if (!isConvexAuthenticated) return;
 		await updateConvexProfile({
 			name: profile.name,
+			...(profile.birthDate !== undefined
+				? { birthDate: profile.birthDate }
+				: {}),
 			grade: profile.grade,
 			schoolType: profile.schoolType,
 			state: profile.state,
@@ -1268,9 +1274,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				throw new Error("Du bist nicht angemeldet.");
 			}
 
+			const birthDate = normalizeEligibleBirthDateIfPresent(input.birthDate);
 			const normalizedProfile = {
 				email: input.email.trim().toLowerCase(),
 				name: input.name.trim(),
+				...(birthDate !== undefined ? { birthDate } : {}),
 				grade: input.grade.trim(),
 				schoolType: normalizeOptionalSchoolTypeInput(input.schoolType),
 				state: input.state.trim(),
@@ -1284,6 +1292,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			const { firstName, lastName } = splitName(normalizedProfile.name);
 			const unsafeMetadata: Record<string, unknown> = {
 				...(clerkUser.unsafeMetadata ?? {}),
+				...(birthDate !== undefined ? { birthDate } : {}),
 				grade: normalizedProfile.grade,
 				state: normalizedProfile.state,
 			};
@@ -1339,6 +1348,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				await persistProfileToConvex(normalizedProfile);
 				setPendingProfile({
 					name: normalizedProfile.name,
+					birthDate: normalizedProfile.birthDate,
 					grade: normalizedProfile.grade,
 					schoolType: normalizedProfile.schoolType,
 					state: normalizedProfile.state,
@@ -1371,6 +1381,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				await persistProfileToConvex(pendingProfileEmail.profile);
 				setPendingProfile({
 					name: pendingProfileEmail.profile.name,
+					birthDate: pendingProfileEmail.profile.birthDate,
 					grade: pendingProfileEmail.profile.grade,
 					schoolType: pendingProfileEmail.profile.schoolType,
 					state: pendingProfileEmail.profile.state,

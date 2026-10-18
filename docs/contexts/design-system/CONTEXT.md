@@ -317,7 +317,8 @@ type, arranged 2/2/2/1 with wrapping for larger content sizes. Initial answers
 are empty; example selections belong only in historical screenshot evidence.
 
 The duration explanation adapts to the chosen value; an additional explanation
-between weekdays and start time brings the profile flow to twelve steps.
+between weekdays and start time, together with the required age check, brings
+the profile flow to thirteen steps.
 
 ## Press feedback
 
