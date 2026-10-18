@@ -81,9 +81,6 @@ export function ExamHintsEditor({
 			) : null}
 			{examples.length > 0 ? (
 				<View className="mt-1 gap-2">
-					<Text className="font-poppins text-body-4 text-secondary-text">
-						Vorschläge für deine Prüfung
-					</Text>
 					{examples.map((example) => {
 						const selection = selected(example);
 						return (

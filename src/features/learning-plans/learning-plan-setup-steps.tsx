@@ -387,9 +387,6 @@ export function ExamHintsStep({
 			>
 				Welche Hinweise gibt es zur Prüfung?
 			</Text>
-			<Text className="mt-2 font-poppins text-body-4 text-secondary-text">
-				Optional – ergänze nur, was für deine Prüfung gilt.
-			</Text>
 			<ExamHintsEditor
 				subject={subject}
 				selectedTopics={selectedTopics}
