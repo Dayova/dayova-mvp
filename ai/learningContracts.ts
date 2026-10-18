@@ -7,11 +7,11 @@ import { MAX_LEARNING_TOPIC_COUNT } from "../convex/learningTopicMap";
 
 const MAX_SESSION_TITLE_CHARS = 28;
 const MIN_TOPIC_MAP_COUNT = 3;
-export const GERMAN_UI_TEXT_RULE =
+const GERMAN_UI_TEXT_RULE =
 	"All visible German UI text must use correct umlauts and ß, not ae/oe/ue/ss substitutions.";
 const KNOWLEDGE_QUESTIONS_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Return exactly ten objectively assessable questions for the first-session knowledge check.`;
 const GENERATED_PLAN_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Return a realistic, calendar-ready German learning plan with concrete study sessions.`;
-export const sessionPhaseSchema = z.enum(["theory", "practice", "rehearsal"]);
+const sessionPhaseSchema = z.enum(["theory", "practice", "rehearsal"]);
 export type GeneratedSessionPhase = z.infer<typeof sessionPhaseSchema>;
 
 const atMostArray = <TItem extends z.ZodType>(
@@ -42,7 +42,7 @@ const exactArray = <TItem extends z.ZodType>(
 		z.array(itemSchema).length(itemCount),
 	);
 
-export const germanTextSchema = (
+const germanTextSchema = (
 	minLength: number,
 	description: string,
 	maxVisibleLength?: number,
@@ -323,7 +323,7 @@ export const createTheoryTopicsSchema = (itemCount: number) =>
 			`${GERMAN_UI_TEXT_RULE} Return self-contained, instructional theory pages for a learning session.`,
 		);
 
-export const generatedTextRetrySystemInstruction = (attempt: number) =>
+const generatedTextRetrySystemInstruction = (attempt: number) =>
 	attempt === 0
 		? ""
 		: " Die vorherige Ausgabe war ungültig oder wiederholte bereits vorhandene Fragen. Erzeuge alle Fragen vollständig neu, ohne inhaltliche Duplikate und mit korrekten Unicode-Zeichen wie ä, ö, ü, Ä, Ö, Ü und ß.";

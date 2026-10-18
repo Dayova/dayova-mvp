@@ -14,7 +14,7 @@ export type TokenPrices = {
 
 // USD per million tokens. Exact IDs only; unknown models stay unpriced.
 // Source and effective date are maintained alongside these rates in the runbook.
-export const vertexPrices: Record<string, TokenPrices> = {
+const vertexPrices: Record<string, TokenPrices> = {
 	"gemini-3-flash-preview": { input: 0.5, cachedInput: 0.05, output: 3 },
 	"gemini-3.1-flash-lite": { input: 0.25, cachedInput: 0.025, output: 1.5 },
 	"gemini-3.5-flash-lite": { input: 0.3, cachedInput: 0.03, output: 2.5 },

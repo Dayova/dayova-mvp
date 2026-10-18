@@ -15,7 +15,7 @@ import {
 } from "./learningContracts";
 import type { AiOperation } from "./observability";
 
-export const materialSchema = z
+const materialSchema = z
 	.object({
 		id: z.string().regex(/^[a-z0-9-]+$/),
 		split: z.enum(["development", "holdout"]),
