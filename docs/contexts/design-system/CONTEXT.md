@@ -216,6 +216,11 @@ confirmation/white-label direction for app-owned popup actions.
   equally wide and stretched to the same height, with 12pt between them. Compact
   horizontal padding leaves room for German labels without reducing font size.
   Large text and narrow widths may stack/grow/scroll; never clip action labels.
+- **Account choices:** the paywall's “Konto verwalten” sheet uses two text
+  buttons, “Konto wechseln” (`cancel`) and “Konto löschen” (`destructive`),
+  with the same equal-width popup sizing and large-text stacking. It is a
+  short action choice, so it has no settings-card shell, divider, or row icons.
+  Switching and the next deletion confirmation wait for native dismissal.
 - **States:** preserve busy/disabled/error behavior, accessible action names,
   screen-reader focus and safe dismissal. Error/status colors stay separate.
 - **Scope exceptions:** native OS pickers/permission alerts retain platform
