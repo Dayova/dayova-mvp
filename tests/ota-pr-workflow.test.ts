@@ -149,6 +149,10 @@ const event = (eventName: string, association = "MEMBER", fork = false) => ({
 });
 
 describe("PR OTA workflow routing", () => {
+	it("checks hotfix PRs targeting a production snapshot as well as main", () => {
+		expect(workflow.on.pull_request.branches).toBeUndefined();
+	});
+
 	it.each([undefined, null])("rejects missing repository IDs (%s)", (id) => {
 		const github = event("pull_request");
 		const pullRequest = github.event.pull_request;
