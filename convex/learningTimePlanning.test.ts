@@ -24,7 +24,10 @@ test("no manual times: availability and AI context remain empty even with a grad
 		subject: "defaults",
 		email: "defaults@example.com",
 	});
-	await t.mutation(api.users.syncCurrentUser, { grade: "9" });
+	await t.mutation(api.users.syncCurrentUser, {
+		grade: "9",
+		birthDate: "01.01.2000",
+	});
 	expect(await t.query(api.learningTimes.listMine, {})).toEqual([]);
 	expect(
 		await t.query(api.learningPlans.getSchedulingAvailability, {
