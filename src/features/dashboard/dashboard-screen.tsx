@@ -15,6 +15,7 @@ import { formatGermanUiText } from "~/lib/german-ui-text";
 import { ROUTES, withReturnTo } from "~/lib/routes";
 import { triggerSelectionHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import type { DayEntry } from "~/types/dayEntries";
 import { getAgendaPlanRoute } from "./agenda-plan-route";
 import { CalendarPager } from "./calendar-pager";
@@ -77,6 +78,7 @@ const getEntryUrl = (entry: DayEntry, selectedDayLabel: string) => {
 export function DashboardScreen() {
 	const { colors } = useDayovaTheme();
 	const router = useRouter();
+	const trackFeature = useFeatureAnalytics();
 	const params = useLocalSearchParams<{ dayKey?: string }>();
 	const insets = useSafeAreaInsets();
 	const { user } = useAuthSession();
@@ -149,23 +151,29 @@ export function DashboardScreen() {
 			? user.name.trim().split(/\s+/)[0]
 			: null;
 
-	const selectDay = useCallback((dayKey: string, settled: boolean) => {
-		if (!parseDayKey(dayKey)) return false;
-		const current = selection.current;
-		const next = {
-			selectedDayKey: dayKey,
-			settledDayKey: settled ? dayKey : current.settledDayKey,
-		};
-		// Acknowledge before React commits so same-batch reversals use current state.
-		selection.current = next;
-		if (
-			next.selectedDayKey !== current.selectedDayKey ||
-			next.settledDayKey !== current.settledDayKey
-		) {
-			setCalendarSelection(next);
-		}
-		return next.settledDayKey !== current.settledDayKey;
-	}, []);
+	const selectDay = useCallback(
+		(dayKey: string, settled: boolean) => {
+			if (!parseDayKey(dayKey)) return false;
+			const current = selection.current;
+			const next = {
+				selectedDayKey: dayKey,
+				settledDayKey: settled ? dayKey : current.settledDayKey,
+			};
+			// Acknowledge before React commits so same-batch reversals use current state.
+			selection.current = next;
+			if (
+				next.selectedDayKey !== current.selectedDayKey ||
+				next.settledDayKey !== current.settledDayKey
+			) {
+				setCalendarSelection(next);
+			}
+			if (settled && next.settledDayKey !== current.settledDayKey) {
+				trackFeature("home.day_selected");
+			}
+			return next.settledDayKey !== current.settledDayKey;
+		},
+		[trackFeature],
+	);
 	const commitSelectedDay = useCallback(
 		(dayKey: string) => {
 			selectDay(dayKey, true);
@@ -201,6 +209,7 @@ export function DashboardScreen() {
 	const openItem = useCallback(
 		(item: DashboardAgendaItem, returnTo = ROUTES.home) => {
 			if (item.kind === "schoolLesson") return;
+			trackFeature("home.entry_opened", "performed", item.entry.id);
 			const itemDate = parseDayKey(item.dayKey) ?? parseDayKey(selectedDayKey);
 			if (!itemDate) return;
 			const itemDayLabel = new Intl.DateTimeFormat("de-DE", {
@@ -212,7 +221,7 @@ export function DashboardScreen() {
 				withReturnTo(getEntryUrl(item.entry, itemDayLabel), returnTo),
 			);
 		},
-		[router, selectedDayKey],
+		[router, selectedDayKey, trackFeature],
 	);
 
 	const openNextStepFallback = useCallback(
