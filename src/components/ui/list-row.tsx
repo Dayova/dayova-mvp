@@ -7,7 +7,9 @@ import { cn } from "~/lib/utils";
 
 type ListRowProps = React.ComponentProps<typeof ActionSurface> & {
 	icon?: ReactNode;
+	iconContainerClassName?: string;
 	label: string;
+	labelClassName?: string;
 	description?: string;
 	trailing?: ReactNode;
 	tone?: "default" | "destructive";
@@ -17,7 +19,9 @@ function ListRow({
 	className,
 	description,
 	icon,
+	iconContainerClassName,
 	label,
+	labelClassName,
 	trailing,
 	tone = "default",
 	...props
@@ -57,6 +61,7 @@ function ListRow({
 						className={cn(
 							"h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted",
 							shouldStackInlineContent ? "mb-3" : "mr-3",
+							iconContainerClassName,
 						)}
 					>
 						{icon}
@@ -72,6 +77,7 @@ function ListRow({
 						className={cn(
 							"font-poppins font-semibold text-body-2",
 							tone === "destructive" ? "text-destructive" : "text-text",
+							labelClassName,
 						)}
 						numberOfLines={shouldStackInlineContent ? undefined : 1}
 					>

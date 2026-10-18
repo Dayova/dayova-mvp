@@ -138,8 +138,20 @@ jest.mock("~/components/ui/screen", () => {
 	return {
 		Screen: ({ children }: { children: ReactNode }) =>
 			React.createElement(Native.View, null, children),
-		ScreenScroll: ({ children }: { children: ReactNode }) =>
-			React.createElement(Native.View, null, children),
+		ScreenScroll: ({
+			children,
+			contentMaxWidth,
+			testID,
+		}: {
+			children: ReactNode;
+			contentMaxWidth?: number;
+			testID?: string;
+		}) =>
+			React.createElement(
+				Native.View,
+				{ style: { maxWidth: contentMaxWidth }, testID },
+				children,
+			),
 	};
 });
 
@@ -162,6 +174,9 @@ describe("SettingsScreen", () => {
 
 	test("places the trial offer directly below support and keeps legal destinations last", async () => {
 		const screen = await render(<SettingsScreen />);
+		expect(screen.getByTestId("settings-scroll").props.style.maxWidth).toBe(
+			640,
+		);
 		expect(screen.getByRole("header", { name: "Lernen" })).toBeOnTheScreen();
 		expect(screen.getByRole("header", { name: "App" })).toBeOnTheScreen();
 		expect(

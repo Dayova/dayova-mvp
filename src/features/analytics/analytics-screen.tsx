@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import {
 	ActivityIndicator,
 	FlatList as NativeFlatList,
-	useWindowDimensions,
 	View,
 } from "react-native";
 import Animated, {
@@ -33,6 +32,10 @@ import {
 	Sparkles,
 	Time04,
 } from "~/components/ui/icon";
+import {
+	PortraitContent,
+	useContentSizeLayout,
+} from "~/components/ui/portrait-content";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { ActionSurface, Surface } from "~/components/ui/surface";
@@ -46,6 +49,7 @@ import { ROUTES, withReturnTo } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
 import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { cn } from "~/lib/utils";
+import { AnalyticsProgressCard } from "./analytics-progress-card";
 
 type ExamAnalysis = NonNullable<
 	ReturnType<typeof useQuery<typeof api.userAnalytics.getExamAnalysis>>
@@ -113,6 +117,28 @@ const TOPIC_STATUS_COPY: Record<
 	},
 };
 
+const TOPIC_CRITERION_CLASS: Record<TopicStatus, string> = {
+	secure: "border-success bg-success",
+	developing: "border-info bg-info",
+	uncertain: "border-wrong bg-wrong",
+	unknown: "border-border bg-transparent",
+};
+
+function TopicCriterionIcon({ status }: { status: TopicStatus }) {
+	const iconColor = DAYOVA_DESIGN_SYSTEM.colors.buttonNeutral;
+
+	if (status === "secure") {
+		return <Check size={12} color={iconColor} strokeWidth={3} />;
+	}
+	if (status === "developing") {
+		return <ArrowUpRight size={12} color={iconColor} strokeWidth={3} />;
+	}
+	if (status === "uncertain") {
+		return <CircleAlert size={12} color={iconColor} strokeWidth={2.5} />;
+	}
+	return null;
+}
+
 const ANSWER_RATING_COPY = {
 	correct: {
 		label: "Richtig",
@@ -139,6 +165,9 @@ const SESSION_PHASE_COPY = {
 
 const TOPIC_ANSWER_FLIP_DURATION_MS = 320;
 const TOPIC_ANSWER_CARD_MIN_HEIGHT = 240;
+const ANALYTICS_CONTENT_MAX_WIDTH = 560;
+const ANALYTICS_HORIZONTAL_PADDING = 24;
+const ANALYTICS_EXPANDED_CONTENT_MIN_WIDTH = 500;
 
 const formatTopicAnswerReview = (review: string) => {
 	const standaloneReview = review
@@ -321,12 +350,16 @@ function AnalysisHub({
 }) {
 	const { colors } = useDayovaTheme();
 	const recommendation = analysis.recommendation;
-
 	return (
 		<View className="gap-7">
+			<AnalyticsProgressCard
+				accuracy={analysis.answerAccuracy}
+				preliminary={analysis.preliminary}
+			/>
+
 			<View className="gap-4">
 				<SectionHeading
-					title="Deine Prüfungsthemen"
+					title="Deine Themen im Detail"
 					description="Nach Prüfungsrelevanz und Lernrisiko sortiert."
 				/>
 				<Surface
@@ -676,6 +709,12 @@ function TopicList({
 
 	return topics.map((topic, index) => {
 		const status = TOPIC_STATUS_COPY[topic.status];
+		const requiredDimensions = topic.dimensions.filter(
+			(dimension) => dimension.required,
+		);
+		const secureDimensionCount = requiredDimensions.filter(
+			(dimension) => dimension.status === "secure",
+		).length;
 		const answerCountLabel =
 			topic.answeredQuestionCount === 0
 				? "Keine Antworten"
@@ -684,7 +723,7 @@ function TopicList({
 			<ActionSurface
 				key={topic.id}
 				accessibilityHint="Öffnet deinen Wissensstand und alle ausgewerteten Antworten für dieses Thema."
-				accessibilityLabel={`${topic.title}. ${status.label}. ${topic.answeredQuestionCount} ${topic.answeredQuestionCount === 1 ? "ausgewertete Antwort" : "ausgewertete Antworten"}.`}
+				accessibilityLabel={`${topic.title}. ${status.label}. ${topic.answeredQuestionCount} ${topic.answeredQuestionCount === 1 ? "ausgewertete Antwort" : "ausgewertete Antworten"}. ${secureDimensionCount} von ${requiredDimensions.length} Lernkriterien sicher belegt.`}
 				accessibilityRole="button"
 				className={cn(
 					"min-h-20 gap-2 rounded-none bg-card px-5 py-4",
@@ -710,8 +749,7 @@ function TopicList({
 						strokeWidth={2.2}
 					/>
 				</View>
-				<View className="flex-row flex-wrap items-center gap-2">
-					<TopicStatusPill status={topic.status} />
+				<View className="flex-row flex-wrap items-center">
 					<Text
 						selectable
 						className="font-poppins text-body-5 text-secondary-text"
@@ -719,6 +757,34 @@ function TopicList({
 						{answerCountLabel}
 					</Text>
 				</View>
+				{requiredDimensions.length > 0 ? (
+					<View className="flex-row items-center gap-3">
+						<View
+							accessibilityElementsHidden
+							importantForAccessibility="no-hide-descendants"
+							className="flex-row gap-2"
+						>
+							{requiredDimensions.map((dimension) => (
+								<View
+									key={dimension.kind}
+									className={cn(
+										"h-5 w-5 items-center justify-center rounded-full border-2",
+										TOPIC_CRITERION_CLASS[dimension.status],
+									)}
+									testID={`topic-criterion-${topic.id}-${dimension.kind}`}
+								>
+									<TopicCriterionIcon status={dimension.status} />
+								</View>
+							))}
+						</View>
+						<Text
+							selectable
+							className="min-w-0 flex-1 font-poppins text-body-5 text-secondary-text"
+						>
+							{`${secureDimensionCount} von ${requiredDimensions.length} Lernkriterien sicher`}
+						</Text>
+					</View>
+				) : null}
 			</ActionSurface>
 		);
 	});
@@ -924,8 +990,10 @@ function TopicQuestionEvidenceSection({
 }: {
 	evidence: TopicQuestionEvidence | undefined;
 }) {
-	const { width } = useWindowDimensions();
-	const pagerWidth = Math.max(width - 48, 0);
+	const { usableWidth: pagerWidth } = useContentSizeLayout({
+		containerMaxWidth: ANALYTICS_CONTENT_MAX_WIDTH,
+		requestedHorizontalPadding: ANALYTICS_HORIZONTAL_PADDING,
+	});
 	const cardWidth = Math.max(pagerWidth - 24, 240);
 	const snapInterval = cardWidth + 12;
 	const questionCount = evidence?.questions.length ?? 0;
@@ -1201,22 +1269,49 @@ function LoadingState() {
 }
 
 function EmptyState({ onCreatePlan }: { onCreatePlan: () => void }) {
+	const { usableWidth } = useContentSizeLayout({
+		containerMaxWidth: ANALYTICS_CONTENT_MAX_WIDTH,
+		requestedHorizontalPadding: ANALYTICS_HORIZONTAL_PADDING,
+	});
+	const expanded = usableWidth >= ANALYTICS_EXPANDED_CONTENT_MIN_WIDTH;
+
 	return (
-		<Surface className="items-center gap-5 px-6 py-10" variant="flat">
-			<View className="h-16 w-16 items-center justify-center rounded-full bg-system-subtle">
+		<Surface
+			className={cn(
+				"items-center gap-5 px-6 py-10",
+				expanded && "gap-6 px-10 py-12",
+			)}
+			testID="analysis-empty-state"
+			variant="flat"
+		>
+			<View
+				className={cn(
+					"h-16 w-16 items-center justify-center rounded-full bg-system-subtle",
+					expanded && "h-20 w-20",
+				)}
+				testID="analysis-empty-state-icon"
+			>
 				<Sparkles
-					size={30}
+					size={expanded ? 36 : 30}
 					color={DAYOVA_DESIGN_SYSTEM.colors.primaryStrong}
 					strokeWidth={2}
 				/>
 			</View>
-			<View className="items-center gap-2">
-				<Text className="text-center font-poppins font-semibold text-body-1 text-text">
+			<View className={cn("items-center gap-2", expanded && "gap-3")}>
+				<Text
+					className={cn(
+						"text-center font-poppins font-semibold text-body-1 text-text",
+						expanded && "text-heading-2",
+					)}
+				>
 					Deine erste Prüfungsanalyse
 				</Text>
 				<Text
 					selectable
-					className="text-center font-poppins text-body-4 text-secondary-text"
+					className={cn(
+						"text-center font-poppins text-body-4 text-secondary-text",
+						expanded && "text-body-3",
+					)}
 				>
 					Erstelle einen Lernplan. Danach zeigt Dayova, was du schon kannst, wo
 					dein Problem liegt und welcher Schritt dir als Nächstes hilft.
@@ -1224,9 +1319,12 @@ function EmptyState({ onCreatePlan }: { onCreatePlan: () => void }) {
 			</View>
 			<Button
 				accessibilityLabel="Ersten Lernplan erstellen"
+				className={expanded ? "min-h-16 px-10" : undefined}
 				onPress={onCreatePlan}
 			>
-				<Text>Ersten Lernplan erstellen</Text>
+				<Text className={expanded ? "text-body-1" : undefined}>
+					Ersten Lernplan erstellen
+				</Text>
 			</Button>
 		</Surface>
 	);
@@ -1239,6 +1337,7 @@ export function AnalyticsScreen({
 }) {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
+	const { shouldStackInlineContent } = useContentSizeLayout();
 	const [selectedPlanId, setSelectedPlanId] =
 		useState<Id<"learningPlans"> | null>(initialPlanId ?? null);
 	const [isSelectorOpen, setIsSelectorOpen] = useState(false);
@@ -1257,49 +1356,66 @@ export function AnalyticsScreen({
 		<Screen>
 			<ThemedStatusBar />
 			<View
-				className="z-10 bg-background px-6 pb-5"
+				className="z-10 bg-background pb-5"
 				// Safe-area padding is runtime device geometry.
 				style={{ paddingTop: insets.top + 16 }}
 			>
-				<View className="flex-row items-center justify-between">
-					<View className="min-w-0 flex-1 pr-4">
-						<Text
-							accessibilityRole="header"
-							className="font-poppins font-semibold text-heading-2 text-text"
+				<PortraitContent
+					className="px-6"
+					maxWidth={ANALYTICS_CONTENT_MAX_WIDTH}
+					testID="analysis-header-content"
+				>
+					<View
+						className={cn(
+							"gap-4",
+							!shouldStackInlineContent &&
+								"flex-row items-center justify-between",
+						)}
+					>
+						<View
+							className={cn(
+								shouldStackInlineContent ? "w-full" : "min-w-0 flex-1 pr-4",
+							)}
 						>
-							Analyse
-						</Text>
-						{selectedExamContext ? (
 							<Text
-								selectable
-								className="font-poppins text-body-4 text-secondary-text"
-								numberOfLines={1}
+								accessibilityRole="header"
+								className="font-poppins font-semibold text-heading-2 text-text"
 							>
-								{selectedExamContext}
+								Analyse
 							</Text>
-						) : null}
+							{selectedExamContext ? (
+								<Text
+									selectable
+									className="font-poppins text-body-4 text-secondary-text"
+									numberOfLines={shouldStackInlineContent ? undefined : 1}
+								>
+									{selectedExamContext}
+								</Text>
+							) : null}
+						</View>
+						<View className="flex-row items-center gap-2 self-end">
+							{analysis?.hasData ? (
+								<ExamSwitcher
+									analysis={analysis}
+									onClose={() => setIsSelectorOpen(false)}
+									onOpen={() => setIsSelectorOpen(true)}
+									onSelect={setSelectedPlanId}
+									visible={isSelectorOpen}
+								/>
+							) : null}
+							<NotificationButton />
+						</View>
 					</View>
-					<View className="flex-row items-center gap-2">
-						{analysis?.hasData ? (
-							<ExamSwitcher
-								analysis={analysis}
-								onClose={() => setIsSelectorOpen(false)}
-								onOpen={() => setIsSelectorOpen(true)}
-								onSelect={setSelectedPlanId}
-								visible={isSelectorOpen}
-							/>
-						) : null}
-						<NotificationButton />
-					</View>
-				</View>
+				</PortraitContent>
 			</View>
 
 			<ScreenScroll
 				testID="analysis-scroll"
+				contentMaxWidth={ANALYTICS_CONTENT_MAX_WIDTH}
 				includeTopSafeArea={false}
 				topPadding={20}
 				bottomPadding={150}
-				horizontalPadding={24}
+				horizontalPadding={ANALYTICS_HORIZONTAL_PADDING}
 			>
 				<View className="gap-7">
 					{analysis === undefined ? (
@@ -1349,11 +1465,12 @@ export function AnalyticsHistoryScreen() {
 		<Screen>
 			<ThemedStatusBar />
 			<ScreenScroll
+				contentMaxWidth={ANALYTICS_CONTENT_MAX_WIDTH}
 				contentInsetAdjustmentBehavior="automatic"
 				includeTopSafeArea={false}
 				topPadding={24}
 				bottomPadding={72}
-				horizontalPadding={24}
+				horizontalPadding={ANALYTICS_HORIZONTAL_PADDING}
 			>
 				{overview === undefined ? (
 					<LoadingState />
@@ -1599,11 +1716,12 @@ export function AnalyticsDetailScreen({
 		<Screen>
 			<ThemedStatusBar />
 			<ScreenScroll
+				contentMaxWidth={ANALYTICS_CONTENT_MAX_WIDTH}
 				contentInsetAdjustmentBehavior="automatic"
 				includeTopSafeArea={false}
 				topPadding={24}
 				bottomPadding={72}
-				horizontalPadding={24}
+				horizontalPadding={ANALYTICS_HORIZONTAL_PADDING}
 			>
 				{analysis === undefined ? (
 					<LoadingState />

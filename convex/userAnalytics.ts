@@ -166,6 +166,11 @@ const examAnalysisValidator = v.object({
 		uncertain: v.number(),
 		unknown: v.number(),
 	}),
+	answerAccuracy: v.object({
+		answeredQuestions: v.number(),
+		correctAnswers: v.number(),
+		percent: v.union(v.number(), v.null()),
+	}),
 	abilities: v.array(
 		v.object({
 			statement: v.string(),
@@ -979,6 +984,11 @@ export const getExamAnalysis = query({
 				plans: planOptions,
 				selectedPlan: null,
 				readiness: { secure: 0, developing: 0, uncertain: 0, unknown: 0 },
+				answerAccuracy: {
+					answeredQuestions: 0,
+					correctAnswers: 0,
+					percent: null,
+				},
 				abilities: [],
 				improvements: [],
 				latestKnowledgeChange: null,
@@ -1050,6 +1060,22 @@ export const getExamAnalysis = query({
 			}
 		}
 		const latestAttempts = [...latestAttemptByItem.values()];
+		const scoredAttempts = latestAttempts.filter((attempt) => {
+			const item = itemById.get(attempt.itemId);
+			return item !== undefined && item.kind !== "learnCard";
+		});
+		const answeredQuestions = scoredAttempts.length;
+		const correctAnswers = scoredAttempts.filter(
+			(attempt) => attempt.rating === "correct",
+		).length;
+		const answerAccuracy = {
+			answeredQuestions,
+			correctAnswers,
+			percent:
+				answeredQuestions > 0
+					? Math.round((correctAnswers / answeredQuestions) * 100)
+					: null,
+		};
 
 		const analyses = (
 			await ctx.db
@@ -1502,6 +1528,7 @@ export const getExamAnalysis = query({
 				daysRemaining: remainingDays,
 			},
 			readiness,
+			answerAccuracy,
 			abilities,
 			improvements,
 			latestKnowledgeChange,

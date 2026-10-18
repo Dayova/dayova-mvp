@@ -5,6 +5,7 @@ import { ListRow } from "~/components/ui/list-row";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { useDayovaTheme } from "~/lib/theme";
+import { cn } from "~/lib/utils";
 
 function SettingsRow({
 	icon,
@@ -18,6 +19,7 @@ function SettingsRow({
 	destructive = false,
 	accessibilityLabel,
 	buttonRef,
+	expanded = false,
 }: {
 	icon: (props: {
 		size?: number;
@@ -34,6 +36,7 @@ function SettingsRow({
 	destructive?: boolean;
 	accessibilityLabel?: string;
 	buttonRef?: React.ComponentProps<typeof ListRow>["ref"];
+	expanded?: boolean;
 }) {
 	const Icon = icon;
 	const { colors } = useDayovaTheme();
@@ -43,11 +46,13 @@ function SettingsRow({
 			accessibilityLabel={accessibilityLabel}
 			icon={
 				<Icon
-					size={22}
+					size={expanded ? 26 : 22}
 					color={destructive ? colors.destructive : colors.text}
 					strokeWidth={2}
 				/>
 			}
+			iconContainerClassName={expanded ? "h-14 w-14 mr-4" : undefined}
+			labelClassName={expanded ? "text-body-1" : undefined}
 			label={label}
 			description={description}
 			tone={destructive ? "destructive" : "default"}
@@ -57,11 +62,18 @@ function SettingsRow({
 				busy,
 				disabled,
 			}}
-			className="rounded-3xl bg-transparent px-3 shadow-none"
+			className={cn(
+				"rounded-3xl bg-transparent px-3 shadow-none",
+				expanded && "min-h-20 px-5 py-4",
+			)}
 			trailing={
 				trailing ??
 				(onPress && showDisclosure ? (
-					<ArrowRight size={18} color={colors.secondaryText} strokeWidth={2} />
+					<ArrowRight
+						size={expanded ? 20 : 18}
+						color={colors.secondaryText}
+						strokeWidth={2}
+					/>
 				) : undefined)
 			}
 			variant="flat"
@@ -73,9 +85,20 @@ function SettingsDivider() {
 	return <View className="mx-4 h-px bg-border" />;
 }
 
-function SettingsCard({ children }: { children: ReactNode }) {
+function SettingsCard({
+	children,
+	expanded = false,
+}: {
+	children: ReactNode;
+	expanded?: boolean;
+}) {
 	return (
-		<Surface className="overflow-hidden border border-border p-2">
+		<Surface
+			className={cn(
+				"overflow-hidden border border-border p-2",
+				expanded && "p-3",
+			)}
+		>
 			{children}
 		</Surface>
 	);
@@ -83,20 +106,25 @@ function SettingsCard({ children }: { children: ReactNode }) {
 
 function SettingsSection({
 	children,
+	expanded = false,
 	title,
 }: {
 	children: ReactNode;
 	title: string;
+	expanded?: boolean;
 }) {
 	return (
-		<View className="gap-2">
+		<View className={expanded ? "gap-3" : "gap-2"}>
 			<Text
 				accessibilityRole="header"
-				className="px-4 font-poppins font-semibold text-body-4 text-secondary-text"
+				className={cn(
+					"px-4 font-poppins font-semibold text-body-4 text-secondary-text",
+					expanded && "px-5 text-body-3",
+				)}
 			>
 				{title}
 			</Text>
-			<SettingsCard>{children}</SettingsCard>
+			<SettingsCard expanded={expanded}>{children}</SettingsCard>
 		</View>
 	);
 }

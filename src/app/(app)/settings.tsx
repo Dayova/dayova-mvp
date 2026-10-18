@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { View } from "react-native";
+import { useWindowDimensions, View } from "react-native";
 import { ReleaseInformationSheet } from "~/components/release-information-sheet";
 import { ErrorMessage } from "~/components/ui/error-message";
 import {
@@ -38,6 +38,8 @@ import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 export default function SettingsScreen() {
 	const trackFeature = useFeatureAnalytics();
+	const { width } = useWindowDimensions();
+	const expanded = width >= 700;
 	const router = useRouter();
 	const { user } = useAuthSession();
 	const profileName = user?.name?.trim();
@@ -71,9 +73,10 @@ export default function SettingsScreen() {
 
 	const subscriptionCard = (
 		<View className="gap-3" testID="settings-subscription">
-			<SettingsCard>
+			<SettingsCard expanded={expanded}>
 				{access?.state === "trial" ? (
 					<SettingsRow
+						expanded={expanded}
 						icon={CreditCard}
 						label="Dayova abonnieren"
 						onPress={() => {
@@ -83,6 +86,7 @@ export default function SettingsScreen() {
 					/>
 				) : (
 					<SettingsRow
+						expanded={expanded}
 						icon={CreditCard}
 						label="Dayova"
 						accessibilityLabel={`Dayova, ${nativeManagementUrl ? "Abo im Store verwalten" : "Hilfe zum Abo"}`}
@@ -110,13 +114,16 @@ export default function SettingsScreen() {
 			<Screen>
 				<ThemedStatusBar />
 				<ScreenScroll
+					contentMaxWidth={640}
+					testID="settings-scroll"
 					topPadding={104}
 					bottomPadding={120}
 					horizontalPadding={24}
 				>
-					<View className="gap-7">
-						<SettingsCard>
+					<View className={expanded ? "gap-9" : "gap-7"}>
+						<SettingsCard expanded={expanded}>
 							<SettingsRow
+								expanded={expanded}
 								icon={UserRound}
 								label={profileName || "Profil & Konto"}
 								description={profileName ? "Profil & Konto" : undefined}
@@ -133,10 +140,11 @@ export default function SettingsScreen() {
 						</SettingsCard>
 
 						<View testID="settings-support">
-							<SettingsCard>
+							<SettingsCard expanded={expanded}>
 								<SupportContact context="Einstellungen">
 									{({ onPress, busy, buttonRef }) => (
 										<SettingsRow
+											expanded={expanded}
 											buttonRef={buttonRef}
 											icon={Mail}
 											label="Support kontaktieren"
@@ -154,8 +162,9 @@ export default function SettingsScreen() {
 
 						{!isStoreSubscriber ? subscriptionCard : null}
 
-						<SettingsSection title="Lernen">
+						<SettingsSection expanded={expanded} title="Lernen">
 							<SettingsRow
+								expanded={expanded}
 								icon={Timer}
 								label="Lernzeiten"
 								onPress={() => {
@@ -165,14 +174,16 @@ export default function SettingsScreen() {
 							/>
 							<SettingsDivider />
 							<SettingsRow
+								expanded={expanded}
 								icon={BookOpen}
 								label="Persönliche Fächer"
 								onPress={() => router.push(ROUTES.personalSubjects)}
 							/>
 						</SettingsSection>
 
-						<SettingsSection title="App">
+						<SettingsSection expanded={expanded} title="App">
 							<SettingsRow
+								expanded={expanded}
 								icon={Computer}
 								label="App-Informationen"
 								onPress={() => {
@@ -182,6 +193,7 @@ export default function SettingsScreen() {
 							/>
 							<SettingsDivider />
 							<SettingsRow
+								expanded={expanded}
 								icon={Bell}
 								label="Mitteilungen"
 								onPress={() => {
@@ -191,6 +203,7 @@ export default function SettingsScreen() {
 							/>
 							<SettingsDivider />
 							<SettingsRow
+								expanded={expanded}
 								icon={Palette}
 								label="Design"
 								trailing={
@@ -208,8 +221,12 @@ export default function SettingsScreen() {
 						{isStoreSubscriber ? subscriptionCard : null}
 
 						<View className="gap-3" testID="settings-legal">
-							<SettingsSection title="Datenschutz & Rechtliches">
+							<SettingsSection
+								expanded={expanded}
+								title="Datenschutz & Rechtliches"
+							>
 								<SettingsRow
+									expanded={expanded}
 									icon={Sparkles}
 									label="KI & Datenschutz"
 									onPress={() => {
@@ -227,6 +244,7 @@ export default function SettingsScreen() {
 								/>
 								<SettingsDivider />
 								<SettingsRow
+									expanded={expanded}
 									icon={Globe}
 									label="Datenschutz"
 									onPress={() => {
@@ -236,6 +254,7 @@ export default function SettingsScreen() {
 								/>
 								<SettingsDivider />
 								<SettingsRow
+									expanded={expanded}
 									icon={Globe}
 									label="Nutzungsbedingungen"
 									onPress={() => {
