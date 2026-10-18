@@ -110,6 +110,30 @@ Do not add optional public envs to the required release-key list unless the app
 cannot function without them. The analytics client must stay disabled gracefully
 when the PostHog key is absent.
 
+## SDK 58 runtime boundary
+
+The SDK 58 / React Native 0.88 upgrade uses app/runtime `1.0.6` on both platforms.
+Keep the distributed SDK 57 baseline immutable; this graph requires new native
+binaries and must not be published to runtime `1.0.5`. Patch ownership and upstream
+removals are documented in `patches/README.md`. The SDK upgrade retains the CI
+quality gates introduced by #846; it does not replace that tooling change.
+
+`jest-expo` 58 uses Jest 30 transforms, environments and watch plugins. Keep the
+root Jest, globals and types on 30 even while Expo's version recommendation still
+lists Jest 29. Only `jest` and `@types/jest` are excluded from that recommendation;
+the full UI suite and dependency peer checks remain required.
+
+Clerk 4 supports SDK 58 and exposes `__experimental_disableNativeClientSync`.
+Dayova's custom JS authentication uses that provider option instead of mutating
+the TurboModule registry. Do not enable native sync without introducing Clerk
+native auth components and verifying session ownership on both platforms.
+
+SDK 58 Router's `repeat()` injects a child source when a parent-targeted action
+has no source. The nested-stack integration test reproduces the resulting blocked
+replacement. `useBackIntent` disables prevention explicitly and dispatches the
+original action through the root ref, preserving its target/source. Recheck this
+workaround when Router changes; retain protection if another guard cancels removal.
+
 ## Validation Analytics Runtime Contract
 
 Every allowed custom event receives `analytics_schema_version` and may receive
@@ -272,15 +296,18 @@ purpose strings.
 
 ## iOS Deployment Target
 
-Dayova currently requires iOS 17.0 because the native Clerk Expo SDK requires
-it. The `@clerk/expo` config plugin writes that target to the generated Xcode
-project and `Podfile.properties.json` during prebuild. This requirement predates
-the Expo SDK 57 upgrade even though Expo SDK 57 itself supports iOS 16.4 and
-newer.
+SDK 58 generates an iOS 16.4 application deployment target in both the Xcode
+project and the Podfile default. Clerk 4's JavaScript authentication package no
+longer includes the native Clerk pod that raised the SDK 57 application target
+to iOS 17.0. Its config plugin applies native SDK configuration only when the
+optional `@clerk/expo-native-components` package is installed; Dayova does not
+install that package.
 
 Keep Dayova-owned native modules compatible with Expo's 16.4 baseline unless a
-higher target is intentional and documented. Re-evaluate the app-wide iOS 17.0
-minimum when Clerk lowers its native SDK requirement or Clerk is replaced.
+higher target is intentional and documented. Recheck the generated application
+target when adding native authentication components. The deployment target is
+not evidence of runtime verification on iOS 16.4; the SDK 58 native smoke and
+appearance evidence covers iOS 27 simulators.
 
 See `modules/dayova-system-appearance/README.md` for the appearance module's
 runtime design, React Native coupling, compatibility policy, test matrix, and

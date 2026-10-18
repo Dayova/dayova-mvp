@@ -1,6 +1,33 @@
 # DAY-528 validation
 
-## Latest main follow-up — 18 October 2026
+## SDK 58 integration — 18 October 2026
+
+Parent #661 is `ce7c9a36092782ec1bc183e4bb261f742a7d574f`; direct base #748 is
+`3ea63137032d55f108290bf8788cfaa43fdf2af9`. Both include main
+`234604446bc3a85870675731b76e9bbbcb3805c9`, which merged the Expo SDK 58 upgrade.
+The parent import conflict preserves keyboard dismissal and SDK 58's native view
+instance type. The deletion password field now uses `TextInputInstance`; its two
+screen test mocks accept the password argument under Jest 30. The lifecycle layer
+keeps its unchanged Svix dependency graph alongside main's SDK 58 lockfile.
+Semantic comparison confirms no other dependency resolution differs from #748.
+
+Parent validation passes formatting, lint, TypeScript, unused-code checks,
+**145 Vitest files / 1,141 tests**, **18 Node tests**, and **three focused UI
+suites / 31 tests**. After propagation, #748 also passes the complete UI run:
+**106 suites / 568 tests**, plus five background-usage unit tests. The combined
+stack passes formatting, lint, TypeScript, unused-code and skill validation,
+**148 Vitest files / 1,165 tests**, and **four focused UI suites / 34 tests**.
+Frozen dependency installs
+and Expo dependency checks pass for both dependency graphs. Conflict resolutions
+and the narrow native/Jest type fixes were manually reviewed.
+
+Fresh required CI and OTA reports must cover these integration heads. SDK 58
+changes native dependencies; earlier OTA reports and native/provider rehearsals
+below describe their named historical snapshots. Policy approval, audit expiry,
+device/provider acceptance and production activation gates remain open. No native
+release or production deployment is performed by this refresh.
+
+## Earlier main follow-up — 18 October 2026
 
 Parent #661 is `527f56814db3c5a23b34895d2f6edf4092b42ba9`; direct base #748 is
 `88b8faa88d75a5c30be499432403bc9bada7d78a`. These contain main

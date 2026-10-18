@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Keyboard, type TextInput, View } from "react-native";
+import { Keyboard, type TextInputInstance, View } from "react-native";
 import Animated, {
 	FadeInDown,
 	LinearTransition,
@@ -39,7 +39,7 @@ function ExamTypePicker({
 	selectedValue: string;
 	onSelect: (value: string) => void;
 }) {
-	const inputRef = useRef<TextInput>(null);
+	const inputRef = useRef<TextInputInstance>(null);
 	const [showAdd, setShowAdd] = useState(false);
 	const [draft, setDraft] = useState("");
 	const isCustom =
