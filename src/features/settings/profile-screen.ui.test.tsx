@@ -9,7 +9,9 @@ const mockPush = jest.fn();
 
 const mockLogout = jest.fn<() => Promise<void>>(async () => undefined);
 
-const mockDeleteAccount = jest.fn<() => Promise<void>>(async () => undefined);
+const mockDeleteAccount = jest.fn<(_password: string) => Promise<void>>(
+	async () => undefined,
+);
 
 const mockSetPreference = jest.fn(async () => undefined);
 

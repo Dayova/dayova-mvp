@@ -67,9 +67,10 @@ describe("SupportContact", () => {
 
 	test("offers the native copy/share sheet when no email app can open", async () => {
 		mockOpen.mockResolvedValue(false);
-		const share = jest
-			.spyOn(Share, "share")
-			.mockResolvedValue({ action: Share.sharedAction });
+		const share = jest.spyOn(Share, "share").mockResolvedValue({
+			action: Share.sharedAction,
+			activityType: undefined,
+		});
 		const screen = await render(<SupportContact context="Abonnement" />);
 		await fireEvent.press(
 			screen.getByRole("button", { name: "Support kontaktieren" }),

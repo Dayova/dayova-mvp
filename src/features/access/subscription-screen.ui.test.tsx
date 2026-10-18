@@ -67,7 +67,9 @@ const storePlans = [
 ];
 const mockGetPlans = jest.fn(async () => storePlans);
 const mockPurchase = jest.fn<
-	() => Promise<{ status: "purchased" | "cancelled" | "notEntitled" }>
+	(
+		plan: string,
+	) => Promise<{ status: "purchased" | "cancelled" | "notEntitled" }>
 >(async () => ({ status: "purchased" }));
 const mockRestore = jest.fn(async () => ({ status: "purchased" as const }));
 const mockRefreshPaidAccess = jest.fn(async () => true);

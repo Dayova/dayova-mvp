@@ -20,7 +20,9 @@ jest.mock("~/components/ui/icon", () => ({
 
 const mockPush = jest.fn();
 const mockLogout = jest.fn();
-const mockDeleteAccount = jest.fn(async () => undefined);
+const mockDeleteAccount = jest.fn<(_password: string) => Promise<void>>(
+	async () => undefined,
+);
 const mockSubscriptionManagementSheet: {
 	onDismiss: null | (() => void);
 	returnFocusRef: null | { current: unknown };

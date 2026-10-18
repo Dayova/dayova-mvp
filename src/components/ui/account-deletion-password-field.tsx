@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import type { TextInput } from "react-native";
+import type { TextInputInstance } from "react-native";
 import { Field, FieldControl, FieldLabel } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
 
@@ -13,7 +13,7 @@ export function AccountDeletionPasswordField({
 	disabled: boolean;
 }) {
 	const label = "Aktuelles Passwort zur Bestätigung";
-	const inputRef = useRef<TextInput>(null);
+	const inputRef = useRef<TextInputInstance>(null);
 	return (
 		<Field>
 			<FieldLabel onPress={() => inputRef.current?.focus()}>{label}</FieldLabel>
