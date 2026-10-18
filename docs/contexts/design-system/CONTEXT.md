@@ -283,6 +283,12 @@ Keep native glass scoped to the creation header. The creation progress
 bar is 16pt tall, centered beside the 48pt button hosts. This keeps the bar
 compact while preserving comfortable button tap areas.
 
+Exam type, subject, date, topic and hint pages share `CreationActionFooter`.
+The action is a sibling of the scroll content, with 24pt side padding and bottom
+padding `max(safeArea.bottom + 10, 24)`. Retain the existing iOS keyboard-sticky
+behavior. Topic/hint content scrolls above this footer; do not place Continue
+inside a growing result list or a scroll container.
+
 ## Notes
 
 - Use `SupportContact` for contacting the team from Settings, access screens,

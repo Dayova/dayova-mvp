@@ -17,6 +17,15 @@ import {
 	type TopicSearchResult,
 } from "./topic-search";
 
+jest.mock("react-native-safe-area-context", () => ({
+	useSafeAreaInsets: () => ({ top: 0, bottom: 34, left: 0, right: 0 }),
+}));
+jest.mock("react-native-keyboard-controller", () => {
+	const { View, ScrollView } =
+		jest.requireActual<typeof import("react-native")>("react-native");
+	return { KeyboardStickyView: View, KeyboardAwareScrollView: ScrollView };
+});
+
 jest.mock("react-native-reanimated", () =>
 	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
 );

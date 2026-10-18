@@ -92,3 +92,11 @@ Native verification completed in the normal signed-in iPhone 17 Pro app after re
 Video observations: four cross-subject suggestions at 0–3 seconds; after an automation input mistake replaced the term with “R”, the short-query guidance appears at 4–9 seconds. “RQuad” shows cached typo-tolerant previews at 11–13 seconds, then the authoritative provider returns no matches at 14–15 seconds; bounded provider typo coverage is unchanged. The intended “Quad” is restored at 16 seconds; “Quadr” and backspace retain the four visible rows in the 20–21-second samples. “Lineare” returns three at 26 seconds; “Gedichts” returns two at 37 seconds; selected card and chip appear at 50 seconds. All four full-timeline sheets inspected. No claim that one-second sampling rules out millisecond flicker; the commit-level regression covers that seam. No audio/transcription, physical-device or Android acceptance from this capture.
 
 Coverage: 55.13-second video; 55 full-timeline frames sampled at 1 fps (1-second interval); 4 contact sheet(s); no audio stream.
+
+## Follow-up: fixed Continue position
+
+The topic and hint steps previously placed Continue inside their scroll content, so changing result height moved the action. Both now own a scrollable content region with a separate footer. Extracted the existing entry-flow footer as CreationActionFooter and reused it for exam type/subject/date, topics and hints: 24-point side padding, runtime bottom safe area plus 10 (minimum 24), and the existing iOS keyboard-sticky policy. Material upload retains its previous scroll layout.
+
+All 84 existing topic-search, setup-step and creation-flow tests pass. Two unit suites gained the native keyboard/safe-area mocks required by the newly shared page layout; no layout-mirroring tests were added. TypeScript, changed-file Biome/ESLint and whitespace checks pass. Reviewed footer ownership, safe-area geometry, topic/hint scrolling, route transitions, disabled/busy actions and preserved material upload behavior.
+
+Native visual acceptance remains pending: simulator edits continued during the attempted reload, so verification was stopped to avoid overwriting the learner's active draft. No new screenshot or video is claimed for this revision. The running simulator must be reloaded before checking the fixed footer.

@@ -5,7 +5,7 @@ import { File } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import {
@@ -798,67 +798,63 @@ export default function NewLearningPlanScreen() {
 		hasEditedTopicsRef.current = true;
 		setTopicInput({ ...input, topicAdditionalInfo: value });
 	};
-	const viewKey = setupStep;
 	const hintSubject = snapshot?.plan.subject ?? subject;
 
 	return (
 		<Screen>
 			<Stack.Screen options={{ gestureEnabled: true }} />
-			<ScreenScroll
-				key={viewKey}
-				includeTopSafeArea={false}
-				topPadding={0}
-				contentContainerStyle={{ flexGrow: 1 }}
-			>
-				<View className="flex-1">
-					{setupStep === "examHints" ? (
-						<ExamHintsStep
-							subject={hintSubject}
-							selectedTopics={input.topicItems}
-							additionalInfo={input.topicAdditionalInfo}
-							onChange={changeAdditionalInfo}
-							onContinue={() => void continueToMaterial()}
-							canContinue={canContinueTopics}
-							errorMessage={errorMessage}
-							isBusy={isBusy || isPlanSnapshotLoading}
-						/>
-					) : setupStep === "requiredTopics" ? (
-						<RequiredTopicsStep
-							subject={hintSubject}
-							searchTopics={searchTopics}
-							canContinue={canContinueTopics}
-							errorMessage={errorMessage}
-							isBusy={isBusy || isPlanSnapshotLoading}
-							onContinue={() => {
-								if (!canContinueTopics) return;
-								setErrorMessage(null);
-								setSetupStep("examHints");
-								router.setParams({ step: "hints", errorMessage: undefined });
-							}}
-							selectedTopics={input.topicItems}
-							onChangeSelectedTopics={(value) => {
-								hasEditedTopicsRef.current = true;
-								setTopicInput({ ...input, topicItems: value });
-							}}
-						/>
-					) : (
-						<MaterialUploadStep
-							canUpload={canUpload}
-							canContinue={canContinueUpload}
-							documents={snapshot?.documents ?? []}
-							errorMessage={errorMessage}
-							isBusy={isBusy || isPlanSnapshotLoading}
-							isUploading={isUploading}
-							onContinue={continueToAnalysis}
-							onOpenUpload={() => setIsUploadSheetVisible(true)}
-							onRemoveDocument={(id) => void removeUploadedDocument(id)}
-							onSkip={finishWithMaterialLater}
-							openingUploadAction={openingUploadAction}
-							showSkip={setupOrigin === "newExam"}
-						/>
-					)}
-				</View>
-			</ScreenScroll>
+			{setupStep === "examHints" ? (
+				<ExamHintsStep
+					subject={hintSubject}
+					selectedTopics={input.topicItems}
+					additionalInfo={input.topicAdditionalInfo}
+					onChange={changeAdditionalInfo}
+					onContinue={() => void continueToMaterial()}
+					canContinue={canContinueTopics}
+					errorMessage={errorMessage}
+					isBusy={isBusy || isPlanSnapshotLoading}
+				/>
+			) : setupStep === "requiredTopics" ? (
+				<RequiredTopicsStep
+					subject={hintSubject}
+					searchTopics={searchTopics}
+					canContinue={canContinueTopics}
+					errorMessage={errorMessage}
+					isBusy={isBusy || isPlanSnapshotLoading}
+					onContinue={() => {
+						if (!canContinueTopics) return;
+						setErrorMessage(null);
+						setSetupStep("examHints");
+						router.setParams({ step: "hints", errorMessage: undefined });
+					}}
+					selectedTopics={input.topicItems}
+					onChangeSelectedTopics={(value) => {
+						hasEditedTopicsRef.current = true;
+						setTopicInput({ ...input, topicItems: value });
+					}}
+				/>
+			) : (
+				<ScreenScroll
+					includeTopSafeArea={false}
+					topPadding={0}
+					contentContainerStyle={{ flexGrow: 1 }}
+				>
+					<MaterialUploadStep
+						canUpload={canUpload}
+						canContinue={canContinueUpload}
+						documents={snapshot?.documents ?? []}
+						errorMessage={errorMessage}
+						isBusy={isBusy || isPlanSnapshotLoading}
+						isUploading={isUploading}
+						onContinue={continueToAnalysis}
+						onOpenUpload={() => setIsUploadSheetVisible(true)}
+						onRemoveDocument={(id) => void removeUploadedDocument(id)}
+						onSkip={finishWithMaterialLater}
+						openingUploadAction={openingUploadAction}
+						showSkip={setupOrigin === "newExam"}
+					/>
+				</ScreenScroll>
+			)}
 
 			<ActionSheet
 				visible={isUploadSheetVisible}

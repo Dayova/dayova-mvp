@@ -1,12 +1,15 @@
+import type { ReactNode } from "react";
 import { ActivityIndicator, View } from "react-native";
 import type { Id } from "#convex/_generated/dataModel";
 import { Button } from "~/components/ui/button";
 import { GraduationCap, Plus } from "~/components/ui/icon";
+import { ScreenScroll } from "~/components/ui/screen";
 import { ActionSurface, Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { MaterialCard } from "~/features/learning-plans/learning-plan-ui";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { useDayovaTheme } from "~/lib/theme";
+import { CreationActionFooter } from "./creation-action-footer";
 import { ExamHintsEditor } from "./exam-hints-editor";
 import { type SearchTopics, TopicSearch } from "./topic-search";
 
@@ -275,6 +278,40 @@ export function MaterialUploadStep({
 	);
 }
 
+function SearchSetupPage({
+	children,
+	canContinue,
+	errorMessage,
+	isBusy,
+	onContinue,
+}: {
+	children: ReactNode;
+	canContinue: boolean;
+	errorMessage: string | null;
+	isBusy: boolean;
+	onContinue: () => void;
+}) {
+	return (
+		<View className="flex-1">
+			<ScreenScroll
+				includeTopSafeArea={false}
+				topPadding={0}
+				contentContainerStyle={{ paddingBottom: 24 }}
+			>
+				{children}
+				<SetupError message={errorMessage} />
+			</ScreenScroll>
+			<CreationActionFooter>
+				<SetupContinueButton
+					canContinue={canContinue}
+					isBusy={isBusy}
+					onPress={onContinue}
+				/>
+			</CreationActionFooter>
+		</View>
+	);
+}
+
 export function RequiredTopicsStep({
 	subject,
 	searchTopics,
@@ -295,7 +332,12 @@ export function RequiredTopicsStep({
 	searchTopics: SearchTopics;
 }) {
 	return (
-		<View className="flex-1">
+		<SearchSetupPage
+			canContinue={canContinue}
+			errorMessage={errorMessage}
+			isBusy={isBusy}
+			onContinue={onContinue}
+		>
 			<Text
 				accessibilityRole="header"
 				className="font-poppins font-semibold text-body-1 text-text"
@@ -309,15 +351,7 @@ export function RequiredTopicsStep({
 				searchTopics={searchTopics}
 				disabled={isBusy}
 			/>
-			<SetupError message={errorMessage} />
-			<View className="mt-auto pt-8">
-				<SetupContinueButton
-					canContinue={canContinue}
-					isBusy={isBusy}
-					onPress={onContinue}
-				/>
-			</View>
-		</View>
+		</SearchSetupPage>
 	);
 }
 
@@ -341,7 +375,12 @@ export function ExamHintsStep({
 	errorMessage: string | null;
 }) {
 	return (
-		<View className="flex-1">
+		<SearchSetupPage
+			canContinue={canContinue}
+			errorMessage={errorMessage}
+			isBusy={isBusy}
+			onContinue={onContinue}
+		>
 			<Text
 				accessibilityRole="header"
 				className="font-poppins font-semibold text-body-1 text-text"
@@ -358,14 +397,6 @@ export function ExamHintsStep({
 				onChange={onChange}
 				disabled={isBusy}
 			/>
-			<SetupError message={errorMessage} />
-			<View className="mt-auto pt-8">
-				<SetupContinueButton
-					canContinue={canContinue}
-					isBusy={isBusy}
-					onPress={onContinue}
-				/>
-			</View>
-		</View>
+		</SearchSetupPage>
 	);
 }
