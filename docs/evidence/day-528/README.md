@@ -1,6 +1,23 @@
 # DAY-528 validation
 
-## Readiness refresh — 18 October 2026
+## Concurrent-request follow-up — 18 October 2026
+
+Parent #661 is now `f2c48fe7825f5f87844a774285bb5d0c6d7a3b32`; direct base #748
+is `74b37e4c5b8633b423efeea7b342b496953c980d`. Integration commit
+`74810e96aae70d4f12691d87416005d5f01a2e03` carries both into #895.
+
+One additional regression submits verified requests concurrently and verifies a
+shared accepted request ID, one tombstone, and read/write access denial after a
+cleanup failure enters retry state. The focused deletion selections pass: four
+files / 35 tests on the parent and four files / 36 tests on the combined stack.
+TypeScript and changed-file ESLint pass. The test was reviewed manually; the
+previously reported CodeRabbit CLI quota still applies. Runtime code is unchanged
+by this follow-up. Fresh CI and OTA reports must cover the new heads.
+
+The full-suite counts and successful CI/development push below describe the
+preceding implementation snapshot, before this additional test.
+
+## Earlier readiness snapshot — 18 October 2026
 
 Native stack #810 remains `main -> #661 -> #748 -> #895`. Parent #661 is
 `83a26edc95a233d160231d93cf4bf466ca2e271c`; direct base #748 is
