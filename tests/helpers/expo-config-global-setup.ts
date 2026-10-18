@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { createRequire } from "node:module";
 import { promisify } from "node:util";
-import type { ProvidedContext } from "vitest";
+import type { TestProject } from "vitest/node";
 import type {
 	ExpoConfigKey,
 	ExpoConfigSnapshot,
@@ -50,13 +50,10 @@ const runConfigContract = async (
 	return stdout;
 };
 
-type GlobalSetupProject = {
-	provide: <T extends keyof ProvidedContext & string>(
-		key: T,
-		value: ProvidedContext[T],
-	) => void;
-	onTestsRerun: (callback: () => Promise<void>) => void;
-};
+type GlobalSetupProject = Pick<
+	TestProject,
+	"name" | "provide" | "onTestsRerun"
+>;
 
 const provideConfigContracts = async (project: GlobalSetupProject) => {
 	const snapshots = {} as ExpoConfigSnapshots;
@@ -91,5 +88,10 @@ const provideConfigContracts = async (project: GlobalSetupProject) => {
 
 export default async function setup(project: GlobalSetupProject) {
 	await provideConfigContracts(project);
-	project.onTestsRerun(() => provideConfigContracts(project));
+	// Vitest invokes this hook for reruns from every project in the watch session.
+	project.onTestsRerun((specifications) => {
+		if (specifications.some((spec) => spec.project.name === project.name)) {
+			return provideConfigContracts(project);
+		}
+	});
 }

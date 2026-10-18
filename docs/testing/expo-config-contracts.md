@@ -8,13 +8,26 @@ Watchman opt-in runs in the same setup, after the Expo configurations.
 Resolution is deliberately serial so a full test run cannot start several
 memory-heavy configuration processes at once.
 In Vitest watch mode, changes to `app.config.cts` or `metro.config.js` rerun
-these contracts with freshly resolved snapshots.
+these contracts with freshly resolved snapshots. Vitest's rerun hook is global,
+so the setup checks the affected project before refreshing. Reruns containing
+only ordinary unit tests do not start Expo or Metro configuration subprocesses.
+Mixed reruns that include configuration contracts still refresh their snapshots.
 
 Each child process has a 60-second timeout, a 20 MiB output bound, and an
 explicit termination signal and a hidden process window on Windows. The timeout
 is scoped to the Expo and Metro setup probes; normal unit-test timeouts are
 unchanged. It is twice the roughly 27–30 second
 per-process duration observed on the loaded Windows development host in DAY-380.
+The longer timeout can delay failure reporting when a configuration process hangs.
+Any failed setup probe fails the configuration project instead of allowing stale
+snapshots to pass its tests.
+
+Sharing and serializing the probes reduces duplicate process startup and caps
+concurrent configuration resolution at one process. This does not establish a
+net CI speedup or lower billing: serial startup can lengthen the critical path,
+and even a filtered configuration-contract run resolves all three configurations
+and the Metro probe. Compare equivalent revisions, dependencies, runners, and
+cache conditions before claiming a time or cost saving.
 
 OTA preflight rejects missing workflow fingerprints before reading the baseline
 or starting Expo. Its regression tests cover both platforms and verify that no
