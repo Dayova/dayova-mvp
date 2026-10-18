@@ -14,6 +14,7 @@ const MIN_LEARNING_SLOT_MINUTES = 10;
 const MAX_WINDOW_MINUTES = 120;
 
 const parseTimeToMinutes = (time: string) => {
+	if (time === "24:00") return 24 * 60;
 	const [hours, minutes] = time.split(":").map(Number);
 	if (
 		!Number.isInteger(hours) ||
@@ -114,16 +115,14 @@ export const calculateAvailableStudyMinutes = ({
 			const start = parseTimeToMinutes(learningTime.startTime);
 			const end = parseTimeToMinutes(learningTime.endTime);
 			if (start === null || end === null || end - start < 10) continue;
-			if (
-				dayKey === fromDateKey &&
-				fromTimeMinutes !== undefined &&
-				start <= fromTimeMinutes
-			) {
-				continue;
-			}
+			const effectiveStart =
+				dayKey === fromDateKey && fromTimeMinutes !== undefined
+					? Math.max(start, fromTimeMinutes + 1)
+					: start;
+			if (end - effectiveStart < MIN_LEARNING_SLOT_MINUTES) continue;
 
 			availableMinutes += getFreeWindowMinutes({
-				start,
+				start: effectiveStart,
 				end,
 				occupiedIntervals: occupiedIntervalsByDay.get(dayKey) ?? [],
 			});

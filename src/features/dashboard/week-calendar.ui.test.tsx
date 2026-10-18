@@ -185,3 +185,22 @@ test.each([
 		);
 	}
 });
+
+test("artwork preserves the real week without actions, scaling, or animation", async () => {
+	mockFontScale = 3;
+	const screen = await render(
+		<WeekCalendar
+			mode="artwork"
+			weekKey="2026-10-05"
+			todayKey="2026-10-05"
+			selectedDayKey="2026-10-05"
+			entriesByDay={{}}
+		/>,
+	);
+	expect(screen.queryAllByRole("button")).toHaveLength(0);
+	expect(screen.getByTestId("calendar-day-size-2026-10-05")).toHaveStyle({
+		width: 44,
+		height: 44,
+	});
+	expect(mockTiming).not.toHaveBeenCalled();
+});

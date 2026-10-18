@@ -11,9 +11,9 @@ selected-state legibility and consistency, not a learner-preference study.
 
 ## Compare the same selected state
 
-![Light: original, retained, alternative](light-comparison.png)
+![Light: original, retained, alternative](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/pr-586/color-decision/light-comparison.png?raw=true)
 
-![Dark: original, retained, alternative](dark-comparison.png)
+![Dark: original, retained, alternative](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/pr-586/color-decision/dark-comparison.png?raw=true)
 
 The selected-row crops preserve native pixels at 1:1 before the viewer scales
 the image. A/B/C identify design options; each screenshot selects answer C.
@@ -21,14 +21,14 @@ Original full-resolution 1080×2400 screenshots:
 
 | Theme | A — original | B — retained | C — alternative |
 | --- | --- | --- | --- |
-| Light | [A](A-light.png) | [B](B-light.png) | [C](C-light.png) |
-| Dark | [A](A-dark.png) | [B](B-dark.png) | [C](C-dark.png) |
+| Light | [A](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/pr-586/color-decision/A-light.png?raw=true) | [B](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/pr-586/color-decision/B-light.png?raw=true) | [C](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/pr-586/color-decision/C-light.png?raw=true) |
+| Dark | [A](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/pr-586/color-decision/A-dark.png?raw=true) | [B](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/pr-586/color-decision/B-dark.png?raw=true) | [C](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/pr-586/color-decision/C-dark.png?raw=true) |
 
 Full-screen context, resized equally to 360 pixels per screen:
 
-![Light full-screen context](light-full-context.png)
+![Light full-screen context](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/pr-586/color-decision/light-full-context.png?raw=true)
 
-![Dark full-screen context](dark-full-context.png)
+![Dark full-screen context](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/pr-586/color-decision/dark-full-context.png?raw=true)
 
 ## Recordings
 

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { useWindowDimensions, View } from "react-native";
 import Animated, {
 	Easing,
 	useAnimatedStyle,
@@ -7,6 +7,7 @@ import Animated, {
 	useSharedValue,
 	withTiming,
 } from "react-native-reanimated";
+import { FeedbackTouchableOpacity } from "~/components/ui/feedback-pressable";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 import { parseDayKey } from "~/lib/day-key";
@@ -29,28 +30,31 @@ function DayCircle({
 	selected,
 	today,
 	hasEntries,
+	artwork = false,
 }: {
 	dayKey: string;
 	number: number;
 	selected: boolean;
 	today: boolean;
 	hasEntries: boolean;
+	artwork?: boolean;
 }) {
 	const { fontScale } = useWindowDimensions();
 	const { shouldStackInlineContent } = useContentSizeLayout();
-	const diameter = shouldStackInlineContent ? 44 * Math.max(1, fontScale) : 44;
+	const diameter =
+		!artwork && shouldStackInlineContent ? 44 * Math.max(1, fontScale) : 44;
 	const reducedMotion = useReducedMotion();
 	const progress = useSharedValue(Number(selected));
 	useEffect(() => {
 		progress.set(
-			reducedMotion
+			reducedMotion || artwork
 				? Number(selected)
 				: withTiming(Number(selected), {
 						duration: 240,
 						easing: Easing.out(Easing.cubic),
 					}),
 		);
-	}, [progress, reducedMotion, selected]);
+	}, [progress, reducedMotion, selected, artwork]);
 	const normalStyle = useAnimatedStyle(() => ({ opacity: 1 - progress.get() }));
 	const selectedStyle = useAnimatedStyle(() => ({
 		transform: [{ scale: progress.get() }],
@@ -73,6 +77,7 @@ function DayCircle({
 				className="absolute inset-0 items-center justify-center"
 			>
 				<Text
+					allowFontScaling={!artwork}
 					className={cn(
 						"font-poppins font-semibold text-body-1",
 						today ? "text-primary-strong" : "text-text",
@@ -108,6 +113,7 @@ function DayCircle({
 				className="absolute inset-0 items-center justify-center"
 			>
 				<Text
+					allowFontScaling={!artwork}
 					testID={`calendar-day-number-${dayKey}`}
 					className={cn(
 						"font-poppins font-semibold text-body-1",
@@ -123,13 +129,18 @@ function DayCircle({
 }
 
 /** Renders stationary weekday labels outside the moving week strip. */
-export function CalendarWeekdays() {
+export function CalendarWeekdays({
+	artwork = false,
+}: {
+	artwork?: boolean;
+} = {}) {
 	const { shouldStackInlineContent } = useContentSizeLayout();
-	if (shouldStackInlineContent) return null;
+	if (shouldStackInlineContent && !artwork) return null;
 	return (
 		<View className="mb-2 flex-row" testID="calendar-weekdays">
 			{["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((day) => (
 				<Text
+					allowFontScaling={!artwork}
 					key={day}
 					className="flex-1 text-center font-poppins text-body-4 text-secondary-text"
 				>
@@ -147,14 +158,20 @@ export function WeekCalendar({
 	selectedDayKey,
 	entriesByDay,
 	onSelectDay,
+	mode = "screen",
 }: {
 	weekKey: string;
 	todayKey: string;
 	selectedDayKey: string;
 	entriesByDay: Record<string, DayEntry[]> | undefined;
-	onSelectDay: (dayKey: string) => void;
-}) {
-	const { shouldStackInlineContent } = useContentSizeLayout();
+} & (
+	| { mode?: "screen"; onSelectDay: (dayKey: string) => void }
+	| { mode: "artwork"; onSelectDay?: never }
+)) {
+	const { shouldStackInlineContent: stackForText } = useContentSizeLayout();
+	const artwork = mode === "artwork";
+	const shouldStackInlineContent = !artwork && stackForText;
+	const Control = artwork ? View : FeedbackTouchableOpacity;
 	return (
 		<View
 			className={cn("pb-3", shouldStackInlineContent ? "gap-3" : "flex-row")}
@@ -166,19 +183,20 @@ export function WeekCalendar({
 				const today = key === todayKey;
 				const hasEntries = hasDashboardDayEntries(entriesByDay?.[key]);
 				return (
-					<TouchableOpacity
+					<Control
 						key={key}
 						activeOpacity={0.82}
-						accessibilityRole="button"
+						accessibilityRole={artwork ? undefined : "button"}
 						accessibilityLabel={`${new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric", month: "long" }).format(date)}${today ? ", Heute" : ""}${hasEntries ? ", mit Einträgen" : ""}`}
 						accessibilityState={{ selected }}
-						onPress={() => onSelectDay(key)}
+						onPress={artwork ? undefined : () => onSelectDay?.(key)}
 						className={cn(
 							"min-h-14 items-center",
 							shouldStackInlineContent ? "flex-row gap-4" : "flex-1",
 						)}
 					>
 						<DayCircle
+							artwork={artwork}
 							dayKey={key}
 							number={date.getDate()}
 							selected={selected}
@@ -192,7 +210,7 @@ export function WeekCalendar({
 								)}
 							</Text>
 						) : null}
-					</TouchableOpacity>
+					</Control>
 				);
 			})}
 		</View>

@@ -28,8 +28,8 @@ describe("learning preparation policy", () => {
 			availableMinutes: 600,
 		});
 
-		expect(testRecommendation.recommendedMinutes).toBe(90);
-		expect(classExamRecommendation.recommendedMinutes).toBe(360);
+		expect(testRecommendation.recommendedMinutes).toBe(60);
+		expect(classExamRecommendation.recommendedMinutes).toBe(180);
 		expect(classExamRecommendation.praxisSessionCount).toBe(2);
 	});
 
@@ -40,12 +40,12 @@ describe("learning preparation policy", () => {
 				examDurationMinutes: 60,
 				preparationDepth: "thorough",
 				topicReadiness: { secure: 1, developing: 2, unknown: 3 },
-				availableMinutes: 180,
+				availableMinutes: 90,
 			}),
 		).toMatchObject({
-			recommendedMinutes: 360,
-			plannedMinutes: 180,
-			preparationGapMinutes: 180,
+			recommendedMinutes: 180,
+			plannedMinutes: 90,
+			preparationGapMinutes: 90,
 		});
 	});
 
@@ -60,7 +60,7 @@ describe("learning preparation policy", () => {
 			}),
 		).toMatchObject({
 			plannedMinutes: 0,
-			preparationGapMinutes: 240,
+			preparationGapMinutes: 180,
 		});
 	});
 });

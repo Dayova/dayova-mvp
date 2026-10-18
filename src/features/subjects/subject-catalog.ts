@@ -19,24 +19,10 @@ import {
 	Telescope,
 	TimeManagement,
 } from "~/components/ui/icon";
-
-const BUILT_IN_SUBJECT_NAMES = [
-	"Mathematik",
-	"Deutsch",
-	"Englisch",
-	"Biologie",
-	"Chemie",
-	"Physik",
-	"Geschichte",
-	"Erdkunde",
-	"Sozialkunde",
-	"Informatik",
-	"Kunst",
-	"Musik",
-	"Sport",
-] as const;
-const normalizeSubjectName = (value: string) =>
-	value.trim().replace(/\s+/g, " ").toLocaleLowerCase("de-DE");
+import {
+	BUILT_IN_SUBJECT_NAMES,
+	normalizeSubjectName,
+} from "~/features/subjects/subject-definitions";
 
 const subjectIconByBuiltInName = {
 	Mathematik: Calculator,
@@ -99,4 +85,11 @@ function getSubjectIcon(name: string): typeof BookOpen {
 	return BookOpen;
 }
 
-export { getSubjectIcon };
+const BUILT_IN_SUBJECT_OPTIONS = BUILT_IN_SUBJECT_NAMES.map((name) => ({
+	key: `built-in:${normalizeSubjectName(name)}`,
+	name,
+	kind: "builtIn" as const,
+	Icon: subjectIconByBuiltInName[name],
+}));
+
+export { BUILT_IN_SUBJECT_OPTIONS, getSubjectIcon, subjectIconByBuiltInName };

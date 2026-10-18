@@ -1,5 +1,5 @@
 import { beforeEach, expect, jest, test } from "@jest/globals";
-import { fireEvent, render } from "@testing-library/react-native";
+import { fireEvent, render, within } from "@testing-library/react-native";
 import { DashboardScreen } from "./dashboard-screen";
 
 const mockPush = jest.fn();
@@ -27,7 +27,12 @@ jest.mock("~/components/ui/themed-status-bar", () => ({
 	ThemedStatusBar: () => null,
 }));
 jest.mock("~/components/create-entry-button", () => ({
-	CreateEntryButton: () => null,
+	CreateEntryButton: () => {
+		const React = jest.requireActual<typeof import("react")>("react");
+		return React.createElement(require("react-native").View, {
+			testID: "create-entry-action",
+		});
+	},
 }));
 jest.mock("~/context/AuthContext", () => ({
 	useAuthSession: () => ({ user: { name: "Philipp" } }),
@@ -84,7 +89,11 @@ jest.mock("./today-learning-card", () => ({
 	},
 }));
 jest.mock("./dashboard-calendar-header", () => ({
-	DashboardCalendarHeader: () => null,
+	DashboardCalendarHeader: ({
+		createAction,
+	}: {
+		createAction?: import("react").ReactNode;
+	}) => createAction ?? null,
 }));
 jest.mock("./week-calendar", () => ({
 	CalendarWeekdays: () => null,
@@ -144,6 +153,16 @@ jest.mock("./compact-day-agenda", () => ({
 beforeEach(() => {
 	jest.clearAllMocks();
 	mockHasPlan = true;
+});
+
+test("renders the only plus action inside the calendar rather than the greeting", async () => {
+	const screen = await render(<DashboardScreen />);
+	expect(screen.getAllByTestId("create-entry-action")).toHaveLength(1);
+	expect(
+		within(screen.getByTestId("dashboard-calendar")).getByTestId(
+			"create-entry-action",
+		),
+	).toBeTruthy();
 });
 
 test("hero opens its session and agenda opens its plan, both returning to Today", async () => {
