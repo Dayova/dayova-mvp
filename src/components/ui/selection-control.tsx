@@ -1,29 +1,18 @@
 import { LinearGradient } from "expo-linear-gradient";
-import {
-	type ComponentProps,
-	createContext,
-	type ReactNode,
-	use,
-	useEffect,
-} from "react";
+import { type ComponentProps, createContext, type ReactNode, use } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import Animated, {
-	Easing,
 	interpolateColor,
 	type SharedValue,
 	useAnimatedStyle,
-	useReducedMotion,
-	useSharedValue,
-	withSpring,
-	withTiming,
 } from "react-native-reanimated";
 import { Check } from "~/components/ui/icon";
+import { useSelectionMotion } from "~/components/ui/selection-motion";
 import { Text } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
-const SETTLE = { duration: 240, dampingRatio: 0.8 };
 const AnimatedText = Animated.createAnimatedComponent(Text);
 type Appearance = "card" | "pill";
 type SelectionColors = {
@@ -91,24 +80,8 @@ export function SelectionControl({
 		badge: theme.light2,
 		badgeText: theme.secondaryText,
 	};
-	const reduceMotion = useReducedMotion();
-	const progress = useSharedValue(Number(selected));
-	const checkScale = useSharedValue(selected ? 1 : 0.6);
-	const pressScale = useSharedValue(1);
-	useEffect(() => {
-		progress.set(
-			reduceMotion
-				? Number(selected)
-				: withTiming(Number(selected), {
-						duration: 180,
-						easing: Easing.out(Easing.cubic),
-					}),
-		);
-		checkScale.set(reduceMotion ? 1 : withSpring(selected ? 1 : 0.6, SETTLE));
-	}, [checkScale, progress, reduceMotion, selected]);
-	useEffect(() => {
-		if (disabled || reduceMotion) pressScale.set(1);
-	}, [disabled, pressScale, reduceMotion]);
+	const { progress, checkScale, pressScale, onPressIn, onPressOut } =
+		useSelectionMotion(selected, disabled);
 	const gradientStyle = useAnimatedStyle(() => ({ opacity: progress.get() }));
 	const surfaceStyle = useAnimatedStyle(() => ({
 		transform: [{ scale: pressScale.get() }],
@@ -135,13 +108,8 @@ export function SelectionControl({
 					checked: selected,
 					disabled,
 				}}
-				onPressIn={() => {
-					if (!disabled && !reduceMotion)
-						pressScale.set(withTiming(0.98, { duration: 90 }));
-				}}
-				onPressOut={() =>
-					pressScale.set(reduceMotion ? 1 : withSpring(1, SETTLE))
-				}
+				onPressIn={onPressIn}
+				onPressOut={onPressOut}
 			>
 				{/* Only the presentation scales; its outer native hit area stays fixed. */}
 				<Animated.View
