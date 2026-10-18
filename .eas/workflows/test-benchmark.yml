@@ -1,0 +1,22 @@
+name: Test quality benchmark
+
+on:
+  workflow_dispatch: {}
+
+defaults:
+  tools:
+    node: "24.18.0"
+    pnpm: "11.15.1"
+
+jobs:
+  benchmark:
+    name: Measure lint, typecheck, and tests
+    type: custom
+    runs_on: linux-medium
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - name: Measure quality checks
+        env:
+          EAS_BUILD: "false"
+        run: node scripts/benchmark-checks.mjs
