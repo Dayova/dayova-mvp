@@ -25,7 +25,8 @@ const mockRouter = {
 	back: jest.fn(),
 	canGoBack: () => true,
 };
-const mockCreateEntry = jest.fn<() => Promise<string>>();
+const mockCreateEntry =
+	jest.fn<(_args: Record<string, unknown>) => Promise<string>>();
 const mockUpdateEntry =
 	jest.fn<(_args: Record<string, unknown>) => Promise<void>>();
 const mockUpdateRequiredTopics =
@@ -356,6 +357,67 @@ async function selectGalleryPhotos(
 	);
 	return screen;
 }
+
+describe("homework creation", () => {
+	test.each([
+		"ios",
+		"android",
+	] as const)("saves homework on %s", async (platform) => {
+		jest.replaceProperty(Platform, "OS", platform);
+		mockParams = {
+			type: "homework",
+			subject: "Englisch",
+			dayKey: "2026-10-24",
+		};
+		const screen = await render(<NewEntryScreen />);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(screen.getByText("Erledigen")).toBeOnTheScreen();
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(mockCreateEntry).toHaveBeenCalledWith(
+			expect.objectContaining({
+				kind: "Hausaufgabe",
+				subject: "Englisch",
+				time: "16:00",
+				durationMinutes: 30,
+			}),
+		);
+		expect(mockRouter.replace).toHaveBeenCalledWith(
+			expect.stringContaining("/entry/success?"),
+		);
+	});
+
+	test("announces a pending save, blocks duplicate presses and lets a failed save be retried", async () => {
+		mockParams = { type: "homework", subject: "Englisch" };
+		let rejectSave!: (error: Error) => void;
+		mockCreateEntry.mockImplementationOnce(
+			() =>
+				new Promise<string>((_resolve, reject) => {
+					rejectSave = reject;
+				}),
+		);
+		const screen = await render(<NewEntryScreen />);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		const saving = screen.getByRole("button", {
+			name: "Hausaufgabe wird gespeichert",
+			busy: true,
+		});
+		expect(saving).toBeDisabled();
+		await fireEvent.press(saving);
+		expect(mockCreateEntry).toHaveBeenCalledTimes(1);
+		await act(() =>
+			rejectSave(new Error("Bitte wähle einen freien Zeitraum.")),
+		);
+		expect(
+			screen.getByText("Bitte wähle einen freien Zeitraum."),
+		).toBeOnTheScreen();
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(mockCreateEntry).toHaveBeenCalledTimes(2);
+		expect(mockRouter.replace).toHaveBeenCalledWith(
+			expect.stringContaining("/entry/success?"),
+		);
+	});
+});
 
 describe("exam creation across the topics boundary", () => {
 	test.each([
