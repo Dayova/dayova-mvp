@@ -36,6 +36,7 @@ describe("getMissingPublicRuntimeConfig", () => {
 		const publicEnvKeys = [
 			"EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY",
 			"EXPO_PUBLIC_CONVEX_URL",
+			"EXPO_PUBLIC_CONVEX_SITE_URL",
 			"EXPO_PUBLIC_POSTHOG_API_KEY",
 			"EXPO_PUBLIC_POSTHOG_HOST",
 			"EXPO_PUBLIC_REVENUECAT_IOS_API_KEY",
@@ -52,11 +53,13 @@ describe("getMissingPublicRuntimeConfig", () => {
 		for (const key of publicEnvKeys) delete process.env[key];
 		process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY = "pk_test_process";
 		process.env.EXPO_PUBLIC_CONVEX_URL = "https://process.convex.cloud";
+		process.env.EXPO_PUBLIC_CONVEX_SITE_URL = "https://configured.example.test";
 
 		try {
 			expect(readPublicRuntimeConfig()).toEqual({
 				EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_process",
 				EXPO_PUBLIC_CONVEX_URL: "https://process.convex.cloud",
+				EXPO_PUBLIC_CONVEX_SITE_URL: "https://configured.example.test",
 				EXPO_PUBLIC_POSTHOG_API_KEY: undefined,
 				EXPO_PUBLIC_POSTHOG_HOST: undefined,
 				EXPO_PUBLIC_REVENUECAT_IOS_API_KEY: undefined,
