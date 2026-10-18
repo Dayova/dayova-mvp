@@ -1,6 +1,6 @@
 import { File, FileMode } from "expo-file-system";
 import type { ImagePickerAsset } from "expo-image-picker";
-import { MAX_LEARNING_MATERIAL_FILE_BYTES } from "#convex/learningMaterialPolicy";
+import { getLearningMaterialFileLimit } from "#convex/learningMaterialPolicy";
 import { validateUploadFile } from "~/lib/upload-policy";
 import type { UploadAsset } from "./types";
 
@@ -40,9 +40,11 @@ export function prepareGalleryUploadAsset(
 	// The picker may transcode images while retaining their original metadata.
 	const file = new File(asset.uri);
 	const size = file.info().size ?? 0;
+	const limit = getLearningMaterialFileLimit("galerie.jpg");
 	const validation = validateUploadFile(
 		{ name: "galerie.jpg", size },
-		MAX_LEARNING_MATERIAL_FILE_BYTES,
+		limit.bytes,
+		limit.label,
 	);
 	if (!validation.valid) throw new Error(validation.message);
 

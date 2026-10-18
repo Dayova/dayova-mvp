@@ -25,7 +25,10 @@ import {
 	getR2ConfigOrThrow,
 } from "./fileStorage";
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
-import { isValidLearningMaterialSize } from "./learningMaterialPolicy";
+import {
+	getLearningMaterialFileLimit,
+	isValidLearningMaterialSize,
+} from "./learningMaterialPolicy";
 import { calculateAvailableStudyMinutes } from "./learningPlanAvailability";
 import {
 	clearSessionDayEntry,
@@ -1308,8 +1311,17 @@ export const registerUploadedDocument = action({
 			},
 		);
 
-		if (!isValidLearningMaterialSize(args.fileSizeBytes)) {
-			throwUserFacingError("Die Datei ist leer oder zu groß (maximal 10 MiB).");
+		const limit = getLearningMaterialFileLimit(args.fileName, args.fileType);
+		if (
+			!isValidLearningMaterialSize(
+				args.fileSizeBytes,
+				args.fileName,
+				args.fileType,
+			)
+		) {
+			throwUserFacingError(
+				`Die Datei ist leer oder zu groß (maximal ${limit.label}).`,
+			);
 		}
 
 		const finalizedUpload = await ctx.runMutation(
@@ -1326,8 +1338,12 @@ export const registerUploadedDocument = action({
 		}
 
 		const fileSizeBytes = finalizedUpload.metadata?.size ?? args.fileSizeBytes;
-		if (!isValidLearningMaterialSize(fileSizeBytes)) {
-			throwUserFacingError("Die Datei ist leer oder zu groß (maximal 10 MiB).");
+		if (
+			!isValidLearningMaterialSize(fileSizeBytes, args.fileName, args.fileType)
+		) {
+			throwUserFacingError(
+				`Die Datei ist leer oder zu groß (maximal ${limit.label}).`,
+			);
 		}
 
 		return await ctx.runMutation(internal.learningPlans.storeUploadedDocument, {
