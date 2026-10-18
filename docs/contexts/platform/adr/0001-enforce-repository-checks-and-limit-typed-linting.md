@@ -36,5 +36,5 @@ still restricted PR CI to `main`; its status history contains no EAS
 After [`a8a48615`](https://github.com/Dayova/dayova-mvp/commit/a8a4861511ae899756570873d662fb4f9d52128f)
 removed the filter, EAS quality CI ran and passed. The first OTA job was canceled
 when superseded; it is not counted as a completed assessment. See the
-[timestamped evidence and source APIs](../../../evidence/pr-846-ci-routing/README.md)
+[timestamped evidence and source APIs](https://github.com/Dayova/dayova-mvp/pull/846#issuecomment-6252206160)
 for the exact before/after statuses, later complete result, and evidence limits.
