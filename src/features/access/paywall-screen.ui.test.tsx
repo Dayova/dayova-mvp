@@ -74,12 +74,14 @@ jest.mock("~/components/ui/confirmation-sheet", () => {
 			title,
 			visible,
 			children,
+			errorMessage,
 			confirmDisabled,
 			onConfirm,
 		}: {
 			title: ReactNode;
 			visible: boolean;
 			children?: ReactNode;
+			errorMessage?: string | null;
 			confirmDisabled?: boolean;
 			onConfirm: () => void;
 		}) =>
@@ -89,6 +91,9 @@ jest.mock("~/components/ui/confirmation-sheet", () => {
 						null,
 						React.createElement(NativeText, null, title),
 						children,
+						errorMessage
+							? React.createElement(NativeText, null, errorMessage)
+							: null,
 						React.createElement(
 							Pressable,
 							{
@@ -248,5 +253,39 @@ describe("PaywallScreen", () => {
 		await waitFor(() =>
 			expect(mockDeleteAccount).toHaveBeenCalledWith("test-password"),
 		);
+	});
+
+	test.each([
+		[
+			new Error("Das aktuelle Passwort ist falsch."),
+			"Das aktuelle Passwort ist falsch.",
+		],
+		[
+			null,
+			"Die Kontolöschung konnte nicht bestätigt werden. Bitte versuche es erneut.",
+		],
+	])("keeps the deletion sheet open with the failure reason: %s", async (error, message) => {
+		mockDeleteAccount.mockRejectedValueOnce(error);
+		const screen = await render(<PaywallScreen />);
+		await fireEvent.press(
+			screen.getByRole("link", { name: "Konto verwalten" }),
+		);
+		await fireEvent.press(await screen.findByText("Konto löschen"));
+		await act(async () => {
+			mockSubscriptionManagementSheet.onDismiss?.();
+		});
+		await fireEvent.changeText(
+			screen.getByLabelText("Aktuelles Passwort zur Bestätigung"),
+			"wrong-password",
+		);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Löschung bestätigen" }),
+		);
+		expect(await screen.findByText(message)).toBeOnTheScreen();
+		expect(screen.getByText("Konto wirklich löschen?")).toBeOnTheScreen();
+		expect(
+			screen.getByLabelText("Aktuelles Passwort zur Bestätigung").props.value,
+		).toBe("");
+		expect(mockLogout).not.toHaveBeenCalled();
 	});
 });

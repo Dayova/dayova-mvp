@@ -148,42 +148,52 @@ export const processDeletionRequest = internalAction({
 
 		const stage = request.stage;
 		try {
+			let advanced = false;
 			if (stage === "revokeSessions") {
 				const secretKey = readOptionalEnv("CLERK_SECRET_KEY");
 				if (!secretKey || !request.clerkUserId) {
 					throw new ProcessorError("configuration_missing");
 				}
 				await revokeClerkSessions(request.clerkUserId, secretKey);
-				await ctx.runMutation(internal.accountDeletion.advanceRequestStage, {
-					requestId: args.requestId,
-					expectedStage: stage,
-					nextStage: "deleteClerkIdentity",
-				});
+				advanced = await ctx.runMutation(
+					internal.accountDeletion.advanceRequestStage,
+					{
+						requestId: args.requestId,
+						expectedStage: stage,
+						nextStage: "deleteClerkIdentity",
+					},
+				);
 			} else if (stage === "deleteClerkIdentity") {
 				const secretKey = readOptionalEnv("CLERK_SECRET_KEY");
 				if (!secretKey || !request.clerkUserId) {
 					throw new ProcessorError("configuration_missing");
 				}
 				await deleteClerkIdentity(request.clerkUserId, secretKey);
-				await ctx.runMutation(internal.accountDeletion.advanceRequestStage, {
-					requestId: args.requestId,
-					expectedStage: stage,
-					nextStage: "deleteRevenueCat",
-					processor: "clerk",
-					processorStatus: "completed",
-				});
+				advanced = await ctx.runMutation(
+					internal.accountDeletion.advanceRequestStage,
+					{
+						requestId: args.requestId,
+						expectedStage: stage,
+						nextStage: "deleteRevenueCat",
+						processor: "clerk",
+						processorStatus: "completed",
+					},
+				);
 			} else if (stage === "deleteRevenueCat") {
 				const secretApiKey = readOptionalEnv("REVENUECAT_SECRET_API_KEY");
 				if (secretApiKey && request.clerkUserId) {
 					await deleteRevenueCatCustomer(request.clerkUserId, secretApiKey);
 				}
-				await ctx.runMutation(internal.accountDeletion.advanceRequestStage, {
-					requestId: args.requestId,
-					expectedStage: stage,
-					nextStage: "deletePostHog",
-					processor: "revenueCat",
-					processorStatus: secretApiKey ? "completed" : "notConfigured",
-				});
+				advanced = await ctx.runMutation(
+					internal.accountDeletion.advanceRequestStage,
+					{
+						requestId: args.requestId,
+						expectedStage: stage,
+						nextStage: "deletePostHog",
+						processor: "revenueCat",
+						processorStatus: secretApiKey ? "completed" : "notConfigured",
+					},
+				);
 			} else if (stage === "deletePostHog") {
 				const personalApiKey = readOptionalEnv("POSTHOG_PERSONAL_API_KEY");
 				const projectId = readOptionalEnv("POSTHOG_PROJECT_ID");
@@ -200,13 +210,16 @@ export const processDeletionRequest = internalAction({
 						host,
 					);
 				}
-				await ctx.runMutation(internal.accountDeletion.advanceRequestStage, {
-					requestId: args.requestId,
-					expectedStage: stage,
-					nextStage: "deleteData",
-					processor: "postHog",
-					processorStatus: personalApiKey ? "completed" : "notConfigured",
-				});
+				advanced = await ctx.runMutation(
+					internal.accountDeletion.advanceRequestStage,
+					{
+						requestId: args.requestId,
+						expectedStage: stage,
+						nextStage: "deleteData",
+						processor: "postHog",
+						processorStatus: personalApiKey ? "completed" : "notConfigured",
+					},
+				);
 			} else if (stage === "deleteData") {
 				const result = await ctx.runMutation(
 					internal.accountDeletion.deleteOwnerDataBatch,
@@ -224,7 +237,7 @@ export const processDeletionRequest = internalAction({
 				}
 			}
 
-			if (stage !== "deleteData") {
+			if (stage !== "deleteData" && advanced) {
 				await ctx.scheduler.runAfter(
 					0,
 					internal.accountDeletionActions.processDeletionRequest,

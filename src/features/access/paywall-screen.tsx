@@ -91,9 +91,11 @@ export function PaywallScreen() {
 		try {
 			await deleteAccount(deletionPassword);
 			setShowDeleteConfirmation(false);
-		} catch {
+		} catch (error) {
 			setDeleteError(
-				"Das Konto konnte nicht gelöscht werden. Bitte kontaktiere den Support.",
+				error instanceof Error && error.message.trim()
+					? error.message
+					: "Die Kontolöschung konnte nicht bestätigt werden. Bitte versuche es erneut.",
 			);
 		} finally {
 			setDeletionPassword("");

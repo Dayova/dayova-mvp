@@ -48,6 +48,7 @@ jest.mock("~/components/ui/confirmation-sheet", () => {
 	return {
 		ConfirmationSheet: ({
 			children,
+			errorMessage,
 			confirmDisabled,
 			confirmLabel,
 			description,
@@ -56,6 +57,7 @@ jest.mock("~/components/ui/confirmation-sheet", () => {
 			visible,
 		}: {
 			children?: ReactNode;
+			errorMessage?: string | null;
 			confirmDisabled?: boolean;
 			confirmLabel: string;
 			description: ReactNode;
@@ -70,6 +72,9 @@ jest.mock("~/components/ui/confirmation-sheet", () => {
 						React.createElement(NativeText, null, title),
 						React.createElement(NativeText, null, description),
 						children,
+						errorMessage
+							? React.createElement(NativeText, null, errorMessage)
+							: null,
 						React.createElement(
 							NativePressable,
 							{
@@ -220,5 +225,38 @@ describe("ProfileScreen account management", () => {
 		expect(error).not.toHaveTextContent("ClerkJS");
 		expect(error.props.accessibilityLiveRegion).toBe("polite");
 		await waitFor(() => expect(mockReplace).not.toHaveBeenCalled());
+	});
+
+	test.each([
+		[
+			new Error("Das aktuelle Passwort ist falsch."),
+			"Das aktuelle Passwort ist falsch.",
+		],
+		[
+			null,
+			"Die Kontolöschung konnte nicht bestätigt werden. Bitte versuche es erneut.",
+		],
+	])("keeps the deletion sheet open with the failure reason: %s", async (error, message) => {
+		mockDeleteAccount.mockRejectedValueOnce(error);
+		const screen = await render(<ProfileScreen />);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Konto löschen" }),
+		);
+		await fireEvent.changeText(
+			screen.getByLabelText("Aktuelles Passwort zur Bestätigung"),
+			"wrong-password",
+		);
+		const confirm = screen
+			.getAllByRole("button", { name: "Konto löschen" })
+			.at(-1);
+		if (!confirm) throw new Error("Confirmation button is missing.");
+		await fireEvent.press(confirm);
+		expect(await screen.findByText(message)).toBeOnTheScreen();
+		expect(screen.getByText("Konto wirklich löschen?")).toBeOnTheScreen();
+		expect(
+			screen.getByLabelText("Aktuelles Passwort zur Bestätigung").props.value,
+		).toBe("");
+		expect(mockLogout).not.toHaveBeenCalled();
+		expect(mockReplace).not.toHaveBeenCalled();
 	});
 });
