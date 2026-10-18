@@ -252,19 +252,22 @@ Back and close navigation controls share `NavigationIconButton` through
 `BackButton` and `CloseButton`: 48pt circles, card background, semantic border,
 and a 20pt theme-text Hugeicon with 2.4 stroke. Both use the shared Button's
 pressed, disabled, web-focus and accessibility behavior, with 8pt hit slop.
-This includes sheet/modal close controls, password reset and subscription back
-navigation. Contextual labels and existing navigation/confirmation behavior
+This includes Android/web sheet close controls, other modal close controls,
+password reset and subscription back navigation. Contextual labels and existing navigation/confirmation behavior
 remain with the caller. Content-removal X actions are not navigation controls.
 This supersedes the smaller path-2/path-3 close treatment per Jakob's
 16 October direction ([DAY-523](https://linear.app/dayova/issue/DAY-523/unify-app-wide-back-and-close-navigation-controls)).
 
-The learning-plan creation header is a scoped exception, per the 14 October
-2026 user direction: both back and close use native SwiftUI buttons through
-Expo UI, with Apple's `glass` button style on iOS 26+ and `bordered` on older
-iOS versions. The native control owns interaction and accessibility, while
-Dayova's Hugeicons remain the button content. Android and web retain the shared
-BackButton/CloseButton controls, now with matching geometry and appearance.
-Keep native glass scoped to the creation header. The creation progress
+The learning-plan creation header and shared iOS sheet close controls use one
+native SwiftUI navigation-button primitive through Expo UI, with Apple's
+`glass` style on iOS 26+ and `bordered` on older iOS versions. This extends the
+14 October creation-header decision to sheets per Jakob's follow-up
+([DAY-525](https://linear.app/dayova/issue/DAY-525/use-native-liquid-glass-close-buttons-in-ios-sheets)).
+The native control owns interaction and accessibility, while Dayova's Hugeicons
+remain the button content. Both surfaces use 48pt hosts and the app's selected
+theme. Sheet dismissal, contextual labels and the separate close row at large
+text sizes remain owned by the sheet frame. Android and web retain the shared
+BackButton/CloseButton geometry and appearance. The creation progress
 bar is 16pt tall, centered beside the 48pt button hosts. This keeps the bar
 compact while preserving comfortable button tap areas.
 
