@@ -13,6 +13,7 @@ import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { env, mutation, query } from "./_generated/server";
+import { assertAccountActive } from "./accountDeletion";
 import { operatingSystem } from "./crmContract";
 import { enqueueCrmUpdate } from "./crmUpdates";
 import { throwUserFacingError } from "./errors";
@@ -180,6 +181,7 @@ const requireIdentity = async (ctx: QueryCtx | MutationCtx) => {
 	if (!identity) {
 		throwUserFacingError("Nicht authentifiziert.");
 	}
+	await assertAccountActive(ctx, identity.tokenIdentifier);
 	return identity;
 };
 

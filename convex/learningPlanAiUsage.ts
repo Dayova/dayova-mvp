@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation, query } from "./_generated/server";
+import { assertAccountActive } from "./accountDeletion";
 import { throwUserFacingError } from "./errors";
 
 const operationValidator = v.union(
@@ -25,6 +26,7 @@ export const record = internalMutation({
 	handler: async (ctx, args) => {
 		const identity = await ctx.auth.getUserIdentity();
 		if (!identity) throwUserFacingError("Nicht authentifiziert.");
+		await assertAccountActive(ctx, identity.tokenIdentifier);
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== identity.tokenIdentifier) {
 			throwUserFacingError("Lernplan nicht gefunden.");
@@ -43,6 +45,7 @@ export const getPlanCostSummary = query({
 	handler: async (ctx, args) => {
 		const identity = await ctx.auth.getUserIdentity();
 		if (!identity) throwUserFacingError("Nicht authentifiziert.");
+		await assertAccountActive(ctx, identity.tokenIdentifier);
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== identity.tokenIdentifier) {
 			throwUserFacingError("Lernplan nicht gefunden.");
@@ -79,6 +82,7 @@ export const getMyMonthlyCostSummary = query({
 	handler: async (ctx, args) => {
 		const identity = await ctx.auth.getUserIdentity();
 		if (!identity) throwUserFacingError("Nicht authentifiziert.");
+		await assertAccountActive(ctx, identity.tokenIdentifier);
 		const entries = await ctx.db
 			.query("learningPlanAiUsage")
 			.withIndex("by_ownerTokenIdentifier_and_createdAt", (q) =>

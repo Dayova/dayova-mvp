@@ -115,6 +115,40 @@ test("primary confirmations keep the primary action and outlined cancel", async 
 	).toContain("bg-card");
 });
 
+test.each([
+	false,
+	true,
+])("keeps verification content and blocks unverified confirmation (embedded=%s)", async (embedded) => {
+	const onConfirm = jest.fn();
+	const onClose = jest.fn();
+	const content = (confirmDisabled: boolean) => {
+		const props = {
+			description: "Bestätige die Löschung mit deinem aktuellen Passwort.",
+			confirmLabel: "Konto löschen",
+			confirmDisabled,
+			onConfirm,
+			onClose,
+			children: <Text>Passwortprüfung</Text>,
+		};
+		return embedded ? (
+			<ConfirmationSheetContent {...props} />
+		) : (
+			<ConfirmationSheet {...props} visible title="Konto löschen?" />
+		);
+	};
+	const screen = await render(content(true));
+	expect(screen.getByText("Passwortprüfung")).toBeOnTheScreen();
+	const confirm = screen.getByRole("button", { name: "Konto löschen" });
+	expect(confirm).toBeDisabled();
+	expect(confirm.props.accessibilityState.disabled).toBe(true);
+	await fireEvent.press(confirm);
+	expect(onConfirm).not.toHaveBeenCalled();
+	expect(screen.getByRole("button", { name: "Abbrechen" })).toBeEnabled();
+	await screen.rerender(content(false));
+	await fireEvent.press(screen.getByRole("button", { name: "Konto löschen" }));
+	expect(onConfirm).toHaveBeenCalledTimes(1);
+});
+
 test("busy deletion disables both actions and shows errors", async () => {
 	const onConfirm = jest.fn();
 	const onClose = jest.fn();

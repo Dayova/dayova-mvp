@@ -12,6 +12,8 @@ import { cn } from "~/lib/utils";
 type ConfirmationActionLayout = "inline" | "stacked";
 
 type ConfirmationSheetProps = {
+	children?: ReactNode;
+	confirmDisabled?: boolean;
 	visible: boolean;
 	title: ReactNode;
 	description: ReactNode;
@@ -33,6 +35,8 @@ type ConfirmationSheetProps = {
  * Busy actions block dismissal; the owning caller handles submission and errors.
  */
 function ConfirmationPresentation({
+	children,
+	confirmDisabled = false,
 	visible,
 	title,
 	description,
@@ -63,11 +67,11 @@ function ConfirmationPresentation({
 				isBusy ? `${confirmLabel}, wird ausgeführt` : confirmLabel
 			}
 			accessibilityLiveRegion={isBusy ? "polite" : undefined}
-			accessibilityState={{ busy: isBusy, disabled: isBusy }}
+			accessibilityState={{ busy: isBusy, disabled: isBusy || confirmDisabled }}
 			className={
 				actionLayout === "stacked" ? "w-full" : "min-w-0 flex-1 basis-0 px-3"
 			}
-			disabled={isBusy}
+			disabled={isBusy || confirmDisabled}
 			onPress={onConfirm}
 			variant={confirmTone === "destructive" ? "destructive" : "default"}
 		>
@@ -128,6 +132,7 @@ function ConfirmationPresentation({
 						{description}
 					</Text>
 				) : null}
+				{children}
 				{error}
 				{actions}
 			</View>
@@ -146,6 +151,7 @@ function ConfirmationPresentation({
 			maxWidth={maxWidth}
 			scrollable={scrollable}
 		>
+			{children}
 			{error}
 			{scrollable ? null : actions}
 		</DayovaSheetFrame>

@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render } from "@testing-library/react-native";
-import { AccessibilityInfo, Animated, Text } from "react-native";
+import {
+	AccessibilityInfo,
+	Animated,
+	Pressable,
+	Text,
+	TouchableOpacity,
+} from "react-native";
+import { cssInterop, StyleSheet } from "react-native-css-interop";
+import { cssToReactNativeRuntime } from "react-native-css-interop/css-to-rn";
 import {
 	FeedbackPressable,
 	FeedbackTouchableOpacity,
@@ -24,6 +32,34 @@ beforeEach(() => {
 });
 afterEach(() => {
 	jest.restoreAllMocks();
+});
+
+test.each([
+	FeedbackPressable,
+	FeedbackTouchableOpacity,
+])("animated controls preserve NativeWind class styles and caller styles", async (Control) => {
+	// NativeWind registers these core mappings outside the test environment.
+	cssInterop(Pressable, { className: "style" });
+	cssInterop(TouchableOpacity, { className: "style" });
+	StyleSheet.registerCompiled(
+		cssToReactNativeRuntime(
+			".px-4 { padding-left: 16px; padding-right: 16px; }",
+		),
+	);
+	const screen = await render(
+		<Control
+			accessibilityRole="button"
+			className="px-4"
+			style={{ backgroundColor: "#123456" }}
+		>
+			<Text>Weiter</Text>
+		</Control>,
+	);
+	expect(screen.getByRole("button")).toHaveStyle({
+		paddingLeft: 16,
+		paddingRight: 16,
+		backgroundColor: "#123456",
+	});
 });
 
 test("press feedback preserves callbacks, render children and functional styles", async () => {

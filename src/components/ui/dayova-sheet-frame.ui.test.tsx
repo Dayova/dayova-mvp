@@ -16,6 +16,7 @@ import {
 	Platform,
 	View,
 } from "react-native";
+import { AccountDeletionPasswordField } from "./account-deletion-password-field";
 import { DayovaSheetFrame } from "./dayova-sheet-frame";
 import { Input } from "./input";
 import {
@@ -142,6 +143,23 @@ jest.mock("@gorhom/bottom-sheet", () => {
 });
 
 describe("DayovaSheetFrame", () => {
+	test("keeps the deletion password secure and keyboard-aware through the shared input", async () => {
+		const onChangeText = jest.fn();
+		const screen = await render(
+			<DayovaSheetFrame visible onClose={() => {}} title="Konto löschen">
+				<AccountDeletionPasswordField
+					value=""
+					onChangeText={onChangeText}
+					disabled={false}
+				/>
+			</DayovaSheetFrame>,
+		);
+		const input = screen.getByLabelText("Aktuelles Passwort zur Bestätigung");
+		expect(input.props.testID).toBe("sheet-native-input");
+		expect(input.props.secureTextEntry).toBe(true);
+		await fireEvent.changeText(input, "synthetic-password");
+		expect(onChangeText).toHaveBeenCalledWith("synthetic-password");
+	});
 	test("registers sheet inputs with the keyboard-aware primitive only inside the sheet", async () => {
 		const onChangeText = jest.fn();
 		const screen = await render(
