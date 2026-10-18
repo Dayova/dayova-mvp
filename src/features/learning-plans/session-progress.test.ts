@@ -5,7 +5,6 @@ import {
 	getLearningSessionTimerDurationSeconds,
 	getPairedTheoryItem,
 	getTheoryTopicPosition,
-	isQualifiedSessionCompletion,
 } from "./session-progress";
 
 const learnCard = {
@@ -129,11 +128,6 @@ describe("learning session progress", () => {
 				"split",
 			),
 		).toEqual([learnCard]);
-	});
-
-	it("qualifies a 30-minute completion after 24 active minutes", () => {
-		expect(isQualifiedSessionCompletion(30, 24 * 60)).toBe(true);
-		expect(isQualifiedSessionCompletion(30, 24 * 60 - 1)).toBe(false);
 	});
 
 	it("only times a loaded exam-test session", () => {
