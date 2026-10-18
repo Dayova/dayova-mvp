@@ -20,7 +20,7 @@ function getScorePresentation(resultPercent: number) {
 			accentBackgroundClassName: "bg-success-subtle",
 			label: "Starke Leistung!",
 			description:
-				"Das sitzt schon richtig gut. Schau dir deine Analyse an und festige die letzten Details.",
+				"Das sitzt schon richtig gut. Setze deinen Lernplan fort und festige die letzten Details.",
 		};
 	}
 
@@ -30,7 +30,7 @@ function getScorePresentation(resultPercent: number) {
 			accentBackgroundClassName: "bg-info-subtle",
 			label: "Gute Grundlage",
 			description:
-				"Du bist auf dem richtigen Weg. Die Analyse zeigt dir, welche Themen du noch festigen kannst.",
+				"Du bist auf dem richtigen Weg. Mit deinem nächsten Lernschritt festigst du dein Wissen.",
 		};
 	}
 
@@ -39,7 +39,7 @@ function getScorePresentation(resultPercent: number) {
 		accentBackgroundClassName: "bg-wrong-subtle",
 		label: "Da geht noch mehr",
 		description:
-			"Das ist dein Startpunkt. Finde in der Analyse deine Lücken und verbessere dich beim nächsten Versuch.",
+			"Das ist dein Startpunkt. Übe mit deinem Lernplan weiter und verbessere dich beim nächsten Versuch.",
 	};
 }
 
@@ -125,14 +125,14 @@ export function PracticeCompletionCard({
 	correctCount,
 	attemptCount,
 	onRepeat,
-	onAnalysis,
+	onOpenLearningPlan,
 	isBusy,
 }: {
 	durationMinutes: number;
 	correctCount: number;
 	attemptCount: number;
 	onRepeat: () => void;
-	onAnalysis: () => void;
+	onOpenLearningPlan: () => void;
 	isBusy: boolean;
 }) {
 	const resultPercent =
@@ -200,11 +200,15 @@ export function PracticeCompletionCard({
 					</View>
 				</View>
 
-				<Button className="mt-7 w-full" disabled={isBusy} onPress={onAnalysis}>
+				<Button
+					className="mt-7 w-full"
+					disabled={isBusy}
+					onPress={onOpenLearningPlan}
+				>
 					{isBusy ? (
 						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
 					) : (
-						<Text>Analyse ansehen</Text>
+						<Text>Zum Lernplan</Text>
 					)}
 				</Button>
 				<Button

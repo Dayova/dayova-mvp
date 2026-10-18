@@ -28,10 +28,12 @@ mobile client initializes PostHog only from optional public env values:
 - `EXPO_PUBLIC_POSTHOG_API_KEY`
 - `EXPO_PUBLIC_POSTHOG_HOST`
 
-The Validation Phase contract exists to answer only four questions: whether a
-learner activated, started and finished a real learning block, recovered from a
-missed block, and returned on a later day. Events are emitted only after the
-corresponding backend action succeeds.
+The validation outcome contract answers whether a learner activated, started and
+finished a real learning block, recovered from a missed block, and returned on a
+later day. Those outcome events follow successful backend actions. DAY-435 adds
+explicit feature interactions and screen observations for the
+[Notion hypothesis measurement map](https://app.notion.com/p/3de2e87228bf81f5a853fd9605a9c7bc).
+Those observational events have distinct semantics; see [feature analytics](./feature-analytics.md).
 
 The Clerk user ID is the PostHog `distinctId` and is not duplicated as a
 `clerk_id` property. The exact custom person-property set is:
@@ -55,6 +57,8 @@ The exact event-specific property contract is:
 
 | Event | Properties |
 | --- | --- |
+| `feature_interaction` | `interaction`, `outcome`, optional `entity_id`, `value`, `screen`; bounded catalogs in `src/lib/feature-analytics.ts` |
+| `app_screen_viewed` | `screen`; known route-template catalog only |
 | `onboarding_completed` | `local_day_key`, `onboarding_version` |
 | `homework_created` | `day_entry_id`, `planned_day_key`, `due_day_key`, `duration_minutes` |
 | `exam_created` | `day_entry_id`, `planned_day_key`, `duration_minutes`, `exam_type` |
@@ -85,8 +89,9 @@ contract version.
 Generalprobe completion is derived from `study_slot_completed` with
 `phase === "rehearsal"`. Missed reason is carried by `study_slot_missed`; there
 are no `generalprobe_completed` or `missed_reason_selected` events. Dashboard
-usability is learned qualitatively during this phase, so there are no
-`dashboard_*` events.
+usability still needs qualitative evidence. DAY-435 adds bounded `home.*`
+interactions within `feature_interaction`; legacy `dashboard_*` events remain
+excluded.
 
 ## Validation Student Profile
 
@@ -100,6 +105,12 @@ from Clerk metadata by normal mobile flows; seed or patch it intentionally for
 internal users.
 
 ## Notes
+
+- The student CRM is a read-only projection of Convex effective access, joined
+  through Clerk User ID. New authenticated accounts queue creation of a minimal
+  CRM contact; collisions require review. See [DAY-366 runtime contract and runbook](crm-sync.md)
+  for matching, dry-run, schema, deployment isolation and recovery. PostHog never
+  determines paid access; Notion edits never change it.
 
 - PostHog identifies validation-phase students with Clerk's stable user ID. The Validation Student Code should live in Dayova data, not Clerk auth metadata, and should be sent to PostHog as a profile property when present.
 - PostHog tracking is identified-only during the Validation Phase. Anonymous pre-auth app activity, autocapture, lifecycle events, and session replay are intentionally out of scope unless login or onboarding becomes a measured blocker.

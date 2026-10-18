@@ -17,7 +17,7 @@ describe("diagnostic topic keywords", () => {
 			priority: "high",
 			requiredEvidenceDimensions: ["understanding", "problemSolving"],
 		})),
-		questions: Array.from({ length: 5 }, () => ({
+		questions: Array.from({ length: 10 }, () => ({
 			topicId: "steigung",
 			kind: "performance",
 			evidenceDimension: "problemSolving",

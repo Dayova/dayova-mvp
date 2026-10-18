@@ -9,7 +9,7 @@ import { MaterialCard } from "~/features/learning-plans/learning-plan-ui";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { useDayovaTheme } from "~/lib/theme";
 
-type PendingUploadAction = "camera" | "files";
+type PendingUploadAction = "camera" | "library" | "files";
 
 function SetupContinueButton({
 	canContinue,
@@ -51,9 +51,11 @@ function UploadActivity({
 			<Text className="flex-1 font-poppins text-body-4 text-secondary-text">
 				{openingUploadAction === "files"
 					? "Dateiauswahl wird geöffnet …"
-					: openingUploadAction === "camera"
-						? "Kamera wird geöffnet …"
-						: "Material wird hochgeladen …"}
+					: openingUploadAction === "library"
+						? "Galerie wird geöffnet …"
+						: openingUploadAction === "camera"
+							? "Kamera wird geöffnet …"
+							: "Material wird hochgeladen …"}
 			</Text>
 		</View>
 	);
@@ -145,7 +147,7 @@ export function MaterialUploadActionCard(props: MaterialUploadActionCardProps) {
 		</>
 	);
 	const className =
-		"mt-7 min-h-[112px] flex-row items-center rounded-[32px] px-5 py-5";
+		"mt-7 min-h-[112px] flex-row items-center rounded-[32px] border border-border px-5 py-5";
 
 	if (props.mode === "artwork") {
 		return (
@@ -297,7 +299,7 @@ export function RequiredTopicsStep({
 			</Text>
 			<Textarea
 				accessibilityLabel="Prüfungsthemen"
-				className="mt-6 h-48 flex-none rounded-[24px] bg-card px-4 py-4"
+				className="mt-6 h-48 flex-none rounded-[24px] border border-border bg-card px-4 py-4"
 				value={topics}
 				onChangeText={onChangeTopics}
 				placeholder="Zum Beispiel: Lineare Funktionen, Steigung berechnen und den y-Achsenabschnitt bestimmen."

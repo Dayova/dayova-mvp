@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from "react";
-import { ActivityIndicator, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import { Button } from "~/components/ui/button";
+import { FeedbackTouchableOpacity } from "~/components/ui/feedback-pressable";
 import {
 	FieldAccessory,
 	FieldLabel,
@@ -120,7 +121,7 @@ export function MaterialCard({
 
 	return (
 		<Surface
-			className="mb-3 flex-row items-center rounded-[24px] px-4 py-4"
+			className="mb-3 flex-row items-center rounded-[24px] border border-border px-4 py-4"
 			variant="soft"
 		>
 			<View className="h-11 w-11 items-center justify-center rounded-full bg-primary/12">
@@ -137,9 +138,10 @@ export function MaterialCard({
 					{formatFileSize(size)}
 				</Text>
 			</View>
-			<TouchableOpacity
+			<FeedbackTouchableOpacity
 				accessibilityHint="Entfernt dieses hochgeladene Material aus dem Lernplan."
 				accessibilityLabel={`${name} entfernen`}
+				pressScale={0.92}
 				accessibilityRole="button"
 				activeOpacity={0.75}
 				hitSlop={8}
@@ -147,7 +149,7 @@ export function MaterialCard({
 				className="h-9 w-9 items-center justify-center rounded-full bg-black/5"
 			>
 				<X size={16} color={colors.text} strokeWidth={2.3} />
-			</TouchableOpacity>
+			</FeedbackTouchableOpacity>
 		</Surface>
 	);
 }
@@ -316,9 +318,6 @@ function SessionEditPill({
 			activeOpacity={0.86}
 			onPress={onPress}
 			className={cn("min-h-[64px] rounded-[28px] px-5", className)}
-			style={{
-				boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
-			}}
 		>
 			<Text
 				className="flex-1 font-poppins text-body-2 text-text"
@@ -415,7 +414,7 @@ export function SessionEditForm({
 				{isPhaseMenuOpen ? (
 					<View className="mt-2 gap-2">
 						{sessionPhaseOptions.map((phase) => (
-							<TouchableOpacity
+							<FeedbackTouchableOpacity
 								key={phase}
 								accessibilityLabel={`Lernphase ${getSessionPhaseLabel(phase)} auswählen`}
 								accessibilityRole="button"
@@ -435,7 +434,7 @@ export function SessionEditForm({
 								<Text className="font-poppins text-body-3 text-text/70">
 									{getSessionPhaseLabel(phase)}
 								</Text>
-							</TouchableOpacity>
+							</FeedbackTouchableOpacity>
 						))}
 					</View>
 				) : null}

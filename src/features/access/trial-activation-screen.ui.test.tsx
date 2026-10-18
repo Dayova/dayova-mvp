@@ -4,6 +4,16 @@ import type { ReactNode } from "react";
 import { SEMANTIC_HEADING_MAX_FONT_SIZE_MULTIPLIER } from "~/lib/content-size-layout";
 import { TrialActivationScreen } from "./trial-activation-screen";
 
+const mockTrackFeature = jest.fn();
+jest.mock("~/lib/use-feature-analytics", () => ({
+	useFeatureAnalytics: () => mockTrackFeature,
+}));
+jest.mock("~/components/ui/icon", () => ({
+	Bell: () => null,
+	Check: () => null,
+	SquareLock: () => null,
+}));
+
 const mockActivateTrial = jest.fn(async (_termsVersion: string) => undefined);
 let mockInsets = { bottom: 34, left: 0, right: 0, top: 59 };
 
@@ -97,6 +107,23 @@ describe("TrialActivationScreen", () => {
 		);
 	});
 
+	test("centers the complete trial explanation in one bounded block", async () => {
+		const screen = await render(<TrialActivationScreen />);
+		const scroll = screen.getByTestId("trial-scroll-view");
+
+		expect(scroll.props.contentContainerStyle).toMatchObject({
+			alignItems: "center",
+			justifyContent: "center",
+			paddingHorizontal: 24,
+		});
+		expect(screen.getByTestId("trial-content-block").props.className).toContain(
+			"max-w-[560px]",
+		);
+		expect(
+			screen.getByText("So läuft deine Testphase").props.className,
+		).toContain("text-center");
+	});
+
 	test("announces an activation failure through the shared error contract", async () => {
 		mockActivateTrial.mockRejectedValueOnce(new Error("offline"));
 		const screen = await render(<TrialActivationScreen />);
@@ -105,6 +132,12 @@ describe("TrialActivationScreen", () => {
 			screen.getByRole("button", { name: "Dayova starten" }),
 		);
 
+		expect(mockTrackFeature).toHaveBeenCalledWith("trial.start", "attempted");
+		expect(mockTrackFeature).toHaveBeenCalledWith("trial.start", "failed");
+		expect(mockTrackFeature).not.toHaveBeenCalledWith(
+			"trial.start",
+			"succeeded",
+		);
 		await waitFor(() => {
 			const error = screen.getByRole("alert", {
 				name: "Deine Testphase konnte nicht gestartet werden.",

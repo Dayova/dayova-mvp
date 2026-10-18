@@ -12,6 +12,171 @@ const user = {
 	tokenIdentifier: "test:user",
 };
 
+test("revises the same pending exam after navigating back through creation", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const id = await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-09-30",
+		title: "Biologie Klassenarbeit",
+		subject: "Biologie",
+		kind: "Leistungskontrolle",
+		examTypeLabel: "Klassenarbeit",
+		durationMinutes: 30,
+	});
+	await t.mutation(api.dayEntries.updatePendingExam, {
+		id,
+		dayKey: "2026-10-01",
+		subject: "Chemie",
+		personalSubjectId: null,
+		subjectIsOneTime: false,
+		examTypeLabel: "Test",
+		plannedDateLabel: "Donnerstag, 1. Oktober",
+		durationMinutes: 45,
+	});
+	const entries = await t.run((ctx) => ctx.db.query("dayEntries").take(2));
+	expect(entries).toHaveLength(1);
+	expect(entries[0]).toMatchObject({
+		_id: id,
+		dayKey: "2026-10-01",
+		subject: "Chemie",
+		title: "Chemie Test",
+		durationMinutes: 45,
+	});
+});
+
+test("pending exam edits replace or clear the personal subject reference", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const french = await t.mutation(api.personalSubjects.create, {
+		name: "Französisch",
+	});
+	const latin = await t.mutation(api.personalSubjects.create, {
+		name: "Latein",
+	});
+	if (french.kind !== "personal" || latin.kind !== "personal") {
+		throw new Error("Expected personal subjects");
+	}
+	const id = await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-09-30",
+		title: "Französisch Klassenarbeit",
+		subject: french.name,
+		personalSubjectId: french.id,
+		kind: "Leistungskontrolle",
+		examTypeLabel: "Klassenarbeit",
+		durationMinutes: 30,
+	});
+
+	await t.mutation(api.dayEntries.updatePendingExam, {
+		id,
+		dayKey: "2026-10-01",
+		subject: latin.name,
+		personalSubjectId: latin.id,
+		subjectIsOneTime: false,
+		examTypeLabel: "Test",
+		plannedDateLabel: "1. Oktober",
+		durationMinutes: 45,
+	});
+	expect(await t.query(api.dayEntries.get, { id })).toMatchObject({
+		subject: "Latein",
+		personalSubjectId: latin.id,
+		title: "Latein Test",
+	});
+
+	await t.mutation(api.dayEntries.updatePendingExam, {
+		id,
+		dayKey: "2026-10-02",
+		subject: "Chemie",
+		personalSubjectId: null,
+		subjectIsOneTime: false,
+		examTypeLabel: "Klausur",
+		plannedDateLabel: "2. Oktober",
+		durationMinutes: 60,
+	});
+	const result = await t.run(async (ctx) => ({
+		entry: await ctx.db.get("dayEntries", id),
+		references: await ctx.db.query("personalSubjectReferences").take(10),
+	}));
+	expect(result.entry).toMatchObject({
+		subject: "Chemie",
+		title: "Chemie Klausur",
+	});
+	expect(result.entry?.personalSubjectId).toBeUndefined();
+	expect(result.references).toEqual([]);
+});
+
+test("stores an explicit one-time subject through create and resume", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const id = await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-10-03",
+		title: "Debattieren Präsentation",
+		subject: "Debattieren",
+		subjectIsOneTime: true,
+		kind: "Leistungskontrolle",
+		examTypeLabel: "Präsentation",
+		durationMinutes: 20,
+	});
+	expect(await t.query(api.dayEntries.get, { id })).toMatchObject({
+		subject: "Debattieren",
+		subjectIsOneTime: true,
+	});
+
+	await t.mutation(api.dayEntries.updatePendingExam, {
+		id,
+		dayKey: "2026-10-04",
+		subject: "Rhetorik",
+		personalSubjectId: null,
+		subjectIsOneTime: true,
+		examTypeLabel: "Präsentation",
+		plannedDateLabel: "4. Oktober",
+		durationMinutes: 25,
+	});
+	expect(await t.query(api.dayEntries.get, { id })).toMatchObject({
+		subject: "Rhetorik",
+		subjectIsOneTime: true,
+	});
+});
+
+test("pending exam edits require ownership and cannot change an exam with a learning plan", async () => {
+	const t = convexTest(schema, modules);
+	const owner = t.withIdentity(user);
+	const id = await owner.mutation(api.dayEntries.create, {
+		dayKey: "2026-09-30",
+		title: "Biologie Klassenarbeit",
+		subject: "Biologie",
+		kind: "Leistungskontrolle",
+	});
+	const edit = {
+		id,
+		dayKey: "2026-10-01",
+		subject: "Chemie",
+		personalSubjectId: null,
+		subjectIsOneTime: false,
+		examTypeLabel: "Test",
+		plannedDateLabel: "1. Oktober",
+		durationMinutes: 30,
+	};
+	await expect(
+		t
+			.withIdentity({ tokenIdentifier: "someone-else" })
+			.mutation(api.dayEntries.updatePendingExam, edit),
+	).rejects.toThrow("Prüfung nicht gefunden");
+	await owner.mutation(api.learningPlans.createDraft, {
+		examDayEntryId: id,
+		subject: "Biologie",
+		examTypeLabel: "Klassenarbeit",
+		examDateKey: "2026-09-30",
+		examDateLabel: "30. September",
+		durationMinutes: 30,
+		topicDescription: "Zellteilung und Mitose",
+		notes: "",
+	});
+	await expect(
+		owner.mutation(api.dayEntries.updatePendingExam, edit),
+	).rejects.toThrow("Lernplan");
+	await expect(owner.query(api.dayEntries.get, { id })).resolves.toMatchObject({
+		dayKey: "2026-09-30",
+		subject: "Biologie",
+	});
+});
+
 test("keeps adaptive exam entries with a stored subject schema-compatible", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 

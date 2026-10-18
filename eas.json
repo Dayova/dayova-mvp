@@ -53,6 +53,18 @@
         "APP_VARIANT": "production"
       }
     },
+    "ota-staging-testflight": {
+      "extends": "production",
+      "distribution": "store",
+      "channel": "ota-staging"
+    },
+    "ota-staging-simulator": {
+      "extends": "ota-staging-testflight",
+      "autoIncrement": false,
+      "ios": {
+        "simulator": true
+      }
+    },
     "apk-test": {
       "extends": "base",
       "distribution": "internal",

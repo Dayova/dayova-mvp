@@ -101,12 +101,96 @@ const evaluate = (overrides: Record<string, unknown> = {}) =>
 	});
 
 describe("production OTA safety", () => {
+	it("rejects the shipped iOS 1.0.4 and Android 1.0.5 mixture under schema 2", () => {
+		const mixed = structuredClone(baseline);
+		mixed.platforms.android.appVersion = "1.0.5";
+		mixed.platforms.android.runtimeVersion = "1.0.5";
+		mixed.platforms.android.embeddedUpdate.runtimeVersion = "1.0.5";
+		const result = evaluate({ baseline: mixed });
+		expect(result.safe).toBe(false);
+		expect(result.reason).toContain("schema 2 requires a shared runtime");
+	});
+
+	it("does not accept upgraded native fingerprints merely by relabelling the runtime", () => {
+		const result = evaluate({ fingerprints: {
+			ios: "ff9c10e6269957c3df85e8f52793ec3993b0806b",
+			android: "fcca898e3a18c0709e5466248b99d67a24d2f2c8",
+		} });
+		expect(result.safe).toBe(false);
+		expect(result.reason).toContain("does not match distributed build");
+	});
+
+	it("keeps the historical schema-1 baseline blocked for both platforms", () => {
+		const legacy = JSON.parse(readFileSync(new URL("./fixtures/production-ota-baseline.schema-1.json", import.meta.url), "utf8"));
+		expect(evaluate({ baseline: legacy }).reason).toContain("unsupported baseline schema 1");
+	});
 	it("allows a production manifest whose fingerprints match verified distributed binaries", () => {
 		expect(evaluate()).toMatchObject({
 			safe: true,
 			failureKind: null,
 			errors: [],
 		});
+	});
+
+	it("accepts only the exact audited equivalent and keeps unknown fingerprints blocked", () => {
+		const compatible = "3333333333333333333333333333333333333333";
+		const reviewedBaseline = structuredClone(baseline);
+		const review = {
+			fingerprint: compatible,
+			buildFingerprint: iosFingerprint,
+			sourceSha: "2700b541066c6cf50a27db25e54ca015d4564a2f",
+			evidence: "Audited source comparison: only test-tooling inputs changed",
+		};
+		const withReview = {
+			...reviewedBaseline,
+			platforms: { ...reviewedBaseline.platforms, ios: {
+				...reviewedBaseline.platforms.ios, reviewedCompatibleFingerprints: [review],
+			} },
+		};
+		const fingerprints = { ios: compatible, android: androidFingerprint };
+		expect(evaluate({ baseline: withReview, fingerprints }).safe).toBe(true);
+		expect(evaluate({ baseline: withReview, fingerprints }).reason).toContain("reviewed native equivalence");
+		expect(evaluate({ baseline: withReview, fingerprints: {
+			...fingerprints, ios: "4444444444444444444444444444444444444444",
+		} }).safe).toBe(false);
+		for (const invalidReview of [
+			{ ...review, evidence: " " },
+			{ ...review, sourceSha: "short" },
+			{ ...review, buildFingerprint: androidFingerprint },
+			null,
+		]) {
+			withReview.platforms.ios.reviewedCompatibleFingerprints = [invalidReview] as typeof review[];
+			expect(evaluate({ baseline: withReview, fingerprints }).safe).toBe(false);
+		}
+	});
+
+	it.each([null, {}, "allowed", [null]])("rejects a malformed equivalence list even for the original fingerprint (%s)", (reviews) => {
+		const result = evaluate({ baseline: { ...baseline,
+			platforms: { ...baseline.platforms, ios: { ...baseline.platforms.ios,
+				reviewedCompatibleFingerprints: reviews,
+			} },
+		} });
+		expect(result.safe).toBe(false);
+		expect(result.reason).toContain("reviewed compatible fingerprints require");
+	});
+
+	it("does not let an audited equivalent bypass distribution or runtime verification", () => {
+		const compatible = "3333333333333333333333333333333333333333";
+		const reviewedBaseline = {
+			...baseline,
+			platforms: { ...baseline.platforms, ios: { ...baseline.platforms.ios,
+				distribution: { ...baseline.platforms.ios.distribution, status: "unverified" },
+				runtimeVersion: "1.0.3",
+				reviewedCompatibleFingerprints: [{ fingerprint: compatible,
+					buildFingerprint: iosFingerprint,
+					sourceSha: "2700b541066c6cf50a27db25e54ca015d4564a2f", evidence: "Input comparison" }],
+			} },
+		};
+		const result = evaluate({ baseline: reviewedBaseline,
+			fingerprints: { ios: compatible, android: androidFingerprint } });
+		expect(result.safe).toBe(false);
+		expect(result.reason).toContain("distribution is not verified");
+		expect(result.reason).toContain("build runtime 1.0.3 does not match");
 	});
 
 	it("keeps every 1.0.3 baseline ineligible for the SDK 57 runtime", () => {
@@ -421,7 +505,7 @@ describe("production release configuration", () => {
 		});
 		expect(fingerprint.params?.unstable_skip_cng_check).not.toBe(true);
 		expect(otaChecks.needs).toEqual(
-			expect.arrayContaining(["main_checks", "production_fingerprint"]),
+			expect.arrayContaining(["checks", "production_fingerprint"]),
 		);
 		expect(otaChecks.env).toEqual({
 			APP_VARIANT: "production",
@@ -441,8 +525,20 @@ describe("production release configuration", () => {
 
 		expect(sendUpdates.needs).toContain("ota_checks");
 		expect(sendUpdates.needs).toContain("production_fingerprint");
-		expect(sendUpdates.env).toEqual(otaChecks.env);
+		expect(sendUpdates.env).toEqual({
+			APP_VARIANT: "production",
+			OTA_SOURCE_SHA: "${{ github.sha }}",
+			OTA_ANDROID_FINGERPRINT: otaChecks.env.OTA_ANDROID_FINGERPRINT,
+			OTA_IOS_FINGERPRINT: otaChecks.env.OTA_IOS_FINGERPRINT,
+		});
 		expect(finalGuard.env).toBeUndefined();
+		expect(sendUpdates.needs).toContain("deploy_convex");
+		expect(workflow.jobs.deploy_convex.needs).toContain("checks");
+		expect(sendUpdates.if).toBe("${{ github.event_name == 'push' && github.ref_name == 'main' && needs.ota_checks.outputs.ota_safe == 'true' }}");
+		expect(otaChecks.steps).toEqual(expect.arrayContaining([
+			expect.objectContaining({ run: "pnpm exec expo export --platform ios --output-dir dist/ios" }),
+			expect.objectContaining({ env: { EAS_BUILD_PLATFORM: "android" }, run: "pnpm exec expo export --platform android --output-dir dist/android" }),
+		]));
 	});
 
 	it("requires a clean commit before EAS builds upload source", () => {

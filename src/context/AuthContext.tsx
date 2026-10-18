@@ -17,6 +17,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { Platform } from "react-native";
 import { api } from "#convex/_generated/api";
 import { useOnboarding } from "~/context/OnboardingContext";
 import {
@@ -40,6 +41,7 @@ import {
 } from "~/lib/forced-password-reset";
 import { isSupportedGrade } from "~/lib/grades";
 import { signOutAndResetState } from "~/lib/logout-state";
+import { getOperatingSystem } from "~/lib/operating-systems";
 import {
 	type PasswordChangeInput,
 	changePassword as updateAccountPassword,
@@ -630,11 +632,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 	useEffect(() => {
 		void profileSyncAttempt;
+		// Keep readiness through same-account refreshes, but discard it immediately
+		// on sign-out or account changes, including while backend auth is settling.
+		// eslint-disable-next-line react-hooks/set-state-in-effect -- Synchronize account-scoped readiness with the external identity.
+		setSyncedClerkUserId((current) =>
+			current === user?.clerkId ? current : null,
+		);
 		if (!user || !isConvexAuthenticated) return;
 
 		let cancelled = false;
 
+		const operatingSystem = getOperatingSystem(
+			Platform.OS,
+			Platform.OS === "ios" && Platform.isPad,
+		);
 		const profile = {
+			...(operatingSystem ? { operatingSystem } : {}),
 			...definedProfileFields({
 				name: pendingProfile?.name ?? user.name,
 				phone: pendingProfile?.phone ?? user.phone,
@@ -653,7 +666,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			setPostAuthSyncFailure((current) =>
 				clearOwnedPostAuthSyncFailure(current, "profile"),
 			);
-			setSyncedClerkUserId(null);
 			try {
 				const result = await runWithAuthSettleRetries(() =>
 					syncCurrentUser(profile),
@@ -1241,7 +1253,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	const persistProfileToConvex = async (profile: UpdateProfileInput) => {
 		if (!isConvexAuthenticated) return;
 		await updateConvexProfile({
-			email: profile.email,
 			name: profile.name,
 			grade: profile.grade,
 			schoolType: profile.schoolType,

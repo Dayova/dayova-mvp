@@ -1,17 +1,12 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-	ActivityIndicator,
-	Linking,
-	Platform,
-	TouchableOpacity,
-	View,
-} from "react-native";
+import { ActivityIndicator, Linking, Platform, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import { NotificationDeliveryInfoSheet } from "~/components/notification-delivery-info-sheet";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
+import { FeedbackTouchableOpacity } from "~/components/ui/feedback-pressable";
 import {
 	Bell,
 	Check,
@@ -48,6 +43,7 @@ import {
 	type NotificationPreferenceKey,
 	removeNotificationPreferencePatchKeys,
 } from "~/lib/notification-preferences";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { cn } from "~/lib/utils";
 
 const OFFSET_OPTIONS = [5, 10, 15, 30, 60];
@@ -70,7 +66,7 @@ function SettingsCard({ children }: { children: React.ReactNode }) {
 	return (
 		<View
 			className={cn(
-				"rounded-[24px] bg-card shadow-black/10 shadow-lg",
+				"rounded-[24px] border border-border bg-card",
 				Platform.OS === "ios" ? "px-6 py-5" : "px-5 py-4",
 			)}
 		>
@@ -138,6 +134,7 @@ function AlwaysOnBadge() {
 }
 
 export default function NotificationSettingsScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
@@ -201,6 +198,17 @@ export default function NotificationSettingsScreen() {
 
 			try {
 				await updatePreferences(patch);
+				try {
+					for (const key of patchKeys)
+						trackFeature(
+							"settings.notification_changed",
+							"succeeded",
+							undefined,
+							key,
+						);
+				} catch {
+					// Analytics must not turn a saved preference into a failed update.
+				}
 			} catch (error) {
 				setOptimisticPreferencePatch((currentPatch) =>
 					removeNotificationPreferencePatchKeys(currentPatch, patchKeys),
@@ -212,7 +220,7 @@ export default function NotificationSettingsScreen() {
 				);
 			}
 		},
-		[updatePreferences],
+		[updatePreferences, trackFeature],
 	);
 
 	const updateSystemNotifications = useCallback(
@@ -470,7 +478,7 @@ export default function NotificationSettingsScreen() {
 								<Text className="font-poppins font-semibold text-body-1 text-text">
 									Zustellung
 								</Text>
-								<TouchableOpacity
+								<FeedbackTouchableOpacity
 									accessibilityLabel="Zustellung erklären"
 									accessibilityRole="button"
 									activeOpacity={0.72}
@@ -483,7 +491,7 @@ export default function NotificationSettingsScreen() {
 										color={DAYOVA_DESIGN_SYSTEM.colors.primary}
 										strokeWidth={2.2}
 									/>
-								</TouchableOpacity>
+								</FeedbackTouchableOpacity>
 							</View>
 							<SettingsCard>
 								<View className="min-h-16 flex-row items-center gap-3 py-2">
@@ -550,7 +558,7 @@ export default function NotificationSettingsScreen() {
 								{preferencesForRender.dailyBriefingEnabled ? (
 									<>
 										<SettingsDivider />
-										<TouchableOpacity
+										<FeedbackTouchableOpacity
 											accessibilityRole="button"
 											accessibilityLabel="Uhrzeit für Tagesüberblick ändern"
 											accessibilityState={{
@@ -577,7 +585,7 @@ export default function NotificationSettingsScreen() {
 												color={DAYOVA_DESIGN_SYSTEM.colors.path3}
 												strokeWidth={2}
 											/>
-										</TouchableOpacity>
+										</FeedbackTouchableOpacity>
 									</>
 								) : null}
 							</SettingsCard>
@@ -613,7 +621,7 @@ export default function NotificationSettingsScreen() {
 							</SettingsCard>
 
 							<SettingsCard>
-								<TouchableOpacity
+								<FeedbackTouchableOpacity
 									accessibilityRole="button"
 									accessibilityLabel="Erinnerungszeit ändern"
 									accessibilityState={{
@@ -635,7 +643,7 @@ export default function NotificationSettingsScreen() {
 										color={DAYOVA_DESIGN_SYSTEM.colors.path3}
 										strokeWidth={2}
 									/>
-								</TouchableOpacity>
+								</FeedbackTouchableOpacity>
 								<SettingsDivider />
 								<SwitchRow
 									label="Nach verpasstem Ereignis"

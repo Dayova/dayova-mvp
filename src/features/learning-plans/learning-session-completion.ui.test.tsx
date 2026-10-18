@@ -92,7 +92,7 @@ describe("learning session completion", () => {
 		expect(onContinueLearning).not.toHaveBeenCalled();
 	});
 
-	test("opens Analyse directly without offering another practice block", async () => {
+	test("returns to the learning plan without offering another practice block", async () => {
 		const onPrimary = jest.fn();
 		const onContinueLearning = jest.fn();
 		const screen = await render(
@@ -108,15 +108,41 @@ describe("learning session completion", () => {
 			/>,
 		);
 
-		expect(
-			screen.getByRole("button", { name: "Analyse ansehen" }),
-		).toBeEnabled();
+		expect(screen.getByRole("button", { name: "Zum Lernplan" })).toBeEnabled();
 		expect(screen.queryByText("Noch 10 Min. üben")).toBeNull();
 		expect(screen.queryByText("Auswertung bereit")).toBeNull();
 		expect(screen.queryByText("Deine Antworten sind ausgewertet.")).toBeNull();
 
-		fireEvent.press(screen.getByRole("button", { name: "Analyse ansehen" }));
+		fireEvent.press(screen.getByRole("button", { name: "Zum Lernplan" }));
 		expect(onPrimary).toHaveBeenCalledTimes(1);
 		expect(onContinueLearning).not.toHaveBeenCalled();
+	});
+});
+
+describe("completion without Analyse", () => {
+	test.each([
+		{ phase: "practice" as const, isDiagnostic: true },
+		{ phase: "rehearsal" as const, isDiagnostic: false },
+	])("returns to the plan after $phase (diagnostic: $isDiagnostic)", async ({
+		phase,
+		isDiagnostic,
+	}) => {
+		const onPrimary = jest.fn();
+		const screen = await render(
+			<LearningSessionCompletion
+				phase={phase}
+				isDiagnostic={isDiagnostic}
+				durationMinutes={15}
+				correctCount={3}
+				attemptCount={5}
+				onPrimary={onPrimary}
+				onContinueLearning={jest.fn()}
+				isBusy={false}
+			/>,
+		);
+		expect(screen.queryByText(/Analyse/)).toBeNull();
+		expect(screen.queryByText("Auswertung ansehen")).toBeNull();
+		fireEvent.press(screen.getByRole("button", { name: "Zum Lernplan" }));
+		expect(onPrimary).toHaveBeenCalledTimes(1);
 	});
 });

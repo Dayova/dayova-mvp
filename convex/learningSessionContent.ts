@@ -1126,10 +1126,13 @@ export const getSessionGenerationContext = internalQuery({
 		const planSessions = await ctx.db
 			.query("learningPlanSessions")
 			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
-				q.eq("learningPlanId", session.learningPlanId),
+				q
+					.eq("learningPlanId", session.learningPlanId)
+					.lt("sortOrder", session.sortOrder),
 			)
-			.order("asc")
+			.order("desc")
 			.take(50);
+		planSessions.reverse();
 		const priorTheoryCards: Array<{ front: string; back: string }> = [];
 		const priorSessionItems: Array<{ prompt: string; coverageKey?: string }> =
 			[];
@@ -1593,6 +1596,7 @@ export const getSessionContent = query({
 				subject: plan.subject,
 				examTypeLabel: plan.examTypeLabel,
 				topicDescription: plan.topicDescription,
+				preparationState: plan.preparationState,
 			},
 			session: {
 				id: session._id,
@@ -1607,6 +1611,7 @@ export const getSessionContent = query({
 				expectedOutcome: session.expectedOutcome,
 				completed: session.completed ?? false,
 				executionStatus: getSessionExecutionStatus(session),
+				activeStudySeconds: session.activeStudySeconds ?? 0,
 				compositionVariant: session.compositionVariant ?? "control",
 				knowledgeValidationStatus: session.knowledgeValidationStatus,
 				knowledgeValidationConfidence: session.knowledgeValidationConfidence,
