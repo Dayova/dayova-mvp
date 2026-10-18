@@ -60,3 +60,11 @@ Native check: normal signed-in iPhone 17 Pro app with development backend. The e
 Coverage: 53.47-second video; 53 full-timeline frames sampled at 1 fps (1-second interval); 4 contact sheet(s); 20 additional frames from 00:00:09.000 to 00:00:11.000 at 10 fps; no audio stream.
 
 All four full-timeline sheets and both focused sheets inspected. The 9–11-second interval was additionally sampled at 10 fps to resolve the slide. No audio. This confirms the observed transition, not physical-device smoothness, Android, assistive-technology or native reduced-motion acceptance.
+
+## Follow-up: four relevant suggestions
+
+The topic list now shows at most four catalog suggestions in the existing relevance order, counting an exact match toward the limit. Additional cross-subject matches and the expansion action are hidden. Fewer relevant matches produce fewer suggestions; a custom entered title remains available separately when it is not an exact match. The same display rules apply to cached previews and final responses. Empty-result guidance waits for a completed successful response.
+
+Validation: 31 tests across topic search and setup steps passed, including the four-result limit, exact-match counting, unrelated-only results, multiple selection and cached backspace recovery. One existing backspace fixture lacked subject metadata and was corrected to describe relevant Wirtschaftskunde titles. TypeScript, changed-file Biome/ESLint and whitespace checks passed. Reviewed the scoped diff for exact-match deduplication, provider ordering, filtered empty states, cached previews, custom input availability and selection preservation. No backend change.
+
+Normal signed-in iPhone 17 Pro simulator app: saved and reopened the existing Mathematics draft, restored query “Qua”, and verified four Mathematics results (Quadratische Funktionen, Quadratische Gleichungen, Nullstellenberechnung bei quadratischen Funktionen, Würfel und Quader), followed by the custom “Qua” entry. The unrelated “Qualität entwickeln” result and both additional-results controls are absent. Existing Lineare Abhängigkeit remains selected. Screenshot inspected at full frame; this static follow-up does not establish additional animation or device coverage.

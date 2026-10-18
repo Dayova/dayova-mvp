@@ -30,7 +30,7 @@ export type SearchTopics = (args: {
 	subject: string;
 }) => Promise<TopicSearchResult>;
 
-const MAX_VISIBLE_RESULTS = 5;
+const MAX_VISIBLE_RESULTS = 4;
 const SEARCH_DELAY_MS = 120;
 
 /** Search selections remain distinct from the learner's additional free text. */
@@ -49,7 +49,6 @@ export function TopicSearch({
 }) {
 	const [query, setQuery] = useState("");
 	const [retry, setRetry] = useState(0);
-	const [expandedKey, setExpandedKey] = useState<string | null>(null);
 	const [state, setState] = useState<{
 		key: string;
 		result?: TopicSearchResult;
@@ -180,12 +179,10 @@ export function TopicSearch({
 	);
 	const directTitle = selectedTitle ?? exact?.title ?? term;
 	const otherTopics =
-		result?.topics.filter((topic) => topicTitleKey(topic.title) !== titleKey) ??
-		[];
-	const visible = otherTopics.slice(
-		0,
-		expandedKey === key ? 20 : MAX_VISIBLE_RESULTS,
-	);
+		result?.topics.filter(
+			(topic) => !topic.isAdditional && topicTitleKey(topic.title) !== titleKey,
+		) ?? [];
+	const visible = otherTopics.slice(0, MAX_VISIBLE_RESULTS - (exact ? 1 : 0));
 	function toggleTopic(title: string) {
 		const included = selectedTopics.some(
 			(item) => topicTitleKey(item) === topicTitleKey(title),
@@ -295,7 +292,10 @@ export function TopicSearch({
 								Themen werden gesucht …
 							</Text>
 						) : null}
-						{result.topics.length === 0 ? (
+						{!current?.refreshing &&
+						!current?.error &&
+						!exact &&
+						visible.length === 0 ? (
 							<Text
 								accessibilityLiveRegion="polite"
 								className="font-poppins text-body-4 text-secondary-text"
@@ -305,41 +305,23 @@ export function TopicSearch({
 									: "Keine passenden Katalogvorschläge. Du kannst deinen Begriff unten übernehmen."}
 							</Text>
 						) : null}
-						{visible.map((topic, index) => {
+						{visible.map((topic) => {
 							const isIncluded = selectedTopics.some(
 								(title) => topicTitleKey(title) === topicTitleKey(topic.title),
 							);
 							const context = topic.subjects?.join(" · ");
 							return (
-								<View key={topic.id} className="gap-2">
-									{topic.isAdditional && !visible[index - 1]?.isAdditional ? (
-										<Text className="mt-3 font-poppins text-body-4 text-secondary-text">
-											Weitere Vorschläge
-										</Text>
-									) : null}
-									<SearchSuggestion
-										title={topic.title}
-										detail={context}
-										hint={context ? `Themenbereich: ${context}` : undefined}
-										selected={isIncluded}
-										disabled={disabled}
-										onPress={() => toggleTopic(topic.title)}
-									/>
-								</View>
+								<SearchSuggestion
+									key={topic.id}
+									title={topic.title}
+									detail={context}
+									hint={context ? `Themenbereich: ${context}` : undefined}
+									selected={isIncluded}
+									disabled={disabled}
+									onPress={() => toggleTopic(topic.title)}
+								/>
 							);
 						})}
-						{otherTopics.length > visible.length ? (
-							<ActionSurface
-								accessibilityRole="button"
-								disabled={disabled}
-								onPress={() => setExpandedKey(key)}
-								className="min-h-12 justify-center py-3"
-							>
-								<Text className="font-poppins font-semibold text-body-3 text-text">
-									Mehr Vorschläge anzeigen
-								</Text>
-							</ActionSurface>
-						) : null}
 						{result.truncated ? (
 							<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
 								Grenze deinen Suchbegriff weiter ein, um weitere passende Themen

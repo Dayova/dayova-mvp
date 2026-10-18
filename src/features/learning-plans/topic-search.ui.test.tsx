@@ -44,18 +44,20 @@ function Setup({
 	initial = longScope,
 	onContinue = jest.fn(),
 	busy = false,
+	subject = "Mathematik",
 }: {
 	searchTopics: SearchTopics;
 	initial?: string;
 	onContinue?: () => void;
 	busy?: boolean;
+	subject?: string;
 }) {
 	const [topics, setTopics] = useState(initial);
 	const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
 	return (
 		<>
 			<RequiredTopicsStep
-				subject="Mathematik"
+				subject={subject}
 				searchTopics={searchTopics}
 				selectedTopics={selectedTopics}
 				onChangeSelectedTopics={setSelectedTopics}
@@ -320,10 +322,21 @@ describe("inline topic search with a free-text exam scope", () => {
 	test("keeps known matching titles on backspace even if the broader provider search fails", async () => {
 		const search = jest
 			.fn<SearchTopics>()
-			.mockResolvedValueOnce(reply("Bilanz", "Handelsbilanz"))
+			.mockResolvedValueOnce({
+				...reply("Bilanz", "Handelsbilanz"),
+				topics: ["Bilanz", "Handelsbilanz"].map((title) => ({
+					id: title,
+					title,
+					subjects: ["Wirtschaftskunde"],
+				})),
+			})
 			.mockRejectedValueOnce(new Error("offline"));
 		const screen = await render(
-			<Setup searchTopics={search} initial="Ohne Hilfsmittel" />,
+			<Setup
+				searchTopics={search}
+				subject="Wirtschaftskunde"
+				initial="Ohne Hilfsmittel"
+			/>,
 		);
 		await fireEvent.changeText(
 			screen.getByLabelText("Themen suchen"),
@@ -345,7 +358,7 @@ describe("inline topic search with a free-text exam scope", () => {
 		).toHaveDisplayValue("Ohne Hilfsmittel");
 	});
 
-	test("shows result context and additional suggestions without another subject picker, and selects only the title without modifying additional information", async () => {
+	test("keeps relevant result context, excludes unrelated suggestions, and preserves additional information", async () => {
 		const search = jest.fn<SearchTopics>().mockResolvedValue({
 			topics: [
 				{
@@ -376,7 +389,10 @@ describe("inline topic search with a free-text exam scope", () => {
 			"Bilanz",
 		);
 		await debounce();
-		expect(screen.getAllByText("Weitere Vorschläge")).toHaveLength(1);
+		expect(screen.queryByText("Weitere Vorschläge")).toBeNull();
+		expect(
+			screen.queryByRole("checkbox", { name: "Handelsbilanz" }),
+		).toBeNull();
 		expect(screen.getByRole("checkbox", { name: "Bilanz" })).toHaveProp(
 			"accessibilityHint",
 			"Themenbereich: Wirtschaftskunde",
@@ -621,7 +637,7 @@ describe("inline topic search with a free-text exam scope", () => {
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
 	});
 
-	test("reveals all returned suggestions and selects more than one without another search", async () => {
+	test("caps ranked suggestions at four and selects more than one without another search", async () => {
 		const search = jest
 			.fn<SearchTopics>()
 			.mockResolvedValue(
@@ -630,26 +646,65 @@ describe("inline topic search with a free-text exam scope", () => {
 		const screen = await render(<Setup searchTopics={search} />);
 		await fireEvent.changeText(screen.getByLabelText("Themen suchen"), "Thema");
 		await debounce();
-		expect(screen.getAllByRole("checkbox")).toHaveLength(6);
-		expect(screen.queryByText("Thema 5")).toBeNull();
-		await fireEvent.press(
-			screen.getByRole("button", { name: "Mehr Vorschläge anzeigen" }),
-		);
-		expect(screen.getAllByRole("checkbox")).toHaveLength(9);
-		await fireEvent.press(screen.getByRole("checkbox", { name: "Thema 5" }));
-		await fireEvent.press(screen.getByRole("checkbox", { name: "Thema 7" }));
+		expect(screen.getAllByRole("checkbox")).toHaveLength(5);
+		expect(screen.queryByText("Thema 4")).toBeNull();
+		await fireEvent.press(screen.getByRole("checkbox", { name: "Thema 0" }));
+		await fireEvent.press(screen.getByRole("checkbox", { name: "Thema 3" }));
 		expect(
-			screen.getByRole("checkbox", { name: "Thema 5" }).props
+			screen.getByRole("checkbox", { name: "Thema 0" }).props
 				.accessibilityState,
 		).toMatchObject({ checked: true });
 		expect(
-			screen.getByRole("checkbox", { name: "Thema 7" }).props
+			screen.getByRole("checkbox", { name: "Thema 3" }).props
 				.accessibilityState,
 		).toMatchObject({ checked: true });
 		expect(search).toHaveBeenCalledTimes(1);
 		expect(
 			screen.queryByRole("button", { name: "Mehr Vorschläge anzeigen" }),
 		).toBeNull();
+	});
+
+	test("counts an exact match toward the four catalog suggestions", async () => {
+		const search = jest
+			.fn<SearchTopics>()
+			.mockResolvedValue(
+				reply("Thema 1", "Thema 2", "Thema 3", "Thema 4", "Thema"),
+			);
+		const screen = await render(<Setup searchTopics={search} />);
+		await fireEvent.changeText(screen.getByLabelText("Themen suchen"), "Thema");
+		await debounce();
+		expect(screen.getAllByRole("checkbox")).toHaveLength(4);
+		expect(screen.getByRole("checkbox", { name: "Thema" })).toBeOnTheScreen();
+		expect(screen.queryByText("Thema 4")).toBeNull();
+		expect(screen.queryByText("Eigenes Thema")).toBeNull();
+	});
+
+	test("keeps the custom topic available when all catalog matches are unrelated", async () => {
+		const search = jest.fn<SearchTopics>().mockResolvedValue({
+			topics: [
+				{
+					id: "quality",
+					title: "Qualität entwickeln",
+					subjects: ["Open Educational Resources"],
+					isAdditional: true,
+				},
+			],
+			truncated: false,
+		});
+		const screen = await render(<Setup searchTopics={search} />);
+		await fireEvent.changeText(screen.getByLabelText("Themen suchen"), "Qua");
+		await debounce();
+		expect(screen.getAllByRole("checkbox")).toHaveLength(1);
+		expect(screen.queryByText("Qualität entwickeln")).toBeNull();
+		expect(
+			screen.getByText(
+				"Keine passenden Katalogvorschläge. Du kannst deinen Begriff unten übernehmen.",
+			),
+		).toBeOnTheScreen();
+		await fireEvent.press(screen.getByRole("checkbox", { name: "Qua" }));
+		expect(
+			screen.getByRole("button", { name: "Qua entfernen" }),
+		).toBeOnTheScreen();
 	});
 
 	test("freezes both inputs while saving without needing a search result", async () => {
