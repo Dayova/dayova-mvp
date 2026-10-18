@@ -121,12 +121,55 @@ jest.mock("~/lib/diagnostics", () => ({ logDiagnosticError: jest.fn() }));
 
 jest.mock("~/lib/runtime-config", () => ({
 	env: {
+		EXPO_PUBLIC_PRIVACY_URL: "https://dayova.com/privacy",
+		EXPO_PUBLIC_TERMS_URL: "https://dayova.com/terms",
+		EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL: "https://dayova.com/subscription-terms",
 		EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY: "android_test_key",
 		EXPO_PUBLIC_REVENUECAT_IOS_API_KEY: "ios_test_key",
 	},
 }));
 
 describe("SubscriptionScreen", () => {
+	test("keeps all footer destinations actionable with the shared link layout", async () => {
+		const screen = await render(<SubscriptionScreen />);
+		await waitFor(() => expect(mockGetPlans).toHaveBeenCalledTimes(1));
+		for (const [name, url] of [
+			["Datenschutz", "https://dayova.com/privacy"],
+			["Nutzungsbedingungen", "https://dayova.com/terms"],
+			["Abo-Bedingungen", "https://dayova.com/subscription-terms"],
+		]) {
+			await fireEvent.press(screen.getByRole("link", { name }));
+			expect(mockOpenExternalUrl).toHaveBeenLastCalledWith(url);
+		}
+		await fireEvent.press(screen.getByRole("button", { name: "Support" }));
+		expect(mockOpenExternalUrl).toHaveBeenLastCalledWith(
+			expect.stringContaining("mailto:kontakt@dayova.de?"),
+		);
+	});
+
+	test("keeps footer Support locked while opening contact", async () => {
+		let finish!: (opened: boolean) => void;
+		mockOpenExternalUrl.mockImplementationOnce(
+			() =>
+				new Promise<boolean>((resolve) => {
+					finish = resolve;
+				}),
+		);
+		const screen = await render(<SubscriptionScreen />);
+		await waitFor(() => expect(mockGetPlans).toHaveBeenCalledTimes(1));
+		await fireEvent.press(screen.getByRole("button", { name: "Support" }));
+		const support = screen.getByRole("button", { name: "Support" });
+		expect(support).toBeDisabled();
+		expect(support).toHaveProp(
+			"accessibilityState",
+			expect.objectContaining({ busy: true }),
+		);
+		await fireEvent.press(support);
+		expect(mockOpenExternalUrl).toHaveBeenCalledTimes(1);
+		await act(() => finish(true));
+		await waitFor(() => expect(support).not.toBeDisabled());
+	});
+
 	test.each([
 		"failed",
 		"empty",

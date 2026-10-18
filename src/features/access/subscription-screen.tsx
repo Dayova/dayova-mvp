@@ -1,7 +1,13 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+	type ComponentProps,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BackButton, Button } from "~/components/ui/button";
@@ -399,22 +405,18 @@ export function SubscriptionScreen() {
 						</Text>
 					</FeedbackPressable>
 
-					<View className="flex-row flex-wrap justify-center gap-x-4 gap-y-2 px-2 pt-5">
+					<View className="flex-row flex-wrap items-center justify-center gap-x-4 gap-y-2 pt-5">
 						<SupportContact context="Abonnement">
 							{({ onPress, busy, buttonRef }) => (
-								<FeedbackPressable
+								<FooterLink
 									ref={buttonRef}
+									label="Support"
 									accessibilityLabel="Support"
 									accessibilityRole="button"
 									accessibilityState={{ busy, disabled: busy }}
 									disabled={busy}
-									className="min-h-12 justify-center"
 									onPress={onPress}
-								>
-									<Text className="text-body-4 text-white underline">
-										Support
-									</Text>
-								</FeedbackPressable>
+								/>
 							)}
 						</SupportContact>
 						<LegalLink
@@ -528,13 +530,27 @@ function LegalLink({
 	url?: string;
 }) {
 	return (
-		<FeedbackPressable
+		<FooterLink
+			label={label}
 			accessibilityRole="link"
 			disabled={!url}
-			hitSlop={8}
 			onPress={() => void onOpen(url)}
+		/>
+	);
+}
+
+function FooterLink({
+	label,
+	...props
+}: ComponentProps<typeof FeedbackPressable> & { label: string }) {
+	return (
+		<FeedbackPressable
+			{...props}
+			className="min-h-12 max-w-full items-center justify-center py-2"
 		>
-			<Text className="text-body-4 text-white underline">{label}</Text>
+			<Text className="text-center text-body-4 text-white underline">
+				{label}
+			</Text>
 		</FeedbackPressable>
 	);
 }
