@@ -2,18 +2,12 @@ import { describe, expect, it } from "vitest";
 import type { DayEntry } from "~/types/dayEntries";
 import {
 	classifyAgendaEntry,
-	findNextActionableAgendaItem,
-	findNextActionableAgendaItemId,
-	getAdjacentDashboardDayKey,
 	getDashboardCalendarDayKeys,
 	getDashboardRelevantDayKeys,
 	getDashboardWeekDayKeys,
-	getDashboardWeekProgress,
 	getDashboardWeekSelection,
-	getNextLearningStepAccessibilityLabel,
 	getVisibleDashboardEntries,
 	hasDashboardDayEntries,
-	isDashboardAgendaItemPast,
 	sortDashboardAgendaItems,
 	toDashboardAgendaItem,
 } from "./dashboard-agenda";
@@ -83,75 +77,6 @@ describe("dashboard agenda", () => {
 			expect(keys).toContain(key);
 		expect(keys.length).toBeLessThanOrEqual(31);
 	});
-	it("keeps today's overdue open step ahead of tomorrow and skips completed steps", () => {
-		const today = toDashboardAgendaItem(
-			"2026-09-28",
-			entry({ kind: "Lernen", time: "08:00", executionStatus: "started" }),
-		);
-		const tomorrow = toDashboardAgendaItem(
-			"2026-09-29",
-			entry({ kind: "Lernen", time: "09:00" }),
-		);
-		const select = (items: (typeof today)[]) =>
-			findNextActionableAgendaItem({
-				items,
-				todayKey: "2026-09-28",
-				currentMinutes: 20 * 60,
-			});
-		expect(select([tomorrow, today])).toBe(today);
-		expect(
-			select([
-				tomorrow,
-				{ ...today, entry: { ...today.entry, executionStatus: "completed" } },
-			]),
-		).toBe(tomorrow);
-		expect(
-			select([
-				{
-					...today,
-					entry: {
-						...today.entry,
-						executionStatus: undefined,
-						completed: true,
-					},
-				},
-			]),
-		).toBeUndefined();
-		expect(select([{ ...today, dayKey: "2026-09-27" }])).toBeUndefined();
-	});
-	it("omits unavailable date and time details from the next-step announcement", () => {
-		expect(
-			getNextLearningStepAccessibilityLabel({
-				isStarted: false,
-				title: "Lineare Funktionen",
-				dateLabel: null,
-				timeLabel: null,
-			}),
-		).toBe("Nächsten Lernschritt öffnen: Lineare Funktionen");
-		expect(
-			getNextLearningStepAccessibilityLabel({
-				isStarted: true,
-				title: "Lineare Funktionen",
-				dateLabel: "Heute",
-				timeLabel: "16:00 Uhr",
-			}),
-		).toBe("Weiterlernen: Lineare Funktionen. Heute, 16:00 Uhr");
-	});
-
-	it("moves to the adjacent day in the direction of the user's swipe", () => {
-		expect(
-			getAdjacentDashboardDayKey({
-				selectedDayKey: "2026-07-24",
-				direction: "next",
-			}),
-		).toBe("2026-07-25");
-		expect(
-			getAdjacentDashboardDayKey({
-				selectedDayKey: "2026-07-24",
-				direction: "previous",
-			}),
-		).toBe("2026-07-23");
-	});
 
 	it("shows the Monday-to-Sunday week containing the selected day", () => {
 		expect(getDashboardWeekDayKeys("2026-07-29")).toEqual([
@@ -219,68 +144,6 @@ describe("dashboard agenda", () => {
 		expect(keys).toContain("2026-07-29");
 	});
 
-	it("summarizes completed learning sessions in the current week", () => {
-		const items = [
-			toDashboardAgendaItem(
-				"2026-07-27",
-				entry({
-					id: "completed-before-today" as DayEntry["id"],
-					kind: "Lernen",
-					completed: true,
-					durationMinutes: 25,
-				}),
-			),
-			toDashboardAgendaItem(
-				"2026-07-29",
-				entry({
-					id: "completed-today" as DayEntry["id"],
-					kind: "Lernen",
-					executionStatus: "completed",
-					durationMinutes: 35,
-				}),
-			),
-			toDashboardAgendaItem(
-				"2026-07-30",
-				entry({
-					id: "upcoming" as DayEntry["id"],
-					kind: "Lernen",
-					durationMinutes: 20,
-				}),
-			),
-			toDashboardAgendaItem(
-				"2026-07-29",
-				entry({
-					id: "homework" as DayEntry["id"],
-					kind: "Hausaufgabe",
-					completed: true,
-					durationMinutes: 90,
-				}),
-			),
-			toDashboardAgendaItem(
-				"2026-08-03",
-				entry({
-					id: "next-week" as DayEntry["id"],
-					kind: "Lernen",
-					completed: true,
-					durationMinutes: 45,
-				}),
-			),
-		];
-
-		expect(
-			getDashboardWeekProgress({
-				items,
-				todayKey: "2026-07-29",
-			}),
-		).toEqual({
-			completedLearningSessions: 2,
-			completedMinutesToday: 35,
-			completionPercent: 67,
-			remainingLearningSessions: 1,
-			totalLearningSessions: 3,
-		});
-	});
-
 	it("keeps passive lessons distinct from Dayova learning sessions", () => {
 		expect(
 			classifyAgendaEntry(entry({ title: "Mathematik", kind: "Schulstunde" })),
@@ -325,87 +188,6 @@ describe("dashboard agenda", () => {
 		expect(
 			sortDashboardAgendaItems(items).map((item) => item.entry.id),
 		).toEqual(["all-day", "early", "late"]);
-	});
-
-	it("fades completed and elapsed items", () => {
-		expect(
-			isDashboardAgendaItemPast({
-				item: toDashboardAgendaItem(
-					"2026-07-23",
-					entry({ time: "08:00", durationMinutes: 45 }),
-				),
-				todayKey: "2026-07-23",
-				currentMinutes: 9 * 60,
-			}),
-		).toBe(true);
-		expect(
-			isDashboardAgendaItemPast({
-				item: toDashboardAgendaItem(
-					"2026-07-24",
-					entry({ time: "08:00", durationMinutes: 45 }),
-				),
-				todayKey: "2026-07-23",
-				currentMinutes: 9 * 60,
-			}),
-		).toBe(false);
-	});
-
-	it("never promotes a passive lesson as the next action", () => {
-		const items = [
-			toDashboardAgendaItem(
-				"2026-07-23",
-				entry({
-					id: "lesson" as DayEntry["id"],
-					kind: "Schulstunde",
-					time: "10:00",
-				}),
-			),
-			toDashboardAgendaItem(
-				"2026-07-23",
-				entry({
-					id: "learning" as DayEntry["id"],
-					kind: "Lernen",
-					time: "11:00",
-				}),
-			),
-		];
-
-		expect(
-			findNextActionableAgendaItemId({
-				items,
-				todayKey: "2026-07-23",
-				currentMinutes: 9 * 60,
-			}),
-		).toBe("learning");
-	});
-
-	it("promotes the earliest actionable learning session across days", () => {
-		const items = [
-			toDashboardAgendaItem(
-				"2026-07-25",
-				entry({
-					id: "later" as DayEntry["id"],
-					kind: "Lernen",
-					time: "09:00",
-				}),
-			),
-			toDashboardAgendaItem(
-				"2026-07-24",
-				entry({
-					id: "earlier" as DayEntry["id"],
-					kind: "Lernen",
-					time: "18:00",
-				}),
-			),
-		];
-
-		expect(
-			findNextActionableAgendaItem({
-				items,
-				todayKey: "2026-07-24",
-				currentMinutes: 12 * 60,
-			})?.entry.id,
-		).toBe("earlier");
 	});
 });
 

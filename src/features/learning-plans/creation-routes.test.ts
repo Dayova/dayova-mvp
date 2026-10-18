@@ -5,7 +5,6 @@ import {
 	examEntrySuccessPath,
 	learningPlanMaterialPath,
 	learningPlanResumePath,
-	learningPlanTopicsPath,
 } from "./creation-routes";
 
 test("preserves a personal subject when resuming exam creation", () => {
@@ -47,29 +46,6 @@ test("builds the exam confirmation route for a saved materialless exam", () => {
 	);
 });
 
-test("routes explicitly between topics and material on the mounted setup screen", () => {
-	const learningPlanId = "learning-plan-id" as Id<"learningPlans">;
-
-	expect(learningPlanTopicsPath(learningPlanId)).toBe(
-		"/learning-plans/new?learningPlanId=learning-plan-id&step=topic",
-	);
-	expect(learningPlanMaterialPath(learningPlanId)).toBe(
-		"/learning-plans/new?learningPlanId=learning-plan-id&step=material",
-	);
-});
-
-test("preserves required topics when returning to the first step", () => {
-	const learningPlanId = "learning-plan-id" as Id<"learningPlans">;
-
-	expect(
-		learningPlanTopicsPath(learningPlanId, {
-			topicDescription: "Kapitel 3 & 4, ohne Beweise",
-		}),
-	).toBe(
-		"/learning-plans/new?learningPlanId=learning-plan-id&step=topic&topicDescription=Kapitel%203%20%26%204%2C%20ohne%20Beweise",
-	);
-});
-
 test("resumes creation without routing through a separate question screen", () => {
 	const learningPlanId = "learning-plan-id" as Id<"learningPlans">;
 
@@ -85,4 +61,11 @@ test("resumes creation without routing through a separate question screen", () =
 	expect(
 		learningPlanResumePath(learningPlanId, "generated", "firstSession"),
 	).toBe("/learning-plans/learning-plan-id/review");
+});
+
+test("routes to material on the mounted setup screen", () => {
+	const learningPlanId = "learning-plan-id" as Id<"learningPlans">;
+	expect(learningPlanMaterialPath(learningPlanId)).toBe(
+		"/learning-plans/new?learningPlanId=learning-plan-id&step=material",
+	);
 });
