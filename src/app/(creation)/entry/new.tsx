@@ -912,6 +912,10 @@ export default function NewEntryScreen() {
 						) : null}
 						<Button
 							className="w-full"
+							accessibilityLabel={
+								isCreating ? "Hausaufgabe wird gespeichert" : "Weiter"
+							}
+							accessibilityState={{ busy: isCreating }}
 							disabled={
 								step === "basics"
 									? !canContinueFromBasics
@@ -925,7 +929,11 @@ export default function NewEntryScreen() {
 								void createEntry();
 							}}
 						>
-							<Text>Weiter</Text>
+							{isCreating ? (
+								<ActivityIndicator color="#FFFFFF" />
+							) : (
+								<Text>Weiter</Text>
+							)}
 						</Button>
 					</StickyActionFooter>
 				) : (
