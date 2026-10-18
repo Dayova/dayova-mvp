@@ -1,0 +1,188 @@
+{
+  "date": "2026-10-18",
+  "scope": "pnpm lint, pnpm typecheck, then three sequential pnpm test runs. First and warm runs compared separately; no deployment.",
+  "ci": [
+    {
+      "label": "Original tests and original harness plus benchmark only",
+      "revision": "51dc77d1",
+      "url": "https://expo.dev/accounts/dayova/projects/dayova/workflows/01a14ec5-7368-7ffc-9653-d08a1db58f7e",
+      "status": "SUCCESS",
+      "runner": "linux-medium",
+      "jobSeconds": 439.05,
+      "samples": [
+        {
+          "stage": "lint",
+          "trial": 1,
+          "seconds": 23.190467794,
+          "exitCode": 0,
+          "node": "v24.18.0",
+          "platform": "linux"
+        },
+        {
+          "stage": "typecheck",
+          "trial": 1,
+          "seconds": 11.781320499999998,
+          "exitCode": 0,
+          "node": "v24.18.0",
+          "platform": "linux"
+        },
+        {
+          "stage": "test",
+          "trial": 1,
+          "seconds": 219.35178332400002,
+          "exitCode": 0,
+          "node": "v24.18.0",
+          "platform": "linux"
+        },
+        {
+          "stage": "test",
+          "trial": 2,
+          "seconds": 72.69686387200002,
+          "exitCode": 0,
+          "node": "v24.18.0",
+          "platform": "linux"
+        },
+        {
+          "stage": "test",
+          "trial": 3,
+          "seconds": 72.49933447499998,
+          "exitCode": 0,
+          "node": "v24.18.0",
+          "platform": "linux"
+        }
+      ]
+    },
+    {
+      "label": "Cleaned tests and optimized harness",
+      "revision": "e50142ce",
+      "url": "https://expo.dev/accounts/dayova/projects/dayova/workflows/01a14ee1-e2f4-7e26-aee3-2ec862a00bde",
+      "status": "SUCCESS",
+      "runner": "linux-medium",
+      "jobSeconds": 327.709,
+      "samples": [
+        {
+          "stage": "lint",
+          "trial": 1,
+          "seconds": 26.152253704,
+          "exitCode": 0,
+          "node": "v24.18.0",
+          "platform": "linux"
+        },
+        {
+          "stage": "typecheck",
+          "trial": 1,
+          "seconds": 13.343817376999999,
+          "exitCode": 0,
+          "node": "v24.18.0",
+          "platform": "linux"
+        },
+        {
+          "stage": "test",
+          "trial": 1,
+          "seconds": 95.21623480599999,
+          "exitCode": 0,
+          "node": "v24.18.0",
+          "platform": "linux"
+        },
+        {
+          "stage": "test",
+          "trial": 2,
+          "seconds": 74.884732074,
+          "exitCode": 0,
+          "node": "v24.18.0",
+          "platform": "linux"
+        },
+        {
+          "stage": "test",
+          "trial": 3,
+          "seconds": 74.86567113500001,
+          "exitCode": 0,
+          "node": "v24.18.0",
+          "platform": "linux"
+        }
+      ]
+    }
+  ],
+  "local": {
+    "scope": "Original and cleaned tests use the same four-worker Vitest and lazy real-asset Hugeicons Jest harness. Compare warm trials 2 and 3; shared Windows host and sequential order limit causal attribution.",
+    "node": "v24.18.0",
+    "platform": "win32",
+    "samples": [
+      {
+        "label": "original-tests-common-harness",
+        "trial": 1,
+        "seconds": 202.19837230000002,
+        "exit": 0
+      },
+      {
+        "label": "original-tests-common-harness",
+        "trial": 2,
+        "seconds": 124.33557010000001,
+        "exit": 0
+      },
+      {
+        "label": "original-tests-common-harness",
+        "trial": 3,
+        "seconds": 118.4838627,
+        "exit": 0
+      },
+      {
+        "label": "cleaned-tests-common-harness",
+        "trial": 1,
+        "seconds": 114.95262770000001,
+        "exit": 0
+      },
+      {
+        "label": "cleaned-tests-common-harness",
+        "trial": 2,
+        "seconds": 147.3691435,
+        "exit": 0
+      },
+      {
+        "label": "cleaned-tests-common-harness",
+        "trial": 3,
+        "seconds": 120.6157881,
+        "exit": 0
+      }
+    ]
+  },
+  "faultChecks": [
+    {
+      "label": "German repair becomes identity",
+      "exit": 1,
+      "killed": true
+    },
+    {
+      "label": "Notification registration returns no authorizations",
+      "exit": 1,
+      "killed": true
+    },
+    {
+      "label": "Large preparation budget silently allocates only ten minutes",
+      "exit": 1,
+      "killed": true
+    },
+    {
+      "label": "Source guard accepts an unmerged commit",
+      "exit": 1,
+      "killed": true
+    }
+  ],
+  "originalFaultComparison": [
+    {
+      "label": "German repair becomes identity",
+      "originalExit": 0,
+      "originalFaultEscaped": true
+    },
+    {
+      "label": "Notification registration returns no authorizations",
+      "originalExit": 0,
+      "originalFaultEscaped": true
+    },
+    {
+      "label": "Large preparation budget silently allocates only ten minutes",
+      "originalExit": 0,
+      "originalFaultEscaped": true
+    }
+  ]
+}

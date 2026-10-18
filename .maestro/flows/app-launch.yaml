@@ -24,4 +24,4 @@ tags:
     timeout: 10000
 - takeScreenshot: login
 - tapOn: Jetzt registrieren
-- assertVisible: 'Du weißt, was heute wirklich zählt\.'
+- assertVisible: 'Schluss mit Aufschieben\.'

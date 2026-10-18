@@ -59,7 +59,7 @@ The manual EAS workflow `test-benchmark.yml` uses the same Node/pnpm versions an
 `linux-medium` runner as CI, with no deployment jobs. Run it against explicit
 commits using `eas workflow:run test-benchmark.yml --ref <sha> --non-interactive`.
 Report test time separately from install/queue time and the whole quality job;
-local timing cannot establish a remote CI speedup.
+local timing cannot establish a remote CI speedup. See the [October 2026 audit](validation/test-quality-audit-2026-10-18.md) for an example with raw samples and fault checks.
 
 Jest's Hugeicons adapter loads the real per-icon package assets on demand. It
 avoids loading the entire catalog while retaining the real Dayova icon wrapper
@@ -91,7 +91,7 @@ messages or bypass the navigation assertions.
 | `app-launch.yaml` | Welcome → Login, reachable form controls, Login → registration intro | `smoke` |
 | `login-validation.yaml` | Empty/malformed email, missing password, password reveal/hide | `smoke`, `auth` |
 | `password-recovery.yaml` | Email prefill, malformed/empty email rejection, cancellation, clean reopening | `smoke`, `auth` |
-| `onboarding-navigation.yaml` | Three intro pages, name validation, explicit duration/day choices, answer retention on back navigation | `smoke`, `onboarding` |
+| `onboarding-navigation.yaml` | Four intro pages, name validation, explicit duration/day choices, answer retention on back navigation | `smoke`, `onboarding` |
 
 These flows use synthetic input and stop before a valid auth submission. They
 do not sign in, create accounts, send reset emails, or verify backend behavior.

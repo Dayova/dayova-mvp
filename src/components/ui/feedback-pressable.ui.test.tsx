@@ -121,7 +121,7 @@ test("mounting and opted-out controls do not animate", async () => {
 test.each([
 	FeedbackPressable,
 	FeedbackTouchableOpacity,
-])("a completed compression releases without delaying the action", async (Control) => {
+])("dispatches one action after native feedback completes", async (Control) => {
 	jest.spyOn(Animated, "timing").mockImplementation(() => ({
 		start: (callback) => callback?.({ finished: true }),
 		stop: jest.fn(),
@@ -163,11 +163,11 @@ test("opacity controls also stop motion when disabled during an interaction", as
 	expect(onPress).not.toHaveBeenCalled();
 });
 
-// Native compression finishes asynchronously; a short tap must not cancel it.
+// Native feedback completes asynchronously; action delivery must not wait for it.
 test.each([
 	FeedbackPressable,
 	FeedbackTouchableOpacity,
-])("a short tap reaches the pressed size before returning", async (Control) => {
+])("dispatches a short tap while native feedback is pending", async (Control) => {
 	let finishCompression: ((result: { finished: boolean }) => void) | undefined;
 	jest.spyOn(Animated, "timing").mockImplementation(() => ({
 		start: (callback) => {
