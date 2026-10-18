@@ -45,6 +45,10 @@ type EditingSubject = {
 	name: string;
 };
 
+/**
+ * Manages personal subjects with a shared sheet for renaming and confirmed removal.
+ * Removing a subject leaves existing entries' stored subject names intact.
+ */
 export default function PersonalSubjectsScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();

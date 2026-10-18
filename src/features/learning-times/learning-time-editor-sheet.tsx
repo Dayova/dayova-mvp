@@ -54,6 +54,10 @@ const parseTimeToMinutes = (time: string) => {
 	return (hours || 0) * 60 + (minutes || 0);
 };
 
+/**
+ * Edits a recurring learning window and confirms removal in the same sheet.
+ * Native dismissal gates time-picker handoffs; mutations retain busy/error state.
+ */
 export function LearningTimeEditorSheet({
 	day,
 	id,

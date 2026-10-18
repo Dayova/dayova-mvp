@@ -142,8 +142,10 @@ shared popup rule below; screen-local copies are not permitted.
 
 ### General popup and destructive-action rule
 
-[DAY-501](https://linear.app/dayova/issue/DAY-501) generalizes the approved #727
-popup header, #729’s shared cancel/danger refinement, and the existing
+The [canonical popup decision](https://app.notion.com/p/3fd2e87228bf81588539c6e23c17abfe)
+records the rationale; [DAY-501](https://linear.app/dayova/issue/DAY-501) tracks
+the implementation contract. The rule generalizes the approved #727 popup
+header, #729’s shared cancel/danger refinement, and the existing
 personal-subject/learning-time action treatment.
 This supersedes the earlier neutral destructive alias and the earlier full-red
 confirmation/white-label direction for app-owned popup actions.

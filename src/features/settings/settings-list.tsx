@@ -7,6 +7,10 @@ import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { useDayovaTheme } from "~/lib/theme";
 
+/**
+ * Renders a settings entry or the shared outlined destructive action.
+ * Destructive actions preserve the focus ref and block presses while busy.
+ */
 function SettingsRow({
 	icon,
 	label,

@@ -85,6 +85,10 @@ function SheetModalContainer({ children }: { children?: ReactNode }) {
 	);
 }
 
+/**
+ * Owns app-sheet sizing, scrolling, keyboard handling, dismissal, and modal focus.
+ * Keeps the close control above the full-width title at every system text size.
+ */
 function DayovaSheetFrame({
 	visible,
 	onClose,

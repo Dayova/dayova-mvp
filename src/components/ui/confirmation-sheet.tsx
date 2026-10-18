@@ -28,6 +28,10 @@ type ConfirmationSheetProps = {
 	scrollable?: boolean;
 };
 
+/**
+ * Shares responsive confirmation actions between standalone and embedded sheets.
+ * Busy actions block dismissal; the owning caller handles submission and errors.
+ */
 function ConfirmationPresentation({
 	visible,
 	title,

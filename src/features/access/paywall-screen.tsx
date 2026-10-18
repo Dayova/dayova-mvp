@@ -317,6 +317,10 @@ function CheckoutButton({ onPress }: { onPress: () => void }) {
 	);
 }
 
+/**
+ * Presents account management links, using the shared button for destructive actions.
+ * Callers own confirmation and any authentication required before execution.
+ */
 function ManagementAction({
 	accessibilityLabel,
 	destructive = false,
