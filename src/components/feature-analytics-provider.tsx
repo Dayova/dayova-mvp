@@ -44,8 +44,9 @@ export function FeatureAnalyticsProvider({
 				sharedContext: {
 					validationStudentCode: user?.validationStudentCode,
 					easUpdateId: Updates.updateId,
-					easChannel: Updates.channel,
-					easRuntimeVersion: Updates.runtimeVersion,
+					// Native development clients expose missing EAS values as empty strings.
+					easChannel: Updates.channel || undefined,
+					easRuntimeVersion: Updates.runtimeVersion || undefined,
 					easIsEmbeddedLaunch: Updates.isEmbeddedLaunch,
 				},
 			}),

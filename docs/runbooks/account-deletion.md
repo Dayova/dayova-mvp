@@ -7,8 +7,8 @@ accountable-human approval tracked in DAY-357.
 
 ## Required Convex environment
 
-- `CLERK_SECRET_KEY`: required. Revokes every active Clerk session and deletes
-  the Clerk identity.
+- `CLERK_SECRET_KEY`: required. Verifies the current password for the authenticated
+  subject, revokes active Clerk sessions and deletes the Clerk identity.
 - `REVENUECAT_SECRET_API_KEY`: optional only when RevenueCat is not configured
   for the environment. Deleting the RevenueCat customer does not cancel an
   App Store or Play Store subscription.
@@ -24,11 +24,12 @@ environment variables.
 
 ## Pipeline and guarantees
 
-1. The client verifies the current password with Clerk and obtains a fresh JWT.
-   `POST /account-deletion` independently verifies that password with Clerk for
-   the authenticated subject before accepting the request. Passwords are not
-   persisted or forwarded as mutation arguments. The legacy public mutation
-   fails closed.
+1. The client completes Clerk first-factor reverification and posts the current
+   password with a fresh Convex token to `/account-deletion`. The HTTP endpoint
+   independently verifies the password with Clerk `verify_password` for the
+   authenticated subject before calling internal `enqueueVerifiedDeletion`.
+   Passwords are never persisted or passed to mutations. The legacy public
+   mutation fails closed because Convex omits `fva` from `UserIdentity`.
 2. Convex creates one idempotent `accountDeletionRequests` tombstone and denies
    subsequent app reads and writes for that owner immediately.
 3. The processor revokes all active Clerk sessions, deletes the Clerk identity,
@@ -52,6 +53,9 @@ Each completed stage is durable and safe to repeat. HTTP 404 responses are
 treated as successful deletion. Failures use capped exponential delays and move
 to `manualReview` after eight failed attempts. Logs contain request id, stage,
 attempt number, and sanitized error code only.
+A competing worker that loses the stage transition stops without scheduling
+another chain. Repeating a verified request or an operator invocation can still
+restart processing at the stored stage.
 
 ## Operations
 
