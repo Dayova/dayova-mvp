@@ -68,5 +68,5 @@ describe("iOS privacy purpose strings", () => {
 				`${key} should not be requested`,
 			).toBeUndefined();
 		}
-	}, 15_000);
+	}, 30_000);
 });

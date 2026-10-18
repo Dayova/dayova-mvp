@@ -5,6 +5,7 @@ import { z } from "zod";
 const publicEnvSchema = {
 	EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1),
 	EXPO_PUBLIC_CONVEX_URL: z.string().url(),
+	EXPO_PUBLIC_CONVEX_SITE_URL: z.string().url().optional(),
 	EXPO_PUBLIC_POSTHOG_API_KEY: z.string().optional(),
 	EXPO_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
 	EXPO_PUBLIC_REVENUECAT_IOS_API_KEY: z.string().min(1).optional(),
@@ -14,6 +15,14 @@ const publicEnvSchema = {
 	EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL: z.string().url().optional(),
 	EXPO_PUBLIC_SUPPORT_URL: z.string().url().optional(),
 } as const;
+
+const releaseConvexUrlSchema = z
+	.string()
+	.url()
+	.refine(
+		(value) => /^https:\/\//i.test(value),
+		"Must use HTTPS for releases.",
+	);
 
 type PublicRuntimeConfigKey = keyof typeof publicEnvSchema;
 export type ReleasePlatform = "android" | "ios";
@@ -48,6 +57,7 @@ export const readPublicRuntimeConfig = (): StrictPublicRuntimeConfigValues => ({
 	EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY:
 		process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY,
 	EXPO_PUBLIC_CONVEX_URL: process.env.EXPO_PUBLIC_CONVEX_URL,
+	EXPO_PUBLIC_CONVEX_SITE_URL: process.env.EXPO_PUBLIC_CONVEX_SITE_URL,
 	EXPO_PUBLIC_POSTHOG_API_KEY: process.env.EXPO_PUBLIC_POSTHOG_API_KEY,
 	EXPO_PUBLIC_POSTHOG_HOST: process.env.EXPO_PUBLIC_POSTHOG_HOST,
 	EXPO_PUBLIC_REVENUECAT_IOS_API_KEY:
@@ -149,7 +159,14 @@ export const createPublicEnv = (
 ) =>
 	createEnv({
 		clientPrefix: "EXPO_PUBLIC_",
-		client: publicEnvSchema,
+		client:
+			options.context === "release"
+				? {
+						...publicEnvSchema,
+						EXPO_PUBLIC_CONVEX_URL: releaseConvexUrlSchema,
+						EXPO_PUBLIC_CONVEX_SITE_URL: releaseConvexUrlSchema.optional(),
+					}
+				: publicEnvSchema,
 		runtimeEnvStrict: toStrictPublicRuntimeConfig(runtimeEnv),
 		emptyStringAsUndefined: true,
 		skipValidation:
