@@ -10,6 +10,24 @@ type DeletionSession = PasswordReverificationSession & {
 	}) => Promise<string | null>;
 };
 
+export async function readAccountDeletionResponse(
+	response: Response,
+): Promise<unknown> {
+	if (!response.ok) {
+		const body: unknown = await response.json().catch(() => null);
+		const message =
+			body &&
+			typeof body === "object" &&
+			"error" in body &&
+			typeof body.error === "string" &&
+			body.error.trim()
+				? body.error
+				: "Die Kontolöschung konnte nicht bestätigt werden. Bitte versuche es erneut.";
+		throw new Error(message);
+	}
+	return response.json();
+}
+
 export async function submitAccountDeletion(
 	dependencies: {
 		session: DeletionSession;

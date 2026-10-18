@@ -107,7 +107,9 @@ export default function ProfileScreen() {
 					level: "error",
 				});
 				setDeleteError(
-					"Das Konto konnte nicht vollständig gelöscht werden. Bitte versuche es erneut.",
+					error instanceof Error && error.message.trim()
+						? error.message
+						: "Die Kontolöschung konnte nicht bestätigt werden. Bitte versuche es erneut.",
 				);
 			} finally {
 				setDeletionPassword("");

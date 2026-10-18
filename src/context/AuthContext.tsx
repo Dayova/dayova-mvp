@@ -20,7 +20,10 @@ import {
 import { Platform } from "react-native";
 import { api } from "#convex/_generated/api";
 import { useOnboarding } from "~/context/OnboardingContext";
-import { submitAccountDeletion } from "~/lib/account-deletion-request";
+import {
+	readAccountDeletionResponse,
+	submitAccountDeletion,
+} from "~/lib/account-deletion-request";
 import {
 	createValidationAnalytics,
 	isPostHogConfigured,
@@ -1667,11 +1670,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 							},
 							body: JSON.stringify({ password: currentPassword }),
 						});
-						if (!response.ok)
-							throw new Error(
-								"Die Kontolöschung konnte nicht bestätigt werden.",
-							);
-						return response.json();
+						return readAccountDeletionResponse(response);
 					},
 					logout,
 				},
@@ -1681,7 +1680,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			throw new Error(
 				getClerkErrorMessage(
 					error,
-					"Das Konto konnte nicht vollständig gelöscht werden. Bitte versuche es erneut.",
+					"Die Kontolöschung konnte nicht bestätigt werden. Bitte versuche es erneut.",
 				),
 			);
 		}

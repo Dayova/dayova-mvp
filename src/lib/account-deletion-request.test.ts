@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { submitAccountDeletion } from "./account-deletion-request";
+import {
+	readAccountDeletionResponse,
+	submitAccountDeletion,
+} from "./account-deletion-request";
 
 const setup = () => {
 	const session = {
@@ -20,6 +23,43 @@ const setup = () => {
 };
 
 describe("native account deletion", () => {
+	it.each([
+		[403, "Das aktuelle Passwort ist falsch."],
+		[429, "Zu viele Versuche. Bitte versuche es später erneut."],
+		[503, "Die Passwortprüfung ist vorübergehend nicht verfügbar."],
+	])("preserves the server error for HTTP %s without signing out", async (status, error) => {
+		const deps = setup();
+		deps.request.mockImplementation(() =>
+			readAccountDeletionResponse(Response.json({ error }, { status })),
+		);
+		await expect(submitAccountDeletion(deps, "password")).rejects.toThrow(
+			error,
+		);
+		expect(deps.logout).not.toHaveBeenCalled();
+	});
+	it.each([
+		"not JSON",
+		"null",
+		"{}",
+		'{"error":42}',
+		'{"error":"  "}',
+	])("uses a safe fallback for an unusable error body: %s", async (body) => {
+		await expect(
+			readAccountDeletionResponse(new Response(body, { status: 503 })),
+		).rejects.toThrow(
+			"Die Kontolöschung konnte nicht bestätigt werden. Bitte versuche es erneut.",
+		);
+	});
+	it("reads an accepted HTTP response before signing out", async () => {
+		const deps = setup();
+		deps.request.mockImplementation(() =>
+			readAccountDeletionResponse(
+				Response.json({ status: "accepted", requestId: "request-1" }),
+			),
+		);
+		await submitAccountDeletion(deps, "password");
+		expect(deps.logout).toHaveBeenCalledOnce();
+	});
 	it("reverifies and uses a fresh token before submitting and signing out", async () => {
 		const deps = setup();
 		await submitAccountDeletion(deps, "test-password");
