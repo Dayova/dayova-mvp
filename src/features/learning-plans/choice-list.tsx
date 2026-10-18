@@ -1,4 +1,5 @@
 import { View } from "react-native";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import {
 	SelectionBadge,
 	SelectionControl,
@@ -6,6 +7,7 @@ import {
 } from "~/components/ui/selection-control";
 import { Text } from "~/components/ui/text";
 import type { SessionContentItem } from "~/features/learning-plans/types";
+import { cn } from "~/lib/utils";
 
 export function ChoiceList({
 	item,
@@ -47,17 +49,35 @@ function ChoiceCard({
 	disabled: boolean;
 	onSelect: () => void;
 }) {
+	const { shouldStackInlineContent } = useContentSizeLayout();
 	return (
 		<SelectionControl
 			selected={selected}
 			disabled={disabled}
 			accessibilityLabel={`${label}. ${text}`}
 			onPress={onSelect}
-			contentClassName="min-h-16 flex-row items-center gap-4 rounded-3xl px-5 py-3"
+			contentClassName={cn(
+				"min-h-16 rounded-3xl px-5 py-3",
+				shouldStackInlineContent ? "gap-3" : "flex-row items-center gap-4",
+			)}
 		>
-			<SelectionBadge>{label}</SelectionBadge>
-			<Text className="flex-1 font-poppins text-body-2 text-text">{text}</Text>
-			<SelectionIndicator />
+			{shouldStackInlineContent ? (
+				<View className="flex-row items-center justify-between">
+					<SelectionBadge>{label}</SelectionBadge>
+					<SelectionIndicator />
+				</View>
+			) : (
+				<SelectionBadge>{label}</SelectionBadge>
+			)}
+			<Text
+				className={cn(
+					"font-poppins text-body-2 text-text",
+					!shouldStackInlineContent && "flex-1",
+				)}
+			>
+				{text}
+			</Text>
+			{!shouldStackInlineContent ? <SelectionIndicator /> : null}
 		</SelectionControl>
 	);
 }
