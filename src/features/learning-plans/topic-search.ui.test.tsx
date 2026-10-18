@@ -7,7 +7,7 @@ import {
 	test,
 } from "@jest/globals";
 import { act, fireEvent, render } from "@testing-library/react-native";
-import { useState } from "react";
+import { Profiler, useState } from "react";
 import { isMeaningfulTopicDescription } from "#convex/topicDescriptionValidation";
 import { Textarea } from "~/components/ui/textarea";
 import { RequiredTopicsStep } from "./learning-plan-setup-steps";
@@ -276,6 +276,68 @@ describe("inline topic search with a free-text exam scope", () => {
 		);
 		expect(screen.getByRole("checkbox", { name: "Bilanz" })).toBeOnTheScreen();
 	});
+	test.each([
+		["Qua", "Quad"],
+		["Quadr", "Qua"],
+	])("keeps matching suggestions visible in every committed frame from %s to %s", async (initialQuery, nextQuery) => {
+		const result: TopicSearchResult = {
+			topics: [
+				{
+					id: "quadratic",
+					title: "Quadratische Funktionen",
+					subjects: ["Mathematik"],
+					isAdditional: false,
+				},
+			],
+			truncated: false,
+		};
+		let finish: (value: TopicSearchResult) => void = () => {};
+		const search = jest
+			.fn<SearchTopics>()
+			.mockResolvedValueOnce(result)
+			.mockImplementationOnce(
+				() =>
+					new Promise((resolve) => {
+						finish = resolve;
+					}),
+			);
+		let screen: Awaited<ReturnType<typeof render>> | undefined;
+		const frames: boolean[] = [];
+		screen = await render(
+			<Profiler
+				id="topic-search"
+				onRender={() => {
+					if (screen)
+						frames.push(
+							screen.queryByRole("checkbox", {
+								name: "Quadratische Funktionen",
+							}) !== null &&
+								screen.queryByText("Themen werden gesucht …") === null,
+						);
+				}}
+			>
+				<Setup searchTopics={search} />
+			</Profiler>,
+		);
+		await fireEvent.changeText(
+			screen.getByLabelText("Themen suchen"),
+			initialQuery,
+		);
+		await debounce();
+		expect(
+			screen.getByRole("checkbox", { name: "Quadratische Funktionen" }),
+		).toBeOnTheScreen();
+		frames.length = 0;
+		await fireEvent.changeText(
+			screen.getByLabelText("Themen suchen"),
+			nextQuery,
+		);
+		await debounce();
+		await act(async () => finish(result));
+		expect(frames.length).toBeGreaterThan(0);
+		expect(frames).not.toContain(false);
+	});
+
 	test("shows matching known titles immediately while refining, but refreshes authoritative results", async () => {
 		let finish: (value: TopicSearchResult) => void = () => {};
 		const search = jest
@@ -705,6 +767,21 @@ describe("inline topic search with a free-text exam scope", () => {
 		expect(
 			screen.getByRole("button", { name: "Qua entfernen" }),
 		).toBeOnTheScreen();
+	});
+
+	test("preserves an error when only surrounding whitespace changes", async () => {
+		const search = jest
+			.fn<SearchTopics>()
+			.mockRejectedValue(new Error("offline"));
+		const screen = await render(<Setup searchTopics={search} />);
+		await fireEvent.changeText(screen.getByLabelText("Themen suchen"), "Qua");
+		await debounce();
+		await fireEvent.changeText(screen.getByLabelText("Themen suchen"), "Qua ");
+		expect(
+			screen.getByRole("button", { name: "Erneut versuchen" }),
+		).toBeOnTheScreen();
+		expect(screen.queryByText("Themen werden gesucht …")).toBeNull();
+		expect(search).toHaveBeenCalledTimes(1);
 	});
 
 	test("freezes both inputs while saving without needing a search result", async () => {

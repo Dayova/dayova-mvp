@@ -33,6 +33,44 @@ export type SearchTopics = (args: {
 const MAX_VISIBLE_RESULTS = 4;
 const SEARCH_DELAY_MS = 120;
 
+type CachedTopics = {
+	result: TopicSearchResult;
+	expires: number;
+	term: string;
+	subject: string;
+};
+
+function cachedSearch(
+	cache: Map<string, CachedTopics>,
+	term: string,
+	subject: string,
+) {
+	const normalizedTerm = normalizeWloQuery(term);
+	const normalizedSubject = normalizeWloText(subject);
+	const now = Date.now();
+	const exact = cache.get(JSON.stringify([normalizedSubject, normalizedTerm]));
+	if (exact && exact.expires > now) return { result: exact.result };
+
+	// Matching known titles are only a preview. Always fetch the authoritative
+	// answer so a broad cached search cannot hide new, more specific matches.
+	const sources = [...cache.values()]
+		.filter(
+			(entry) => entry.subject === normalizedSubject && entry.expires > now,
+		)
+		.sort((a, b) => b.expires - a.expires);
+	const known = new Map<string, TopicSearchResult["topics"][number]>();
+	for (const source of sources) {
+		for (const topic of source.result.topics) {
+			if (!known.has(topicTitleKey(topic.title)))
+				known.set(topicTitleKey(topic.title), topic);
+		}
+	}
+	const topics = rankWloTopics([...known.values()], normalizedTerm, subject);
+	return topics.length
+		? { result: { topics, truncated: true }, refreshing: true }
+		: undefined;
+}
+
 /** Search selections remain distinct from the learner's additional free text. */
 export function TopicSearch({
 	selectedTopics,
@@ -55,17 +93,7 @@ export function TopicSearch({
 		error?: boolean;
 		refreshing?: boolean;
 	}>({ key: "" });
-	const cache = useRef(
-		new Map<
-			string,
-			{
-				result: TopicSearchResult;
-				expires: number;
-				term: string;
-				subject: string;
-			}
-		>(),
-	);
+	const cache = useRef(new Map<string, CachedTopics>());
 	const pending = useRef(new Map<string, Promise<TopicSearchResult>>());
 	const term = query.trim();
 	const normalizedTerm = normalizeWloQuery(term);
@@ -77,39 +105,10 @@ export function TopicSearch({
 	useEffect(() => {
 		if (!canSearch || disabled) return;
 		let active = true;
-		const cached = cache.current.get(cacheKey);
-		if (cached && cached.expires > Date.now()) {
-			setState({ key, result: cached.result });
-			return;
-		}
-		// Show only already known titles that actually match the new term. This
-		// is a preview, never a final cached answer: always refresh from the server
-		// so truncated broad searches cannot hide more relevant narrow matches.
-		const sources = [...cache.current.values()]
-			.filter(
-				(entry) =>
-					entry.subject === normalizedSubject && entry.expires > Date.now(),
-			)
-			.sort((a, b) => b.expires - a.expires);
-		if (sources.length) {
-			const known = new Map<string, TopicSearchResult["topics"][number]>();
-			for (const source of sources) {
-				for (const topic of source.result.topics) {
-					if (!known.has(topicTitleKey(topic.title)))
-						known.set(topicTitleKey(topic.title), topic);
-				}
-			}
-			const topics = rankWloTopics(
-				[...known.values()],
-				normalizedTerm,
-				subject,
-			);
-			if (topics.length)
-				setState({
-					key,
-					result: { topics, truncated: true },
-					refreshing: true,
-				});
+		const cached = cachedSearch(cache.current, term, subject);
+		if (cached) {
+			setState({ key, ...cached });
+			if (!cached.refreshing) return;
 		}
 		const load = () => {
 			let request = pending.current.get(cacheKey);
@@ -167,6 +166,24 @@ export function TopicSearch({
 		term,
 	]);
 
+	function changeQuery(value: string) {
+		const nextTerm = value.trim();
+		const nextKey = JSON.stringify([
+			JSON.stringify([normalizedSubject, normalizeWloQuery(nextTerm)]),
+			retry,
+		]);
+		// Commit the query and its matching cached rows together. Restoring rows
+		// only in the effect leaves a blank committed frame after each keystroke.
+		setQuery(value);
+		if (nextKey === key) return;
+		setState({
+			key: nextKey,
+			...(nextTerm.length >= 3 && nextTerm.length <= 100
+				? cachedSearch(cache.current, nextTerm, subject)
+				: undefined),
+		});
+	}
+
 	const current = state.key === key ? state : undefined;
 	const result = current?.result;
 	const titleKey = topicTitleKey(term);
@@ -218,10 +235,17 @@ export function TopicSearch({
 			<SearchField
 				accessibilityLabel="Themen suchen"
 				accessibilityHint="Suche nach Vorschlägen oder wähle deinen eingegebenen Begriff direkt als Thema aus."
-				accessibilityState={{ disabled }}
+				accessibilityState={{
+					disabled,
+					busy:
+						!disabled &&
+						canSearch &&
+						!current?.error &&
+						(!result || !!current?.refreshing),
+				}}
 				placeholder="Thema suchen oder eingeben"
 				value={query}
-				onChangeText={setQuery}
+				onChangeText={changeQuery}
 				editable={!disabled}
 			/>
 			{selectedTopics.length > 0 ? (
@@ -284,14 +308,6 @@ export function TopicSearch({
 				{exact ? directChoice : null}
 				{canSearch && result ? (
 					<>
-						{current?.refreshing ? (
-							<Text
-								accessibilityLiveRegion="polite"
-								className="font-poppins text-body-4 text-secondary-text"
-							>
-								Themen werden gesucht …
-							</Text>
-						) : null}
 						{!current?.refreshing &&
 						!current?.error &&
 						!exact &&
