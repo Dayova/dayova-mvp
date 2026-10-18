@@ -1,6 +1,7 @@
 import { describe, expect, test } from "@jest/globals";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import {
+	createNavigationContainerRef,
 	createNavigatorFactory,
 	NavigationContainer,
 	StackActions,
@@ -53,6 +54,7 @@ function TestNavigator({
 }
 
 const Stack = createNavigatorFactory(TestNavigator)();
+const rootNavigation = createNavigationContainerRef();
 const Home = () => <Text>Home destination</Text>;
 
 function Exam() {
@@ -78,6 +80,15 @@ function Exam() {
 				}
 			/>
 			<Button
+				title="Replace flow with root target"
+				onPress={() => {
+					rootNavigation.dispatch({
+						...StackActions.replace("Home"),
+						target: rootNavigation.getRootState().key,
+					});
+				}}
+			/>
+			<Button
 				title="Native parent back"
 				onPress={() => navigation.getParent()?.goBack()}
 			/>
@@ -96,6 +107,7 @@ function Creation() {
 function App() {
 	return (
 		<NavigationContainer
+			ref={rootNavigation}
 			initialState={{
 				index: 1,
 				routes: [{ name: "Home" }, { name: "Creation" }],
@@ -110,6 +122,13 @@ function App() {
 }
 
 describe("native back protection across nested stacks", () => {
+	test("permits a targeted replacement from the root router queue", async () => {
+		await render(<App />);
+		await fireEvent.press(screen.getByText("Replace flow with root target"));
+		expect(screen.getByText("Home destination")).toBeTruthy();
+		expect(screen.queryByText("Subject step")).toBeNull();
+	});
+
 	test("permits a deliberate replacement while native back is protected", async () => {
 		await render(<App />);
 		await fireEvent.press(screen.getByText("Replace flow"));

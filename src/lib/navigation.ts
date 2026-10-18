@@ -73,9 +73,10 @@ export const useBackIntent = (
 	// beforeRemove listener runs too late to undo an iOS swipe dismissal.
 	usePreventRemove(enabled && isFocused && !allowRouteRemoval, ({ data }) => {
 		if (!isBackRemovalAction({ data }) || !runBackIntent()) {
-			// Reuse the original action so React Navigation can skip this guard
-			// when resuming a replacement or an unhandled removal.
-			navigation.dispatch(data.action);
+			// Preserve even an absent source: dispatching from this child otherwise
+			// injects its route key, which a targeted parent replacement cannot find.
+			// Spreading the action also retains React Navigation's visited-route symbol.
+			navigation.dispatch({ ...data.action, source: data.action.source });
 		}
 	});
 
