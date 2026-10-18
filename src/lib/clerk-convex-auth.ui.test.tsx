@@ -5,7 +5,12 @@ import { useClerkConvexAuth } from "./clerk-convex-auth";
 let mockPrimaryEmail = "old@example.com";
 let mockSessionId = "session-1";
 let mockSessionClaims: Record<string, unknown> = {};
-const mockGetToken = jest.fn(async (): Promise<string | null> => "fresh-token");
+const mockGetToken = jest.fn(
+	async (_options: {
+		template: string;
+		skipCache: boolean;
+	}): Promise<string | null> => "fresh-token",
+);
 
 jest.mock("@clerk/expo", () => ({
 	useAuth: () => ({

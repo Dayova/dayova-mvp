@@ -2,8 +2,8 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
-import { parse } from "yaml";
 import { describe, expect, it } from "vitest";
+import { parse } from "yaml";
 import {
 	createReport,
 	evaluateProductionOta,
@@ -112,17 +112,29 @@ describe("production OTA safety", () => {
 	});
 
 	it("does not accept upgraded native fingerprints merely by relabelling the runtime", () => {
-		const result = evaluate({ fingerprints: {
-			ios: "ff9c10e6269957c3df85e8f52793ec3993b0806b",
-			android: "fcca898e3a18c0709e5466248b99d67a24d2f2c8",
-		} });
+		const result = evaluate({
+			fingerprints: {
+				ios: "ff9c10e6269957c3df85e8f52793ec3993b0806b",
+				android: "fcca898e3a18c0709e5466248b99d67a24d2f2c8",
+			},
+		});
 		expect(result.safe).toBe(false);
 		expect(result.reason).toContain("does not match distributed build");
 	});
 
 	it("keeps the historical schema-1 baseline blocked for both platforms", () => {
-		const legacy = JSON.parse(readFileSync(new URL("./fixtures/production-ota-baseline.schema-1.json", import.meta.url), "utf8"));
-		expect(evaluate({ baseline: legacy }).reason).toContain("unsupported baseline schema 1");
+		const legacy = JSON.parse(
+			readFileSync(
+				new URL(
+					"./fixtures/production-ota-baseline.schema-1.json",
+					import.meta.url,
+				),
+				"utf8",
+			),
+		);
+		expect(evaluate({ baseline: legacy }).reason).toContain(
+			"unsupported baseline schema 1",
+		);
 	});
 	it("allows a production manifest whose fingerprints match verified distributed binaries", () => {
 		expect(evaluate()).toMatchObject({
@@ -143,33 +155,59 @@ describe("production OTA safety", () => {
 		};
 		const withReview = {
 			...reviewedBaseline,
-			platforms: { ...reviewedBaseline.platforms, ios: {
-				...reviewedBaseline.platforms.ios, reviewedCompatibleFingerprints: [review],
-			} },
+			platforms: {
+				...reviewedBaseline.platforms,
+				ios: {
+					...reviewedBaseline.platforms.ios,
+					reviewedCompatibleFingerprints: [review],
+				},
+			},
 		};
 		const fingerprints = { ios: compatible, android: androidFingerprint };
 		expect(evaluate({ baseline: withReview, fingerprints }).safe).toBe(true);
-		expect(evaluate({ baseline: withReview, fingerprints }).reason).toContain("reviewed native equivalence");
-		expect(evaluate({ baseline: withReview, fingerprints: {
-			...fingerprints, ios: "4444444444444444444444444444444444444444",
-		} }).safe).toBe(false);
+		expect(evaluate({ baseline: withReview, fingerprints }).reason).toContain(
+			"reviewed native equivalence",
+		);
+		expect(
+			evaluate({
+				baseline: withReview,
+				fingerprints: {
+					...fingerprints,
+					ios: "4444444444444444444444444444444444444444",
+				},
+			}).safe,
+		).toBe(false);
 		for (const invalidReview of [
 			{ ...review, evidence: " " },
 			{ ...review, sourceSha: "short" },
 			{ ...review, buildFingerprint: androidFingerprint },
 			null,
 		]) {
-			withReview.platforms.ios.reviewedCompatibleFingerprints = [invalidReview] as typeof review[];
+			withReview.platforms.ios.reviewedCompatibleFingerprints = [
+				invalidReview,
+			] as (typeof review)[];
 			expect(evaluate({ baseline: withReview, fingerprints }).safe).toBe(false);
 		}
 	});
 
-	it.each([null, {}, "allowed", [null]])("rejects a malformed equivalence list even for the original fingerprint (%s)", (reviews) => {
-		const result = evaluate({ baseline: { ...baseline,
-			platforms: { ...baseline.platforms, ios: { ...baseline.platforms.ios,
-				reviewedCompatibleFingerprints: reviews,
-			} },
-		} });
+	it.each([
+		null,
+		{},
+		"allowed",
+		[null],
+	])("rejects a malformed equivalence list even for the original fingerprint (%s)", (reviews) => {
+		const result = evaluate({
+			baseline: {
+				...baseline,
+				platforms: {
+					...baseline.platforms,
+					ios: {
+						...baseline.platforms.ios,
+						reviewedCompatibleFingerprints: reviews,
+					},
+				},
+			},
+		});
 		expect(result.safe).toBe(false);
 		expect(result.reason).toContain("reviewed compatible fingerprints require");
 	});
@@ -178,16 +216,30 @@ describe("production OTA safety", () => {
 		const compatible = "3333333333333333333333333333333333333333";
 		const reviewedBaseline = {
 			...baseline,
-			platforms: { ...baseline.platforms, ios: { ...baseline.platforms.ios,
-				distribution: { ...baseline.platforms.ios.distribution, status: "unverified" },
-				runtimeVersion: "1.0.3",
-				reviewedCompatibleFingerprints: [{ fingerprint: compatible,
-					buildFingerprint: iosFingerprint,
-					sourceSha: "2700b541066c6cf50a27db25e54ca015d4564a2f", evidence: "Input comparison" }],
-			} },
+			platforms: {
+				...baseline.platforms,
+				ios: {
+					...baseline.platforms.ios,
+					distribution: {
+						...baseline.platforms.ios.distribution,
+						status: "unverified",
+					},
+					runtimeVersion: "1.0.3",
+					reviewedCompatibleFingerprints: [
+						{
+							fingerprint: compatible,
+							buildFingerprint: iosFingerprint,
+							sourceSha: "2700b541066c6cf50a27db25e54ca015d4564a2f",
+							evidence: "Input comparison",
+						},
+					],
+				},
+			},
 		};
-		const result = evaluate({ baseline: reviewedBaseline,
-			fingerprints: { ios: compatible, android: androidFingerprint } });
+		const result = evaluate({
+			baseline: reviewedBaseline,
+			fingerprints: { ios: compatible, android: androidFingerprint },
+		});
 		expect(result.safe).toBe(false);
 		expect(result.reason).toContain("distribution is not verified");
 		expect(result.reason).toContain("build runtime 1.0.3 does not match");
@@ -352,27 +404,31 @@ describe("production OTA safety", () => {
 		);
 	});
 
-	it.each([undefined, 123, "   ", "abc"])(
-		"rejects an invalid baseline sourceSha (%s) with a clear platform error",
-		(sourceSha) => {
-			const result = evaluate({
-				baseline: {
-					...baseline,
-					platforms: {
-						...baseline.platforms,
-						ios: {
-							...baseline.platforms.ios,
-							sourceSha,
-						},
+	it.each([
+		undefined,
+		123,
+		"   ",
+		"abc",
+	])("rejects an invalid baseline sourceSha (%s) with a clear platform error", (sourceSha) => {
+		const result = evaluate({
+			baseline: {
+				...baseline,
+				platforms: {
+					...baseline.platforms,
+					ios: {
+						...baseline.platforms.ios,
+						sourceSha,
 					},
 				},
-			});
+			},
+		});
 
-			expect(result.safe).toBe(false);
-			expect(result.reason).toContain("ios baseline sourceSha must be a full Git SHA");
-			expect(result.baseline).toContain("ios build 55 @ invalid");
-		},
-	);
+		expect(result.safe).toBe(false);
+		expect(result.reason).toContain(
+			"ios baseline sourceSha must be a full Git SHA",
+		);
+		expect(result.baseline).toContain("ios build 55 @ invalid");
+	});
 
 	it("rejects whitespace-only distributed and generated fingerprints", () => {
 		const result = evaluate({
@@ -457,7 +513,7 @@ describe("production release configuration", () => {
 		}
 	});
 
-	it("resolves the patched SDK 57 production binary behind runtime 1.0.5", () => {
+	it("isolates the SDK 58 production binary behind runtime 1.0.6", () => {
 		const expoCliPath = require.resolve("expo/bin/cli");
 		const resolvedConfig = JSON.parse(
 			execFileSync(
@@ -475,11 +531,11 @@ describe("production release configuration", () => {
 		);
 
 		expect(resolvedConfig).toMatchObject({
-			version: "1.0.5",
-			sdkVersion: "57.0.0",
+			version: "1.0.6",
+			sdkVersion: "58.0.0",
 			ios: {
 				bundleIdentifier: "de.dayova.app",
-				runtimeVersion: "1.0.5",
+				runtimeVersion: "1.0.6",
 			},
 			android: {
 				package: "com.dayova",
@@ -491,7 +547,10 @@ describe("production release configuration", () => {
 
 	it("uses the EAS production fingerprint job as the gate input", () => {
 		const workflow = parse(
-			readFileSync(new URL("../.eas/workflows/ci.yml", import.meta.url), "utf8"),
+			readFileSync(
+				new URL("../.eas/workflows/ci.yml", import.meta.url),
+				"utf8",
+			),
 		);
 		const fingerprint = workflow.jobs.production_fingerprint;
 		const otaChecks = workflow.jobs.ota_checks;
@@ -510,10 +569,8 @@ describe("production release configuration", () => {
 		expect(otaChecks.env).toEqual({
 			APP_VARIANT: "production",
 			EAS_BUILD_PLATFORM: "ios",
-			OTA_ANDROID_FINGERPRINT:
-				"${{ needs.production_fingerprint.outputs.android_fingerprint_hash }}",
-			OTA_IOS_FINGERPRINT:
-				"${{ needs.production_fingerprint.outputs.ios_fingerprint_hash }}",
+			OTA_ANDROID_FINGERPRINT: `\${{ needs.production_fingerprint.outputs.android_fingerprint_hash }}`,
+			OTA_IOS_FINGERPRINT: `\${{ needs.production_fingerprint.outputs.ios_fingerprint_hash }}`,
 		});
 		expect(otaGuard.env).toBeUndefined();
 		const sendUpdates = workflow.jobs.send_updates;
@@ -527,18 +584,27 @@ describe("production release configuration", () => {
 		expect(sendUpdates.needs).toContain("production_fingerprint");
 		expect(sendUpdates.env).toEqual({
 			APP_VARIANT: "production",
-			OTA_SOURCE_SHA: "${{ github.sha }}",
+			OTA_SOURCE_SHA: `\${{ github.sha }}`,
 			OTA_ANDROID_FINGERPRINT: otaChecks.env.OTA_ANDROID_FINGERPRINT,
 			OTA_IOS_FINGERPRINT: otaChecks.env.OTA_IOS_FINGERPRINT,
 		});
 		expect(finalGuard.env).toBeUndefined();
 		expect(sendUpdates.needs).toContain("deploy_convex");
 		expect(workflow.jobs.deploy_convex.needs).toContain("checks");
-		expect(sendUpdates.if).toBe("${{ github.event_name == 'push' && github.ref_name == 'main' && needs.ota_checks.outputs.ota_safe == 'true' }}");
-		expect(otaChecks.steps).toEqual(expect.arrayContaining([
-			expect.objectContaining({ run: "pnpm exec expo export --platform ios --output-dir dist/ios" }),
-			expect.objectContaining({ env: { EAS_BUILD_PLATFORM: "android" }, run: "pnpm exec expo export --platform android --output-dir dist/android" }),
-		]));
+		expect(sendUpdates.if).toBe(
+			`\${{ github.event_name == 'push' && github.ref_name == 'main' && needs.ota_checks.outputs.ota_safe == 'true' }}`,
+		);
+		expect(otaChecks.steps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					run: "pnpm exec expo export --platform ios --output-dir dist/ios",
+				}),
+				expect.objectContaining({
+					env: { EAS_BUILD_PLATFORM: "android" },
+					run: "pnpm exec expo export --platform android --output-dir dist/android",
+				}),
+			]),
+		);
 	});
 
 	it("requires a clean commit before EAS builds upload source", () => {

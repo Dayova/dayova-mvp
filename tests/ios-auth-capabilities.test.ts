@@ -37,5 +37,5 @@ describe("iOS authentication capabilities", () => {
 				SIGN_IN_WITH_APPLE_ENTITLEMENT,
 			);
 		}
-	}, 15_000);
+	}, 30_000);
 });

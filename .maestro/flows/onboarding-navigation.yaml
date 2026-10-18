@@ -21,6 +21,12 @@ tags:
 - tapOn:
     id: onboarding-name-input
 - inputText: A
+# Android's keyboard can cover the footer on compact emulator displays.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
 - assertVisible: 'Bitte gib deinen Namen ein\.'
 - assertVisible:
     text: Weiter
@@ -29,6 +35,11 @@ tags:
     id: onboarding-name-input
 - eraseText
 - inputText: Maestro
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
 - assertNotVisible: 'Bitte gib deinen Namen ein\.'
 - assertVisible:
     text: Weiter
@@ -50,6 +61,11 @@ tags:
     enabled: true
 - tapOn: Weiter
 - assertVisible: 'Du brauchst nicht stundenlang zu lernen\.'
+# Informational steps place their action inside the scrollable content on short screens.
+- scrollUntilVisible:
+    element: Weiter
+    direction: DOWN
+    timeout: 10000
 - tapOn: Weiter
 - assertVisible: 'An welchen Tagen kannst du lernen\?'
 - assertVisible:
@@ -66,6 +82,10 @@ tags:
 - tapOn: Montag
 - tapOn: Weiter
 - assertVisible: 'Du lernst, wenn es dir passt!'
+- scrollUntilVisible:
+    element: Weiter
+    direction: DOWN
+    timeout: 10000
 - tapOn: Weiter
 - assertVisible: 'Um wie viel Uhr möchtest du starten\?'
 - assertVisible: Startzeit auswählen

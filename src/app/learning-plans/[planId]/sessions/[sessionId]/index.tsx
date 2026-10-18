@@ -7,10 +7,7 @@ import {
 } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, AppState, View } from "react-native";
-import {
-	KeyboardAvoidingView,
-	type KeyboardAwareScrollViewRef,
-} from "react-native-keyboard-controller";
+import type { KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -19,7 +16,7 @@ import { ScreenHeader } from "~/components/screen-header";
 import { BackButton, Button } from "~/components/ui/button";
 import { ErrorMessage } from "~/components/ui/error-message";
 import { Timer } from "~/components/ui/icon";
-import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAiConsent } from "~/context/AiConsentContext";
@@ -28,6 +25,7 @@ import { ChoiceList } from "~/features/learning-plans/choice-list";
 import { LearningSessionCompletion } from "~/features/learning-plans/learning-session-completion";
 import { learningSessionAnalyticsProperties } from "~/features/learning-plans/session-analytics";
 import { getLearningSessionCompletionDestination } from "~/features/learning-plans/session-completion-navigation";
+import { SessionContentLayout } from "~/features/learning-plans/session-content-layout";
 import { FeedbackView } from "~/features/learning-plans/session-feedback";
 import { getLearningSessionBackTarget } from "~/features/learning-plans/session-navigation";
 import {
@@ -63,6 +61,15 @@ const phaseTitle = (
 
 const CURRENT_THEORY_CONTENT_VERSION = 2;
 
+// Optional German word breaks are invisible when the label fits. Accessible
+// names keep the original copy, including at maximum system text sizes.
+const ACTION_LABEL_LINE_BREAKS: Record<string, string> = {
+	Beantworten: "Beant\u00adworten",
+	Wiederholen: "Wieder\u00adholen",
+	Verstanden: "Ver\u00adstanden",
+	"Analysiere …": "Analy\u00adsiere …",
+};
+
 const formatRemainingTime = (seconds: number) => {
 	const minutes = Math.floor(seconds / 60);
 	const rest = seconds % 60;
@@ -90,28 +97,55 @@ function ActionRow({
 	busyLabel?: string;
 	className?: string;
 }) {
+	const { shouldStackInlineContent } = useContentSizeLayout();
+	const actionClassName = cn(
+		"px-4",
+		shouldStackInlineContent ? "w-full" : "flex-1",
+	);
 	return (
-		<View className={cn("mt-8 flex-row gap-3", className)}>
+		<View
+			className={cn(
+				"mt-8 gap-3",
+				shouldStackInlineContent ? "flex-col" : "flex-row",
+				className,
+			)}
+		>
 			<Button
-				className="flex-1 px-4"
+				className={actionClassName}
+				accessibilityLabel={secondaryLabel}
 				disabled={isBusy}
 				variant="neutral"
 				onPress={onSecondary}
 			>
-				<Text>{secondaryLabel}</Text>
+				<Text className="shrink text-center">
+					{ACTION_LABEL_LINE_BREAKS[secondaryLabel] ?? secondaryLabel}
+				</Text>
 			</Button>
 			<Button
-				className="flex-1 px-4"
+				className={actionClassName}
+				accessibilityLabel={isBusy && busyLabel ? busyLabel : primaryLabel}
 				disabled={primaryDisabled || isBusy}
 				onPress={onPrimary}
 			>
 				{isBusy ? (
-					<View className="flex-row items-center justify-center gap-2">
+					<View className="shrink flex-row flex-wrap items-center justify-center gap-2">
 						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
-						{busyLabel ? <Text>{busyLabel}</Text> : null}
+						{busyLabel ? (
+							<Text
+								className="shrink text-center"
+								accessibilityLabel={busyLabel}
+							>
+								{ACTION_LABEL_LINE_BREAKS[busyLabel] ?? busyLabel}
+							</Text>
+						) : null}
 					</View>
 				) : (
-					<Text>{primaryLabel}</Text>
+					<Text
+						className="shrink text-center"
+						accessibilityLabel={primaryLabel}
+					>
+						{ACTION_LABEL_LINE_BREAKS[primaryLabel] ?? primaryLabel}
+					</Text>
 				)}
 			</Button>
 		</View>
@@ -122,6 +156,7 @@ export default function LearningSessionContentScreen() {
 	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
+	const { horizontalPadding } = useContentSizeLayout();
 	const params = useLocalSearchParams<{
 		planId?: string;
 		returnTo?: string;
@@ -818,12 +853,7 @@ export default function LearningSessionContentScreen() {
 							fontSize: 16,
 							fontWeight: "600",
 						},
-						headerLeft: () => (
-							<BackButton
-								onPress={goBack}
-								className="h-11 min-h-11 w-11 min-w-11"
-							/>
-						),
+						headerLeft: () => <BackButton onPress={goBack} />,
 						headerRight: () =>
 							displayedRemainingSeconds !== null ? (
 								<Text
@@ -880,12 +910,7 @@ export default function LearningSessionContentScreen() {
 									fontSize: 16,
 									fontWeight: "600",
 								},
-								headerLeft: () => (
-									<BackButton
-										onPress={goBack}
-										className="h-11 min-h-11 w-11 min-w-11"
-									/>
-								),
+								headerLeft: () => <BackButton onPress={goBack} />,
 							}
 						: {
 								gestureEnabled: true,
@@ -896,14 +921,17 @@ export default function LearningSessionContentScreen() {
 			<ThemedStatusBar />
 			{!completionPhase ? (
 				<View
-					className="px-8"
-					style={{ paddingTop: Math.max(insets.top + 8, 24) }}
+					// Safe-area and content-size padding depend on native device settings.
+					style={{
+						paddingHorizontal: horizontalPadding,
+						paddingTop: Math.max(insets.top + 8, 24),
+					}}
 				>
 					<ScreenHeader
-						title={title}
+						title={title === "Wissenscheck" ? ["Wissens", "check"] : title}
 						onBack={goBack}
 						className="mb-0"
-						titleClassName="px-24 text-center font-poppins font-semibold text-body-1 text-text"
+						titleClassName="text-body-1"
 						right={
 							displayedRemainingSeconds !== null ? (
 								<View
@@ -944,26 +972,48 @@ export default function LearningSessionContentScreen() {
 					) : null}
 				</View>
 			) : null}
-			<KeyboardSafeScrollView
+			<SessionContentLayout
 				ref={contentScrollRef}
-				className="flex-1"
+				horizontalPadding={horizontalPadding}
+				keyboardEnabled={currentItem?.kind === "written"}
 				bounces={
 					currentItem?.kind !== "multipleChoice" || Boolean(visibleAttempt)
 				}
-				scrollEnabled={
-					currentItem?.kind !== "multipleChoice" ||
-					Boolean(visibleAttempt) ||
-					Boolean(completionPhase)
+				footer={
+					showQuestionActions && content ? (
+						<ActionRow
+							className="mt-0"
+							secondaryLabel={
+								isPreTheoryQuestion ? "Noch nicht" : "Weiß ich nicht"
+							}
+							primaryLabel={
+								isPreTheoryQuestion
+									? "Abgeben"
+									: content.session.phase === "rehearsal"
+										? currentIndex < content.items.length - 1
+											? "Weiter"
+											: "Abgeben"
+										: "Beantworten"
+							}
+							onSecondary={() => void submitCurrentAnswer(true)}
+							onPrimary={() => void submitCurrentAnswer()}
+							primaryDisabled={!isAnswerReady}
+							isBusy={isBusy}
+							busyLabel={
+								currentItem?.kind === "written" ? "Analysiere …" : undefined
+							}
+						/>
+					) : showFeedbackAction ? (
+						<ActionRow
+							className="mt-0"
+							secondaryLabel="Wiederholen"
+							primaryLabel="Verstanden"
+							onSecondary={repeatCurrentQuestion}
+							onPrimary={continueTask}
+							isBusy={isBusy}
+						/>
+					) : null
 				}
-				enabled={currentItem?.kind === "written"}
-				contentContainerStyle={{
-					flexGrow: 1,
-					paddingHorizontal: 32,
-					paddingBottom:
-						showQuestionActions || showFeedbackAction
-							? 24
-							: Math.max(insets.bottom + 28, 60),
-				}}
 			>
 				{!content || content.items.length === 0 || needsTheoryContentUpgrade ? (
 					<View className="flex-1 items-center justify-center px-4 py-24">
@@ -1057,52 +1107,7 @@ export default function LearningSessionContentScreen() {
 						{errorMessage}
 					</Text>
 				) : null}
-			</KeyboardSafeScrollView>
-			{showQuestionActions && content ? (
-				<KeyboardAvoidingView behavior="padding">
-					<View
-						className="border-border border-t-hairline bg-background px-8 pt-4"
-						style={{ paddingBottom: Math.max(insets.bottom, 16) }}
-					>
-						<ActionRow
-							className="mt-0"
-							secondaryLabel={
-								isPreTheoryQuestion ? "Noch nicht" : "Weiß ich nicht"
-							}
-							primaryLabel={
-								isPreTheoryQuestion
-									? "Abgeben"
-									: content.session.phase === "rehearsal"
-										? currentIndex < content.items.length - 1
-											? "Weiter"
-											: "Abgeben"
-										: "Beantworten"
-							}
-							onSecondary={() => void submitCurrentAnswer(true)}
-							onPrimary={() => void submitCurrentAnswer()}
-							primaryDisabled={!isAnswerReady}
-							isBusy={isBusy}
-							busyLabel={
-								currentItem?.kind === "written" ? "Analysiere …" : undefined
-							}
-						/>
-					</View>
-				</KeyboardAvoidingView>
-			) : showFeedbackAction ? (
-				<View
-					className="border-border border-t-hairline bg-background px-8 pt-4"
-					style={{ paddingBottom: Math.max(insets.bottom, 16) }}
-				>
-					<ActionRow
-						className="mt-0"
-						secondaryLabel="Wiederholen"
-						primaryLabel="Verstanden"
-						onSecondary={repeatCurrentQuestion}
-						onPrimary={continueTask}
-						isBusy={isBusy}
-					/>
-				</View>
-			) : null}
+			</SessionContentLayout>
 		</View>
 	);
 }

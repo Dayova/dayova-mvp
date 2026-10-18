@@ -23,17 +23,42 @@ _Avoid_: User-facing message, learner error text
 
 ## CI Quality Gate
 
+Decision rationale, acceptance, and the associated cleanup/verification scope
+live in the [canonical Notion decision record](https://app.notion.com/p/3fd2e87228bf81f98b45f94017f0079d).
+The [code-facing reference](adr/0001-enforce-repository-checks-and-limit-typed-linting.md)
+links the historical stacked-PR CI evidence.
+
 `.eas/workflows/ci.yml` uses one `checks` job, displayed as
 `Lint, typecheck, and test`, for trusted pull requests, manual runs, and pushes
-to `main`. Lint, TypeScript, and tests are separate sequential steps. A merge
+to `main`. Formatting, lint, unused code/dependencies, repository skill validation,
+TypeScript, and tests are separate sequential steps. A merge
 therefore checks the resulting `main` commit again under the same visible job
 name instead of skipping a PR-only job and repeating its commands elsewhere.
 
+Pull-request triggers cover every target branch, including stack parents. Do not
+restrict them to `main`: doing so leaves new commits in dependent PRs without CI
+or a current OTA compatibility report. The source and contributor trust gates
+still apply, and deployment/publication remain limited to pushes to `main`.
+
 Pull request checks require the author's GitHub association to be `OWNER`,
-`MEMBER`, or `COLLABORATOR`. Manual runs validate only. Production fingerprinting,
-Convex deployment, and OTA work remain restricted to pushes to `main`.
+`MEMBER`, or `COLLABORATOR`. Manual runs validate only. Trusted same-repository
+PRs also run production fingerprinting and OTA compatibility checks; Convex
+deployment and OTA publication remain restricted to pushes to `main`.
 Both Convex deployment and OTA checks depend on successful `checks`; OTA
 publication also requires successful fingerprinting, deployment, and OTA safety.
+
+Biome owns general linting and formatting for application/backend source, root
+configuration, tests, ESLint rules, scripts, plugins, and local modules. Its
+coverage fixtures must reject invalid code in each of these locations. Generated
+Convex files and installer-owned `skills-lock.json` remain excluded; repository
+skill validation checks the latter.
+
+ESLint owns the React Hooks/Compiler, Dayova UI, and Convex rules. The UI rules
+use syntax-only parsing; Convex retains TypeScript project services because its
+query and explicit-table rules require type information. Keep the integration
+fixtures green when changing either boundary, and retain the independent full
+TypeScript check. Knip remains the unused-code/dependency gate. Replacing an
+engine requires proving equivalent coverage for its specialized rules first.
 
 ## Release Environment
 
@@ -84,6 +109,30 @@ PostHog validation analytics envs are optional public app envs:
 Do not add optional public envs to the required release-key list unless the app
 cannot function without them. The analytics client must stay disabled gracefully
 when the PostHog key is absent.
+
+## SDK 58 runtime boundary
+
+The SDK 58 / React Native 0.88 upgrade uses app/runtime `1.0.6` on both platforms.
+Keep the distributed SDK 57 baseline immutable; this graph requires new native
+binaries and must not be published to runtime `1.0.5`. Patch ownership and upstream
+removals are documented in `patches/README.md`. The SDK upgrade retains the CI
+quality gates introduced by #846; it does not replace that tooling change.
+
+`jest-expo` 58 uses Jest 30 transforms, environments and watch plugins. Keep the
+root Jest, globals and types on 30 even while Expo's version recommendation still
+lists Jest 29. Only `jest` and `@types/jest` are excluded from that recommendation;
+the full UI suite and dependency peer checks remain required.
+
+Clerk 4 supports SDK 58 and exposes `__experimental_disableNativeClientSync`.
+Dayova's custom JS authentication uses that provider option instead of mutating
+the TurboModule registry. Do not enable native sync without introducing Clerk
+native auth components and verifying session ownership on both platforms.
+
+SDK 58 Router's `repeat()` injects a child source when a parent-targeted action
+has no source. The nested-stack integration test reproduces the resulting blocked
+replacement. `useBackIntent` disables prevention explicitly and dispatches the
+original action through the root ref, preserving its target/source. Recheck this
+workaround when Router changes; retain protection if another guard cancels removal.
 
 ## Validation Analytics Runtime Contract
 
@@ -264,15 +313,18 @@ purpose strings.
 
 ## iOS Deployment Target
 
-Dayova currently requires iOS 17.0 because the native Clerk Expo SDK requires
-it. The `@clerk/expo` config plugin writes that target to the generated Xcode
-project and `Podfile.properties.json` during prebuild. This requirement predates
-the Expo SDK 57 upgrade even though Expo SDK 57 itself supports iOS 16.4 and
-newer.
+SDK 58 generates an iOS 16.4 application deployment target in both the Xcode
+project and the Podfile default. Clerk 4's JavaScript authentication package no
+longer includes the native Clerk pod that raised the SDK 57 application target
+to iOS 17.0. Its config plugin applies native SDK configuration only when the
+optional `@clerk/expo-native-components` package is installed; Dayova does not
+install that package.
 
 Keep Dayova-owned native modules compatible with Expo's 16.4 baseline unless a
-higher target is intentional and documented. Re-evaluate the app-wide iOS 17.0
-minimum when Clerk lowers its native SDK requirement or Clerk is replaced.
+higher target is intentional and documented. Recheck the generated application
+target when adding native authentication components. The deployment target is
+not evidence of runtime verification on iOS 16.4; the SDK 58 native smoke and
+appearance evidence covers iOS 27 simulators.
 
 See `modules/dayova-system-appearance/README.md` for the appearance module's
 runtime design, React Native coupling, compatibility policy, test matrix, and

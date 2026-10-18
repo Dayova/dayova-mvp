@@ -41,7 +41,7 @@ describe("iOS Apple sign-in capability", () => {
 				"com.apple.developer.applesignin",
 			);
 		},
-		20_000,
+		30_000,
 	);
 
 	it("keeps Apple sign-in absent from generated native entitlements when present", () => {
@@ -51,8 +51,6 @@ describe("iOS Apple sign-in capability", () => {
 
 		const nativeEntitlements = readFileSync(IOS_ENTITLEMENTS_PATH, "utf8");
 
-		expect(nativeEntitlements).not.toContain(
-			"com.apple.developer.applesignin",
-		);
+		expect(nativeEntitlements).not.toContain("com.apple.developer.applesignin");
 	});
 });

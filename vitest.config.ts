@@ -9,6 +9,10 @@ export default defineConfig({
 		},
 	},
 	test: {
+		// Several suites spawn Expo/Node processes. Keep them from exhausting the
+		// worker's CPU and memory when the whole repository runs in CI.
+		maxWorkers: 2,
+		testTimeout: 30_000,
 		environment: "edge-runtime",
 		globals: true,
 		include: [

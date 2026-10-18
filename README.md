@@ -105,17 +105,20 @@ the implementation rules and native validation matrix.
 ```sh
 pnpm check          # lint and TypeScript 7 (app and Convex configs)
 pnpm typecheck:watch # watch the workspace with TypeScript 7
-pnpm test           # unit and UI suites
+pnpm test           # Vitest, Node, and Jest UI suites
 pnpm format:check   # formatting and Tailwind class order
 pnpm check:unused   # unused files, dependencies, and exports
+pnpm skills:validate # repository skill catalog and overlays
+pnpm check:compiler # React Compiler health check
 ```
 
 ### TypeScript tooling
 
 Dayova uses stable TypeScript 7.0.2 for CLI typechecking. `pnpm typecheck`
-checks both the root Expo config and `convex/tsconfig.json`; the existing EAS
-quality gate runs the same command. `pnpm typecheck:watch` checks the root
-workspace continuously, while `pnpm convex:dev` checks the backend as it changes.
+checks both the root Expo TypeScript project and `convex/tsconfig.json`;
+the existing EAS quality gate runs the same command. `pnpm typecheck:watch`
+checks the root workspace continuously, while `pnpm convex:dev` checks the backend
+as it changes.
 
 The two compiler packages intentionally coexist:
 
@@ -129,6 +132,8 @@ Keep typechecking enabled on development and deployment commands. Do not
 replace the compatibility alias with TypeScript 7 until tools importing the
 compiler API support it. See Microsoft's
 [side-by-side setup](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/#running-side-by-side-with-typescript-60).
+Run `pnpm exec convex typecheck` to verify Convex's own compiler integration
+without deploying.
 
 For VS Code, install the recommended
 [TypeScript 7 extension](https://marketplace.visualstudio.com/items?itemName=TypeScriptTeam.native-preview)
@@ -140,8 +145,10 @@ In VS Code, open a `.ts` or `.js` file and run
 `TypeScript: Enable TypeScript 7` from the Command Palette.
 
 To inspect compiler timings, run `pnpm typecheck:app --extendedDiagnostics`
-and `pnpm typecheck:convex --extendedDiagnostics`. Compare against
-`pnpm exec tsc6 --noEmit --extendedDiagnostics` with the same config and machine.
+and `pnpm typecheck:convex --extendedDiagnostics`. Compare the app against
+`pnpm exec tsc6 --noEmit --extendedDiagnostics`, and the backend against
+`pnpm exec tsc6 --noEmit -p convex/tsconfig.json --extendedDiagnostics`,
+using the same config and machine for each pair.
 
 ## Repository guidance
 

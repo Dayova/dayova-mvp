@@ -16,9 +16,9 @@ import {
 	type NativeScrollEvent,
 	type NativeSyntheticEvent,
 	Platform,
-	Pressable,
 	ScrollView,
 	TextInput,
+	type TextInputInstance,
 	type TextInputProps,
 	useWindowDimensions,
 	View,
@@ -72,9 +72,9 @@ import {
 	DateTimePickerSheet,
 } from "~/components/ui/date-time-picker-sheet";
 import { ErrorMessage } from "~/components/ui/error-message";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import {
-	ArrowLeft,
 	Atom,
 	CalendarDays,
 	Check,
@@ -312,23 +312,26 @@ export function AuthChoiceScreen() {
 						/>
 					</Animated.View>
 
-					<Text
+					<FeedbackPressable
 						accessibilityRole="button"
 						accessibilityLabel="Dayova, App-Informationen"
 						onPress={() => setShowReleaseInformation(true)}
-						allowFontScaling={false}
-						className="mt-6 text-center font-poppins font-semibold text-heading-1 text-text"
-						style={{
-							fontSize: responsiveLayout.brandFontSize,
-							lineHeight: responsiveLayout.brandLineHeight,
-							width: Math.min(
-								Math.max(width - 16, 0),
-								contentSizeLayout.containerMaxWidth,
-							),
-						}}
 					>
-						Dayova
-					</Text>
+						<Text
+							allowFontScaling={false}
+							className="mt-6 text-center font-poppins font-semibold text-heading-1 text-text"
+							style={{
+								fontSize: responsiveLayout.brandFontSize,
+								lineHeight: responsiveLayout.brandLineHeight,
+								width: Math.min(
+									Math.max(width - 16, 0),
+									contentSizeLayout.containerMaxWidth,
+								),
+							}}
+						>
+							Dayova
+						</Text>
+					</FeedbackPressable>
 					<Text
 						allowFontScaling={false}
 						className="mt-4 text-center font-poppins text-body-2 text-secondary-text"
@@ -458,19 +461,22 @@ export function AuthChoiceScreen() {
 							alignItems: "center",
 						}}
 					>
-						<Text
+						<FeedbackPressable
 							accessibilityRole="button"
 							accessibilityLabel="Dayova, App-Informationen"
 							onPress={() => setShowReleaseInformation(true)}
-							className="text-center font-poppins font-semibold text-text"
-							style={{
-								fontSize: scaled(AUTH_CHOICE_FRAME.title.fontSize),
-								lineHeight: scaled(AUTH_CHOICE_FRAME.title.lineHeight),
-								includeFontPadding: false,
-							}}
 						>
-							Dayova
-						</Text>
+							<Text
+								className="text-center font-poppins font-semibold text-text"
+								style={{
+									fontSize: scaled(AUTH_CHOICE_FRAME.title.fontSize),
+									lineHeight: scaled(AUTH_CHOICE_FRAME.title.lineHeight),
+									includeFontPadding: false,
+								}}
+							>
+								Dayova
+							</Text>
+						</FeedbackPressable>
 					</Animated.View>
 
 					<Animated.View
@@ -599,7 +605,7 @@ export function OnboardingStepScreen({ stepId }: { stepId: OnboardingStepId }) {
 	const [passwordVisible, setPasswordVisible] = useState(false);
 	const [isRegistering, setIsRegistering] = useState(false);
 	const [renderError, setRenderError] = useState<string | null>(null);
-	const textInputRef = useRef<TextInput | null>(null);
+	const textInputRef = useRef<TextInputInstance | null>(null);
 	const registrationActionGateRef = useRef(createAsyncActionGate());
 	const {
 		startRegistrationWithEmail,
@@ -766,7 +772,7 @@ export function OnboardingStepScreen({ stepId }: { stepId: OnboardingStepId }) {
 export function OnboardingVerificationScreen() {
 	const insets = useSafeAreaInsets();
 	const [verificationCode, setVerificationCode] = useState("");
-	const verificationInputRef = useRef<TextInput | null>(null);
+	const verificationInputRef = useRef<TextInputInstance | null>(null);
 	const verificationSubmittedRef = useRef(false);
 	const { verifyEmailCode, resendVerification, isLoading } = useAuthFlow();
 	const {
@@ -976,7 +982,7 @@ export function OnboardingCreationScreen() {
 	);
 }
 
-export function IntroStepView({
+function IntroStepView({
 	activeIndex,
 	topInset,
 	bottomInset,
@@ -1320,7 +1326,7 @@ function QuestionStepView({
 	error: string | null;
 	busy: boolean;
 	passwordVisible: boolean;
-	inputRef: RefObject<TextInput | null>;
+	inputRef: RefObject<TextInputInstance | null>;
 	bottomInset: number;
 	onBack: () => boolean;
 	onContinue: () => void;
@@ -1633,7 +1639,7 @@ export function LoginScreen() {
 	const [verificationCode, setVerificationCode] = useState("");
 	const [verificationMode, setVerificationMode] = useState(false);
 	const [passwordResetMode, setPasswordResetMode] = useState(false);
-	const verificationInputRef = useRef<TextInput | null>(null);
+	const verificationInputRef = useRef<TextInputInstance | null>(null);
 	const submittedRef = useRef(false);
 	const loginActionGateRef = useRef(createAsyncActionGate());
 	const {
@@ -1837,7 +1843,7 @@ export function LoginScreen() {
 						</View>
 
 						<View className="w-full flex-row justify-end">
-							<Pressable
+							<FeedbackPressable
 								accessibilityRole="button"
 								accessibilityLabel="Passwort vergessen"
 								accessibilityHint="Öffnet den Ablauf zum Zurücksetzen deines Passworts"
@@ -1855,7 +1861,7 @@ export function LoginScreen() {
 								<Text className="text-right font-poppins text-body-4 text-primary">
 									Passwort vergessen?
 								</Text>
-							</Pressable>
+							</FeedbackPressable>
 						</View>
 
 						{error ? (
@@ -1893,7 +1899,7 @@ export function LoginScreen() {
 							<Text className="text-center font-poppins text-body-3 text-text">
 								Du hast keinen Account?
 							</Text>
-							<Pressable
+							<FeedbackPressable
 								accessibilityLabel="Jetzt registrieren"
 								accessibilityRole="button"
 								hitSlop={8}
@@ -1902,7 +1908,7 @@ export function LoginScreen() {
 								<Text className="text-center font-poppins text-body-3 text-primary">
 									Jetzt Registrieren
 								</Text>
-							</Pressable>
+							</FeedbackPressable>
 						</View>
 					</View>
 				</KeyboardSafeScrollView>
@@ -1918,7 +1924,6 @@ function PasswordResetScreen({
 	initialEmail: string;
 	onCancel: () => void;
 }) {
-	const { colors: COLORS } = useDayovaTheme();
 	const insets = useSafeAreaInsets();
 	const { height } = useWindowDimensions();
 	const reducedMotion = useReducedMotion();
@@ -1932,7 +1937,7 @@ function PasswordResetScreen({
 	const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [notice, setNotice] = useState<string | null>(null);
-	const codeInputRef = useRef<TextInput | null>(null);
+	const codeInputRef = useRef<TextInputInstance | null>(null);
 	const codeSubmittedRef = useRef(false);
 	const requestInFlightRef = useRef(false);
 	const {
@@ -2165,16 +2170,7 @@ function PasswordResetScreen({
 			>
 				<View className="flex-1 items-center px-8">
 					<View className="w-full flex-row items-center">
-						<Pressable
-							accessibilityRole="button"
-							accessibilityLabel="Zurück"
-							disabled={isLoading}
-							hitSlop={8}
-							onPress={handleBack}
-							className="h-12 w-12 items-center justify-center rounded-full border border-border bg-surface"
-						>
-							<ArrowLeft size={20} color={COLORS.text} strokeWidth={2.2} />
-						</Pressable>
+						<BackButton disabled={isLoading} onPress={handleBack} />
 					</View>
 
 					<Image
@@ -2309,7 +2305,7 @@ function PasswordResetScreen({
 					</View>
 
 					{stage === "reset_code" || stage === "second_factor" ? (
-						<Pressable
+						<FeedbackPressable
 							accessibilityLabel="Code erneut senden"
 							accessibilityRole="button"
 							accessibilityState={{ disabled: isLoading }}
@@ -2321,7 +2317,7 @@ function PasswordResetScreen({
 							<Text className="font-poppins text-body-3 text-primary">
 								Code erneut senden
 							</Text>
-						</Pressable>
+						</FeedbackPressable>
 					) : null}
 				</View>
 			</KeyboardSafeScrollView>
@@ -2348,7 +2344,7 @@ function VerificationScreen({
 	error: string | null;
 	disabled: boolean;
 	gestureEnabled?: boolean;
-	inputRef: RefObject<TextInput | null>;
+	inputRef: RefObject<TextInputInstance | null>;
 	progress: number;
 	topInset: number;
 	bottomInset: number;
@@ -2404,7 +2400,7 @@ function VerificationScreen({
 						<Text className="mt-5 text-center font-poppins text-body-5 text-text">
 							Kein Code angekommen?
 						</Text>
-						<Pressable
+						<FeedbackPressable
 							accessibilityLabel="Code erneut senden"
 							accessibilityRole="button"
 							accessibilityState={{ disabled }}
@@ -2415,7 +2411,7 @@ function VerificationScreen({
 							<Text className="text-center font-poppins font-semibold text-body-5 text-primary">
 								Erneut senden
 							</Text>
-						</Pressable>
+						</FeedbackPressable>
 
 						{error ? (
 							<Animated.Text
@@ -2561,7 +2557,7 @@ export function OnboardingRecoveryScreen({
 				<Text className="mt-6 font-poppins font-semibold text-body-3 text-text">
 					Startzeit
 				</Text>
-				<Pressable
+				<FeedbackPressable
 					accessibilityRole="button"
 					accessibilityState={{ disabled: isSubmitting }}
 					disabled={isSubmitting}
@@ -2585,7 +2581,7 @@ export function OnboardingRecoveryScreen({
 							? `${answers.learningTime} Uhr`
 							: "Uhrzeit auswählen"}
 					</Text>
-				</Pressable>
+				</FeedbackPressable>
 				{(error ?? validationError) ? (
 					<ErrorMessage className="mt-4 text-center">
 						{error ?? validationError}
@@ -2766,8 +2762,6 @@ function AuthProgressHeader({
 			<BackButton
 				accessibilityState={{ disabled }}
 				disabled={disabled}
-				iconSize={18}
-				strokeWidth={2.2}
 				onPress={() => onBack()}
 			/>
 			<View className="flex-1 gap-2">
@@ -2821,7 +2815,7 @@ function PillTextInput({
 	onChangeText,
 	onSubmit,
 }: {
-	refObject: RefObject<TextInput | null>;
+	refObject: RefObject<TextInputInstance | null>;
 	testID: string;
 	value: string;
 	accessibilityLabel: string;
@@ -2923,7 +2917,7 @@ function OtpCodeInput({
 }: {
 	value: string;
 	onChangeText: (value: string) => void;
-	inputRef: RefObject<TextInput | null>;
+	inputRef: RefObject<TextInputInstance | null>;
 	disabled: boolean;
 }) {
 	const { colors: COLORS } = useDayovaTheme();
@@ -2983,7 +2977,7 @@ function OtpCodeInput({
 				autoCorrect={false}
 				autoCapitalize="none"
 				caretHidden
-				className="absolute inset-0 opacity-[0.01]"
+				className="absolute inset-0 text-transparent"
 				maxLength={CODE_LENGTH}
 				selectionColor="transparent"
 			/>

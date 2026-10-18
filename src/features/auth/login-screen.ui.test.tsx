@@ -77,8 +77,12 @@ const mockUseBackIntent =
 const mockStackScreens: Array<Record<string, unknown>> = [];
 const mockRetryPostAuthSync = jest.fn();
 const mockCompleteOnboardingHandoff = jest.fn(async () => true);
-const mockStageOnboardingRecovery = jest.fn(async () => undefined);
-const mockReplaceOnboardingRecoveryAnswers = jest.fn(async () => undefined);
+const mockStageOnboardingRecovery = jest.fn(
+	async (_answers: Record<string, string>) => undefined,
+);
+const mockReplaceOnboardingRecoveryAnswers = jest.fn(
+	async (_answers: Record<string, string>) => undefined,
+);
 const mockAuthSession = {
 	isConvexAuthenticated: false,
 	isPostAuthSyncing: false,

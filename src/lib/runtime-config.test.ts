@@ -36,6 +36,7 @@ describe("getMissingPublicRuntimeConfig", () => {
 		const publicEnvKeys = [
 			"EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY",
 			"EXPO_PUBLIC_CONVEX_URL",
+			"EXPO_PUBLIC_CONVEX_SITE_URL",
 			"EXPO_PUBLIC_POSTHOG_API_KEY",
 			"EXPO_PUBLIC_POSTHOG_HOST",
 			"EXPO_PUBLIC_REVENUECAT_IOS_API_KEY",
@@ -52,11 +53,13 @@ describe("getMissingPublicRuntimeConfig", () => {
 		for (const key of publicEnvKeys) delete process.env[key];
 		process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY = "pk_test_process";
 		process.env.EXPO_PUBLIC_CONVEX_URL = "https://process.convex.cloud";
+		process.env.EXPO_PUBLIC_CONVEX_SITE_URL = "https://configured.example.test";
 
 		try {
 			expect(readPublicRuntimeConfig()).toEqual({
 				EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_process",
 				EXPO_PUBLIC_CONVEX_URL: "https://process.convex.cloud",
+				EXPO_PUBLIC_CONVEX_SITE_URL: "https://configured.example.test",
 				EXPO_PUBLIC_POSTHOG_API_KEY: undefined,
 				EXPO_PUBLIC_POSTHOG_HOST: undefined,
 				EXPO_PUBLIC_REVENUECAT_IOS_API_KEY: undefined,
@@ -169,5 +172,51 @@ describe("getMissingPublicRuntimeConfig", () => {
 				{ platform: "android" },
 			),
 		).toThrowError(/EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY/);
+	});
+
+	it("keeps local HTTP Convex endpoints valid at app runtime", () => {
+		expect(() =>
+			createPublicEnv(
+				{
+					EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_example",
+					EXPO_PUBLIC_CONVEX_URL: "http://127.0.0.1:3210",
+					EXPO_PUBLIC_CONVEX_SITE_URL: "http://127.0.0.1:3211",
+				},
+				{ context: "app-runtime" },
+			),
+		).not.toThrow();
+	});
+
+	const releaseConfig = {
+		EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_example",
+		EXPO_PUBLIC_CONVEX_URL: "https://example.convex.cloud",
+		EXPO_PUBLIC_REVENUECAT_IOS_API_KEY: "appl_test",
+		EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY: "goog_test",
+		EXPO_PUBLIC_PRIVACY_URL: "https://example.com/privacy",
+		EXPO_PUBLIC_TERMS_URL: "https://example.com/terms",
+		EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL:
+			"https://example.com/subscription-terms",
+		EXPO_PUBLIC_SUPPORT_URL: "https://example.com/support",
+	};
+
+	it.each([
+		"EXPO_PUBLIC_CONVEX_URL",
+		"EXPO_PUBLIC_CONVEX_SITE_URL",
+	])("rejects cleartext %s during release validation", (key) => {
+		expect(() =>
+			validatePublicEnvForRelease({
+				...releaseConfig,
+				[key]: "http://example.test",
+			}),
+		).toThrow(new RegExp(`${key}: Must use HTTPS`));
+	});
+
+	it("accepts a custom HTTPS site during release validation", () => {
+		expect(() =>
+			validatePublicEnvForRelease({
+				...releaseConfig,
+				EXPO_PUBLIC_CONVEX_SITE_URL: "https://backend.example.test",
+			}),
+		).not.toThrow();
 	});
 });
