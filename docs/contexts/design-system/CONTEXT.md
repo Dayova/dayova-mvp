@@ -325,8 +325,12 @@ between weekdays and start time brings the profile flow to twelve steps.
 `EntryCompletionAction` preserves the existing complete/reopen button and waits
 for the mutation to settle. Pending work exposes a busy label and prevents
 duplicate submissions through the shared async action gate. Failure exposes an
-inline retryable error; success copy appears only after both mutation success
-and the matching persisted state. Its 180 ms fade is omitted for reduced motion.
+inline retryable error. After both mutation success and the matching persisted
+state, the button briefly replaces its content with “Als erledigt markiert.” or
+“Wieder offen.”, then returns to the next complete/reopen action after 1.4 seconds.
+Both replacements use the same upward fade/slide transition inside the existing
+button; no success line is added below it. The action stays disabled while saving
+or confirming, and reduced motion uses static replacements with the same timing.
 Mounting an already completed entry does not celebrate it again. The route keys
 the action by entry ID to isolate feedback between entries. Processing flowers,
 existing creation-success screens, and navigation remain unchanged. See
