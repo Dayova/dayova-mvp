@@ -48,6 +48,8 @@ Match PR evidence to the change. Static visual changes need before/after screens
 
 Explain the evidence choice in the PR and attach any selected media directly. When a before/after comparison is useful, capture the baseline before editing; for stacked work, use the PR's actual parent. Keep the PR draft and explain the gap if evidence needed to assess the change is unavailable. See `docs/agents/agent-system.md` for the evidence contract and owning program.
 
+Keep evidence readable at a reasonable scale in PR descriptions and comments. Use compact, aspect-preserving previews with consistent before/after sizing and links to full-resolution originals. Check the rendered result at laptop and narrow viewport sizes; do not rely solely on HTML dimensions that another GitHub client may ignore. See the presentation guidance in `docs/agents/agent-system.md`.
+
 User-facing plans and pull requests also require the distinct Dayova product-quality review linked from `docs/agents/agent-system.md`; generic code review does not replace it.
 
 ### Agent-system architecture

@@ -88,6 +88,20 @@
       "expectedEvidence": "Relevant screenshots for styling and recordings for the animation, using the actual stack parent before editing and the same scenario on the head. Keep draft and explain the missing animation evidence if it cannot be demonstrated."
     },
     {
+      "id": "evidence-portrait-preview",
+      "kind": "evidence-presentation",
+      "prompt": "A 1080 by 2400 phone screenshot fills the PR width and takes several laptop screens to view. Prepare its presentation plan for the description and evidence comments while retaining inspectable source evidence.",
+      "expectedMutation": "read-only-evidence-planning",
+      "expectedEvidence": "A compact aspect-preserving preview, about 252 by 560 as a starting point, matching Before/After scales, full-resolution original links, and published laptop/narrow rendering checks across both descriptions and comments."
+    },
+    {
+      "id": "evidence-client-ignores-html",
+      "kind": "evidence-presentation",
+      "prompt": "The PR uses img width attributes, but another GitHub client ignores them and makes phone images and portrait videos huge. How should reviewers get usable evidence, and what can you claim after checking only the web renderer?",
+      "expectedMutation": "read-only-evidence-planning",
+      "expectedEvidence": "Compact preview files plus plain original links rather than HTML sizing alone; a compact poster and attached recording link where a player is unwieldy or unsupported. Preserve recording timing and readable timers, do not treat the poster as temporal evidence, and report the actual clients checked without claiming universal verification."
+    },
+    {
       "id": "authorization-no-parallel-task-system",
       "kind": "mutation-safety",
       "prompt": "Mirror all repository skill tasks into a new Luma task database.",

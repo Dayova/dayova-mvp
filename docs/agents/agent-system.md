@@ -140,6 +140,46 @@ The canonical policy is the
 the earlier universal four-artifact requirement is superseded by Jakob's
 change-specific evidence policy.
 
+### Media presentation
+
+Evidence should remain easy to scan in GitHub PR descriptions and comments,
+including laptop windows and narrow clients. Large source images are for
+inspection, not an instruction to display a phone capture at the full PR width.
+
+- As a starting point, fit image previews inside a **640 × 560 pixel** box without
+  enlarging small originals or changing their aspect ratio. A 1080 × 2400 phone
+  screenshot becomes about 252 × 560; a 1280 × 800 desktop capture becomes
+  640 × 400. Adjust when necessary for legibility and the rendered viewport.
+- Attach a compact preview image and link the original at full resolution.
+  Explicit numeric `width` and `height` on an HTML image can control its web
+  presentation, but the preview file itself should also be compact so clients
+  that ignore HTML sizing still receive a sensible fallback. Preserve the
+  original separately; never replace or distort the source evidence.
+- Label Before/After and use the same scale for comparable captures. Prefer a
+  simple vertical sequence to wide, multi-column tables on narrow screens. If
+  details become unreadable, add a clearly labeled detail crop or original link
+  rather than enlarging every full-device screenshot.
+- Keep recordings compact and preserve their aspect ratio, readable timers,
+  duration, and timing. Where a client makes a portrait player unwieldy or does
+  not embed it, provide a compact poster and a clearly labeled link to the
+  attached recording. A poster is navigation, not temporal evidence. Do not
+  assume custom CSS or HTML video dimensions work in every GitHub client.
+- Inspect the published description **and evidence comments**, at normal zoom
+  in a laptop-sized viewport and a narrow viewport. Check that previews do not
+  dominate the page, labels remain readable, and original/video links work.
+  Verify additional clients when available or reported as problematic. Name the
+  surfaces actually checked; one web renderer does not prove every client works.
+
+For GitHub web, a compact preview may use this markup after uploading both files:
+
+```html
+<a href="ORIGINAL_ASSET_URL"><img src="PREVIEW_ASSET_URL" alt="Before — affected screen" width="252" height="560"></a>
+```
+
+Also supply a plain labeled original link. If a client strips HTML, use a
+Markdown-linked compact preview as the fallback. This presentation guidance
+does not require media for changes whose relevant evidence is non-visual.
+
 ## Regression loop
 
 Treat an observed agent failure, a human correction, and a sanitized execution

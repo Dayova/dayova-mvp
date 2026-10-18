@@ -51,6 +51,10 @@ kind of truth and one governed path from upstream input to repository behavior.
 8. Review the complete diff and publish through the branch or Graphite stack
    owned by the work. Explain the evidence choice in the PR, attach selected media
    directly, and link the implementation evidence from the relevant Linear issue.
+   Follow the contract's media-presentation guidance in descriptions and comments:
+   use compact previews with original links and check the published rendering on
+   laptop and narrow viewports. Do not assume HTML sizing works in every client
+   or treat an unchecked client as verified.
    Keep the PR draft when evidence needed to assess the change is missing.
    Completion means the reviewed PR, relevant evidence, validations, and Linear
    acceptance evidence identify the same delivered scope.
