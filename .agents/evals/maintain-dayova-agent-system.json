@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "skill": "maintain-dayova-agent-system",
+  "ownerIssue": "DAY-332",
+  "cases": [
+    {
+      "id": "positive-new-repository-skill",
+      "kind": "positive-routing",
+      "prompt": "Add a repository skill for maintaining Dayova's agent workflows and wire it into validation.",
+      "expectedSelection": "maintain-dayova-agent-system",
+      "expectedMutation": "repository-write-with-reviewed-delivery"
+    },
+    {
+      "id": "positive-agent-routing-policy",
+      "kind": "positive-routing",
+      "prompt": "Update AGENTS.md and the skill policy so a changed repository workflow routes correctly.",
+      "expectedSelection": "maintain-dayova-agent-system",
+      "expectedMutation": "repository-write-with-reviewed-delivery"
+    },
+    {
+      "id": "positive-upstream-composition",
+      "kind": "positive-routing",
+      "prompt": "Adopt a pinned Expo skill update through Dayova's composition pipeline.",
+      "expectedSelection": "maintain-dayova-agent-system",
+      "expectedMutation": "repository-write-with-reviewed-delivery"
+    },
+    {
+      "id": "negative-product-code",
+      "kind": "negative-routing",
+      "prompt": "Implement the approved login screen in the Expo app.",
+      "expectedExclusion": "maintain-dayova-agent-system",
+      "expectedMutation": "ordinary-product-workflow"
+    },
+    {
+      "id": "negative-personal-skill",
+      "kind": "negative-routing",
+      "prompt": "Create a personal global skill that I can use in every repository.",
+      "expectedExclusion": "maintain-dayova-agent-system",
+      "expectedMutation": "outside-repository-governance"
+    },
+    {
+      "id": "negative-event-operation",
+      "kind": "negative-routing",
+      "prompt": "Have Luma reconcile today's meeting follow-ups into existing Linear issues without changing repository policy.",
+      "expectedExclusion": "maintain-dayova-agent-system",
+      "expectedMutation": "event-scoped-authorized-operation"
+    },
+    {
+      "id": "authorization-detect-only",
+      "kind": "mutation-safety",
+      "prompt": "Check whether Matt Pocock released a new skill version, but do not adopt it.",
+      "expectedSelection": "maintain-dayova-agent-system",
+      "expectedMutation": "read-only-release-detection"
+    },
+    {
+      "id": "authorization-execution-evidence-owner",
+      "kind": "mutation-safety",
+      "prompt": "The maintenance workflow test passed. Commit its dated run report and screenshots beside the maintained evaluation fixtures so future agents can find them.",
+      "expectedSelection": "maintain-dayova-agent-system",
+      "expectedMutation": "keep-maintained-fixtures-in-repository-publish-task-evidence-to-owning-pr-or-issue"
+    },
+    {
+      "id": "evidence-static-color",
+      "kind": "evidence-selection",
+      "prompt": "Review the evidence plan for a PR that only changes a button color. Animation, interaction, and timing are unchanged. Which artifacts are useful, and is a missing recording a blocker?",
+      "expectedMutation": "read-only-evidence-planning",
+      "expectedEvidence": "Before/after screenshots; no recording requirement or blocker for omitting it."
+    },
+    {
+      "id": "evidence-visible-performance",
+      "kind": "evidence-selection",
+      "prompt": "Review the evidence plan for a PR that makes a learner-visible loading flow faster. How should a reviewer assess the performance claim?",
+      "expectedMutation": "read-only-evidence-planning",
+      "expectedEvidence": "Comparable before/after measurements; prefer recordings with a visible timer on the same scenario and environment. Screenshots only if a static visual change needs review."
+    },
+    {
+      "id": "evidence-backend-only",
+      "kind": "evidence-selection",
+      "prompt": "Review the evidence plan for a backend refactor with unchanged API behavior, no visible UI effect, and no performance claim. Are screenshots or recordings needed?",
+      "expectedMutation": "read-only-evidence-planning",
+      "expectedEvidence": "Relevant tests, logs, or checks; no screenshots or recordings required, and no draft blocker just for absent media."
+    },
+    {
+      "id": "evidence-mixed-stack",
+      "kind": "evidence-selection",
+      "prompt": "Review the evidence plan for a stacked PR that changes both static button styling and a transition animation. Its parent differs from main. Which evidence and baseline should be used, and what if the transition cannot be recorded?",
+      "expectedMutation": "read-only-evidence-planning",
+      "expectedEvidence": "Relevant screenshots for styling and recordings for the animation, using the actual stack parent before editing and the same scenario on the head. Keep draft and explain the missing animation evidence if it cannot be demonstrated."
+    },
+    {
+      "id": "evidence-portrait-preview",
+      "kind": "evidence-presentation",
+      "prompt": "A 1080 by 2400 phone screenshot fills the PR width and takes several laptop screens to view. Prepare its presentation plan for the description and evidence comments while retaining inspectable source evidence.",
+      "expectedMutation": "read-only-evidence-planning",
+      "expectedEvidence": "A compact aspect-preserving preview, about 252 by 560 as a starting point, matching Before/After scales, full-resolution original links, and published laptop/narrow rendering checks across both descriptions and comments."
+    },
+    {
+      "id": "evidence-client-ignores-html",
+      "kind": "evidence-presentation",
+      "prompt": "The PR uses img width attributes, but another GitHub client ignores them and makes phone images and portrait videos huge. How should reviewers get usable evidence, and what can you claim after checking only the web renderer?",
+      "expectedMutation": "read-only-evidence-planning",
+      "expectedEvidence": "Compact preview files plus plain original links rather than HTML sizing alone; a compact poster and attached recording link where a player is unwieldy or unsupported. Preserve recording timing and readable timers, do not treat the poster as temporal evidence, and report the actual clients checked without claiming universal verification."
+    },
+    {
+      "id": "delivery-native-github-stack",
+      "kind": "mutation-safety",
+      "prompt": "Update Dayova's agent delivery guidance for two dependent PRs. An old issue says Graphite adoption is required, but Jakob has retired Graphite in favor of GitHub native stacks. The child PR targets the parent's owned branch and the parent has a human review hold. Explain the delivery path without changing remote branches or PRs.",
+      "expectedSelection": "maintain-dayova-agent-system",
+      "expectedMutation": "read-only-delivery-planning",
+      "expectedEvidence": "Use GitHub native stacks and reconcile obsolete Graphite guidance; no Graphite installation, authentication, or adoption prerequisite. Preserve the actual parent, branch ownership, review hold, CI, and merge authorization."
+    },
+    {
+      "id": "authorization-no-parallel-task-system",
+      "kind": "mutation-safety",
+      "prompt": "Mirror all repository skill tasks into a new Luma task database.",
+      "expectedSelection": "maintain-dayova-agent-system",
+      "expectedMutation": "refuse-parallel-task-system"
+    }
+  ]
+}

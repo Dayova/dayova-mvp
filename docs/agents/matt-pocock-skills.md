@@ -9,6 +9,7 @@ The repository installs the upstream `mattpocock/skills` package and layers Dayo
 - `patches/matt-pocock-skills/dayova.patch` is Dayova's text overlay on top of upstream Matt skill bodies. Keep repo-specific workflow changes there so future upstream refreshes reapply them instead of overwriting them.
 - Each `.agents/skills/<skill>/agents/openai.yaml` file is Dayova's Codex invocation/UI metadata overlay. The Matt updater copies this metadata from the current workspace after applying upstream text changes.
 - `AGENTS.md` and `docs/agents/` define Dayova's runtime context: Linear is canonical, triage roles use explicit label mappings, and domain documentation is multi-context.
+- `scripts/agent-system-governance.mjs` records the owner, boundary, authorization, evaluations, review date, and retirement contract for the source and every curated skill.
 - `.agents/skills/setup-matt-pocock-skills/issue-tracker-linear.md` is the reusable Linear seed for future setup runs.
 
 ## After an upstream refresh
@@ -16,7 +17,7 @@ The repository installs the upstream `mattpocock/skills` package and layers Dayo
 Do not run the raw upstream installer in the repository. Use the composition command:
 
 ```sh
-pnpm skills:update:matt -- --check
+pnpm skills:update:matt --check
 pnpm skills:update:matt
 git diff -- .agents/skills skills-lock.json patches/matt-pocock-skills scripts/skills-policy.mjs
 ```
@@ -25,7 +26,7 @@ The updater fetches upstream into an isolated temp workspace, keeps Dayova's cur
 
 Preserve upstream workflow improvements, then reapply and validate the local compatibility layer:
 
-1. If `pnpm skills:update:matt -- --check` reports changes, run `pnpm skills:update:matt` and inspect the full diff before accepting it.
+1. If `pnpm skills:update:matt --check` reports changes, run `pnpm skills:update:matt` and inspect the full diff before accepting it.
 2. If the patch queue no longer applies, reconcile upstream changes into `patches/matt-pocock-skills/dayova.patch` instead of hand-editing installed skill text.
 3. Preserve the curated Matt skill set. If upstream adds skills outside Dayova's curated set, leave them out unless the team explicitly decides to add a workflow. If upstream removes or renames one of Dayova's curated skills, replace it with the current upstream successor or remove it intentionally.
 4. Confirm `setup-matt-pocock-skills` still offers Linear as a first-class tracker and references `issue-tracker-linear.md`.
@@ -43,6 +44,10 @@ Do not regenerate accurate `docs/agents/*.md` files from an upstream template me
 Most Matt orchestration skills are user-invoked in Codex through `agents/openai.yaml` (`allow_implicit_invocation: false`) to avoid loading the full workflow catalog into every task. This is expected. Do not treat a hidden orchestration skill as missing merely because it is absent from the model-invoked skill list; check `.agents/skills/<name>/SKILL.md` and `skills-lock.json`.
 
 If a skill must route autonomously from ordinary user language, make that an explicit change to `agents/openai.yaml` and rerun `pnpm skills:validate`.
+
+Use `$maintain-dayova-agent-system` for changes to the curated set, patch queue,
+composition policy, metadata routing, authorization, or evaluations. The broader
+source-of-truth and retirement contract lives in `docs/agents/agent-system.md`.
 
 ## Required Linear labels
 
