@@ -134,7 +134,7 @@ describe("learning-plan setup steps", () => {
 		);
 	});
 
-	test("preserves exact legacy whitespace and scoped conditions until an explicit edit", async () => {
+	test("preserves legacy whitespace and scoped conditions when removing a hint", async () => {
 		const note =
 			"  Analysis ohne Taschenrechner; Stochastik mit Formelsammlung.  \n\nSkizzen beschriften\n";
 		const change = jest.fn();
@@ -153,17 +153,6 @@ describe("learning-plan setup steps", () => {
 		expect(change).toHaveBeenLastCalledWith(
 			"  Analysis ohne Taschenrechner; Stochastik mit Formelsammlung.  \n\n",
 		);
-		await fireEvent.press(
-			screen.getByRole("button", { name: "Hinweise bearbeiten" }),
-		);
-		expect(
-			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
-		).toHaveDisplayValue(note);
-		await fireEvent.changeText(
-			screen.getByLabelText("Hinweise zur Prüfung (optional)"),
-			"Neue Bedingung",
-		);
-		expect(change).toHaveBeenLastCalledWith("Neue Bedingung");
 	});
 
 	test("hint page permits continuing empty and locks search, selections and Continue while saving", async () => {

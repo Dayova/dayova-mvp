@@ -1,10 +1,6 @@
 import { useState } from "react";
 import { View } from "react-native";
-import { Button } from "~/components/ui/button";
 import { SearchField } from "~/components/ui/search-field";
-import { ActionSurface } from "~/components/ui/surface";
-import { Text } from "~/components/ui/text";
-import { Textarea } from "~/components/ui/textarea";
 import { appendExamHint, getExamHintExamples } from "./exam-hint-examples";
 import {
 	SearchSelectionChip,
@@ -33,7 +29,6 @@ export function ExamHintsEditor({
 	disabled?: boolean;
 }) {
 	const [query, setQuery] = useState("");
-	const [editing, setEditing] = useState(false);
 	const term = query.trim();
 	// Line boundaries are already used by appendExamHint. Never split conditions
 	// at commas or reinterpret legacy prose, and retain untouched whitespace.
@@ -115,39 +110,6 @@ export function ExamHintsEditor({
 						else add(term);
 					}}
 				/>
-			) : null}
-			{editing ? (
-				<View className="gap-3">
-					<Textarea
-						accessibilityLabel="Hinweise zur Prüfung (optional)"
-						accessibilityHint="Der vollständige Hinweistext bleibt frei bearbeitbar."
-						accessibilityState={{ disabled }}
-						value={value}
-						onChangeText={onChange}
-						editable={!disabled}
-						className="min-h-32 flex-none rounded-[24px] border border-border bg-card px-4 py-4"
-					/>
-					<Button
-						variant="cancel"
-						disabled={disabled}
-						onPress={() => setEditing(false)}
-					>
-						<Text>Bearbeitung fertig</Text>
-					</Button>
-				</View>
-			) : value.trim() ? (
-				<ActionSurface
-					accessibilityRole="button"
-					accessibilityLabel="Hinweise bearbeiten"
-					disabled={disabled}
-					accessibilityState={{ disabled }}
-					onPress={() => setEditing(true)}
-					className="min-h-12 justify-center self-start py-3"
-				>
-					<Text className="font-poppins text-body-4 text-secondary-text">
-						Hinweise bearbeiten
-					</Text>
-				</ActionSurface>
 			) : null}
 		</View>
 	);
