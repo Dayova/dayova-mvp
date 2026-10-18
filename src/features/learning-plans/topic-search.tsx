@@ -322,12 +322,6 @@ export function TopicSearch({
 								/>
 							);
 						})}
-						{result.truncated ? (
-							<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
-								Grenze deinen Suchbegriff weiter ein, um weitere passende Themen
-								zu finden.
-							</Text>
-						) : null}
 					</>
 				) : null}
 				{!exact ? directChoice : null}
