@@ -103,8 +103,8 @@ describe("Android Google Play testing releases", () => {
 			needs: ["build_android", "approve_submission"],
 			type: "submit",
 			params: {
-				build_id: "${{ needs.build_android.outputs.build_id }}",
-				profile: "${{ inputs.track }}",
+				build_id: `\${{ needs.build_android.outputs.build_id }}`,
+				profile: `\${{ inputs.track }}`,
 			},
 		});
 	});

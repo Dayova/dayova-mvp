@@ -55,16 +55,9 @@ __pycache__/
 # Downloaded store binaries are release evidence, not source artifacts.
 /release/google-play/artifacts/*.aab
 
-# PR evidence screenshots belong in GitHub description attachments.
-/docs/evidence/**/*.[pP][nN][gG]
-/docs/evidence/**/*.[jJ][pP][gG]
-/docs/evidence/**/*.[jJ][pP][eE][gG]
-/docs/evidence/**/*.[wW][eE][bB][pP]
-/docs/pr-screenshots/**/*.[pP][nN][gG]
-/docs/pr-screenshots/**/*.[jJ][pP][gG]
-/docs/pr-screenshots/**/*.[jJ][pP][eE][gG]
-/docs/pr-screenshots/**/*.[wW][eE][bB][pP]
-/docs/qa/**/*.[pP][nN][gG]
-/docs/qa/**/*.[jJ][pP][gG]
-/docs/qa/**/*.[jJ][pP][eE][gG]
-/docs/qa/**/*.[wW][eE][bB][pP]
+# Shared knowledge lives in Notion; task reports/evidence are attached to PRs/issues.
+# Keep local generated artifacts in /.maestro/artifacts/ or temporary directories.
+/docs/evidence/
+/docs/pr-screenshots/
+/docs/qa/
+/docs/validation/

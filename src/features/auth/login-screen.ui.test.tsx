@@ -6,12 +6,7 @@ import {
 	jest,
 	test,
 } from "@jest/globals";
-import {
-	act,
-	fireEvent,
-	render,
-	waitFor,
-} from "@testing-library/react-native";
+import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import type { OnboardingCompletionStatus } from "~/lib/auth-routing";
 import {
@@ -75,8 +70,12 @@ const mockUseBackIntent =
 const mockStackScreens: Array<Record<string, unknown>> = [];
 const mockRetryPostAuthSync = jest.fn();
 const mockCompleteOnboardingHandoff = jest.fn(async () => true);
-const mockStageOnboardingRecovery = jest.fn(async () => undefined);
-const mockReplaceOnboardingRecoveryAnswers = jest.fn(async () => undefined);
+const mockStageOnboardingRecovery = jest.fn(
+	async (_answers: Record<string, string>) => undefined,
+);
+const mockReplaceOnboardingRecoveryAnswers = jest.fn(
+	async (_answers: Record<string, string>) => undefined,
+);
 const mockAuthSession = {
 	isConvexAuthenticated: false,
 	isPostAuthSyncing: false,

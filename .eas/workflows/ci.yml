@@ -2,8 +2,6 @@ name: Continuous Integration
 
 on:
   pull_request:
-    branches:
-      - main
     types:
       - opened
       - ready_for_review
@@ -63,8 +61,14 @@ jobs:
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules
+      - name: Check formatting
+        run: pnpm format:check
       - name: Run lint
         run: pnpm lint
+      - name: Check unused code and dependencies
+        run: pnpm check:unused
+      - name: Validate repository skills
+        run: pnpm skills:validate
       - name: Run typecheck
         run: pnpm typecheck
       - name: Run tests

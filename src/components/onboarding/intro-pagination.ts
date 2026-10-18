@@ -1,6 +1,5 @@
 export const INTRO_DOT_COLLAPSED_WIDTH = 8;
 export const INTRO_DOT_EXPANDED_WIDTH = 30;
-export const INTRO_DOT_HEIGHT = 6;
 
 export function getCenteredIntroDotsTop(
 	titleBottom: number,

@@ -4,7 +4,9 @@ import type { ReactNode } from "react";
 import ForcedPasswordResetScreen from "~/app/session-tasks/reset-password";
 
 const mockReplace = jest.fn();
-const mockCompleteForcedPasswordReset = jest.fn(async () => undefined);
+const mockCompleteForcedPasswordReset = jest.fn(
+	async (_password: string) => undefined,
+);
 
 jest.mock("expo-router", () => ({
 	useRouter: () => ({ replace: mockReplace }),

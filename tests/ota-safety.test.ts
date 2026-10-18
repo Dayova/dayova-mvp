@@ -1,17 +1,19 @@
-import { execFileSync } from "node:child_process";
+import * as childProcess from "node:child_process";
 import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
-import { fileURLToPath } from "node:url";
+import { describe, expect, it, vi } from "vitest";
 import { parse } from "yaml";
-import { describe, expect, it } from "vitest";
 import {
 	createReport,
 	evaluateProductionOta,
 	validateProductionManifest,
 } from "../scripts/ota-safety.mjs";
+import {
+	readExpoConfigSnapshot,
+	readMetroWatchmanOptIn,
+} from "./helpers/expo-config-contract";
 
-const require = createRequire(import.meta.url);
-const projectRoot = fileURLToPath(new URL("..", import.meta.url));
+vi.mock("node:child_process", { spy: true });
+
 const iosFingerprint = "1111111111111111111111111111111111111111";
 const androidFingerprint = "2222222222222222222222222222222222222222";
 
@@ -486,22 +488,35 @@ describe("production OTA safety", () => {
 });
 
 describe("production release configuration", () => {
-	it("classifies missing EAS fingerprint outputs as a preflight failure", () => {
+	it.each([
+		"OTA_IOS_FINGERPRINT",
+		"OTA_ANDROID_FINGERPRINT",
+	])("classifies missing %s as a preflight failure before starting child processes", (missingVariable) => {
+		const childProcessSpy = vi
+			.spyOn(childProcess, "execFileSync")
+			.mockImplementation(() => {
+				throw new Error(
+					"Preflight must reject missing fingerprints before starting a child process",
+				);
+			});
 		const previousAppVariant = process.env.APP_VARIANT;
 		const previousIosFingerprint = process.env.OTA_IOS_FINGERPRINT;
 		const previousAndroidFingerprint = process.env.OTA_ANDROID_FINGERPRINT;
 
 		try {
 			process.env.APP_VARIANT = "production";
-			delete process.env.OTA_IOS_FINGERPRINT;
-			delete process.env.OTA_ANDROID_FINGERPRINT;
+			process.env.OTA_IOS_FINGERPRINT = iosFingerprint;
+			process.env.OTA_ANDROID_FINGERPRINT = androidFingerprint;
+			delete process.env[missingVariable];
 
 			expect(createReport()).toMatchObject({
 				safe: false,
 				failureKind: "preflight",
-				reason: expect.stringContaining("OTA_IOS_FINGERPRINT is missing"),
+				reason: expect.stringContaining(`${missingVariable} is missing`),
 			});
+			expect(childProcessSpy).not.toHaveBeenCalled();
 		} finally {
+			childProcessSpy.mockRestore();
 			if (previousAppVariant === undefined) delete process.env.APP_VARIANT;
 			else process.env.APP_VARIANT = previousAppVariant;
 			if (previousIosFingerprint === undefined)
@@ -513,29 +528,18 @@ describe("production release configuration", () => {
 		}
 	});
 
-	it("resolves the patched SDK 57 production binary behind runtime 1.0.5", () => {
-		const expoCliPath = require.resolve("expo/bin/cli");
-		const resolvedConfig = JSON.parse(
-			execFileSync(
-				process.execPath,
-				[expoCliPath, "config", "--type", "public", "--json"],
-				{
-					cwd: projectRoot,
-					encoding: "utf8",
-					env: { ...process.env, APP_VARIANT: "production" },
-				},
-			),
-		);
+	it("isolates the SDK 58 production binary behind runtime 1.0.6", () => {
+		const resolvedConfig = readExpoConfigSnapshot("production", "public");
 		const packageJson = JSON.parse(
 			readFileSync(new URL("../package.json", import.meta.url), "utf8"),
 		);
 
 		expect(resolvedConfig).toMatchObject({
-			version: "1.0.5",
-			sdkVersion: "57.0.0",
+			version: "1.0.6",
+			sdkVersion: "58.0.0",
 			ios: {
 				bundleIdentifier: "de.dayova.app",
-				runtimeVersion: "1.0.5",
+				runtimeVersion: "1.0.6",
 			},
 			android: {
 				package: "com.dayova",
@@ -543,7 +547,7 @@ describe("production release configuration", () => {
 			},
 		});
 		expect(packageJson.version).toBe(resolvedConfig.version);
-	}, 30_000);
+	});
 
 	it("uses the EAS production fingerprint job as the gate input", () => {
 		const workflow = parse(
@@ -569,10 +573,8 @@ describe("production release configuration", () => {
 		expect(otaChecks.env).toMatchObject({
 			APP_VARIANT: "production",
 			EAS_BUILD_PLATFORM: "ios",
-			OTA_ANDROID_FINGERPRINT:
-				"${{ needs.production_fingerprint.outputs.android_fingerprint_hash }}",
-			OTA_IOS_FINGERPRINT:
-				"${{ needs.production_fingerprint.outputs.ios_fingerprint_hash }}",
+			OTA_ANDROID_FINGERPRINT: `\${{ needs.production_fingerprint.outputs.android_fingerprint_hash }}`,
+			OTA_IOS_FINGERPRINT: `\${{ needs.production_fingerprint.outputs.ios_fingerprint_hash }}`,
 		});
 		expect({ ...otaChecks.env, ...otaGuard.env }).toMatchObject(otaChecks.env);
 		const sendUpdates = workflow.jobs.send_updates;
@@ -586,7 +588,7 @@ describe("production release configuration", () => {
 		expect(sendUpdates.needs).toContain("production_fingerprint");
 		expect(sendUpdates.env).toMatchObject({
 			APP_VARIANT: "production",
-			OTA_SOURCE_SHA: "${{ github.sha }}",
+			OTA_SOURCE_SHA: `\${{ github.sha }}`,
 			OTA_ANDROID_FINGERPRINT: otaChecks.env.OTA_ANDROID_FINGERPRINT,
 			OTA_IOS_FINGERPRINT: otaChecks.env.OTA_IOS_FINGERPRINT,
 		});
@@ -595,6 +597,9 @@ describe("production release configuration", () => {
 		);
 		expect(sendUpdates.needs).toContain("deploy_convex");
 		expect(workflow.jobs.deploy_convex.needs).toContain("checks");
+		expect(sendUpdates.if).toBe(
+			`\${{ github.event_name == 'push' && github.ref_name == 'main' && needs.ota_checks.outputs.ota_safe == 'true' }}`,
+		);
 		expect(otaChecks.steps).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
@@ -635,27 +640,6 @@ describe("production release configuration", () => {
 	});
 
 	it("honors the explicit Watchman opt-in for local release exports", () => {
-		const metroConfigPath = fileURLToPath(
-			new URL("../metro.config.js", import.meta.url),
-		);
-		const useWatchman = execFileSync(
-			process.execPath,
-			[
-				"-e",
-				`const config = require(${JSON.stringify(metroConfigPath)}); process.stdout.write(String(config.resolver.useWatchman));`,
-			],
-			{
-				cwd: projectRoot,
-				encoding: "utf8",
-				env: {
-					...process.env,
-					APP_VARIANT: "development",
-					DAYOVA_METRO_USE_WATCHMAN: "true",
-					NODE_ENV: "test",
-				},
-			},
-		).trim();
-
-		expect(useWatchman.split(/\r?\n/).at(-1)).toBe("true");
-	}, 30_000);
+		expect(readMetroWatchmanOptIn()).toBe(true);
+	});
 });

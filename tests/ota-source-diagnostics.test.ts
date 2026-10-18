@@ -59,7 +59,7 @@ it("accepts main history and rejects unrelated, missing, or malformed source com
 				bash,
 				[
 					"-c",
-					`set-output() { printf '__OUTPUT__%s=%s\\n' "$1" "$2"; }\n${guard.replace("${{ inputs.source_sha }}", sha)}`,
+					`set-output() { printf '__OUTPUT__%s=%s\\n' "$1" "$2"; }\n${guard.replace(`\${{ inputs.source_sha }}`, sha)}`,
 				],
 				{ cwd: directory, encoding: "utf8", timeout: 5000 },
 			);
@@ -93,8 +93,9 @@ it("verifies trusted main before giving production diagnostics the approved sour
 	);
 	expect(verifier.environment).toBeUndefined();
 	expect(diagnose.needs).toContain("verify_source");
+	expect(diagnose.environment).toBe("production");
 	expect(verifier.outputs.source_sha).toBe(
-		"${{ steps.verify_source.outputs.source_sha }}",
+		`\${{ steps.verify_source.outputs.source_sha }}`,
 	);
 	expect(
 		diagnose.steps.filter(
@@ -104,12 +105,12 @@ it("verifies trusted main before giving production diagnostics the approved sour
 		expect.arrayContaining([
 			expect.objectContaining({
 				with: expect.objectContaining({
-					ref: "${{ needs.verify_source.outputs.source_sha }}",
+					ref: `\${{ needs.verify_source.outputs.source_sha }}`,
 				}),
 			}),
 		]),
 	);
 	expect(diagnose.env.OTA_SOURCE_SHA).toBe(
-		"${{ needs.verify_source.outputs.source_sha }}",
+		`\${{ needs.verify_source.outputs.source_sha }}`,
 	);
 });

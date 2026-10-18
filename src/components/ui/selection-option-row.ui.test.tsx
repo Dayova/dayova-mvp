@@ -51,5 +51,25 @@ test.each([
 });
 
 jest.mock("react-native-reanimated", () =>
-	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+	jest.requireActual<Record<string, unknown>>(
+		"../../../tests/mocks/selection-reanimated.cjs",
+	),
 );
+
+test("exam and subject rows do not commit a canceled selection", async () => {
+	const onPress = jest.fn();
+	const screen = await render(
+		<SelectionOptionRow
+			Icon={Pencil}
+			label="Klausur"
+			selected={false}
+			onPress={onPress}
+		/>,
+	);
+	const row = screen.getByRole("radio", { name: "Klausur" });
+	await fireEvent(row, "pressIn");
+	await fireEvent(row, "pressOut");
+	expect(onPress).not.toHaveBeenCalled();
+	await fireEvent.press(row);
+	expect(onPress).toHaveBeenCalledTimes(1);
+});

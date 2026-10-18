@@ -18,7 +18,10 @@ tags:
     timeout: 10000
 - tapOn: E-Mail-Adresse
 - inputText: invalid-email
-- hideKeyboard
+- runFlow:
+    file: ../shared/dismiss-auth-keyboard.yaml
+    env:
+      AUTH_HEADING: Willkommen
 - scrollUntilVisible:
     element: LOGIN
     direction: DOWN
@@ -32,7 +35,10 @@ tags:
 - tapOn: E-Mail-Adresse
 - eraseText
 - inputText: smoke@example.invalid
-- hideKeyboard
+- runFlow:
+    file: ../shared/dismiss-auth-keyboard.yaml
+    env:
+      AUTH_HEADING: Willkommen
 - scrollUntilVisible:
     element: LOGIN
     direction: DOWN
@@ -47,7 +53,10 @@ tags:
     timeout: 10000
 - tapOn: Passwort
 - inputText: MaestroOnly123
-- hideKeyboard
+- runFlow:
+    file: ../shared/dismiss-auth-keyboard.yaml
+    env:
+      AUTH_HEADING: Willkommen
 - assertVisible: Passwort anzeigen
 - assertNotVisible: MaestroOnly123
 - tapOn: Passwort anzeigen

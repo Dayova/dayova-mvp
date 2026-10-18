@@ -80,7 +80,13 @@ function LearningTimeEditorFields({
 	return (
 		<>
 			<Field className="mb-0">
-				<View className="mb-2 flex-row items-center justify-between">
+				<View
+					className={cn(
+						"mb-2 gap-2",
+						!shouldStackInlineContent &&
+							"flex-row items-center justify-between",
+					)}
+				>
 					<FieldLabel className="mb-0">Wochentag</FieldLabel>
 					<Text
 						selectable
@@ -96,6 +102,7 @@ function LearningTimeEditorFields({
 				>
 					<View
 						testID="learning-weekday-row"
+						accessibilityRole="radiogroup"
 						className="grow flex-row justify-between gap-1"
 					>
 						{LEARNING_DAYS.map((day) => {
@@ -139,5 +146,4 @@ function LearningTimeEditorFields({
 	);
 }
 
-export type { LearningTimeEditorFieldsProps };
 export { LearningTimeEditorFields };

@@ -30,6 +30,7 @@ import {
 	StyleSheet,
 	useWindowDimensions,
 	View,
+	type ViewInstance,
 } from "react-native";
 import { CloseButton } from "~/components/ui/close-button";
 import { InputComponentContext } from "~/components/ui/input";
@@ -64,7 +65,7 @@ type DayovaSheetFrameProps = {
 	scrollable?: boolean;
 	closeAccessibilityLabel?: string;
 	accessibilityLabel?: string;
-	returnFocusRef?: RefObject<View | null>;
+	returnFocusRef?: RefObject<ViewInstance | null>;
 	contentClassName?: string;
 	maxWidth?: number;
 };
@@ -105,7 +106,7 @@ function DayovaSheetFrame({
 	maxWidth = DEFAULT_MAX_SHEET_WIDTH,
 }: DayovaSheetFrameProps) {
 	const sheetRef = useRef<BottomSheetModal>(null);
-	const initialFocusRef = useRef<View>(null);
+	const initialFocusRef = useRef<ViewInstance>(null);
 	const initialFocusFrameRef = useRef<number | null>(null);
 	const didMoveFocusRef = useRef(false);
 	const didStartOpeningRef = useRef(false);
@@ -153,10 +154,11 @@ function DayovaSheetFrame({
 		accessibilityLabel ?? (typeof title === "string" ? title : "Dialog");
 
 	const moveAccessibilityFocus = useCallback(
-		(target: View | null | undefined) => {
+		(target: ViewInstance | null | undefined) => {
 			if (!target) return;
 			const reactTag = findNodeHandle(target);
-			if (reactTag !== null) AccessibilityInfo.setAccessibilityFocus(reactTag);
+			if (typeof reactTag === "number")
+				AccessibilityInfo.setAccessibilityFocus(reactTag);
 		},
 		[],
 	);

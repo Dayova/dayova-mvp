@@ -39,7 +39,9 @@ const mockReplace = jest.fn();
 
 const mockPush = jest.fn();
 
-const mockSetPreference = jest.fn(async () => undefined);
+const mockSetPreference = jest.fn(
+	async (_preference: "light" | "system" | "dark") => undefined,
+);
 
 const mockOpenAiConsentSettings = jest.fn();
 

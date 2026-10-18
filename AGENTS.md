@@ -74,6 +74,16 @@ Map the `bug` and `enhancement` category roles plus the five triage disposition 
 
 ### Domain docs
 
+Read `CONTEXT-MAP.md` for canonical Notion entry points before searching for
+internal knowledge. Update the owning Notion page for new shared knowledge;
+keep only concise implementation contracts and links in the repository.
+Put per-task validation reports, screenshots, recordings, and review evidence
+on the relevant GitHub PR or Linear issue, with durable lessons in Notion.
+Do not create or restore `docs/evidence`, `docs/pr-screenshots`, `docs/qa`, or
+`docs/validation`, or equivalent task archives elsewhere in the repository.
+Local generated artifacts belong in ignored `.maestro/artifacts/` or a temporary
+directory. Keep maintained executable tests and QA tools beside the code/tooling.
+
 Use a multi-context documentation layout with `CONTEXT-MAP.md` at the repo root. Notion is Dayova's main internal documentation and knowledge workspace; consult it when product, business, research, or decision context materially affects the task. Repo-local context docs and ADRs contain only the code-facing guidance that must evolve with this repository. Link to relevant Notion pages instead of duplicating shared internal documentation. See `docs/agents/domain.md`.
 
 The product is always **Dayova**, including paid access. Never introduce "Dayova Pro" or another invented product tier in copy or code. See `docs/contexts/product/CONTEXT.md` for the canonical naming decision and subscription terminology.
