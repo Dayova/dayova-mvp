@@ -420,7 +420,35 @@ describe("inline topic search with a free-text exam scope", () => {
 		).toHaveDisplayValue("Ohne Hilfsmittel");
 	});
 
-	test("keeps relevant result context, excludes unrelated suggestions, and preserves additional information", async () => {
+	test("shows mathematics matches when searching Quad with Deutsch selected", async () => {
+		const titles = [
+			"Quadratische Funktionen",
+			"Quadratische Gleichungen",
+			"Nullstellenberechnung bei quadratischen Funktionen",
+			"Würfel und Quader",
+		];
+		const search = jest.fn<SearchTopics>().mockResolvedValue({
+			topics: titles.map((title) => ({
+				id: title,
+				title,
+				subjects: ["Mathematik"],
+				isAdditional: true,
+			})),
+			truncated: false,
+		});
+		const screen = await render(
+			<Setup subject="Deutsch" searchTopics={search} />,
+		);
+		await fireEvent.changeText(screen.getByLabelText("Themen suchen"), "QUad");
+		await debounce();
+		expect(search).toHaveBeenCalledWith({ query: "QUad", subject: "Deutsch" });
+		for (const title of titles)
+			expect(screen.getByRole("checkbox", { name: title })).toBeOnTheScreen();
+		expect(screen.getAllByRole("checkbox")).toHaveLength(5);
+		expect(screen.queryByText("Weitere Vorschläge")).toBeNull();
+	});
+
+	test("keeps subject context on cross-subject matches and preserves additional information", async () => {
 		const search = jest.fn<SearchTopics>().mockResolvedValue({
 			topics: [
 				{
@@ -453,8 +481,8 @@ describe("inline topic search with a free-text exam scope", () => {
 		await debounce();
 		expect(screen.queryByText("Weitere Vorschläge")).toBeNull();
 		expect(
-			screen.queryByRole("checkbox", { name: "Handelsbilanz" }),
-		).toBeNull();
+			screen.getByRole("checkbox", { name: "Handelsbilanz" }),
+		).toBeOnTheScreen();
 		expect(screen.getByRole("checkbox", { name: "Bilanz" })).toHaveProp(
 			"accessibilityHint",
 			"Themenbereich: Wirtschaftskunde",
@@ -739,34 +767,6 @@ describe("inline topic search with a free-text exam scope", () => {
 		expect(screen.getByRole("checkbox", { name: "Thema" })).toBeOnTheScreen();
 		expect(screen.queryByText("Thema 4")).toBeNull();
 		expect(screen.queryByText("Eigenes Thema")).toBeNull();
-	});
-
-	test("keeps the custom topic available when all catalog matches are unrelated", async () => {
-		const search = jest.fn<SearchTopics>().mockResolvedValue({
-			topics: [
-				{
-					id: "quality",
-					title: "Qualität entwickeln",
-					subjects: ["Open Educational Resources"],
-					isAdditional: true,
-				},
-			],
-			truncated: false,
-		});
-		const screen = await render(<Setup searchTopics={search} />);
-		await fireEvent.changeText(screen.getByLabelText("Themen suchen"), "Qua");
-		await debounce();
-		expect(screen.getAllByRole("checkbox")).toHaveLength(1);
-		expect(screen.queryByText("Qualität entwickeln")).toBeNull();
-		expect(
-			screen.getByText(
-				"Keine passenden Katalogvorschläge. Du kannst deinen Begriff unten übernehmen.",
-			),
-		).toBeOnTheScreen();
-		await fireEvent.press(screen.getByRole("checkbox", { name: "Qua" }));
-		expect(
-			screen.getByRole("button", { name: "Qua entfernen" }),
-		).toBeOnTheScreen();
 	});
 
 	test("preserves an error when only surrounding whitespace changes", async () => {

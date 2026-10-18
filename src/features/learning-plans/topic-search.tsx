@@ -196,9 +196,8 @@ export function TopicSearch({
 	);
 	const directTitle = selectedTitle ?? exact?.title ?? term;
 	const otherTopics =
-		result?.topics.filter(
-			(topic) => !topic.isAdditional && topicTitleKey(topic.title) !== titleKey,
-		) ?? [];
+		result?.topics.filter((topic) => topicTitleKey(topic.title) !== titleKey) ??
+		[];
 	const visible = otherTopics.slice(0, MAX_VISIBLE_RESULTS - (exact ? 1 : 0));
 	function toggleTopic(title: string) {
 		const included = selectedTopics.some(
