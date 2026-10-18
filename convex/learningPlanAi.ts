@@ -33,7 +33,7 @@ import {
 	type LearningQuestionBlueprint,
 	type LearningTopic,
 } from "./learningContentPlan";
-import { MAX_LEARNING_MATERIAL_FILE_BYTES } from "./learningMaterialPolicy";
+import { getLearningMaterialFileLimit } from "./learningMaterialPolicy";
 import { estimateGeminiCostUsdMicros } from "./learningPlanAiCost";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 import {
@@ -921,10 +921,13 @@ const buildModelInputFromDocuments = async (
 	const textSections: string[] = [];
 
 	for (const document of documents) {
-		if (document.fileSizeBytes > MAX_LEARNING_MATERIAL_FILE_BYTES) {
-			throwUserFacingError(
-				`Die Datei "${document.fileName}" ist zu groß für die KI-Verarbeitung.`,
-			);
+		const limit = getLearningMaterialFileLimit(
+			document.fileName,
+			document.fileType,
+		);
+		const sizeError = `Die Datei "${document.fileName}" ist zu groß für die KI-Verarbeitung (maximal ${limit.label}). Lade bitte eine kleinere Datei hoch.`;
+		if (document.fileSizeBytes > limit.bytes) {
+			throwUserFacingError(sizeError);
 		}
 
 		const downloadUrl = await createManagedReadUrl(
@@ -957,10 +960,8 @@ const buildModelInputFromDocuments = async (
 		}
 
 		const arrayBuffer = await response.arrayBuffer();
-		if (arrayBuffer.byteLength > MAX_LEARNING_MATERIAL_FILE_BYTES) {
-			throwUserFacingError(
-				`Die Datei "${document.fileName}" ist zu groß für die KI-Verarbeitung.`,
-			);
+		if (arrayBuffer.byteLength > limit.bytes) {
+			throwUserFacingError(sizeError);
 		}
 
 		const mediaType = resolveMediaType(document.fileType, document.fileName);
@@ -1705,6 +1706,7 @@ const normalizeSessions = (
 };
 
 export const __testOnlyLearningPlanAi = {
+	buildModelInputFromDocuments,
 	withGeneratedTextRetry,
 	DuplicateGeneratedPromptError,
 	normalizeSessions,

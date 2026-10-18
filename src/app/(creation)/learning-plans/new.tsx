@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
-import { MAX_LEARNING_MATERIAL_FILE_BYTES } from "#convex/learningMaterialPolicy";
+import { getLearningMaterialFileLimit } from "#convex/learningMaterialPolicy";
 import { isMeaningfulTopicDescription } from "#convex/topicDescriptionValidation";
 import {
 	ActionSheet,
@@ -251,13 +251,15 @@ export default function NewLearningPlanScreen() {
 		const file = new File(asset.uri);
 		const fileSizeBytes = asset.size ?? file.info().size ?? 0;
 		const fileType = asset.mimeType || "application/octet-stream";
+		const limit = getLearningMaterialFileLimit(asset.name, fileType);
 
 		const validation = validateUploadFile(
 			{
 				name: asset.name,
 				size: fileSizeBytes,
 			},
-			MAX_LEARNING_MATERIAL_FILE_BYTES,
+			limit.bytes,
+			limit.label,
 		);
 		if (!validation.valid) throw new Error(validation.message);
 

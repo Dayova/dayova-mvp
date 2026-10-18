@@ -61,6 +61,7 @@ export const validateUploadFile = (
 		size?: number | null;
 	},
 	maxFileBytes = MAX_UPLOAD_FILE_BYTES,
+	maxFileSizeLabel = formatFileSize(maxFileBytes),
 ) => {
 	const extension = getFileExtension(file.name);
 	if (!ACCEPTED_UPLOAD_EXTENSIONS.includes(extension)) {
@@ -81,7 +82,7 @@ export const validateUploadFile = (
 	if ((file.size ?? 0) > maxFileBytes) {
 		return {
 			valid: false,
-			message: `Die Datei ist mit ${formatFileSize(file.size ?? 0)} zu groß (maximal ${formatFileSize(maxFileBytes)}).`,
+			message: `Die Datei ist mit ${formatFileSize(file.size ?? 0)} zu groß (maximal ${maxFileSizeLabel}).`,
 		};
 	}
 
