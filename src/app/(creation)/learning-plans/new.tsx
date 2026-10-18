@@ -139,8 +139,10 @@ export default function NewLearningPlanScreen() {
 	// may overwrite its topics when pausing.
 	const hasEditedTopicsRef = useRef(false);
 	const [isBusy, setIsBusy] = useState(false);
-	const [isPostponingMaterial, setIsPostponingMaterial] = useState(false);
 	const hasDispatchedExitRef = useRef(false);
+	const [confirmedExit, setConfirmedExit] = useState<
+		"materialLater" | "pause" | null
+	>(null);
 	const [isUploading, setIsUploading] = useState(false);
 	const [isUploadSheetVisible, setIsUploadSheetVisible] = useState(false);
 	const [isPauseConfirmationVisible, setIsPauseConfirmationVisible] =
@@ -171,13 +173,14 @@ export default function NewLearningPlanScreen() {
 	const isPlanSnapshotLoading = Boolean(learningPlanId && snapshot === null);
 	const canUpload =
 		canWrite &&
-		!isPostponingMaterial &&
+		!confirmedExit &&
 		!isBusy &&
 		!openingUploadAction &&
 		!isPlanSnapshotLoading &&
 		isMeaningfulTopicDescription(topics);
 	const canContinueTopics =
 		canWrite &&
+		!confirmedExit &&
 		!isBusy &&
 		!openingUploadAction &&
 		isMeaningfulTopicDescription(topics);
@@ -612,7 +615,7 @@ export default function NewLearningPlanScreen() {
 				if (!isMeaningfulTopicDescription(topics)) {
 					throw new Error("Prüfungsthemen fehlen.");
 				}
-				setIsPostponingMaterial(true);
+				setConfirmedExit("materialLater");
 			},
 		);
 	};
@@ -691,7 +694,7 @@ export default function NewLearningPlanScreen() {
 					);
 				}
 				setIsPauseConfirmationVisible(false);
-				dismissToOrReplace(router, ROUTES.learningPlans);
+				setConfirmedExit("pause");
 			} catch (error) {
 				setPauseErrorMessage(
 					getErrorMessage(
@@ -706,7 +709,11 @@ export default function NewLearningPlanScreen() {
 	};
 
 	const goBack = () => {
-		if (isPostponingMaterial || isBusy || topicActionGateRef.current.isRunning)
+		if (
+			confirmedExit !== null ||
+			isBusy ||
+			topicActionGateRef.current.isRunning
+		)
 			return true;
 		const intent = getLearningPlanCreationBackIntent({
 			step: setupStep,
@@ -728,15 +735,15 @@ export default function NewLearningPlanScreen() {
 	};
 
 	useBackIntent(hasExamEntry, goBack, {
-		allowRouteRemoval: isPostponingMaterial,
+		allowRouteRemoval: confirmedExit !== null,
 	});
 	// Commit the explicit exit intent before removing this protected native route.
 	// Ordinary Back/swipe still follows the saved-draft pause confirmation.
 	useEffect(() => {
-		if (!isPostponingMaterial || hasDispatchedExitRef.current) return;
+		if (!confirmedExit || hasDispatchedExitRef.current) return;
 		hasDispatchedExitRef.current = true;
 		try {
-			if (setupOrigin === "resumedDraft") {
+			if (confirmedExit === "pause" || setupOrigin === "resumedDraft") {
 				dismissToOrReplace(router, ROUTES.learningPlans);
 			} else {
 				router.replace(
@@ -747,20 +754,20 @@ export default function NewLearningPlanScreen() {
 			// Recover after the failed external navigation dispatch has unwound.
 			queueMicrotask(() => {
 				hasDispatchedExitRef.current = false;
-				setIsPostponingMaterial(false);
+				setConfirmedExit(null);
 				setErrorMessage(
 					"Die Ansicht konnte nicht geöffnet werden. Bitte versuche es erneut.",
 				);
 			});
 		}
-	}, [isPostponingMaterial, setupOrigin, router, examDateKey, examDateLabel]);
+	}, [confirmedExit, setupOrigin, router, examDateKey, examDateLabel]);
 	useLearningPlanCreationProgress({
 		active: true,
 		currentStep: currentProgressStep,
 		onBack: goBack,
 		onClose: () => {
 			if (
-				isPostponingMaterial ||
+				confirmedExit !== null ||
 				isBusy ||
 				topicActionGateRef.current.isRunning
 			)
@@ -798,7 +805,7 @@ export default function NewLearningPlanScreen() {
 						<RequiredTopicsStep
 							canContinue={canContinueTopics}
 							errorMessage={errorMessage}
-							isBusy={isBusy || isPostponingMaterial}
+							isBusy={isBusy || confirmedExit !== null}
 							onChangeTopics={(value) => {
 								hasEditedTopicsRef.current = true;
 								setTopicsInput(value);
@@ -812,7 +819,7 @@ export default function NewLearningPlanScreen() {
 							canContinue={canContinueUpload}
 							documents={snapshot?.documents ?? []}
 							errorMessage={errorMessage}
-							isBusy={isBusy || isPostponingMaterial}
+							isBusy={isBusy || confirmedExit !== null}
 							isUploading={isUploading}
 							onContinue={continueToAnalysis}
 							onOpenUpload={() => setIsUploadSheetVisible(true)}

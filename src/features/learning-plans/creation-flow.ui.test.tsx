@@ -1038,6 +1038,58 @@ describe("exam creation across the topics boundary", () => {
 });
 
 describe("material-later explicit exits", () => {
+	test("releases removal protection after explicitly confirming pause", async () => {
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "topic",
+		};
+		mockSnapshot = {
+			plan: { topicDescription: "Zellteilung und Mitose" },
+			documents: [],
+		};
+		const screen = await render(<NewLearningPlanScreen />);
+		await act(() => mockProgress.onBack());
+		expect(mockPauseVisible).toBe(true);
+		expect(mockRemovalAllowed).toBe(false);
+		let allowedAtDispatch = false;
+		mockRouter.dismissTo.mockImplementationOnce(() => {
+			allowedAtDispatch = mockRemovalAllowed;
+		});
+		await act(() => mockPauseProps.onConfirm());
+		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans");
+		expect(allowedAtDispatch).toBe(true);
+		expect(mockPauseVisible).toBe(false);
+		expect(
+			screen.getByRole("button", { name: "Weiter, wird geladen", busy: true }),
+		).toBeDisabled();
+	});
+
+	test("allows a failed pause exit to be retried with protection restored", async () => {
+		mockParams = { learningPlanId: "plan-1", step: "topic" };
+		mockSnapshot = {
+			plan: { topicDescription: "Zellteilung und Mitose" },
+			documents: [],
+		};
+		const screen = await render(<NewLearningPlanScreen />);
+		await act(() => mockProgress.onBack());
+		mockRouter.dismissTo.mockImplementationOnce(() => {
+			throw new Error("Navigation fehlgeschlagen");
+		});
+		await act(() => mockPauseProps.onConfirm());
+		expect(mockRemovalAllowed).toBe(false);
+		expect(
+			screen.getByText(
+				"Die Ansicht konnte nicht geöffnet werden. Bitte versuche es erneut.",
+			),
+		).toBeOnTheScreen();
+		await act(() => mockProgress.onBack());
+		expect(mockPauseVisible).toBe(true);
+		await act(() => mockPauseProps.onConfirm());
+		expect(mockRouter.dismissTo).toHaveBeenCalledTimes(2);
+		expect(mockRemovalAllowed).toBe(true);
+	});
+
 	test("releases removal protection before completing a new exam with material later", async () => {
 		mockParams = {
 			examDayEntryId: "exam-1",
