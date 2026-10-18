@@ -922,6 +922,8 @@ describe("exam creation across the topics boundary", () => {
 	test.each([
 		6_247_134,
 		7 * 1024 * 1024,
+		8 * 1024 * 1024,
+		10 * 1024 * 1024,
 	])("accepts a %s-byte export even when the original exceeds the limit", async (size) => {
 		mockFiles["file:///compressed.jpg"] = { size, header: JPEG_HEADER };
 		await selectGalleryPhotos([
@@ -942,8 +944,8 @@ describe("exam creation across the topics boundary", () => {
 
 	test.each([
 		[
-			7 * 1024 * 1024 + 1,
-			"Die Datei ist mit 7.00 MiB zu groß (maximal 7 MiB).",
+			10 * 1024 * 1024 + 1,
+			"Die Datei ist mit 10.0 MiB zu groß (maximal 10.0 MiB).",
 		],
 		[0, "Die Datei ist leer oder konnte nicht gelesen werden."],
 	])("rejects the entire batch when the actual export size is %s", async (size, message) => {
