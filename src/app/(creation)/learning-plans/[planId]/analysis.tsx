@@ -1,10 +1,10 @@
-import { useAction, useConvexAuth, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
-import { AnimatedFlowerLoader } from "~/components/ui/animated-flower-loader";
 import { Button } from "~/components/ui/button";
 import { ErrorMessage } from "~/components/ui/error-message";
 import { Text } from "~/components/ui/text";
@@ -20,6 +20,11 @@ import {
 	getLearningPlanGenerationFailure,
 	type LearningPlanGenerationFailure,
 } from "~/features/learning-plans/generation-recovery";
+import { PlanPreparationProgress } from "~/features/learning-plans/plan-preparation-progress";
+import {
+	type PreparationStage,
+	runPlanPreparation,
+} from "~/features/learning-plans/run-plan-preparation";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import {
@@ -27,11 +32,14 @@ import {
 	goBackOrReplace,
 	useBackIntent,
 } from "~/lib/navigation";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
 
 export default function LearningPlanAnalysisScreen() {
+	const insets = useSafeAreaInsets();
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const params = useLocalSearchParams<{ planId?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
@@ -41,12 +49,16 @@ export default function LearningPlanAnalysisScreen() {
 	const generateKnowledgeQuestions = useAction(
 		api.learningPlanAi.generateKnowledgeQuestions,
 	);
+	const confirmScope = useMutation(api.learningPlans.confirmScope);
+	const prepareDiagnostic = useMutation(api.learningPlans.prepareDiagnostic);
+	const [stage, setStage] = useState<PreparationStage>(0);
 	const [isBusy, setIsBusy] = useState(false);
 	const [failure, setFailure] = useState<LearningPlanGenerationFailure | null>(
 		null,
 	);
 	const [retryAttempt, setRetryAttempt] = useState(0);
 	const didStartRef = useRef(false);
+	const didCloseRef = useRef(false);
 
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
@@ -55,24 +67,15 @@ export default function LearningPlanAnalysisScreen() {
 
 	useEffect(() => {
 		void retryAttempt;
-		if (!planId || !snapshot) return;
+		if (!planId || !snapshot || didCloseRef.current) return;
 
 		if (
-			snapshot.plan.status === "generated" &&
-			snapshot.plan.diagnosticPlacement === "firstSession"
+			(snapshot.plan.status === "generated" &&
+				snapshot.plan.diagnosticPlacement === "firstSession") ||
+			snapshot.plan.status === "accepted"
 		) {
-			router.replace(planPath(planId, "review"));
-			return;
-		}
-		if (
-			snapshot.plan.diagnosticPlacement === "firstSession" &&
-			snapshot.plan.knowledgeQuestions.length > 0
-		) {
-			router.replace(
-				snapshot.plan.scopeConfirmedAt
-					? planPath(planId, "generating")
-					: planPath(planId, "scope"),
-			);
+			// A running pipeline owns navigation so a live snapshot cannot bypass pending requests.
+			if (!didStartRef.current) router.replace(planPath(planId, "review"));
 			return;
 		}
 		if (didStartRef.current) return;
@@ -81,18 +84,44 @@ export default function LearningPlanAnalysisScreen() {
 		queueMicrotask(() => {
 			setIsBusy(true);
 			setFailure(null);
-			void requestAiConsent()
-				.then((allowed) => {
+			void runPlanPreparation({
+				questionsReady:
+					snapshot.plan.diagnosticPlacement === "firstSession" &&
+					snapshot.plan.knowledgeQuestions.length > 0,
+				scopeConfirmed: Boolean(snapshot.plan.scopeConfirmedAt),
+				isCancelled: () => didCloseRef.current,
+				onStage: setStage,
+				analyze: async () => {
+					const allowed = await requestAiConsent();
+					if (didCloseRef.current) return;
 					if (!allowed) {
-						didStartRef.current = false;
+						didCloseRef.current = true;
 						dismissToOrReplace(router, learningPlanMaterialPath(planId));
-						return null;
+						return;
 					}
-					return generateKnowledgeQuestions({ learningPlanId: planId });
+					if (!didCloseRef.current)
+						await generateKnowledgeQuestions({ learningPlanId: planId });
+				},
+				confirm: async () => {
+					trackFeature("learning_plan.scope_confirm", "attempted", planId);
+					try {
+						await confirmScope({ learningPlanId: planId });
+						trackFeature("learning_plan.scope_confirm", "succeeded", planId);
+					} catch (error) {
+						trackFeature("learning_plan.scope_confirm", "failed", planId);
+						throw error;
+					}
+				},
+				prepare: () => prepareDiagnostic({ learningPlanId: planId }),
+			})
+				.then((completed) => {
+					if (completed && !didCloseRef.current)
+						router.replace(planPath(planId, "review"));
 				})
 				.catch((error: unknown) => {
+					if (didCloseRef.current) return;
 					const nextFailure = getLearningPlanGenerationFailure(error);
-					logDiagnosticError("Learning plan material analysis failed.", error, {
+					logDiagnosticError("Learning plan preparation failed.", error, {
 						source: "learning-plans.analysis",
 						metadata: {
 							learningPlanId: planId,
@@ -100,20 +129,30 @@ export default function LearningPlanAnalysisScreen() {
 						},
 					});
 					setFailure(nextFailure);
-					didStartRef.current = false;
 				})
 				.finally(() => setIsBusy(false));
 		});
 	}, [
+		confirmScope,
+		prepareDiagnostic,
 		generateKnowledgeQuestions,
 		planId,
 		requestAiConsent,
 		retryAttempt,
 		router,
 		snapshot,
+		trackFeature,
 	]);
 
+	useEffect(() => {
+		didCloseRef.current = false;
+		return () => {
+			didCloseRef.current = true;
+		};
+	}, []);
+
 	const goBack = () => {
+		didCloseRef.current = true;
 		goBackOrReplace(
 			router,
 			planId ? learningPlanMaterialPath(planId) : "/learning-plans/new",
@@ -122,23 +161,30 @@ export default function LearningPlanAnalysisScreen() {
 	};
 	const reviewTopics = () => {
 		if (!planId || !snapshot) return;
+		didCloseRef.current = true;
 		router.replace(
-			snapshot.plan.topicMap.length > 0
-				? planPath(planId, "scope")
-				: learningPlanTopicsPath(planId, {
-						topicDescription: snapshot.plan.topicDescription,
-					}),
+			learningPlanTopicsPath(planId, {
+				topicDescription: snapshot.plan.topicDescription,
+			}),
 		);
 	};
 	const editMaterial = () => {
 		if (!planId) return;
+		didCloseRef.current = true;
 		dismissToOrReplace(router, learningPlanMaterialPath(planId));
 	};
-	useBackIntent(true, goBack);
+	const leavePreparation = () => {
+		didCloseRef.current = true;
+		dismissToOrReplace(router, "/learning-plans");
+	};
+	// Leaving stops subsequent client steps, not an already running server request.
+	// Keep review replacement and the explicit resume-later action free of removal guards.
+	useBackIntent(true, goBack, { allowRouteRemoval: true });
 	useLearningPlanCreationProgress({
-		active: true,
+		active: false,
 		currentStep: LEARNING_PLAN_CREATION_STEPS.materialAnalysis,
 		onBack: goBack,
+		onClose: leavePreparation,
 	});
 
 	return (
@@ -146,39 +192,17 @@ export default function LearningPlanAnalysisScreen() {
 			<Stack.Screen options={{ gestureEnabled: false }} />
 			<ScrollView
 				className="flex-1"
+				contentContainerClassName="grow justify-center"
 				contentContainerStyle={{
 					paddingHorizontal: 32,
-					paddingTop: 0,
-					paddingBottom: 60,
+					// With the creation header hidden, this screen owns the top safe area.
+					paddingTop: insets.top + 28,
+					paddingBottom: 24,
 				}}
 				showsVerticalScrollIndicator={false}
 			>
-				<View
-					className={
-						failure
-							? "items-center pt-8"
-							: "min-h-[620px] flex-1 items-center justify-center pb-20"
-					}
-				>
-					{failure ? (
-						<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
-							Das hat noch nicht geklappt.
-						</Text>
-					) : (
-						<>
-							<View className="mb-12">
-								<AnimatedFlowerLoader />
-							</View>
-							<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
-								Wir ordnen deine Schulunterlagen.
-							</Text>
-							<Text className="mt-3 max-w-[320px] text-center font-poppins text-body-3 text-secondary-text">
-								Dayova trennt wahrscheinlichen Prüfungsstoff von zusätzlichem
-								Material und bereitet den Wissenscheck für deinen ersten
-								Lerntermin vor.
-							</Text>
-						</>
-					)}
+				<View className="w-full max-w-[480px] self-center py-8">
+					<PlanPreparationProgress stage={stage} failed={Boolean(failure)} />
 					{failure ? (
 						<>
 							<ErrorMessage className="mt-6 text-center">
@@ -218,6 +242,19 @@ export default function LearningPlanAnalysisScreen() {
 					) : null}
 				</View>
 			</ScrollView>
+			<View
+				className="w-full max-w-[480px] self-center px-8 pt-2"
+				// The persistent exit stays above the device's bottom safe area.
+				style={{ paddingBottom: Math.max(insets.bottom + 12, 20) }}
+			>
+				<Button
+					variant="ghost"
+					onPress={leavePreparation}
+					accessibilityHint="Kehrt zu deinen Lernplänen zurück. Dein Entwurf bleibt gespeichert."
+				>
+					<Text className="text-secondary-text">Später fortsetzen</Text>
+				</Button>
+			</View>
 		</View>
 	);
 }

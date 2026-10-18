@@ -4,7 +4,7 @@ Unveränderte, von Philipp bereitgestellte Screenshots vom 03.10.2026.
 
 | Vorher | Nachher |
 | --- | --- |
-| <img src="before.png" width="220" alt="Vorher: größere Überschrift und schwarzes Plus"> | <img src="after.png" width="220" alt="Nachher: Überschrift in Heute-Größe und blaues Plus"> |
+| <img src="https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/pr-820-header/before.png?raw=true" width="220" alt="Vorher: größere Überschrift und schwarzes Plus"> | <img src="https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/pr-820-header/after.png?raw=true" width="220" alt="Nachher: Überschrift in Heute-Größe und blaues Plus"> |
 
 - Vorher: `IMG_1937.PNG`, 1179 × 2556 Pixel, Geräteuhr 01:50.
 - Nachher: `Screenshot Dayova Jakob Review iPhone 03.10.2026 at 02.11.48.png`,

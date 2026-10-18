@@ -1,7 +1,10 @@
 import { expect, jest, test } from "@jest/globals";
 import { fireEvent, render } from "@testing-library/react-native";
+import { triggerSelectionHaptic } from "~/lib/safe-haptics";
 import { Pencil } from "./icon";
 import { SelectionOptionRow } from "./selection-option-row";
+
+jest.mock("~/lib/safe-haptics", () => ({ triggerSelectionHaptic: jest.fn() }));
 
 jest.mock("~/lib/theme", () => ({
 	useDayovaTheme: () => ({
@@ -25,6 +28,7 @@ test.each([
 	true,
 	false,
 ])("shared exam/subject row exposes checked=%s and wraps long labels", async (selected) => {
+	jest.mocked(triggerSelectionHaptic).mockClear();
 	const onPress = jest.fn();
 	const label = "Eine sehr lange individuelle Prüfungsart oder Fachbezeichnung";
 	const screen = await render(
@@ -39,11 +43,14 @@ test.each([
 		screen.getByRole("radio", { name: label }).props.accessibilityState,
 	).toEqual({
 		checked: selected,
+		disabled: false,
 	});
 	expect(screen.getByText(label).props.numberOfLines).toBeUndefined();
-	expect(screen.getByRole("radio").props.className).toContain(
-		selected ? "bg-accent" : "bg-card",
-	);
 	await fireEvent.press(screen.getByRole("radio"));
 	expect(onPress).toHaveBeenCalledTimes(1);
+	expect(triggerSelectionHaptic).toHaveBeenCalledTimes(selected ? 0 : 1);
 });
+
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+);

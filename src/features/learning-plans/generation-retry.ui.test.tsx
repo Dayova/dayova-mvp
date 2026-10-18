@@ -25,6 +25,8 @@ let mockHasGeneration = true;
 const mockSnapshot = {
 	plan: {
 		id: "plan-1",
+		scopeConfirmedAt: 1,
+		preparationState: undefined as "diagnostic" | undefined,
 		status: "questionsReady",
 		diagnosticPlacement: "firstSession",
 		examDateKey: "2026-10-21",
@@ -152,6 +154,7 @@ describe("learning-plan generation recovery", () => {
 		jest.clearAllMocks();
 		mockPrepare.mockResolvedValue(undefined);
 		mockHasGeneration = true;
+		mockSnapshot.plan.preparationState = undefined;
 		mockSnapshot.sessions = [];
 		mockSnapshot.plan.contentGeneration.failureReason = "schedulingConstraints";
 		mockSnapshot.plan.contentGeneration.failureMessage = undefined;
@@ -214,6 +217,18 @@ describe("learning-plan generation recovery", () => {
 		expect(mockRouter.replace).toHaveBeenCalledWith(
 			"/learning-plans/plan-1/review",
 		);
+	});
+
+	test("routes preparation-model links through the unified preparation screen", async () => {
+		mockSnapshot.plan.preparationState = "diagnostic";
+		await render(<LearningPlanGeneratingScreen />);
+		await waitFor(() =>
+			expect(mockRouter.replace).toHaveBeenCalledWith(
+				"/learning-plans/plan-1/analysis",
+			),
+		);
+		expect(mockPrepare).not.toHaveBeenCalled();
+		expect(mockRetryFailedContent).not.toHaveBeenCalled();
 	});
 
 	test("prepares the diagnostic without learning times despite a stale scheduling failure", async () => {

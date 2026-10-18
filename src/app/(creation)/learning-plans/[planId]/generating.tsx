@@ -10,14 +10,17 @@ import { Text } from "~/components/ui/text";
 import { useAiConsent } from "~/context/AiConsentContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
-import { learningPlanMaterialPath } from "~/features/learning-plans/creation-routes";
+import {
+	learningPlanMaterialPath,
+	learningPlanTopicsPath,
+} from "~/features/learning-plans/creation-routes";
 import { getGenerationProgressPresentation } from "~/features/learning-plans/generation-progress";
 import {
 	getLearningPlanGenerationFailure,
 	type LearningPlanGenerationFailure,
 } from "~/features/learning-plans/generation-recovery";
 import { logDiagnosticError } from "~/lib/diagnostics";
-import { useBackIntent } from "~/lib/navigation";
+import { dismissToOrReplace, useBackIntent } from "~/lib/navigation";
 import { ROUTES, withReturnTo } from "~/lib/routes";
 
 const STALE_CONTENT_GENERATION_MS = 11 * 60_000;
@@ -49,7 +52,10 @@ export default function LearningPlanGeneratingScreen() {
 		snapshot?.plan.status === "generated" ||
 		snapshot?.plan.status === "accepted";
 	const needsAnalysis = Boolean(
-		snapshot && snapshot.plan.diagnosticPlacement !== "firstSession",
+		snapshot &&
+			(snapshot.plan.diagnosticPlacement !== "firstSession" ||
+				Boolean(snapshot.plan.preparationState) ||
+				(!snapshot.plan.scopeConfirmedAt && !snapshot.plan.contentGeneration)),
 	);
 	// Only drafts created by the previous flow can have sessions without preparation state.
 	const hasLegacySessions = Boolean(
@@ -167,18 +173,25 @@ export default function LearningPlanGeneratingScreen() {
 	]);
 
 	const goBack = () => {
-		router.replace(id ? `/learning-plans/${id}/scope` : ROUTES.learningPlans);
+		router.replace(
+			id && snapshot
+				? learningPlanTopicsPath(id, {
+						topicDescription: snapshot.plan.topicDescription,
+					})
+				: ROUTES.learningPlans,
+		);
 		return true;
 	};
 	useBackIntent(true, goBack, {
 		allowRouteRemoval: isComplete || needsAnalysis,
 	});
 	useLearningPlanCreationProgress({
-		active: true,
+		active: !needsAnalysis,
 		currentStep: isComplete
 			? LEARNING_PLAN_CREATION_STEPS.planGeneration
 			: LEARNING_PLAN_CREATION_STEPS.scopeConfirmation,
 		onBack: goBack,
+		onClose: () => dismissToOrReplace(router, ROUTES.learningPlans),
 	});
 	const canRetry = Boolean(
 		displayedFailure ||

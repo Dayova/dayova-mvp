@@ -9,6 +9,7 @@ const mockRouter = {
 	canGoBack: () => true,
 };
 const mockGenerateKnowledgeQuestions = jest.fn<() => Promise<never>>();
+const mockPrepare = jest.fn(async () => undefined);
 const mockRequestAiConsent = jest.fn(async () => true);
 const mockSnapshot = {
 	plan: {
@@ -35,8 +36,13 @@ const mockSnapshot = {
 jest.mock("convex/react", () => ({
 	useConvexAuth: () => ({ isAuthenticated: true }),
 	useAction: () => mockGenerateKnowledgeQuestions,
+	useMutation: () => mockPrepare,
 	useQuery: () => mockSnapshot,
 }));
+jest.mock("react-native-safe-area-context", () => ({
+	useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+
 jest.mock("expo-router", () => ({
 	useRouter: () => mockRouter,
 	useLocalSearchParams: () => ({ planId: "plan-1" }),
@@ -58,6 +64,10 @@ jest.mock("~/lib/navigation", () => ({
 		router.replace(path),
 	useBackIntent: () => undefined,
 }));
+jest.mock("~/features/learning-plans/plan-preparation-progress", () => ({
+	PlanPreparationProgress: () => null,
+}));
+
 jest.mock("~/components/ui/animated-flower-loader", () => ({
 	AnimatedFlowerLoader: () => null,
 }));
@@ -88,26 +98,29 @@ describe("learning plan material-analysis recovery", () => {
 		);
 
 		await fireEvent.press(
+			screen.getByRole("button", { name: "Erneut versuchen" }),
+		);
+		await waitFor(() =>
+			expect(mockGenerateKnowledgeQuestions).toHaveBeenCalledTimes(2),
+		);
+		await fireEvent.press(
 			screen.getByRole("button", { name: "Prüfungsstoff prüfen" }),
 		);
 		expect(mockRouter.replace).toHaveBeenCalledWith(
-			"/learning-plans/plan-1/scope",
+			"/learning-plans/new?learningPlanId=plan-1&step=topic&topicDescription=Lineare%20Funktionen",
 		);
-
+		await screen.unmount();
+		const materialScreen = await render(<LearningPlanAnalysisScreen />);
+		await materialScreen.findByRole("button", {
+			name: "Material ergänzen oder ersetzen",
+		});
 		await fireEvent.press(
-			screen.getByRole("button", {
+			materialScreen.getByRole("button", {
 				name: "Material ergänzen oder ersetzen",
 			}),
 		);
 		expect(mockRouter.replace).toHaveBeenCalledWith(
 			"/learning-plans/new?learningPlanId=plan-1&step=material",
-		);
-
-		await fireEvent.press(
-			screen.getByRole("button", { name: "Erneut versuchen" }),
-		);
-		await waitFor(() =>
-			expect(mockGenerateKnowledgeQuestions).toHaveBeenCalledTimes(2),
 		);
 	});
 
