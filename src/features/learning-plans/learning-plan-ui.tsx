@@ -124,6 +124,10 @@ function SessionEditPill({
 	);
 }
 
+/**
+ * Displays controlled session fields and responsive save/remove actions.
+ * The parent owns date/time pickers, removal confirmation, and persistence.
+ */
 export function SessionEditForm({
 	session,
 	editDate,
@@ -241,7 +245,7 @@ export function SessionEditForm({
 				)}
 			>
 				<Button
-					variant="neutral"
+					variant="destructive"
 					className={
 						shouldStackInlineContent
 							? "w-full shadow-none"

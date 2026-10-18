@@ -45,6 +45,10 @@ type EditingSubject = {
 	name: string;
 };
 
+/**
+ * Manages personal subjects with a shared sheet for renaming and confirmed removal.
+ * Removing a subject leaves existing entries' stored subject names intact.
+ */
 export default function PersonalSubjectsScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
@@ -275,7 +279,7 @@ export default function PersonalSubjectsScreen() {
 				}
 				description={
 					deletingSubject
-						? undefined
+						? `${deletingSubject.name} wird nicht mehr zur Auswahl angeboten. Bereits gespeicherte Einträge behalten ihren bisherigen Fachnamen.`
 						: "Der neue Name wird auch bei verknüpften Prüfungen, Hausaufgaben, Lernplänen und Stundenplan-Einträgen angezeigt."
 				}
 				onClose={() => {
@@ -292,8 +296,7 @@ export default function PersonalSubjectsScreen() {
 			>
 				{deletingSubject ? (
 					<ConfirmationSheetContent
-						actionAppearance="outlined"
-						description={`${deletingSubject.name} wird nicht mehr zur Auswahl angeboten. Bereits gespeicherte Einträge behalten ihren bisherigen Fachnamen.`}
+						description={undefined}
 						confirmLabel="Fach löschen"
 						isBusy={isBusy}
 						errorMessage={errorMessage}

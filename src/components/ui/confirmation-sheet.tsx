@@ -26,11 +26,14 @@ type ConfirmationSheetProps = {
 	confirmTone?: "primary" | "destructive";
 	closeAccessibilityLabel?: string;
 	actionLayout?: ConfirmationActionLayout;
-	actionAppearance?: "default" | "outlined";
 	maxWidth?: number;
 	scrollable?: boolean;
 };
 
+/**
+ * Shares responsive confirmation actions between standalone and embedded sheets.
+ * Busy actions block dismissal; the owning caller handles submission and errors.
+ */
 function ConfirmationPresentation({
 	children,
 	confirmDisabled = false,
@@ -46,7 +49,6 @@ function ConfirmationPresentation({
 	confirmTone = "destructive",
 	closeAccessibilityLabel = "Bestätigung schließen",
 	actionLayout: requestedActionLayout = "inline",
-	actionAppearance = "default",
 	maxWidth,
 	scrollable = true,
 	embedded = false,
@@ -66,24 +68,18 @@ function ConfirmationPresentation({
 			}
 			accessibilityLiveRegion={isBusy ? "polite" : undefined}
 			accessibilityState={{ busy: isBusy, disabled: isBusy || confirmDisabled }}
-			className={actionLayout === "stacked" ? "w-full" : "flex-1"}
+			className={
+				actionLayout === "stacked" ? "w-full" : "min-w-0 flex-1 basis-0 px-3"
+			}
 			disabled={isBusy || confirmDisabled}
 			onPress={onConfirm}
-			variant={
-				confirmTone === "destructive"
-					? actionAppearance === "outlined"
-						? "destructive-outline"
-						: "destructive"
-					: "default"
-			}
+			variant={confirmTone === "destructive" ? "destructive" : "default"}
 		>
 			{isBusy ? (
 				<ActivityIndicator
 					color={
 						confirmTone === "destructive"
-							? actionAppearance === "outlined"
-								? colors.dangerAction
-								: colors.background
+							? colors.dangerAction
 							: DAYOVA_DESIGN_SYSTEM.colors.light1
 					}
 				/>
@@ -97,17 +93,23 @@ function ConfirmationPresentation({
 			accessibilityLabel={cancelLabel}
 			className={cn(
 				"shadow-none",
-				actionLayout === "stacked" ? "w-full" : "flex-1",
+				actionLayout === "stacked" ? "w-full" : "min-w-0 flex-1 basis-0 px-3",
 			)}
 			disabled={isBusy}
 			onPress={safeClose}
-			variant={actionAppearance === "outlined" ? "cancel" : "neutral"}
+			variant="cancel"
 		>
 			<Text className="shrink text-center">{cancelLabel}</Text>
 		</Button>
 	);
 	const actions = (
-		<View className={cn("gap-3", actionLayout === "inline" && "flex-row")}>
+		<View
+			testID="confirmation-actions"
+			className={cn(
+				"gap-3",
+				actionLayout === "inline" && "flex-row items-stretch",
+			)}
+		>
 			{actionLayout === "stacked" ? confirmButton : cancelButton}
 			{actionLayout === "stacked" ? cancelButton : confirmButton}
 		</View>
@@ -125,9 +127,11 @@ function ConfirmationPresentation({
 	if (embedded) {
 		return (
 			<View className="gap-6">
-				<Text className="font-poppins text-body-3 text-secondary-text">
-					{description}
-				</Text>
+				{description ? (
+					<Text className="font-poppins text-body-3 text-secondary-text">
+						{description}
+					</Text>
+				) : null}
 				{children}
 				{error}
 				{actions}
@@ -138,7 +142,7 @@ function ConfirmationPresentation({
 		<DayovaSheetFrame
 			visible={visible}
 			title={title}
-			description={scrollable ? undefined : description}
+			description={description}
 			onClose={safeClose}
 			dismissible={!isBusy}
 			closeAccessibilityLabel={closeAccessibilityLabel}
@@ -147,11 +151,6 @@ function ConfirmationPresentation({
 			maxWidth={maxWidth}
 			scrollable={scrollable}
 		>
-			{scrollable ? (
-				<Text className="font-poppins text-body-3 text-secondary-text">
-					{description}
-				</Text>
-			) : null}
 			{children}
 			{error}
 			{scrollable ? null : actions}

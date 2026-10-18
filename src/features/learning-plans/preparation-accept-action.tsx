@@ -49,7 +49,6 @@ export function PreparationAcceptAction({
 				confirmLabel="Übernehmen"
 				cancelLabel="Anpassen"
 				confirmTone="primary"
-				actionAppearance="outlined"
 				isBusy={busy}
 				onConfirm={() => void submit()}
 				onClose={() => setConfirming(false)}
