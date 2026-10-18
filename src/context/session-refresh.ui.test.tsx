@@ -61,6 +61,7 @@ jest.mock("~/context/OnboardingContext", () => ({
 }));
 jest.mock("~/lib/analytics", () => ({ isPostHogConfigured: false }));
 jest.mock("~/lib/diagnostics", () => ({ logDiagnosticError: jest.fn() }));
+jest.mock("~/lib/runtime-config", () => ({ env: {} }));
 jest.mock("~/lib/pending-onboarding-sync-secure-store", () => ({
 	getOnboardingAccountFingerprint: async () => "test-fingerprint",
 	pendingOnboardingSyncOutbox: { resume: async () => ({ status: "none" }) },

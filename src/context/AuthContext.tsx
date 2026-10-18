@@ -21,6 +21,7 @@ import { Platform } from "react-native";
 import { api } from "#convex/_generated/api";
 import { useOnboarding } from "~/context/OnboardingContext";
 import {
+	AccountDeletionResponseError,
 	readAccountDeletionResponse,
 	submitAccountDeletion,
 } from "~/lib/account-deletion-request";
@@ -85,6 +86,7 @@ import {
 	finalizeCompletedRegistration,
 	IncompleteRegistrationIdentityError,
 } from "~/lib/registration-verification";
+import { env } from "~/lib/runtime-config";
 import {
 	isSupportedSchoolType,
 	normalizeLegacySchoolType,
@@ -1655,11 +1657,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				{
 					session,
 					request: async (token) => {
-						const endpoint = new URL(convex.url);
-						endpoint.hostname = endpoint.hostname.replace(
-							/\.convex\.cloud$/,
-							".convex.site",
-						);
+						const siteUrl = env.EXPO_PUBLIC_CONVEX_SITE_URL?.trim();
+						const endpoint = new URL(siteUrl || convex.url);
+						if (!siteUrl) {
+							endpoint.hostname = endpoint.hostname.replace(
+								/\.convex\.cloud$/,
+								".convex.site",
+							);
+						}
 						endpoint.pathname = "/account-deletion";
 						const response = await fetch(endpoint.toString(), {
 							signal: AbortSignal.timeout(20_000),
@@ -1677,6 +1682,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				currentPassword,
 			);
 		} catch (error) {
+			if (error instanceof AccountDeletionResponseError) throw error;
+			if (error instanceof Error && error.name === "TimeoutError") {
+				throw new Error(
+					"Die Kontolöschung hat zu lange gedauert. Bitte prüfe deine Verbindung und versuche es erneut.",
+				);
+			}
+			if (
+				isClerkAPIResponseError(error) &&
+				error.errors.some(({ code }) => code === "form_password_incorrect")
+			) {
+				throw new Error("Das aktuelle Passwort ist falsch.");
+			}
 			throw new Error(
 				getClerkErrorMessage(
 					error,
