@@ -29,6 +29,7 @@ Do not recreate task-archive folders in the repository. See
 
 ## Existing Repo Docs
 
+- Agent-system governance: `docs/agents/agent-system.md`
 - Bottom sheets: `docs/bottom-sheets.md`
 - Styling: `docs/styling.md`
 - Package patches: `patches/README.md`
