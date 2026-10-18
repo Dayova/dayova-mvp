@@ -15,6 +15,15 @@ let mockClose: () => void;
 let mockParams: Record<string, string>;
 const mockSave = jest.fn<() => Promise<void>>();
 
+jest.mock("react-native-keyboard-controller", () => {
+	const { View, ScrollView } =
+		jest.requireActual<typeof import("react-native")>("react-native");
+	return { KeyboardStickyView: View, KeyboardAwareScrollView: ScrollView };
+});
+jest.mock("react-native-safe-area-context", () => ({
+	useSafeAreaInsets: () => ({ top: 0, bottom: 34, left: 0, right: 0 }),
+}));
+
 jest.mock("expo-router", () => {
 	const { useNavigation, StackActions } = jest.requireActual<
 		typeof import("expo-router/react-navigation")
@@ -181,7 +190,7 @@ test("confirmed pause leaves the real guarded route for the overview", async () 
 	await act(() => mockClose());
 	await fireEvent.press(screen.getByText("Später fortsetzen"));
 	expect(screen.getByText("Lernplanübersicht")).toBeVisible();
-	expect(screen.queryByLabelText("Hinweise zur Prüfung (optional)")).toBeNull();
+	expect(screen.queryByLabelText("Hinweise suchen")).toBeNull();
 });
 
 test("pause keeps native protection until edited topics have saved", async () => {
@@ -194,28 +203,28 @@ test("pause keeps native protection until edited topics have saved", async () =>
 	);
 	await render(<App />);
 	await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
-	await fireEvent.press(
-		screen.getByRole("button", { name: "Hinweise bearbeiten" }),
-	);
 	await fireEvent.changeText(
-		screen.getByLabelText("Hinweise zur Prüfung (optional)"),
-		"Ohne Hilfsmittel. Auch Inventur.",
+		screen.getByLabelText("Hinweise suchen"),
+		"Auch Inventur.",
+	);
+	await fireEvent.press(
+		screen.getByRole("checkbox", {
+			name: "Auch Inventur.",
+		}),
 	);
 	await act(() => mockClose());
 	await fireEvent.press(screen.getByText("Später fortsetzen"));
 	expect(screen.getByTestId("native-protection")).toHaveTextContent(
 		"protected",
 	);
-	expect(
-		screen.getByLabelText("Hinweise zur Prüfung (optional)"),
-	).toBeOnTheScreen();
+	expect(screen.getByLabelText("Hinweise suchen")).toBeOnTheScreen();
 	await act(() => finishSave());
 	expect(screen.getByText("Lernplanübersicht")).toBeVisible();
 	expect(mockSave).toHaveBeenCalledWith({
 		id: "plan-native-pause",
 		topicItems: ["Bilanz"],
-		topicAdditionalInfo: "Ohne Hilfsmittel. Auch Inventur.",
-		topicDescription: "Bilanz\nOhne Hilfsmittel. Auch Inventur.",
+		topicAdditionalInfo: "Ohne Hilfsmittel\nAuch Inventur.",
+		topicDescription: "Bilanz\nOhne Hilfsmittel\nAuch Inventur.",
 	});
 });
 
@@ -223,21 +232,22 @@ test("failed pause retains the route, native protection and edited text", async 
 	mockSave.mockRejectedValue(new Error("offline"));
 	await render(<App />);
 	await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
-	await fireEvent.press(
-		screen.getByRole("button", { name: "Hinweise bearbeiten" }),
-	);
 	await fireEvent.changeText(
-		screen.getByLabelText("Hinweise zur Prüfung (optional)"),
-		"Ohne Hilfsmittel. Auch Inventur.",
+		screen.getByLabelText("Hinweise suchen"),
+		"Auch Inventur.",
+	);
+	await fireEvent.press(
+		screen.getByRole("checkbox", {
+			name: "Auch Inventur.",
+		}),
 	);
 	await act(() => mockClose());
 	await fireEvent.press(screen.getByText("Später fortsetzen"));
 	expect(screen.getByTestId("native-protection")).toHaveTextContent(
 		"protected",
 	);
-	expect(
-		screen.getByLabelText("Hinweise zur Prüfung (optional)"),
-	).toHaveDisplayValue("Ohne Hilfsmittel. Auch Inventur.");
+	expect(screen.getByText("Auch Inventur.")).toBeOnTheScreen();
+	expect(screen.getByText("Ohne Hilfsmittel")).toBeOnTheScreen();
 	expect(screen.getByText("offline")).toBeOnTheScreen();
 });
 
