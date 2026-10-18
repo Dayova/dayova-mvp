@@ -69,6 +69,12 @@ let mockPauseProps: {
 	isBusy?: boolean;
 	errorMessage?: string | null;
 };
+jest.mock("~/context/AiConsentContext", () => ({
+	useAiConsent: () => ({
+		requestAiConsentDisclosure: async () => true,
+	}),
+}));
+
 jest.mock("convex/react", () => ({
 	useConvexAuth: () => ({ isAuthenticated: true }),
 	useQueries: () => ({
