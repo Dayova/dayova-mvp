@@ -128,7 +128,106 @@ test.each([
 		nativeEvent: { contentOffset: { x: 240 } },
 	});
 	await fireEvent(screen.getByTestId("pager"), "momentumScrollEnd", {
-		nativeEvent: { contentOffset: { x: 400 } },
+		nativeEvent: { contentOffset: { x: 800 } },
 	});
 	expect(onSelect).not.toHaveBeenCalled();
+});
+
+test("native scrolling without a touch drag exposes the selected page", async () => {
+	const onSelect = jest.fn();
+	const screen = await render(<CalendarPager {...props} onSelect={onSelect} />);
+	await fireEvent(screen.getByTestId("pager-viewport"), "layout", {
+		nativeEvent: { layout: { width: 400 } },
+	});
+	await fireEvent(screen.getByTestId("pager"), "scroll", {
+		nativeEvent: { contentOffset: { x: 400 } },
+	});
+	expect(onSelect).toHaveBeenLastCalledWith(keys[1]);
+	await screen.rerender(
+		<CalendarPager {...props} onSelect={onSelect} selectedKey={keys[1]} />,
+	);
+	expect(screen.getByText(keys[1])).toBeTruthy();
+	expect(screen.queryByText(keys[0])).toBeNull();
+	expect(mockScroll).not.toHaveBeenCalled();
+});
+
+test.each([
+	false,
+	true,
+])("native scrolling works after programmatic synchronization; reduced motion=%s", async (reduced) => {
+	mockReducedMotion = reduced;
+	const onSelect = jest.fn();
+	const screen = await render(<CalendarPager {...props} onSelect={onSelect} />);
+	await fireEvent(screen.getByTestId("pager-viewport"), "layout", {
+		nativeEvent: { layout: { width: 400 } },
+	});
+	await screen.rerender(
+		<CalendarPager {...props} onSelect={onSelect} selectedKey={keys[2]} />,
+	);
+	await fireEvent(screen.getByTestId("pager"), "scroll", {
+		nativeEvent: { contentOffset: { x: 800 } },
+	});
+	expect(onSelect).not.toHaveBeenCalled();
+	await fireEvent(screen.getByTestId("pager"), "scroll", {
+		nativeEvent: { contentOffset: { x: 400 } },
+	});
+	expect(onSelect).toHaveBeenLastCalledWith(keys[1]);
+});
+
+test("a native scroll ending before the programmatic target commits its actual page", async () => {
+	const onSelect = jest.fn();
+	const screen = await render(<CalendarPager {...props} onSelect={onSelect} />);
+	await fireEvent(screen.getByTestId("pager-viewport"), "layout", {
+		nativeEvent: { layout: { width: 400 } },
+	});
+	await screen.rerender(
+		<CalendarPager {...props} onSelect={onSelect} selectedKey={keys[2]} />,
+	);
+	await fireEvent(screen.getByTestId("pager"), "momentumScrollEnd", {
+		nativeEvent: { contentOffset: { x: 400 } },
+	});
+	expect(onSelect).toHaveBeenLastCalledWith(keys[1]);
+});
+
+test("a nonzero initial page ignores setup offsets before accepting native navigation", async () => {
+	const onSelect = jest.fn();
+	const screen = await render(
+		<CalendarPager {...props} selectedKey={keys[2]} onSelect={onSelect} />,
+	);
+	await fireEvent(screen.getByTestId("pager-viewport"), "layout", {
+		nativeEvent: { layout: { width: 400 } },
+	});
+	for (const offset of [0, 800]) {
+		await fireEvent(screen.getByTestId("pager"), "scroll", {
+			nativeEvent: { contentOffset: { x: offset } },
+		});
+	}
+	expect(onSelect).not.toHaveBeenCalled();
+	await fireEvent(screen.getByTestId("pager"), "scroll", {
+		nativeEvent: { contentOffset: { x: 400 } },
+	});
+	expect(onSelect).toHaveBeenLastCalledWith(keys[1]);
+	expect(mockScroll).not.toHaveBeenCalled();
+});
+
+test("a width change preserves the selected page through list remount", async () => {
+	const onSelect = jest.fn();
+	const screen = await render(
+		<CalendarPager {...props} selectedKey={keys[1]} onSelect={onSelect} />,
+	);
+	for (const width of [400, 360]) {
+		await fireEvent(screen.getByTestId("pager-viewport"), "layout", {
+			nativeEvent: { layout: { width } },
+		});
+		for (const offset of [0, width]) {
+			await fireEvent(screen.getByTestId("pager"), "scroll", {
+				nativeEvent: { contentOffset: { x: offset } },
+			});
+		}
+	}
+	expect(onSelect).not.toHaveBeenCalled();
+	await fireEvent(screen.getByTestId("pager"), "scroll", {
+		nativeEvent: { contentOffset: { x: 720 } },
+	});
+	expect(onSelect).toHaveBeenLastCalledWith(keys[2]);
 });
