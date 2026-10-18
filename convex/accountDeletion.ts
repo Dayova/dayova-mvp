@@ -8,7 +8,9 @@ import { deleteManagedFile } from "./fileStorage";
 
 const DELETE_BATCH_SIZE = 25;
 const REAUTHENTICATION_MAX_AGE_MINUTES = 10;
-const DELETION_POLICY_VERSION = "DAY-357-draft-2026-09-18";
+const DELETION_POLICY_VERSION = "DAY-357-approved-2026-10-18";
+const COMPLETED_AUDIT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+const AUDIT_PURGE_BATCH_SIZE = 100;
 
 const deletionStageValidator = v.union(
 	v.literal("revokeSessions"),
@@ -301,6 +303,34 @@ export const completeRequest = internalMutation({
 			updatedAt: now,
 		});
 		return true;
+	},
+});
+
+/** Expire successful audits only; unresolved failures keep their recovery context. */
+export const purgeCompletedAudits = internalMutation({
+	args: {},
+	returns: v.number(),
+	handler: async (ctx) => {
+		const expired = await ctx.db
+			.query("accountDeletionRequests")
+			.withIndex("by_status_and_completedAt", (query) =>
+				query
+					.eq("status", "completed")
+					.gte("completedAt", 0)
+					.lte("completedAt", Date.now() - COMPLETED_AUDIT_RETENTION_MS),
+			)
+			.take(AUDIT_PURGE_BATCH_SIZE);
+		for (const request of expired) {
+			await ctx.db.delete("accountDeletionRequests", request._id);
+		}
+		if (expired.length === AUDIT_PURGE_BATCH_SIZE) {
+			await ctx.scheduler.runAfter(
+				0,
+				internal.accountDeletion.purgeCompletedAudits,
+				{},
+			);
+		}
+		return expired.length;
 	},
 });
 
