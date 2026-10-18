@@ -75,7 +75,10 @@ export const useBackIntent = (
 		if (!isBackRemovalAction({ data }) || !runBackIntent()) {
 			// Reuse the original action so React Navigation can skip this guard
 			// when resuming a replacement or an unhandled removal.
-			navigation.dispatch(data.action);
+			// Root-ref actions (e.g. Expo Router dismissTo) have no source. Keep
+			// that absence: dispatch otherwise adds this child route as the source,
+			// which the targeted parent stack cannot find and silently ignores.
+			navigation.dispatch({ source: undefined, ...data.action });
 		}
 	});
 

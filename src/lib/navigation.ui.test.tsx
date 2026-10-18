@@ -107,7 +107,10 @@ describe("useBackIntent", () => {
 		const event = createBeforeRemoveEvent();
 		await act(async () => mockBeforeRemoveListener?.(event));
 		expect(onBack).toHaveBeenCalledTimes(1);
-		expect(mockDispatch).toHaveBeenCalledWith(event.data.action);
+		expect(mockDispatch).toHaveBeenCalledWith({
+			source: undefined,
+			...event.data.action,
+		});
 	});
 
 	test("allows replacements without invoking the back intent", async () => {
@@ -117,7 +120,29 @@ describe("useBackIntent", () => {
 		event.data.action.type = "REPLACE";
 		await act(async () => mockBeforeRemoveListener?.(event));
 		expect(onBack).not.toHaveBeenCalled();
-		expect(mockDispatch).toHaveBeenCalledWith(event.data.action);
+		expect(mockDispatch).toHaveBeenCalledWith({
+			source: undefined,
+			...event.data.action,
+		});
+	});
+
+	test("preserves an existing action source and target when resuming removal", async () => {
+		const onBack = jest.fn(() => true);
+		await renderHook(() => useBackIntent(true, onBack));
+		const action = {
+			type: "POP_TO",
+			source: "parent-route",
+			target: "parent-stack",
+			payload: { name: "Home" },
+		};
+		await act(async () =>
+			mockBeforeRemoveListener?.({
+				data: { action },
+				preventDefault: jest.fn(),
+			}),
+		);
+		expect(onBack).not.toHaveBeenCalled();
+		expect(mockDispatch).toHaveBeenCalledWith(action);
 	});
 
 	test("does not intercept removal while the screen is unfocused", async () => {
