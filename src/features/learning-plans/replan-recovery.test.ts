@@ -2,7 +2,6 @@ import { describe, expect, test } from "vitest";
 import type { Id } from "#convex/_generated/dataModel";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import {
-	buildPlanGenerationAnswers,
 	LEARNING_TIME_REPLAN_PARAM,
 	shouldReplanAfterLearningTimes,
 } from "./replan-recovery";
@@ -45,10 +44,6 @@ const snapshot = (
 });
 
 describe("learning time replan recovery", () => {
-	test("replans without creation-time answers", () => {
-		expect(buildPlanGenerationAnswers(snapshot())).toEqual([]);
-	});
-
 	test("replans only for empty generated plans returning from learning times", () => {
 		expect(
 			shouldReplanAfterLearningTimes(snapshot(), LEARNING_TIME_REPLAN_PARAM),

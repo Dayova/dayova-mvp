@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
 	isSupportedTimetableFileType,
 	isValidTimetableFileSize,
-	MAX_TIMETABLE_FILE_BYTES,
 	normalizeTimetableFileType,
 } from "./timetablePolicy";
 
@@ -20,9 +19,9 @@ describe("timetable upload policy", () => {
 
 	it("rejects empty, non-finite, and oversized files", () => {
 		expect(isValidTimetableFileSize(1)).toBe(true);
-		expect(isValidTimetableFileSize(MAX_TIMETABLE_FILE_BYTES)).toBe(true);
+		expect(isValidTimetableFileSize(7_340_032)).toBe(true);
 		expect(isValidTimetableFileSize(0)).toBe(false);
 		expect(isValidTimetableFileSize(Number.NaN)).toBe(false);
-		expect(isValidTimetableFileSize(MAX_TIMETABLE_FILE_BYTES + 1)).toBe(false);
+		expect(isValidTimetableFileSize(7_340_033)).toBe(false);
 	});
 });

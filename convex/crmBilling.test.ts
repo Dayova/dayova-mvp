@@ -222,7 +222,7 @@ test("trial and verified purchase changes schedule CRM updates; identical snapsh
 	expect(await scheduledCrm()).toHaveLength(1);
 	expect(
 		await t.run((ctx) => ctx.db.query("crmStudentUpdates").take(5)),
-	).toMatchObject([{ revision: 4, status: "pending" }]);
+	).toMatchObject([{ status: "pending" }]);
 	vi.stubEnv("NOTION_CRM_MODE", "off");
 	await t.finishAllScheduledFunctions(vi.runAllTimers);
 });

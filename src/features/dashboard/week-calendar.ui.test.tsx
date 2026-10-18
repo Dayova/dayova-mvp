@@ -1,7 +1,6 @@
 import { beforeEach, expect, jest, test } from "@jest/globals";
 import { configure, fireEvent, render } from "@testing-library/react-native";
 import type { Id } from "#convex/_generated/dataModel";
-import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { CalendarWeekdays, WeekCalendar } from "./week-calendar";
 
 let mockReducedMotion = false;
@@ -33,7 +32,7 @@ beforeEach(() => {
 	configure({ defaultIncludeHiddenElements: true });
 });
 
-test("today stays blue when another date is selected; only that date gets a neutral circle", async () => {
+test("selects a day across the month boundary", async () => {
 	const onSelectDay = jest.fn();
 	const screen = await render(
 		<WeekCalendar
@@ -46,15 +45,6 @@ test("today stays blue when another date is selected; only that date gets a neut
 			onSelectDay={onSelectDay}
 		/>,
 	);
-	expect(screen.getByTestId("calendar-day-selection-2026-09-29")).toHaveStyle({
-		transform: [{ scale: 0 }],
-	});
-	expect(
-		screen.getByTestId("calendar-day-circle-2026-09-30").props.className,
-	).toContain("bg-button-neutral");
-	expect(screen.getByTestId("calendar-day-selection-2026-10-01")).toHaveStyle({
-		transform: [{ scale: 0 }],
-	});
 	expect(
 		screen.getByTestId("calendar-entry-dot-2026-09-28", {
 			includeHiddenElements: true,
@@ -72,7 +62,7 @@ test("weekday labels live outside the moving date row", async () => {
 		expect(screen.getByText(label)).toBeTruthy();
 });
 
-test("large text reflows weekdays beside uncapped, enlarged date circles", async () => {
+test("shows full weekday labels at large text sizes", async () => {
 	mockFontScale = 3;
 	const screen = await render(
 		<>
@@ -86,19 +76,10 @@ test("large text reflows weekdays beside uncapped, enlarged date circles", async
 			/>
 		</>,
 	);
-	expect(screen.queryByTestId("calendar-weekdays")).toBeNull();
 	expect(screen.getByText("Montag")).toBeTruthy();
-	expect(screen.getByTestId("calendar-day-size-2026-09-29")).toHaveStyle({
-		width: 132,
-		height: 132,
-	});
-	expect(
-		screen.getByTestId("calendar-day-number-2026-09-29").props
-			.maxFontSizeMultiplier,
-	).toBeUndefined();
 });
 
-test("selected today gets a white number on the branded gradient", async () => {
+test("marks today as the selected accessible day", async () => {
 	const screen = await render(
 		<WeekCalendar
 			weekKey="2026-09-28"
@@ -109,15 +90,6 @@ test("selected today gets a white number on the branded gradient", async () => {
 		/>,
 	);
 	expect(
-		screen.getByTestId("calendar-day-circle-2026-09-29").props.className,
-	).toContain("bg-primary");
-	expect(
-		screen.getByTestId("calendar-day-number-2026-09-29").props.className,
-	).toContain("text-white");
-	expect(screen.getByTestId("calendar-day-circle-2026-09-29")).toHaveStyle({
-		experimental_backgroundImage: `linear-gradient(to bottom, ${DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.colors[0]}, ${DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.colors[1]})`,
-	});
-	expect(
 		screen.getByRole("button", { name: /Dienstag, 29. September, Heute/ }).props
 			.accessibilityState.selected,
 	).toBe(true);
@@ -126,7 +98,7 @@ test("selected today gets a white number on the branded gradient", async () => {
 test.each([
 	"2026-09-29",
 	"2026-09-30",
-])("hides dots on selected %s and places other event dots just below the number", async (selectedDayKey) => {
+])("announces entries on selected %s", async (selectedDayKey) => {
 	const screen = await render(
 		<WeekCalendar
 			weekKey="2026-09-28"
@@ -140,14 +112,6 @@ test.each([
 		/>,
 	);
 	expect(
-		screen.getByTestId(`calendar-day-normal-${selectedDayKey}`),
-	).toHaveStyle({ opacity: 0 });
-	expect(
-		screen.getByTestId("calendar-entry-dot-2026-09-28", {
-			includeHiddenElements: true,
-		}).props.className,
-	).toContain("absolute bottom-1");
-	expect(
 		screen.getByRole("button", { name: /mit Einträgen/, selected: true }),
 	).toBeTruthy();
 });
@@ -155,7 +119,7 @@ test.each([
 test.each([
 	false,
 	true,
-])("selection animates unless reduced motion is %s", async (reduce) => {
+])("keeps selection accessible when reduced motion is %s", async (reduce) => {
 	mockReducedMotion = reduce;
 	const props = {
 		weekKey: "2026-09-28",
@@ -173,20 +137,9 @@ test.each([
 	expect(
 		screen.getByRole("button", { selected: true }).props.accessibilityLabel,
 	).toContain("30. September");
-	if (reduce) expect(mockTiming).not.toHaveBeenCalled();
-	else {
-		expect(mockTiming).toHaveBeenCalledWith(
-			0,
-			expect.objectContaining({ duration: 240 }),
-		);
-		expect(mockTiming).toHaveBeenCalledWith(
-			1,
-			expect.objectContaining({ duration: 240 }),
-		);
-	}
 });
 
-test("artwork preserves the real week without actions, scaling, or animation", async () => {
+test("keeps decorative calendar artwork non-interactive", async () => {
 	mockFontScale = 3;
 	const screen = await render(
 		<WeekCalendar
@@ -198,9 +151,5 @@ test("artwork preserves the real week without actions, scaling, or animation", a
 		/>,
 	);
 	expect(screen.queryAllByRole("button")).toHaveLength(0);
-	expect(screen.getByTestId("calendar-day-size-2026-10-05")).toHaveStyle({
-		width: 44,
-		height: 44,
-	});
 	expect(mockTiming).not.toHaveBeenCalled();
 });

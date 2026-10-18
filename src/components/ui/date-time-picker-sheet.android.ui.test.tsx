@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
 import { describe, expect, jest, test } from "@jest/globals";
 import { act, render } from "@testing-library/react-native";
+import type { ReactNode } from "react";
 import { DateTimePickerSheet } from "./date-time-picker-sheet.android";
 
 jest.mock("@expo/ui/jetpack-compose", () => {

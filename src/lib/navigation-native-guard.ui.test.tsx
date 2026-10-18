@@ -164,15 +164,9 @@ describe("native back protection across nested stacks", () => {
 
 	test("protects the native parent during an internal step, then permits the first-step exit", async () => {
 		await render(<App />);
-		expect(screen.getByTestId("parent-protection").props.children).toBe(
-			"protected",
-		);
 		await fireEvent.press(screen.getByText("Native parent back"));
 		expect(screen.getByText("Exam type step")).toBeTruthy();
 		expect(screen.queryByText("Home destination")).toBeNull();
-		expect(screen.getByTestId("parent-protection").props.children).toBe(
-			"unprotected",
-		);
 		await fireEvent.press(screen.getByText("Native parent back"));
 		expect(screen.getByText("Home destination")).toBeTruthy();
 	});

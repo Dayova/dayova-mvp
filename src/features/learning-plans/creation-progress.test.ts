@@ -3,37 +3,9 @@ import {
 	getExamEntryCreationProgress,
 	getLearningPlanCreationProgressPercentage,
 	getSafeLearningPlanCreationProgress,
-	LEARNING_PLAN_CREATION_STEPS,
-	LEARNING_PLAN_CREATION_TOTAL_STEPS,
 } from "./creation-progress";
 
 describe("learning-plan creation progress", () => {
-	test("advances visibly through the opening exam steps", () => {
-		expect(LEARNING_PLAN_CREATION_STEPS).toEqual({
-			examType: 1,
-			examSubject: 1.5,
-			examDate: 2,
-			examTopics: 3,
-			materialUpload: 3.5,
-			materialAnalysis: 4,
-			scopeConfirmation: 4.5,
-			planGeneration: 5,
-		});
-		expect(LEARNING_PLAN_CREATION_TOTAL_STEPS).toBe(5);
-
-		const openingProgress = [
-			LEARNING_PLAN_CREATION_STEPS.examType,
-			LEARNING_PLAN_CREATION_STEPS.examSubject,
-			LEARNING_PLAN_CREATION_STEPS.examDate,
-		];
-		expect(
-			openingProgress.every(
-				(progress, index) =>
-					index === 0 || progress > (openingProgress[index - 1] ?? 0),
-			),
-		).toBe(true);
-	});
-
 	test("turns intermediate progress into a changing percentage", () => {
 		expect(
 			(["examType", "examDetails", "basics"] as const)

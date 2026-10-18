@@ -1,6 +1,7 @@
 module.exports = {
 	preset: "jest-expo",
 	moduleNameMapper: {
+		"^@hugeicons/core-free-icons$": "<rootDir>/tests/adapters/hugeicons.cjs",
 		"^#convex/(.*)$": "<rootDir>/convex/$1",
 		"^\\.\\./\\.\\./modules/dayova-system-appearance$":
 			"<rootDir>/tests/mocks/dayova-system-appearance.cjs",

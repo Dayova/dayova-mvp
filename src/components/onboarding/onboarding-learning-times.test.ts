@@ -1,6 +1,5 @@
 import { describe, expect, test } from "vitest";
 import {
-	ONBOARDING_DURATION_OPTIONS,
 	dateForOnboardingTime,
 	formatOnboardingTime,
 	getOnboardingLearningTimeSummary,
@@ -12,11 +11,6 @@ import {
 } from "./onboarding-learning-times";
 
 describe("onboarding learning times", () => {
-	test("offers the agreed daily durations from 15 minutes through four hours", () => {
-		expect(ONBOARDING_DURATION_OPTIONS).toEqual([
-			15, 30, 45, 60, 90, 120, 150, 180, 210, 240,
-		]);
-	});
 	test("keeps a personally chosen late start instead of shifting it to a default", () => {
 		expect(
 			getOnboardingLearningTimeSummary({

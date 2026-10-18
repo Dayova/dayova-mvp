@@ -466,9 +466,6 @@ describe("AnalyticsScreen", () => {
 		expect(screen.queryByText("1 von 2 sicher belegt")).not.toBeOnTheScreen();
 		expect(screen.queryByText("1 unsicher")).not.toBeOnTheScreen();
 		expect(screen.getByText("Deine Prüfungsthemen")).toBeOnTheScreen();
-		expect(screen.getByTestId("topic-list").props.className).toContain(
-			"border-border",
-		);
 		expect(screen.getByText("Steigung erklären")).toBeOnTheScreen();
 		expect(screen.getByText("Achsenschnittpunkte bestimmen")).toBeOnTheScreen();
 		expect(screen.getByText("2 Antworten")).toBeOnTheScreen();
@@ -637,13 +634,6 @@ describe("AnalyticsScreen", () => {
 		expect(
 			knowledgeScreen.queryByText("Hohe Prüfungsrelevanz"),
 		).not.toBeOnTheScreen();
-		expect(
-			knowledgeScreen.getByTestId("topic-summary-card").props.className,
-		).toContain("border-border");
-		expect(
-			knowledgeScreen.getByText("Du kannst die Steigung vollständig erklären.")
-				.props.className,
-		).toContain("text-secondary-text");
 		expect(knowledgeScreen.getByText("Deine Antworten")).toBeOnTheScreen();
 		expect(knowledgeScreen.queryByText("1 von 2")).not.toBeOnTheScreen();
 		expect(
@@ -654,15 +644,9 @@ describe("AnalyticsScreen", () => {
 				"Wische nach links oder rechts, um die nächste Frage zu sehen.",
 			),
 		).not.toBeOnTheScreen();
-		const answerPager = knowledgeScreen.getByTestId("topic-answer-pager");
-		expect(answerPager.props.horizontal).toBe(true);
-		expect(answerPager.props.snapToInterval).toBeGreaterThan(0);
 		expect(
 			knowledgeScreen.getByText("Erkläre die Steigung."),
 		).toBeOnTheScreen();
-		expect(
-			knowledgeScreen.getByText("Erkläre die Steigung.").props.className,
-		).toContain("text-body-1");
 		expect(
 			knowledgeScreen.queryByText("Änderung von y."),
 		).not.toBeOnTheScreen();
@@ -690,10 +674,6 @@ describe("AnalyticsScreen", () => {
 			"layout",
 			{ nativeEvent: { layout: { height: 360 } } },
 		);
-		expect(
-			knowledgeScreen.getByTestId("topic-answer-card-item_1").props.style
-				.height,
-		).toBe(360);
 		expect(firstAnswerCard.props.accessibilityState).toEqual({
 			expanded: false,
 		});

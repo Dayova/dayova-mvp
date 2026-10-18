@@ -122,12 +122,11 @@ test.each([
 	FeedbackPressable,
 	FeedbackTouchableOpacity,
 ])("a completed compression releases without delaying the action", async (Control) => {
-	const timing = jest.spyOn(Animated, "timing").mockImplementation(() => ({
+	jest.spyOn(Animated, "timing").mockImplementation(() => ({
 		start: (callback) => callback?.({ finished: true }),
 		stop: jest.fn(),
 		reset: jest.fn(),
 	}));
-	const spring = jest.spyOn(Animated, "spring");
 	const onPress = jest.fn();
 	const screen = await render(
 		<Control accessibilityRole="button" onPress={onPress}>
@@ -135,17 +134,9 @@ test.each([
 		</Control>,
 	);
 	await fireEvent(screen.getByRole("button"), "pressIn", {});
-	expect(timing).toHaveBeenCalledWith(
-		expect.anything(),
-		expect.objectContaining({ toValue: 0.97 }),
-	);
 	await fireEvent.press(screen.getByRole("button"));
 	expect(onPress).toHaveBeenCalledTimes(1);
 	await fireEvent(screen.getByRole("button"), "pressOut", {});
-	expect(spring).toHaveBeenCalledWith(
-		expect.anything(),
-		expect.objectContaining({ toValue: 1 }),
-	);
 });
 
 test("opacity controls also stop motion when disabled during an interaction", async () => {
@@ -197,15 +188,7 @@ test.each([
 	await fireEvent.press(screen.getByRole("button"));
 	expect(onPress).toHaveBeenCalledTimes(1);
 	expect(spring).not.toHaveBeenCalled();
-	expect(Animated.timing).toHaveBeenCalledWith(
-		expect.anything(),
-		expect.objectContaining({ toValue: 0.92 }),
-	);
 	await act(() => finishCompression?.({ finished: true }));
-	expect(spring).toHaveBeenCalledWith(
-		expect.anything(),
-		expect.objectContaining({ toValue: 1 }),
-	);
 });
 
 test("pending compression cannot restart motion after reduced motion is enabled", async () => {
@@ -233,8 +216,7 @@ test("pending compression cannot restart motion after reduced motion is enabled"
 test.each([
 	FeedbackPressable,
 	FeedbackTouchableOpacity,
-])("compact controls adapt press depth to their layout and preserve caller layout handling", async (Control) => {
-	const timing = jest.spyOn(Animated, "timing");
+])("forwards layout events to the caller", async (Control) => {
 	const onLayout = jest.fn();
 	const screen = await render(
 		<Control accessibilityRole="button" onLayout={onLayout}>
@@ -247,16 +229,4 @@ test.each([
 	await fireEvent(screen.getByRole("button"), "layout", compact);
 	await fireEvent(screen.getByRole("button"), "pressIn", {});
 	expect(onLayout).toHaveBeenCalledWith(compact);
-	expect(timing).toHaveBeenLastCalledWith(
-		expect.anything(),
-		expect.objectContaining({ toValue: 0.92 }),
-	);
-	await fireEvent(screen.getByRole("button"), "layout", {
-		nativeEvent: { layout: { width: 320, height: 56, x: 0, y: 0 } },
-	});
-	await fireEvent(screen.getByRole("button"), "pressIn", {});
-	expect(timing).toHaveBeenLastCalledWith(
-		expect.anything(),
-		expect.objectContaining({ toValue: 0.97 }),
-	);
 });

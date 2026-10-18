@@ -115,9 +115,6 @@ function deferSync() {
 type RenderedApp = Awaited<ReturnType<typeof render>>;
 const expectVisible = (screen: RenderedApp) => {
 	expect(screen.queryByTestId("auth-bootstrap-mask")).toBeNull();
-	expect(
-		screen.getByTestId("auth-route-content").props.className,
-	).not.toContain("opacity-0");
 	expect(screen.getByText("Lernplan")).toBeOnTheScreen();
 };
 const openApp = async () => {

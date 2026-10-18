@@ -9,6 +9,8 @@ export default defineConfig({
 		},
 	},
 	test: {
+		// Bound CPU contention on many-core hosts; match the CI runner.
+		maxWorkers: 4,
 		environment: "edge-runtime",
 		globals: true,
 		include: [

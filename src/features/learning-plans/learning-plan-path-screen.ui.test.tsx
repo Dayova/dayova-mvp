@@ -1,13 +1,11 @@
 import { describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render } from "@testing-library/react-native";
-import { processColor } from "react-native";
 import {
 	getExamCountdownLabel,
 	SessionPreviewCard,
 } from "~/app/learning-plans/[planId]/index";
 import { LearningPathVisual } from "~/features/learning-plans/learning-path-visual";
 import type { PlanSession } from "~/features/learning-plans/types";
-import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 
 jest.mock("expo-router", () => ({
 	Stack: { Screen: () => null },
@@ -251,34 +249,10 @@ describe("learning-plan path", () => {
 		expect(screen.queryByText("Als Nächstes")).toBeNull();
 		expect(screen.queryByText("Vorschau")).toBeNull();
 		expect(screen.queryByText("4. Aug. · 17:20")).toBeNull();
-		const continuationPath = screen.getByTestId("adaptive-continuation-path");
-		expect(continuationPath.props.d).toContain(" H ");
-		expect(continuationPath.props.d).toContain(" Q ");
-		expect(continuationPath.props.d).toContain(" V ");
-		expect(continuationPath.props.d).not.toContain(" C ");
-		expect(
-			screen.getByTestId("adaptive-continuation-endpoint"),
-		).toBeOnTheScreen();
 		expect(screen.getByTestId("adaptive-continuation-card")).toBeOnTheScreen();
 		expect(screen.getByText("Dayova plant mit dir weiter")).toBeOnTheScreen();
 		expect(screen.getByText("18. August 2026")).toBeOnTheScreen();
 		expect(screen.getByText("Noch 14 Tage")).toBeOnTheScreen();
-		expect(
-			screen.getByTestId("learning-path-node-halo-session_current").props.stroke
-				.payload,
-		).toEqual(processColor(DAYOVA_DESIGN_SYSTEM.colors.path4));
-		expect(
-			screen.getByTestId("learning-path-node-puck-session_current").props.style
-				.width,
-		).toBe(60);
-		expect(
-			screen.getByTestId("learning-path-node-puck-session_current-face").props
-				.style.backgroundColor,
-		).toBe(DAYOVA_DESIGN_SYSTEM.colors.path1);
-		expect(
-			screen.getByTestId("learning-path-node-puck-session_preview").props.style
-				.width,
-		).toBe(52);
 		expect(
 			screen.queryByTestId("learning-path-node-halo-session_done"),
 		).toBeNull();

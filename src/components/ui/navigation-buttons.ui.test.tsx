@@ -74,10 +74,6 @@ test.each([
 	const button = screen.getByRole("button", { name: label });
 	await fireEvent(button, "pressIn", {});
 	expect(timing).toHaveBeenCalledTimes(1);
-	expect(timing).toHaveBeenCalledWith(
-		expect.anything(),
-		expect.objectContaining({ toValue: 0.92, duration: 90 }),
-	);
 	await fireEvent.press(button);
 	await fireEvent(button, "pressOut", {});
 	expect(onPressIn).toHaveBeenCalledTimes(1);

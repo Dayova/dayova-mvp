@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
-import type { SessionContentItem } from "./types";
 import { TheoryTopicPage } from "./theory-topic-page";
+import type { SessionContentItem } from "./types";
 
 jest.mock("react-native-reanimated", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
@@ -115,11 +115,9 @@ describe("TheoryTopicPage", () => {
 
 		const heading = screen.getByRole("header");
 		expect(heading).toHaveTextContent(item.theoryContent?.question ?? "");
-		expect(heading.props.className).not.toContain("bg-");
 		expect(screen.queryByText("IT-Schadensszenarien")).toBeNull();
 		expect(screen.queryByText("Leitfrage")).toBeNull();
 		expect(screen.queryByRole("button", { name: /vorlesen/i })).toBeNull();
-		expect(mockUseDayovaTheme).toHaveBeenCalledTimes(1);
 	});
 
 	test("starts every theory section collapsed and toggles independently", async () => {

@@ -45,7 +45,6 @@ test.each([
 		checked: selected,
 		disabled: false,
 	});
-	expect(screen.getByText(label).props.numberOfLines).toBeUndefined();
 	await fireEvent.press(screen.getByRole("radio"));
 	expect(onPress).toHaveBeenCalledTimes(1);
 	expect(triggerSelectionHaptic).toHaveBeenCalledTimes(selected ? 0 : 1);

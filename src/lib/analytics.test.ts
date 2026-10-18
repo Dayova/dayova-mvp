@@ -1,10 +1,9 @@
-import { describe, expect, expectTypeOf, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
 	type AnalyticsIdentityInput,
 	createValidationAnalytics,
 	getValidationFileSizeBucket,
 	isPostHogConfiguredForApiKey,
-	type ValidationEventName,
 	validationAnalyticsBeforeSend,
 } from "./analytics";
 
@@ -19,25 +18,6 @@ describe("validation analytics contract", () => {
 		expect(isPostHogConfiguredForApiKey("phc_production")).toBe(true);
 		expect(isPostHogConfiguredForApiKey("  ")).toBe(false);
 		expect(isPostHogConfiguredForApiKey()).toBe(false);
-	});
-
-	it("exposes validation events and bounded feature instrumentation", () => {
-		type ExpectedEventName =
-			| "feature_interaction"
-			| "app_screen_viewed"
-			| "onboarding_completed"
-			| "homework_created"
-			| "exam_created"
-			| "material_uploaded"
-			| "study_plan_generated"
-			| "study_slot_started"
-			| "study_slot_completed"
-			| "study_slot_partially_completed"
-			| "study_slot_missed"
-			| "plan_adjusted"
-			| "user_returned_next_day";
-
-		expectTypeOf<ValidationEventName>().toEqualTypeOf<ExpectedEventName>();
 	});
 
 	it("identifies with exactly the approved custom person properties", () => {
@@ -160,11 +140,14 @@ describe("validation analytics contract", () => {
 		analytics.identify(input);
 
 		expect(adapter.identify).toHaveBeenCalledWith("clerk_user_123", {});
-		expect(reportDiagnostic.mock.calls).toEqual([
-			[{ eventName: "$identify", propertyName: "avatar_url" }],
-			[{ eventName: "$identify", propertyName: "grade" }],
-			[{ eventName: "$identify", propertyName: "state" }],
-		]);
+		expect(reportDiagnostic.mock.calls).toHaveLength(3);
+		expect(reportDiagnostic.mock.calls).toEqual(
+			expect.arrayContaining([
+				[{ eventName: "$identify", propertyName: "avatar_url" }],
+				[{ eventName: "$identify", propertyName: "grade" }],
+				[{ eventName: "$identify", propertyName: "state" }],
+			]),
+		);
 		expect(JSON.stringify(reportDiagnostic.mock.calls)).not.toContain(
 			"private state",
 		);
@@ -645,10 +628,13 @@ describe("validation analytics contract", () => {
 			old_duration_minutes: 60,
 			new_duration_minutes: 30,
 		});
-		expect(reportDiagnostic.mock.calls).toEqual([
-			[{ eventName: "plan_adjusted", propertyName: "notes" }],
-			[{ eventName: "plan_adjusted", propertyName: "missed_reason" }],
-		]);
+		expect(reportDiagnostic.mock.calls).toHaveLength(2);
+		expect(reportDiagnostic.mock.calls).toEqual(
+			expect.arrayContaining([
+				[{ eventName: "plan_adjusted", propertyName: "notes" }],
+				[{ eventName: "plan_adjusted", propertyName: "missed_reason" }],
+			]),
+		);
 	});
 
 	it("is disabled without configuration or an identified user and resets on logout", () => {
@@ -732,15 +718,18 @@ describe("validation analytics contract", () => {
 			local_day_key: "2026-07-21",
 			onboarding_version: 1,
 		});
-		expect(reportDiagnostic.mock.calls).toEqual([
-			[{ eventName: "onboarding_completed", propertyName: "eas_channel" }],
-			[
-				{
-					eventName: "onboarding_completed",
-					propertyName: "eas_is_embedded_launch",
-				},
-			],
-		]);
+		expect(reportDiagnostic.mock.calls).toHaveLength(2);
+		expect(reportDiagnostic.mock.calls).toEqual(
+			expect.arrayContaining([
+				[{ eventName: "onboarding_completed", propertyName: "eas_channel" }],
+				[
+					{
+						eventName: "onboarding_completed",
+						propertyName: "eas_is_embedded_launch",
+					},
+				],
+			]),
+		);
 	});
 
 	it("before_send re-projects allowed events while preserving PostHog system properties", () => {

@@ -8,11 +8,63 @@ Dayova uses two complementary test environments:
   rendered component behavior and accessibility queries.
 - `pnpm test` runs both suites in that order.
 
-Prefer observable behavior over source scanning for new or modified contracts.
-Pure transition and validation logic should be extracted into small modules;
-native rendering, controls, labels, and lifecycle interactions belong in
-`*.ui.test.tsx`. Source-file tests remain appropriate for assets, configuration,
-and generated artifact contracts that have no runtime behavior to render.
+Tests protect observable behavior through a public interface. A test should
+survive an internal rename, a component wrapper, or an equivalent implementation.
+Pure/domain decisions belong in Vitest; controls, labels, accessibility, and
+lifecycle interactions belong in `*.ui.test.tsx`. Choose meaningful existing
+seams; extracting a trivial helper solely to give it a test adds coupling.
+
+For every test, identify the requirement, an independent expected result, and a
+plausible regression that would fail it. For example, German text repair must
+convert `Fuer` to `Für`; checking only already-correct German also passes if repair
+is deleted. When strengthening a weak test, introduce that regression temporarily,
+run the focused test, restore the implementation, and record the result.
+
+Avoid these patterns:
+
+- Comparing an exported constant to its current value, copying a formula into
+  the assertion, or treating a mocked result as proof that the mocked behavior
+  works. Checking the real consumer's handling of an external response is valid.
+- Checking classes, style/animation props, wrappers, child order, or source text
+  to claim visual correctness. Jest does not lay out a native screen. Use device
+  evidence for clipping, safe areas, motion, and visual composition.
+- Asserting private collaborator calls or replacing the behavior under test.
+  Public callbacks, navigation/RPC boundaries, and native API calls can be
+  observed when they are the module's contract. Keep app logic real where it
+  determines the outcome, and exercise errors/rejections at external boundaries.
+- Tests of parsers/helpers declared only in the test, assertion-free runtime
+  tests, early returns when an artifact is absent, and loops over results whose
+  non-empty precondition is never asserted.
+
+Configuration and artifact tests must exercise the consumer contract: resolve
+Expo config, execute a workflow guard, or check Git's actual byte filtering.
+Comparing independently maintained config surfaces can protect interoperability;
+matching shell snippets, filenames of deleted assets, or documentation wording
+does not prove behavior. Architectural policy belongs in ESLint RuleTester.
+Type-only assertions run under `pnpm typecheck`, outside runtime test cases.
+
+Review test quality independently from green checks: name what would break each
+new or changed test, and check that a harmless refactor would leave it green.
+Do not use test count or coverage percentage as a reason to retain a weak test.
+
+### Test and CI timing
+
+`node scripts/benchmark-checks.mjs` runs the CI commands sequentially: lint,
+typecheck, then three full test runs. It prints `DAYOVA_BENCHMARK` JSON records
+with elapsed seconds, trial, runtime, and exit status. A failed check stops the
+comparison. Keep raw logs outside Git; compare identical machines and commands,
+report each sample and the median, and separate cold transforms from warm runs.
+
+The manual EAS workflow `test-benchmark.yml` uses the same Node/pnpm versions and
+`linux-medium` runner as CI, with no deployment jobs. Run it against explicit
+commits using `eas workflow:run test-benchmark.yml --ref <sha> --non-interactive`.
+Report test time separately from install/queue time and the whole quality job;
+local timing cannot establish a remote CI speedup.
+
+Jest's Hugeicons adapter loads the real per-icon package assets on demand. It
+avoids loading the entire catalog while retaining the real Dayova icon wrapper
+and native SVG renderer. It does not replace icons with mock shapes. Native
+rendering/performance and visual correctness still require device evidence.
 
 Automated tests do not replace phone/tablet acceptance evidence. Auth session
 persistence, remote revocation, keyboard layout, and platform-native surfaces

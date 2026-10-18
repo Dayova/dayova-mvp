@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import type { ReactNode } from "react";
 import ForcedPasswordResetScreen from "~/app/session-tasks/reset-password";
 
 const mockReplace = jest.fn();

@@ -132,12 +132,6 @@ describe("PaywallScreen", () => {
 		expect(screen.getByText("SOFORT STARTEN")).toBeOnTheScreen();
 		expect(screen.queryByText("Meine Eltern zahlen")).toBeNull();
 		expect(screen.queryByText(/QR-Code|Zahlungslink/)).toBeNull();
-		expect(screen.getByTestId("store-subscription-action").props.style).toEqual(
-			expect.objectContaining({
-				backgroundColor: "#FFFFFF",
-				borderColor: "#FFFFFF",
-			}),
-		);
 		expect(
 			screen.getByRole("link", { name: "Konto verwalten" }),
 		).toBeOnTheScreen();

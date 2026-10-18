@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
-import { SEMANTIC_HEADING_MAX_FONT_SIZE_MULTIPLIER } from "~/lib/content-size-layout";
 import { TrialActivationScreen } from "./trial-activation-screen";
 
 const mockTrackFeature = jest.fn();
@@ -61,21 +60,6 @@ describe("TrialActivationScreen", () => {
 		mockInsets = { bottom: 34, left: 0, right: 0, top: 59 };
 	});
 
-	test.each([
-		["Android gesture navigation", 24, 24],
-		["Android three-button navigation", 24, 48],
-		["iOS", 59, 34],
-	])("keeps the scroll viewport clear of system bars on %s", async (_, top, bottom) => {
-		mockInsets = { top, bottom, left: 0, right: 0 };
-		const screen = await render(<TrialActivationScreen />);
-		const scroll = screen.getByTestId("trial-scroll-view");
-
-		expect(scroll).toHaveStyle({ marginTop: top, marginBottom: bottom });
-		expect(scroll.props.contentInsetAdjustmentBehavior).toBe("never");
-		expect(scroll.props.scrollEnabled).not.toBe(false);
-		expect(screen.getByRole("link", { name: "Datenschutz" })).toBeOnTheScreen();
-	});
-
 	test("updates the viewport when system insets change without losing an activation error", async () => {
 		mockActivateTrial.mockRejectedValueOnce(new Error("offline"));
 		const screen = await render(<TrialActivationScreen />);
@@ -86,42 +70,9 @@ describe("TrialActivationScreen", () => {
 
 		mockInsets = { top: 24, bottom: 48, left: 8, right: 12 };
 		await screen.rerender(<TrialActivationScreen />);
-
-		expect(screen.getByTestId("trial-scroll-view")).toHaveStyle({
-			marginTop: 24,
-			marginBottom: 48,
-			marginLeft: 8,
-			marginRight: 12,
-		});
 		expect(screen.getByRole("alert")).toHaveTextContent(
 			"Deine Testphase konnte nicht gestartet werden.",
 		);
-	});
-
-	test("uses shared semantic-heading scaling for the trial title", async () => {
-		const screen = await render(<TrialActivationScreen />);
-
-		expect(screen.getByText("So läuft deine Testphase")).toHaveProp(
-			"maxFontSizeMultiplier",
-			SEMANTIC_HEADING_MAX_FONT_SIZE_MULTIPLIER,
-		);
-	});
-
-	test("centers the complete trial explanation in one bounded block", async () => {
-		const screen = await render(<TrialActivationScreen />);
-		const scroll = screen.getByTestId("trial-scroll-view");
-
-		expect(scroll.props.contentContainerStyle).toMatchObject({
-			alignItems: "center",
-			justifyContent: "center",
-			paddingHorizontal: 24,
-		});
-		expect(screen.getByTestId("trial-content-block").props.className).toContain(
-			"max-w-[560px]",
-		);
-		expect(
-			screen.getByText("So läuft deine Testphase").props.className,
-		).toContain("text-center");
 	});
 
 	test("announces an activation failure through the shared error contract", async () => {
