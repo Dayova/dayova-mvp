@@ -64,9 +64,7 @@ function parseNpmrcSettingNames(content: string): Set<string> {
 		}
 
 		const separatorIndex = line.indexOf("=");
-		const name = (
-			separatorIndex === -1 ? line : line.slice(0, separatorIndex)
-		)
+		const name = (separatorIndex === -1 ? line : line.slice(0, separatorIndex))
 			.trim()
 			.replace(/\[\]$/, "")
 			.replaceAll("-", "")
@@ -95,10 +93,12 @@ describe("pnpm toolchain", () => {
 		expect(workspace.pmOnFail).toBe("error");
 		expect(workspace.virtualStoreDirMaxLength).toBe(40);
 		expect(workspace.allowBuilds).toEqual({
+			"@parcel/watcher": false,
 			"browser-tabs-lock": false,
 			"core-js": false,
 			esbuild: true,
 			"tesseract.js": false,
+			"unrs-resolver": false,
 		});
 		expect(workspace).not.toHaveProperty("onlyBuiltDependencies");
 		expect(workspace).not.toHaveProperty("packageManagerStrictVersion");

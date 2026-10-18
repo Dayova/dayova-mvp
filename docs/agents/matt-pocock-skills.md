@@ -17,7 +17,7 @@ The repository installs the upstream `mattpocock/skills` package and layers Dayo
 Do not run the raw upstream installer in the repository. Use the composition command:
 
 ```sh
-pnpm skills:update:matt -- --check
+pnpm skills:update:matt --check
 pnpm skills:update:matt
 git diff -- .agents/skills skills-lock.json patches/matt-pocock-skills scripts/skills-policy.mjs
 ```
@@ -26,7 +26,7 @@ The updater fetches upstream into an isolated temp workspace, keeps Dayova's cur
 
 Preserve upstream workflow improvements, then reapply and validate the local compatibility layer:
 
-1. If `pnpm skills:update:matt -- --check` reports changes, run `pnpm skills:update:matt` and inspect the full diff before accepting it.
+1. If `pnpm skills:update:matt --check` reports changes, run `pnpm skills:update:matt` and inspect the full diff before accepting it.
 2. If the patch queue no longer applies, reconcile upstream changes into `patches/matt-pocock-skills/dayova.patch` instead of hand-editing installed skill text.
 3. Preserve the curated Matt skill set. If upstream adds skills outside Dayova's curated set, leave them out unless the team explicitly decides to add a workflow. If upstream removes or renames one of Dayova's curated skills, replace it with the current upstream successor or remove it intentionally.
 4. Confirm `setup-matt-pocock-skills` still offers Linear as a first-class tracker and references `issue-tracker-linear.md`.

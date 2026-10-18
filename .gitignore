@@ -54,3 +54,10 @@ __pycache__/
 
 # Downloaded store binaries are release evidence, not source artifacts.
 /release/google-play/artifacts/*.aab
+
+# Shared knowledge lives in Notion; task reports/evidence are attached to PRs/issues.
+# Keep local generated artifacts in /.maestro/artifacts/ or temporary directories.
+/docs/evidence/
+/docs/pr-screenshots/
+/docs/qa/
+/docs/validation/

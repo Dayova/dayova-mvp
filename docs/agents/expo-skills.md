@@ -51,7 +51,7 @@ To check whether the repository matches the latest composed catalog without
 writing files, run:
 
 ```sh
-pnpm skills:update:expo -- --check
+pnpm skills:update:expo --check
 ```
 
 To validate the installed composed catalog without network access, run:

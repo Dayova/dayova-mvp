@@ -50,8 +50,7 @@ function getNativeControlMessageId(moduleName, controlName, filename) {
 		return "switch";
 	}
 	if (
-		(moduleName === "@expo/ui" ||
-			moduleName === "@expo/ui/jetpack-compose") &&
+		(moduleName === "@expo/ui" || moduleName === "@expo/ui/jetpack-compose") &&
 		controlName === "Switch" &&
 		!endsWithAny(filename, SWITCH_PATHS)
 	) {
@@ -65,9 +64,9 @@ function getNativeControlMessageId(moduleName, controlName, filename) {
 		return "dateTime";
 	}
 	if (
-		(moduleName === "@expo/ui" ||
-			moduleName === "@expo/ui/jetpack-compose") &&
-		controlName === "Picker"
+		(moduleName === "@expo/ui" || moduleName === "@expo/ui/jetpack-compose") &&
+		controlName === "Picker" &&
+		!filename.endsWith("/src/components/ui/duration-picker-sheet.tsx")
 	) {
 		return "picker";
 	}
@@ -148,8 +147,7 @@ export const noDirectNativeControls = {
 				"Keep platform-native controls behind Dayova design-system adapters.",
 		},
 		messages: {
-			dateTime:
-				"Import native date/time controls only in DateTimePickerSheet.",
+			dateTime: "Import native date/time controls only in DateTimePickerSheet.",
 			picker:
 				"Do not use a platform picker directly. Use SelectSheet or a documented Dayova adapter.",
 			switch: "Import Switch from ~/components/ui/switch.",
@@ -208,8 +206,7 @@ export const requireComposeHostTheme = {
 	meta: {
 		type: "problem",
 		docs: {
-			description:
-				"Require Dayova theme inputs on every Jetpack Compose Host.",
+			description: "Require Dayova theme inputs on every Jetpack Compose Host.",
 		},
 		messages: {
 			missingTheme:

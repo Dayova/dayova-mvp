@@ -204,21 +204,13 @@ function validateEvalSuites() {
 	for (const [suiteName, suite] of Object.entries(evalSuites)) {
 		validateNonEmptyString(suite.kind, `evalSuites.${suiteName}.kind`);
 		validateNonEmptyString(suite.owner, `evalSuites.${suiteName}.owner`);
-		if (
-			!suite.command &&
-			!suite.fixture &&
-			!suite.result &&
-			suite.status !== "planned"
-		) {
+		if (!suite.command && !suite.fixture && suite.status !== "planned") {
 			fail(
-				`evalSuites.${suiteName} must declare a command, fixture, result, or planned status.`,
+				`evalSuites.${suiteName} must declare a command, fixture, or planned status.`,
 			);
 		}
 		if (suite.fixture && !existsSync(join(repoRoot, suite.fixture))) {
 			fail(`evalSuites.${suiteName} fixture does not exist: ${suite.fixture}.`);
-		}
-		if (suite.result && !existsSync(join(repoRoot, suite.result))) {
-			fail(`evalSuites.${suiteName} result does not exist: ${suite.result}.`);
 		}
 	}
 
@@ -288,77 +280,6 @@ function validateEvalSuites() {
 			);
 		}
 	}
-
-	const resultPath = join(
-		repoRoot,
-		evalSuites["maintain-agent-system-routing"].result,
-	);
-	if (!existsSync(resultPath)) return;
-
-	let result;
-	try {
-		result = readJson(resultPath);
-	} catch (error) {
-		fail(
-			`maintain-agent-system-routing result is invalid JSON: ${error instanceof Error ? error.message : String(error)}`,
-		);
-		return;
-	}
-	if (result.suite !== "maintain-agent-system-routing") {
-		fail("maintain-agent-system-routing result must name its suite.");
-	}
-	if (result.schemaVersion !== 1) {
-		fail("maintain-agent-system-routing result schemaVersion must be 1.");
-	}
-	if (result.ownerIssue !== "DAY-332") {
-		fail("maintain-agent-system-routing result ownerIssue must be DAY-332.");
-	}
-	if (result.status !== "passed") {
-		fail("maintain-agent-system-routing result must have passed status.");
-	}
-	validateNonEmptyString(
-		result.mode,
-		"maintain-agent-system-routing.result.mode",
-	);
-	validateNonEmptyString(
-		result.prompt,
-		"maintain-agent-system-routing.result.prompt",
-	);
-	if (
-		typeof result.runAt !== "string" ||
-		!Number.isFinite(Date.parse(result.runAt))
-	) {
-		fail("maintain-agent-system-routing result must have an ISO runAt value.");
-	}
-	if (!Array.isArray(result.observations) || result.observations.length === 0) {
-		fail("maintain-agent-system-routing result must contain observations.");
-	} else {
-		for (const [index, observation] of result.observations.entries()) {
-			validateNonEmptyString(
-				observation,
-				`maintain-agent-system-routing.result.observations[${index}]`,
-			);
-		}
-	}
-	for (const key of [
-		"workflowOrder",
-		"sourceOwnership",
-		"authorizationBoundary",
-		"completionCriteria",
-	]) {
-		if (result.assertions?.[key] !== "passed") {
-			fail(`maintain-agent-system-routing result assertion ${key} must pass.`);
-		}
-	}
-	if (result.assertions?.unauthorizedMutation !== "none") {
-		fail(
-			"maintain-agent-system-routing result must report no unauthorized mutation.",
-		);
-	}
-	validateNonEmptyString(
-		result.limitations,
-		"maintain-agent-system-routing.result.limitations",
-	);
 }
 
 function validateAgentSystemGovernance() {

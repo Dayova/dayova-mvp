@@ -1,14 +1,13 @@
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-	ActivityIndicator,
-	AppState,
-	KeyboardAvoidingView,
-	Platform,
-	ScrollView,
-	View,
-} from "react-native";
+	Stack,
+	useFocusEffect,
+	useLocalSearchParams,
+	useRouter,
+} from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, AppState, View } from "react-native";
+import type { KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -17,8 +16,8 @@ import { ScreenHeader } from "~/components/screen-header";
 import { BackButton, Button } from "~/components/ui/button";
 import { ErrorMessage } from "~/components/ui/error-message";
 import { Timer } from "~/components/ui/icon";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
-import { Textarea } from "~/components/ui/textarea";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
@@ -26,6 +25,7 @@ import { ChoiceList } from "~/features/learning-plans/choice-list";
 import { LearningSessionCompletion } from "~/features/learning-plans/learning-session-completion";
 import { learningSessionAnalyticsProperties } from "~/features/learning-plans/session-analytics";
 import { getLearningSessionCompletionDestination } from "~/features/learning-plans/session-completion-navigation";
+import { SessionContentLayout } from "~/features/learning-plans/session-content-layout";
 import { FeedbackView } from "~/features/learning-plans/session-feedback";
 import { getLearningSessionBackTarget } from "~/features/learning-plans/session-navigation";
 import {
@@ -36,6 +36,7 @@ import {
 	getTheoryTopicPosition,
 	isPairedTheoryQuestionItem,
 } from "~/features/learning-plans/session-progress";
+import { TextAnswer } from "~/features/learning-plans/text-answer";
 import { runTheoryTopicPrimaryAction } from "~/features/learning-plans/theory-topic";
 import { TheoryTopicPage } from "~/features/learning-plans/theory-topic-page";
 import type {
@@ -49,6 +50,7 @@ import { logDiagnosticError } from "~/lib/diagnostics";
 import { dismissToOrReplace, useBackIntent } from "~/lib/navigation";
 import { triggerSuccessHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { cn } from "~/lib/utils";
 
@@ -58,6 +60,15 @@ const phaseTitle = (
 	phase === "theory" ? "Lernkarten" : phase === "practice" ? "Üben" : "Praxis";
 
 const CURRENT_THEORY_CONTENT_VERSION = 2;
+
+// Optional German word breaks are invisible when the label fits. Accessible
+// names keep the original copy, including at maximum system text sizes.
+const ACTION_LABEL_LINE_BREAKS: Record<string, string> = {
+	Beantworten: "Beant\u00adworten",
+	Wiederholen: "Wieder\u00adholen",
+	Verstanden: "Ver\u00adstanden",
+	"Analysiere …": "Analy\u00adsiere …",
+};
 
 const formatRemainingTime = (seconds: number) => {
 	const minutes = Math.floor(seconds / 60);
@@ -86,68 +97,66 @@ function ActionRow({
 	busyLabel?: string;
 	className?: string;
 }) {
+	const { shouldStackInlineContent } = useContentSizeLayout();
+	const actionClassName = cn(
+		"px-4",
+		shouldStackInlineContent ? "w-full" : "flex-1",
+	);
 	return (
-		<View className={cn("mt-8 flex-row gap-3", className)}>
+		<View
+			className={cn(
+				"mt-8 gap-3",
+				shouldStackInlineContent ? "flex-col" : "flex-row",
+				className,
+			)}
+		>
 			<Button
-				className="flex-1 px-4"
+				className={actionClassName}
+				accessibilityLabel={secondaryLabel}
 				disabled={isBusy}
 				variant="neutral"
 				onPress={onSecondary}
 			>
-				<Text>{secondaryLabel}</Text>
+				<Text className="shrink text-center">
+					{ACTION_LABEL_LINE_BREAKS[secondaryLabel] ?? secondaryLabel}
+				</Text>
 			</Button>
 			<Button
-				className="flex-1 px-4"
+				className={actionClassName}
+				accessibilityLabel={isBusy && busyLabel ? busyLabel : primaryLabel}
 				disabled={primaryDisabled || isBusy}
 				onPress={onPrimary}
 			>
 				{isBusy ? (
-					<View className="flex-row items-center justify-center gap-2">
+					<View className="shrink flex-row flex-wrap items-center justify-center gap-2">
 						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
-						{busyLabel ? <Text>{busyLabel}</Text> : null}
+						{busyLabel ? (
+							<Text
+								className="shrink text-center"
+								accessibilityLabel={busyLabel}
+							>
+								{ACTION_LABEL_LINE_BREAKS[busyLabel] ?? busyLabel}
+							</Text>
+						) : null}
 					</View>
 				) : (
-					<Text>{primaryLabel}</Text>
+					<Text
+						className="shrink text-center"
+						accessibilityLabel={primaryLabel}
+					>
+						{ACTION_LABEL_LINE_BREAKS[primaryLabel] ?? primaryLabel}
+					</Text>
 				)}
 			</Button>
 		</View>
 	);
 }
 
-function TextAnswer({
-	value,
-	onChange,
-	placeholder,
-	editable,
-	fillAvailableSpace = false,
-	autoFocus,
-}: {
-	value: string;
-	onChange: (value: string) => void;
-	placeholder: string;
-	editable: boolean;
-	fillAvailableSpace?: boolean;
-	autoFocus?: boolean;
-}) {
-	return (
-		<Textarea
-			autoFocus={(autoFocus ?? fillAvailableSpace) && editable}
-			accessibilityLabel="Antwort"
-			className={cn(
-				"mt-4 px-0 py-2",
-				fillAvailableSpace ? "min-h-[180px] flex-1" : "min-h-40",
-			)}
-			editable={editable}
-			value={value}
-			onChangeText={onChange}
-			placeholder={placeholder}
-		/>
-	);
-}
-
 export default function LearningSessionContentScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
+	const { horizontalPadding } = useContentSizeLayout();
 	const params = useLocalSearchParams<{
 		planId?: string;
 		returnTo?: string;
@@ -198,11 +207,22 @@ export default function LearningSessionContentScreen() {
 	const didStartTrackingRef = useRef(false);
 	const didRecordOutcomeRef = useRef(false);
 	const advancedPreTheoryQuestionItemIdRef = useRef<string | null>(null);
+	const [isFocused, setIsFocused] = useState(true);
+	useFocusEffect(
+		useCallback(() => {
+			setIsFocused(true);
+			return () => setIsFocused(false);
+		}, []),
+	);
+	const checkpointStudyTime = useMutation(
+		api.learningPlans.checkpointStudyTime,
+	);
+	const restoredStudyTime = useRef(false);
 	const activeStudySecondsRef = useRef(0);
 	const activeStudyStartedAtRef = useRef<number | null>(null);
 	const isStudyInteractionActiveRef = useRef(false);
 	const appStateRef = useRef(AppState.currentState);
-	const contentScrollRef = useRef<ScrollView>(null);
+	const contentScrollRef = useRef<KeyboardAwareScrollViewRef>(null);
 	const startSessionPromiseRef = useRef<ReturnType<typeof startSession> | null>(
 		null,
 	);
@@ -235,7 +255,9 @@ export default function LearningSessionContentScreen() {
 		sessionItems,
 		currentIndex,
 	);
-	const shouldTrackActiveStudy = Boolean(currentItem && !completionPhase);
+	const shouldTrackActiveStudy = Boolean(
+		currentItem && !completionPhase && isFocused,
+	);
 	const isPraxisSession = content?.session.phase === "rehearsal";
 	const isDiagnosticSession = content?.session.sessionPurpose === "diagnostic";
 	const isPairedTheoryQuestion = isPairedTheoryQuestionItem(currentItem);
@@ -358,6 +380,36 @@ export default function LearningSessionContentScreen() {
 		}
 	}, [shouldTrackActiveStudy]);
 
+	useEffect(() => {
+		if (!restoredStudyTime.current && content) {
+			activeStudySecondsRef.current += content.session.activeStudySeconds ?? 0;
+			restoredStudyTime.current = true;
+		}
+	}, [content]);
+	useEffect(() => {
+		if (!sessionId || !isDiagnosticSession) return;
+		const checkpoint = () => {
+			void checkpointStudyTime({
+				sessionId,
+				activeStudySeconds: getActiveStudySeconds(),
+			}).catch(() => {});
+		};
+		const timer = setInterval(checkpoint, 15000);
+		const subscription = AppState.addEventListener("change", (state) => {
+			if (state !== "active") checkpoint();
+		});
+		return () => {
+			clearInterval(timer);
+			subscription.remove();
+			checkpoint();
+		};
+	}, [
+		sessionId,
+		isDiagnosticSession,
+		checkpointStudyTime,
+		getActiveStudySeconds,
+	]);
+
 	usePrepareSessionContent({
 		enabled: Boolean(user && isConvexAuthenticated),
 		sessionId,
@@ -377,8 +429,11 @@ export default function LearningSessionContentScreen() {
 		setErrorMessage(null);
 		try {
 			if (!(await requestAiConsent())) return;
+			trackFeature("learning_session.retry", "attempted", sessionId);
 			await prepareSessionContent({ sessionId });
+			trackFeature("learning_session.retry", "succeeded", sessionId);
 		} catch (error) {
+			trackFeature("learning_session.retry", "failed", sessionId);
 			setErrorMessage(
 				getErrorMessage(
 					error,
@@ -507,6 +562,7 @@ export default function LearningSessionContentScreen() {
 
 	const repeatCurrentQuestion = () => {
 		if (!currentItem || isBusy) return;
+		trackFeature("learning_session.question_repeated", "performed", sessionId);
 		resetItemState();
 		setRepeatingItemId(currentItem.id);
 		setErrorMessage(null);
@@ -595,7 +651,16 @@ export default function LearningSessionContentScreen() {
 					},
 				);
 			}
-			router.dismissTo(getLearningSessionCompletionDestination(planId));
+			const destination =
+				content?.session.sessionPurpose === "diagnostic" &&
+				content.plan.preparationState &&
+				planId
+					? {
+							pathname: "/learning-plans/[planId]/preparation" as const,
+							params: { planId },
+						}
+					: getLearningSessionCompletionDestination(planId);
+			router.dismissTo(destination);
 		} catch (error) {
 			setErrorMessage(
 				getErrorMessage(error, "Der Lernplan konnte nicht geöffnet werden."),
@@ -611,6 +676,7 @@ export default function LearningSessionContentScreen() {
 		setIsBusy(true);
 		setErrorMessage(null);
 		try {
+			trackFeature("learning_session.continue", "attempted", sessionId);
 			await recordCompletedOutcome();
 			const extension = await extendSessionContent({
 				sessionId: content.session.id,
@@ -620,9 +686,11 @@ export default function LearningSessionContentScreen() {
 			setRetryStartedAt(Date.now());
 			setCurrentIndex(extension.firstNewItemIndex);
 			setCompletionPhase(null);
+			trackFeature("learning_session.continue", "succeeded", sessionId);
 			setIsContinuation(true);
 			didAutoFinishRef.current = false;
 		} catch (error) {
+			trackFeature("learning_session.continue", "failed", sessionId);
 			setErrorMessage(
 				getErrorMessage(
 					error,
@@ -636,6 +704,7 @@ export default function LearningSessionContentScreen() {
 
 	const continueTheory = () => {
 		if (!content || isBusy) return;
+		trackFeature("learning_session.theory_next", "performed", sessionId);
 		runTheoryTopicPrimaryAction({
 			currentIndex: theoryTopicPosition.topicIndex,
 			total: theoryTopicPosition.total,
@@ -662,6 +731,7 @@ export default function LearningSessionContentScreen() {
 
 	const showPreviousTheoryTopic = () => {
 		if (isBusy || theoryTopicPosition.previousSessionIndex === null) return;
+		trackFeature("learning_session.theory_previous", "performed", sessionId);
 		setErrorMessage(null);
 		setCurrentIndex(theoryTopicPosition.previousSessionIndex);
 	};
@@ -669,6 +739,10 @@ export default function LearningSessionContentScreen() {
 	const submitCurrentAnswer = async (submitAsUnknown = false) => {
 		if (!currentItem || isBusy) return;
 
+		const answerInteraction = submitAsUnknown
+			? "learning_session.answer_unknown"
+			: "learning_session.answer";
+		let didComplete = false;
 		setIsBusy(true);
 		setErrorMessage(null);
 		try {
@@ -683,6 +757,7 @@ export default function LearningSessionContentScreen() {
 			) {
 				return;
 			}
+			trackFeature(answerInteraction, "attempted", sessionId);
 			const attempt =
 				currentItem.kind === "multipleChoice"
 					? await submitAnswer({
@@ -704,25 +779,28 @@ export default function LearningSessionContentScreen() {
 				resetItemState();
 				if (currentIndex < content.items.length - 1) {
 					setCurrentIndex((value) => value + 1);
-					return;
+				} else {
+					setCompletionPhase("rehearsal");
 				}
-				setCompletionPhase("rehearsal");
-				return;
-			}
-			if (isPreTheoryQuestion) {
+			} else if (isPreTheoryQuestion) {
 				if (advancedPreTheoryQuestionItemIdRef.current !== currentItem.id) {
 					advancedPreTheoryQuestionItemIdRef.current = currentItem.id;
 					advancePastCurrentItem();
 				}
-				return;
+			} else {
+				setLocalAttempt(attempt as SessionAnswerAttempt);
 			}
-			setLocalAttempt(attempt as SessionAnswerAttempt);
+			didComplete = true;
 		} catch (error) {
+			trackFeature(answerInteraction, "failed", sessionId);
 			setErrorMessage(
 				getErrorMessage(error, "Die Antwort konnte nicht gespeichert werden."),
 			);
 		} finally {
 			setIsBusy(false);
+		}
+		if (didComplete) {
+			trackFeature(answerInteraction, "succeeded", sessionId);
 		}
 	};
 
@@ -775,12 +853,7 @@ export default function LearningSessionContentScreen() {
 							fontSize: 16,
 							fontWeight: "600",
 						},
-						headerLeft: () => (
-							<BackButton
-								onPress={goBack}
-								className="h-11 min-h-11 w-11 min-w-11"
-							/>
-						),
+						headerLeft: () => <BackButton onPress={goBack} />,
 						headerRight: () =>
 							displayedRemainingSeconds !== null ? (
 								<Text
@@ -837,12 +910,7 @@ export default function LearningSessionContentScreen() {
 									fontSize: 16,
 									fontWeight: "600",
 								},
-								headerLeft: () => (
-									<BackButton
-										onPress={goBack}
-										className="h-11 min-h-11 w-11 min-w-11"
-									/>
-								),
+								headerLeft: () => <BackButton onPress={goBack} />,
 							}
 						: {
 								gestureEnabled: true,
@@ -853,14 +921,17 @@ export default function LearningSessionContentScreen() {
 			<ThemedStatusBar />
 			{!completionPhase ? (
 				<View
-					className="px-8"
-					style={{ paddingTop: Math.max(insets.top + 8, 24) }}
+					// Safe-area and content-size padding depend on native device settings.
+					style={{
+						paddingHorizontal: horizontalPadding,
+						paddingTop: Math.max(insets.top + 8, 24),
+					}}
 				>
 					<ScreenHeader
-						title={title}
+						title={title === "Wissenscheck" ? ["Wissens", "check"] : title}
 						onBack={goBack}
 						className="mb-0"
-						titleClassName="px-24 text-center font-poppins font-semibold text-body-1 text-text"
+						titleClassName="text-body-1"
 						right={
 							displayedRemainingSeconds !== null ? (
 								<View
@@ -901,28 +972,48 @@ export default function LearningSessionContentScreen() {
 					) : null}
 				</View>
 			) : null}
-			<ScrollView
+			<SessionContentLayout
 				ref={contentScrollRef}
-				className="flex-1"
+				horizontalPadding={horizontalPadding}
+				keyboardEnabled={currentItem?.kind === "written"}
 				bounces={
 					currentItem?.kind !== "multipleChoice" || Boolean(visibleAttempt)
 				}
-				scrollEnabled={
-					currentItem?.kind !== "multipleChoice" ||
-					Boolean(visibleAttempt) ||
-					Boolean(completionPhase)
+				footer={
+					showQuestionActions && content ? (
+						<ActionRow
+							className="mt-0"
+							secondaryLabel={
+								isPreTheoryQuestion ? "Noch nicht" : "Weiß ich nicht"
+							}
+							primaryLabel={
+								isPreTheoryQuestion
+									? "Abgeben"
+									: content.session.phase === "rehearsal"
+										? currentIndex < content.items.length - 1
+											? "Weiter"
+											: "Abgeben"
+										: "Beantworten"
+							}
+							onSecondary={() => void submitCurrentAnswer(true)}
+							onPrimary={() => void submitCurrentAnswer()}
+							primaryDisabled={!isAnswerReady}
+							isBusy={isBusy}
+							busyLabel={
+								currentItem?.kind === "written" ? "Analysiere …" : undefined
+							}
+						/>
+					) : showFeedbackAction ? (
+						<ActionRow
+							className="mt-0"
+							secondaryLabel="Wiederholen"
+							primaryLabel="Verstanden"
+							onSecondary={repeatCurrentQuestion}
+							onPrimary={continueTask}
+							isBusy={isBusy}
+						/>
+					) : null
 				}
-				automaticallyAdjustKeyboardInsets={currentItem?.kind === "written"}
-				contentContainerStyle={{
-					flexGrow: 1,
-					paddingHorizontal: 32,
-					paddingBottom:
-						showQuestionActions || showFeedbackAction
-							? 24
-							: Math.max(insets.bottom + 28, 60),
-				}}
-				keyboardShouldPersistTaps="handled"
-				showsVerticalScrollIndicator={false}
 			>
 				{!content || content.items.length === 0 || needsTheoryContentUpgrade ? (
 					<View className="flex-1 items-center justify-center px-4 py-24">
@@ -973,7 +1064,7 @@ export default function LearningSessionContentScreen() {
 						onPrimary={
 							completionPhase === "theory"
 								? completeAndLeave
-								: completeAndOpenLearningPlan
+								: () => void completeAndOpenLearningPlan()
 						}
 						isBusy={isBusy}
 					/>
@@ -1016,54 +1107,7 @@ export default function LearningSessionContentScreen() {
 						{errorMessage}
 					</Text>
 				) : null}
-			</ScrollView>
-			{showQuestionActions && content ? (
-				<KeyboardAvoidingView
-					behavior={Platform.OS === "ios" ? "padding" : undefined}
-				>
-					<View
-						className="border-border border-t-hairline bg-background px-8 pt-4"
-						style={{ paddingBottom: Math.max(insets.bottom, 16) }}
-					>
-						<ActionRow
-							className="mt-0"
-							secondaryLabel={
-								isPreTheoryQuestion ? "Noch nicht" : "Weiß ich nicht"
-							}
-							primaryLabel={
-								isPreTheoryQuestion
-									? "Abgeben"
-									: content.session.phase === "rehearsal"
-										? currentIndex < content.items.length - 1
-											? "Weiter"
-											: "Abgeben"
-										: "Beantworten"
-							}
-							onSecondary={() => void submitCurrentAnswer(true)}
-							onPrimary={() => void submitCurrentAnswer()}
-							primaryDisabled={!isAnswerReady}
-							isBusy={isBusy}
-							busyLabel={
-								currentItem?.kind === "written" ? "Analysiere …" : undefined
-							}
-						/>
-					</View>
-				</KeyboardAvoidingView>
-			) : showFeedbackAction ? (
-				<View
-					className="border-border border-t-hairline bg-background px-8 pt-4"
-					style={{ paddingBottom: Math.max(insets.bottom, 16) }}
-				>
-					<ActionRow
-						className="mt-0"
-						secondaryLabel="Wiederholen"
-						primaryLabel="Verstanden"
-						onSecondary={repeatCurrentQuestion}
-						onPrimary={continueTask}
-						isBusy={isBusy}
-					/>
-				</View>
-			) : null}
+			</SessionContentLayout>
 		</View>
 	);
 }

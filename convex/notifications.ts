@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
+import { assertAccountActive } from "./accountDeletion";
 import { getDayKeyQueryVariants } from "./dayKeyVariants";
 import { throwUserFacingError } from "./errors";
 
@@ -73,6 +74,7 @@ const requireOwnerTokenIdentifier = async (ctx: QueryCtx | MutationCtx) => {
 	if (identity === null) {
 		throwUserFacingError("Nicht authentifiziert.");
 	}
+	await assertAccountActive(ctx, identity.tokenIdentifier);
 
 	return identity.tokenIdentifier;
 };
@@ -139,7 +141,11 @@ const formatEntryForBriefing = (entry: Doc<"dayEntries">) =>
 	entry.time ? `${entry.title} um ${entry.time}` : entry.title;
 
 const getDailyBriefingBody = (entries: Doc<"dayEntries">[]) => {
-	const activeEntries = entries.filter((entry) => entry.completed !== true);
+	const activeEntries = entries.filter(
+		(entry) =>
+			entry.completed !== true &&
+			!(isLearningEntry(entry) && entry.executionStatus === "started"),
+	);
 	if (activeEntries.length === 0) {
 		return "Heute stehen keine offenen Einträge an.";
 	}
@@ -713,7 +719,11 @@ export const syncDueNotifications = mutation({
 		}
 
 		for (const entry of entriesForToday) {
-			if (entry.completed === true) continue;
+			if (
+				entry.completed === true ||
+				(isLearningEntry(entry) && entry.executionStatus === "started")
+			)
+				continue;
 
 			const startMinutes =
 				entry.kind === "Leistungskontrolle"

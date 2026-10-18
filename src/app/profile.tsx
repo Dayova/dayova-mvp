@@ -1,7 +1,8 @@
 import { useRouter } from "expo-router";
 import { useMemo, useRef, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, Keyboard, View } from "react-native";
 import { ScreenHeader as Header } from "~/components/screen-header";
+import { AccountDeletionPasswordField } from "~/components/ui/account-deletion-password-field";
 import { Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import { ErrorMessage } from "~/components/ui/error-message";
@@ -25,11 +26,13 @@ import {
 } from "~/features/settings/settings-list";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { logDiagnosticError } from "~/lib/diagnostics";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 const isValidEmail = (value: string) => /\S+@\S+\.\S+/.test(value.trim());
 const isValidName = (value: string) => value.trim().length >= 2;
 
 export default function ProfileScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const { user } = useAuthSession();
 	const {
@@ -68,6 +71,7 @@ export default function ProfileScreen() {
 	const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 	const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 	const [deleteError, setDeleteError] = useState<string | null>(null);
+	const [deletionPassword, setDeletionPassword] = useState("");
 	const accountGateRef = useRef(createAsyncActionGate());
 	const handleLogout = () => {
 		void accountGateRef.current.run(async () => {
@@ -89,11 +93,13 @@ export default function ProfileScreen() {
 		});
 	};
 	const handleDeleteAccount = () => {
+		if (!deletionPassword) return;
 		void accountGateRef.current.run(async () => {
+			Keyboard.dismiss();
 			setDeleteError(null);
 			setIsDeletingAccount(true);
 			try {
-				await deleteAccount();
+				await deleteAccount(deletionPassword);
 				setShowDeleteConfirmation(false);
 			} catch (error) {
 				logDiagnosticError("Failed to delete account.", error, {
@@ -101,9 +107,12 @@ export default function ProfileScreen() {
 					level: "error",
 				});
 				setDeleteError(
-					"Das Konto konnte nicht vollständig gelöscht werden. Bitte versuche es erneut.",
+					error instanceof Error && error.message.trim()
+						? error.message
+						: "Die Kontolöschung konnte nicht bestätigt werden. Bitte versuche es erneut.",
 				);
 			} finally {
+				setDeletionPassword("");
 				setIsDeletingAccount(false);
 			}
 		});
@@ -167,6 +176,11 @@ export default function ProfileScreen() {
 				return;
 			}
 
+			try {
+				trackFeature("settings.profile_saved", "succeeded");
+			} catch {
+				// Analytics must not turn a saved profile into a failed update.
+			}
 			setFeedback({
 				tone: "success",
 				message: "Dein Profil wurde gespeichert.",
@@ -194,6 +208,11 @@ export default function ProfileScreen() {
 		setFeedback(null);
 		try {
 			await verifyProfileEmailCode(code);
+			try {
+				trackFeature("settings.profile_saved", "succeeded");
+			} catch {
+				// Analytics must not turn a verified email into a failed update.
+			}
 			setIsEmailVerificationPending(false);
 			setCode("");
 			setFeedback({
@@ -388,11 +407,23 @@ export default function ProfileScreen() {
 				title="Konto wirklich löschen?"
 				description="Dein Dayova-Konto und deine gespeicherten Daten werden dauerhaft gelöscht. Ein aktives App-Store-Abo musst du zusätzlich im App Store kündigen."
 				confirmLabel="Konto löschen"
+				confirmDisabled={!deletionPassword}
+				scrollable
 				isBusy={isDeletingAccount}
 				errorMessage={deleteError}
-				onClose={() => setShowDeleteConfirmation(false)}
+				onClose={() => {
+					setDeletionPassword("");
+					setDeleteError(null);
+					setShowDeleteConfirmation(false);
+				}}
 				onConfirm={handleDeleteAccount}
-			/>
+			>
+				<AccountDeletionPasswordField
+					value={deletionPassword}
+					onChangeText={setDeletionPassword}
+					disabled={isDeletingAccount}
+				/>
+			</ConfirmationSheet>
 		</>
 	);
 }

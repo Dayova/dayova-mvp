@@ -3,12 +3,37 @@ import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import { SubscriptionScreen } from "./subscription-screen";
 
+let mockReducedMotion = false;
+const mockAnimate = jest.fn();
+jest.mock("react-native-reanimated", () => ({
+	...jest.requireActual<Record<string, unknown>>(
+		"../../../tests/mocks/selection-reanimated.cjs",
+	),
+	useReducedMotion: () => mockReducedMotion,
+	withTiming: (value: number) => {
+		mockAnimate(value);
+		return value;
+	},
+	withSpring: (value: number) => {
+		mockAnimate(value);
+		return value;
+	},
+}));
+
+jest.mock("~/lib/theme", () => ({
+	useDayovaTheme: () => ({ colors: { text: "#1A1A1A" } }),
+}));
+
 jest.mock("~/components/ui/icon", () => ({
 	ArrowLeft: () => null,
 	Check: () => null,
 }));
 
 const mockBack = jest.fn();
+const mockTrackFeature = jest.fn();
+jest.mock("~/lib/use-feature-analytics", () => ({
+	useFeatureAnalytics: () => mockTrackFeature,
+}));
 const mockOpenExternalUrl = jest.fn(async (_url?: string) => true);
 
 jest.mock("~/lib/open-external-url", () => ({
@@ -41,7 +66,11 @@ const storePlans = [
 	},
 ];
 const mockGetPlans = jest.fn(async () => storePlans);
-const mockPurchase = jest.fn(async () => ({ status: "purchased" as const }));
+const mockPurchase = jest.fn<
+	(
+		plan: string,
+	) => Promise<{ status: "purchased" | "cancelled" | "notEntitled" }>
+>(async () => ({ status: "purchased" }));
 const mockRestore = jest.fn(async () => ({ status: "purchased" as const }));
 const mockRefreshPaidAccess = jest.fn(async () => true);
 let mockCanGoBack = true;
@@ -49,6 +78,7 @@ let mockStoreInitializationError: Error | null = null;
 
 beforeEach(() => {
 	jest.clearAllMocks();
+	mockReducedMotion = false;
 	mockGetPlans.mockResolvedValue(storePlans);
 	mockPurchase.mockResolvedValue({ status: "purchased" });
 	mockRestore.mockResolvedValue({ status: "purchased" });
@@ -117,6 +147,61 @@ jest.mock("~/lib/runtime-config", () => ({
 }));
 
 describe("SubscriptionScreen", () => {
+	test("plan selection has shared press feedback and commits only on a completed press", async () => {
+		const screen = await render(<SubscriptionScreen />);
+		const annual = await screen.findByRole("radio", {
+			name: /Jährlich, 155,88 €/,
+		});
+		const monthly = screen.getByRole("radio", { name: /Monatlich,/ });
+		mockAnimate.mockClear();
+		await fireEvent(annual, "pressIn");
+		expect(mockAnimate).toHaveBeenCalledWith(0.98);
+		expect(monthly).toBeChecked();
+		await fireEvent(annual, "pressOut");
+		expect(monthly).toBeChecked();
+		await fireEvent.press(annual);
+		expect(annual).toBeChecked();
+		expect(screen.getAllByRole("radio", { checked: true })).toHaveLength(1);
+		expect(mockPurchase).not.toHaveBeenCalled();
+	});
+
+	test("rapid plan changes work with reduced motion without triggering a purchase", async () => {
+		mockReducedMotion = true;
+		const screen = await render(<SubscriptionScreen />);
+		await screen.findByRole("radio", { name: /Jährlich, 155,88 €/ });
+		for (const name of [/Monatlich,/, /Jährlich,/, /Monatlich,/]) {
+			const plan = screen.getByRole("radio", { name });
+			await fireEvent(plan, "pressIn");
+			await fireEvent(plan, "pressOut");
+			await fireEvent.press(plan);
+			expect(plan).toBeChecked();
+			expect(screen.getAllByRole("radio", { checked: true })).toHaveLength(1);
+		}
+		expect(mockAnimate).not.toHaveBeenCalled();
+		expect(mockPurchase).not.toHaveBeenCalled();
+	});
+
+	test("locks plan selection while a purchase is pending", async () => {
+		let finishPurchase: (() => void) | undefined;
+		mockPurchase.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					finishPurchase = () => resolve({ status: "purchased" });
+				}),
+		);
+		const screen = await render(<SubscriptionScreen />);
+		await screen.findByRole("radio", { name: /Jährlich, 155,88 €/ });
+		await fireEvent.press(screen.getByTestId("subscription-checkout-button"));
+		await waitFor(() =>
+			expect(screen.getByTestId("subscription-plan-annual")).toBeDisabled(),
+		);
+		mockAnimate.mockClear();
+		await fireEvent(screen.getByTestId("subscription-plan-annual"), "pressIn");
+		await fireEvent.press(screen.getByTestId("subscription-plan-annual"));
+		expect(screen.getByTestId("subscription-plan-monthly")).toBeChecked();
+		expect(mockAnimate).not.toHaveBeenCalled();
+		await act(async () => finishPurchase?.());
+	});
 	test.each([
 		"failed",
 		"empty",
@@ -175,9 +260,50 @@ describe("SubscriptionScreen", () => {
 
 		await waitFor(() => {
 			expect(mockPurchase).toHaveBeenCalledWith("annual");
+			expect(mockTrackFeature).toHaveBeenCalledWith(
+				"subscription.checkout",
+				"attempted",
+				undefined,
+				"annual",
+			);
+			expect(mockTrackFeature).toHaveBeenCalledWith(
+				"subscription.checkout",
+				"succeeded",
+				undefined,
+				"annual",
+			);
 			expect(mockRefreshPaidAccess).toHaveBeenCalledTimes(1);
 			expect(mockReplace).toHaveBeenCalledWith("/subscription-success");
 		});
+	});
+
+	test("records cancellation without reporting a successful purchase", async () => {
+		mockPurchase.mockResolvedValue({ status: "cancelled" });
+		const screen = await render(<SubscriptionScreen />);
+		await screen.findByRole("radio", { name: /Jährlich, 155,88 €/ });
+		await act(async () =>
+			fireEvent.press(screen.getByTestId("subscription-checkout-button")),
+		);
+		expect(mockTrackFeature.mock.calls).toEqual([
+			["subscription.checkout", "attempted", undefined, "monthly"],
+			["subscription.checkout", "cancelled", undefined, "monthly"],
+		]);
+		expect(mockRefreshPaidAccess).not.toHaveBeenCalled();
+	});
+	test("keeps unconfirmed access pending instead of claiming paid conversion", async () => {
+		mockRefreshPaidAccess.mockResolvedValue(false);
+		const screen = await render(<SubscriptionScreen />);
+		await screen.findByRole("radio", { name: /Jährlich, 155,88 €/ });
+		await act(async () =>
+			fireEvent.press(screen.getByTestId("subscription-checkout-button")),
+		);
+		expect(mockTrackFeature).toHaveBeenLastCalledWith(
+			"subscription.checkout",
+			"pending",
+			undefined,
+			"monthly",
+		);
+		expect(mockReplace).not.toHaveBeenCalled();
 	});
 
 	test("restores existing purchases without replaying the welcome screen", async () => {

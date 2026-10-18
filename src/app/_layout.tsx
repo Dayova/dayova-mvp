@@ -15,6 +15,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AnalyticsIdentity } from "~/components/analytics-identity";
 import { AuthNavigationGate } from "~/components/auth-navigation-gate";
+import { FeatureAnalyticsProvider } from "~/components/feature-analytics-provider";
 import { NotificationSync } from "~/components/notification-sync";
 import { TrialReminderSync } from "~/components/trial-reminder-sync";
 import {
@@ -96,6 +97,14 @@ function AppNavigator() {
 								presentation: "card",
 							}}
 						/>
+						<Stack.Screen
+							name="personal-subjects"
+							options={{
+								contentStyle: { backgroundColor: colors.background },
+								gestureEnabled: true,
+								presentation: "card",
+							}}
+						/>
 					</Stack>
 				</AuthNavigationGate>
 			</View>
@@ -167,6 +176,9 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 						{/* Native sessions persist by default; there is no per-login opt-out.
 						    Decision: https://app.notion.com/p/3a02e87228bf81bf9f65f6214759a770 */}
 						<ClerkProvider
+							// Dayova renders custom JS auth screens. Clerk 4 exposes this
+							// switch instead of the old TurboModule startup workaround.
+							__experimental_disableNativeClientSync
 							publishableKey={
 								env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? ""
 							}
@@ -185,7 +197,9 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 														<AccessProvider>
 															<AiConsentProvider>
 																<AnalyticsIdentity />
-																<AppNavigator />
+																<FeatureAnalyticsProvider>
+																	<AppNavigator />
+																</FeatureAnalyticsProvider>
 															</AiConsentProvider>
 														</AccessProvider>
 													</AuthProvider>

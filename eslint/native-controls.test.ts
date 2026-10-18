@@ -18,21 +18,23 @@ ruleTester.run(
 	{
 		valid: [
 			{
+				code: 'import { Picker } from "@expo/ui";',
+				filename: "/repo/src/components/ui/duration-picker-sheet.tsx",
+			},
+			{
 				code: 'import { Switch } from "@expo/ui";',
 				filename: "/repo/src/components/ui/switch.ios.tsx",
 			},
 			{
 				code: 'import { DatePickerDialog } from "@expo/ui/jetpack-compose";',
-				filename:
-					"/repo/src/components/ui/date-time-picker-sheet.android.tsx",
+				filename: "/repo/src/components/ui/date-time-picker-sheet.android.tsx",
 			},
 			{
 				code: `
 					import * as Compose from "@expo/ui/jetpack-compose";
 					const picker = <Compose.DatePickerDialog />;
 				`,
-				filename:
-					"/repo/src/components/ui/date-time-picker-sheet.android.tsx",
+				filename: "/repo/src/components/ui/date-time-picker-sheet.android.tsx",
 			},
 		],
 		invalid: [

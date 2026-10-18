@@ -53,6 +53,11 @@ kind of truth and one governed path from upstream input to repository behavior.
    Completion means the reviewed PR, four artifacts, validations, and Linear
    acceptance evidence all identify the same delivered scope.
 
+Keep maintained evaluation cases in the repository. Publish dated validation
+reports and sanitized execution traces on the owning PR or Linear issue; keep
+local capture artifacts ignored or temporary. Never treat an old passing report
+as validation of the current commit.
+
 ## Source routes
 
 - Matt Pocock: follow

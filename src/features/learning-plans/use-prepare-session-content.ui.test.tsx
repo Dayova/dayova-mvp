@@ -64,7 +64,7 @@ describe("session content preparation", () => {
 			expect(mockUseAction).toHaveBeenCalledWith("qualityEnsureSessionContent");
 			expect(mockRequestAiConsent).toHaveBeenCalledTimes(1);
 			expect(mockEnsureSessionContent).toHaveBeenCalledWith({
-				sessionId: "session_1",
+				sessionId: "session_1" as Id<"learningPlanSessions">,
 			});
 		});
 		expect(mockEnsureSessionContent).toHaveBeenCalledTimes(1);
@@ -80,9 +80,7 @@ describe("session content preparation", () => {
 
 		await render(<PreparationProbe enabled onError={onError} />);
 
-		await waitFor(() =>
-			expect(mockRequestAiConsent).toHaveBeenCalledTimes(1),
-		);
+		await waitFor(() => expect(mockRequestAiConsent).toHaveBeenCalledTimes(1));
 		expect(mockEnsureSessionContent).not.toHaveBeenCalled();
 		expect(onError).not.toHaveBeenCalled();
 	});

@@ -2,20 +2,16 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-	ActivityIndicator,
-	Pressable,
-	ScrollView,
-	StyleSheet,
-	View,
-} from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Button } from "~/components/ui/button";
-import { ArrowLeft, Check } from "~/components/ui/icon";
+import { BackButton, Button } from "~/components/ui/button";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
+import { Check } from "~/components/ui/icon";
 import { SupportContact } from "~/components/ui/support-contact";
 import { Text } from "~/components/ui/text";
 import { useAccess } from "~/context/AccessContext";
 import { useAuthSession } from "~/context/AuthContext";
+import { SubscriptionPlanCard } from "~/features/access/subscription-plan-card";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import { openExternalUrl } from "~/lib/open-external-url";
@@ -26,6 +22,7 @@ import {
 } from "~/lib/revenuecat-client";
 import { env } from "~/lib/runtime-config";
 import { getStoreName, getStoreSubscribeLabel } from "~/lib/store-subscription";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 const SUBSCRIPTION_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 const BRAND_COLORS = DAYOVA_DESIGN_SYSTEM.colors;
@@ -34,8 +31,6 @@ const WHITE = BRAND_COLORS.light1;
 const gradientFillStyle = StyleSheet.absoluteFill;
 // Fixed native design tokens keep Fabric descendants on this branded light
 // surface legible when the system theme changes.
-const primaryTextStyle = { color: BRAND_COLORS.text };
-const secondaryTextStyle = { color: BRAND_COLORS.secondaryText };
 const errorSurfaceStyle = { backgroundColor: BRAND_COLORS.surface };
 const errorTextStyle = { color: BRAND_COLORS.destructive };
 const onDarkActionTextStyle = { color: WHITE };
@@ -45,8 +40,6 @@ const subscribeActionStyle = {
 	backgroundColor: BRAND_COLORS.text,
 	borderColor: BRAND_COLORS.border,
 };
-const planGlassSurface = "rgba(255, 255, 255, 0.8)";
-const planGlassBorder = "rgba(255, 255, 255, 0.6)";
 const STORE_NAME = getStoreName(process.env.EXPO_OS);
 
 const getStoreApiKey = () =>
@@ -74,6 +67,7 @@ const getPlanDescription = (
 };
 
 export function SubscriptionScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const { refreshPaidAccess } = useAccess();
@@ -155,22 +149,42 @@ export function SubscriptionScreen() {
 	) => {
 		if (storeActionInFlightRef.current) return;
 		storeActionInFlightRef.current = true;
+		const interaction =
+			successPath === "/home"
+				? "subscription.restore"
+				: "subscription.checkout";
+		const billingPeriod =
+			interaction === "subscription.checkout"
+				? selectedBillingPeriod
+				: undefined;
+		trackFeature(interaction, "attempted", undefined, billingPeriod);
 		setError(null);
 		setIsPurchasing(true);
 		try {
 			const result = await action();
-			if (result.status === "cancelled") return;
+			if (result.status === "cancelled") {
+				trackFeature(interaction, "cancelled", undefined, billingPeriod);
+				return;
+			}
 			if (result.status !== "purchased") {
+				trackFeature(interaction, "failed", undefined, billingPeriod);
 				setError("Für dieses Store-Konto wurde kein aktives Abo gefunden.");
 				return;
 			}
 			const active = await refreshPaidAccess();
+			trackFeature(
+				interaction,
+				active ? "succeeded" : "pending",
+				undefined,
+				billingPeriod,
+			);
 			if (active) router.replace(successPath);
 			else
 				setError(
 					"Der Kauf wird noch bestätigt. Bitte tippe gleich auf „Käufe wiederherstellen“.",
 				);
 		} catch (purchaseError) {
+			trackFeature(interaction, "failed", undefined, billingPeriod);
 			logDiagnosticError(
 				"Unable to complete RevenueCat action.",
 				purchaseError,
@@ -242,20 +256,10 @@ export function SubscriptionScreen() {
 				}}
 			>
 				<View className="px-7 pt-4">
-					<Pressable
+					<BackButton
 						accessibilityHint="Kehrt zur vorherigen Seite zurück."
-						accessibilityLabel="Zurück"
-						accessibilityRole="button"
-						className="h-12 w-12 items-center justify-center rounded-full bg-white active:opacity-80"
-						hitSlop={8}
 						onPress={goBack}
-					>
-						<ArrowLeft
-							size={21}
-							color={BRAND_COLORS.primaryStrong}
-							strokeWidth={2.4}
-						/>
-					</Pressable>
+					/>
 
 					<View className="gap-3 pt-5 pb-6" testID="subscription-page-intro">
 						<Text
@@ -276,22 +280,40 @@ export function SubscriptionScreen() {
 						<Benefit>Auf allen Geräten mit deinem Dayova-Konto nutzbar</Benefit>
 					</View>
 
-					<View className="gap-3">
-						<PlanCard
+					<View className="gap-3" accessibilityRole="radiogroup">
+						<SubscriptionPlanCard
+							disabled={isLoadingPlans || isPurchasing || !annualPlan}
 							description={getPlanDescription(annualPlan, isLoadingPlans)}
 							label="Jährlich"
 							price={annualPlan?.price ?? "—"}
 							selected={selectedBillingPeriod === "annual"}
 							testID="subscription-plan-annual"
-							onPress={() => setSelectedBillingPeriod("annual")}
+							onPress={() => {
+								trackFeature(
+									"subscription.plan_selected",
+									"performed",
+									undefined,
+									"annual",
+								);
+								setSelectedBillingPeriod("annual");
+							}}
 						/>
-						<PlanCard
+						<SubscriptionPlanCard
+							disabled={isLoadingPlans || isPurchasing || !monthlyPlan}
 							description={getPlanDescription(monthlyPlan, isLoadingPlans)}
 							label="Monatlich"
 							price={monthlyPlan?.price ?? "—"}
 							selected={selectedBillingPeriod === "monthly"}
 							testID="subscription-plan-monthly"
-							onPress={() => setSelectedBillingPeriod("monthly")}
+							onPress={() => {
+								trackFeature(
+									"subscription.plan_selected",
+									"performed",
+									undefined,
+									"monthly",
+								);
+								setSelectedBillingPeriod("monthly");
+							}}
 						/>
 					</View>
 
@@ -359,7 +381,7 @@ export function SubscriptionScreen() {
 						24 Stunden vor Ablauf in {STORE_NAME} kündigst.
 					</Text>
 
-					<Pressable
+					<FeedbackPressable
 						accessibilityRole="button"
 						accessibilityState={{
 							busy: isPurchasing,
@@ -374,12 +396,12 @@ export function SubscriptionScreen() {
 						<Text className="text-body-4 text-white underline">
 							Käufe wiederherstellen
 						</Text>
-					</Pressable>
+					</FeedbackPressable>
 
 					<View className="flex-row flex-wrap justify-center gap-x-4 gap-y-2 px-2 pt-5">
 						<SupportContact context="Abonnement">
 							{({ onPress, busy, buttonRef }) => (
-								<Pressable
+								<FeedbackPressable
 									ref={buttonRef}
 									accessibilityLabel="Support"
 									accessibilityRole="button"
@@ -391,7 +413,7 @@ export function SubscriptionScreen() {
 									<Text className="text-body-4 text-white underline">
 										Support
 									</Text>
-								</Pressable>
+								</FeedbackPressable>
 							)}
 						</SupportContact>
 						<LegalLink
@@ -427,74 +449,6 @@ function Benefit({ children }: { children: string }) {
 	);
 }
 
-function PlanCard({
-	description,
-	label,
-	onPress,
-	price,
-	selected,
-	testID,
-}: {
-	description: string;
-	label: string;
-	onPress: () => void;
-	price: string;
-	selected: boolean;
-	testID: string;
-}) {
-	return (
-		<Pressable
-			accessibilityLabel={`${label}, ${price}. ${description}`}
-			accessibilityRole="radio"
-			accessibilityState={{ checked: selected }}
-			className="rounded-3xl border px-5 py-4"
-			onPress={onPress}
-			testID={testID}
-			// Selection changes native glass border and shadow values at runtime.
-			style={{
-				backgroundColor: planGlassSurface,
-				borderColor: selected ? BRAND_COLORS.text : planGlassBorder,
-				borderWidth: 1,
-				boxShadow: selected
-					? "inset 0 1px 0 rgba(255, 255, 255, 0.64), 0 8px 20px rgba(9, 54, 78, 0.1)"
-					: "inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 6px 16px rgba(9, 54, 78, 0.08)",
-			}}
-		>
-			<View className="flex-row items-start">
-				<View className="flex-1 pr-3">
-					<Text className="font-semibold text-body-2" style={primaryTextStyle}>
-						{label}
-					</Text>
-					<Text className="mt-1 text-body-4" style={secondaryTextStyle}>
-						{description}
-					</Text>
-				</View>
-				<View className="items-end gap-2">
-					<Text className="font-semibold text-body-2" style={primaryTextStyle}>
-						{price}
-					</Text>
-					<View
-						accessible={false}
-						className="h-6 w-6 items-center justify-center rounded-full border"
-						// The selected radio state drives both native colors.
-						style={{
-							backgroundColor: selected
-								? BRAND_COLORS.text
-								: BRAND_COLORS.surface,
-							borderColor: selected ? BRAND_COLORS.text : BRAND_COLORS.border,
-						}}
-						testID={`${testID}-indicator`}
-					>
-						{selected ? (
-							<Check size={14} color={WHITE} strokeWidth={3} />
-						) : null}
-					</View>
-				</View>
-			</View>
-		</Pressable>
-	);
-}
-
 function LegalLink({
 	label,
 	onOpen,
@@ -505,13 +459,13 @@ function LegalLink({
 	url?: string;
 }) {
 	return (
-		<Pressable
+		<FeedbackPressable
 			accessibilityRole="link"
 			disabled={!url}
 			hitSlop={8}
 			onPress={() => void onOpen(url)}
 		>
 			<Text className="text-body-4 text-white underline">{label}</Text>
-		</Pressable>
+		</FeedbackPressable>
 	);
 }

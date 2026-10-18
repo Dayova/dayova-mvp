@@ -20,19 +20,19 @@ ruleTester.run("no-interface-shadows", noInterfaceShadows as Rule.RuleModule, {
 			filename: "/repo/src/components/onboarding/intro-tasks-artwork.tsx",
 		},
 		{
-			code: 'const card = <View className={`bg-card shadow-none hover:shadow-none ${extra}`} />;',
+			code: `const card = <View className={\`bg-card shadow-none hover:shadow-none \${extra}\`} />;`,
 			filename: "/repo/src/components/ui/surface.tsx",
 		},
 		{
-			code: 'const artwork = <View className={`shadow shadow-lg`} />;',
+			code: "const artwork = <View className={`shadow shadow-lg`} />;",
 			filename: "/repo/src/components/onboarding/intro-tasks-artwork.tsx",
 		},
 		{
-			code: 'const card = <View className={`shadow-${"none"}`} />;',
+			code: `const card = <View className={\`shadow-\${"none"}\`} />;`,
 			filename: "/repo/src/components/ui/surface.tsx",
 		},
 		{
-			code: 'const card = <View className={`shadow${"-none"}`} />;',
+			code: `const card = <View className={\`shadow\${"-none"}\`} />;`,
 			filename: "/repo/src/components/ui/surface.tsx",
 		},
 	],
@@ -48,12 +48,12 @@ ruleTester.run("no-interface-shadows", noInterfaceShadows as Rule.RuleModule, {
 			errors: [{ messageId: "shadow" }],
 		},
 		{
-			code: 'const card = <View className={`shadow-lg`} />;',
+			code: "const card = <View className={`shadow-lg`} />;",
 			filename: "/repo/src/components/ui/surface.tsx",
 			errors: [{ messageId: "shadow" }],
 		},
 		{
-			code: 'const card = <View className={`${extra} shadow bg-card`} />;',
+			code: `const card = <View className={\`\${extra} shadow bg-card\`} />;`,
 			filename: "/repo/src/components/ui/surface.tsx",
 			errors: [{ messageId: "shadow" }],
 		},

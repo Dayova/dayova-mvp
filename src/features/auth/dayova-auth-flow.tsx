@@ -13,19 +13,18 @@ import {
 	type FlatList,
 	Image,
 	Keyboard,
-	KeyboardAvoidingView,
 	type NativeScrollEvent,
 	type NativeSyntheticEvent,
 	Platform,
-	Pressable,
 	ScrollView,
 	TextInput,
+	type TextInputInstance,
 	type TextInputProps,
 	useWindowDimensions,
 	View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Animated, {
-	Easing,
 	FadeIn,
 	FadeInDown,
 	FadeInUp,
@@ -35,10 +34,10 @@ import Animated, {
 	useAnimatedStyle,
 	useReducedMotion,
 	useSharedValue,
-	withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IntroUploadArtwork } from "~/components/intro-upload-artwork";
+import { IntroCalendarArtwork } from "~/components/onboarding/intro-calendar-artwork";
 import { IntroLearningPathArtwork } from "~/components/onboarding/intro-learning-path-artwork";
 import {
 	getIntroDotWidth,
@@ -54,6 +53,7 @@ import {
 } from "~/components/onboarding/onboarding-flow";
 import {
 	dateForOnboardingTime,
+	formatOnboardingDuration,
 	formatOnboardingTime,
 	getDefaultOnboardingLearningStartTime,
 	getOnboardingLearningTimeSummary,
@@ -72,9 +72,9 @@ import {
 	DateTimePickerSheet,
 } from "~/components/ui/date-time-picker-sheet";
 import { ErrorMessage } from "~/components/ui/error-message";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import {
-	ArrowLeft,
 	Atom,
 	CalendarDays,
 	Check,
@@ -84,13 +84,16 @@ import {
 	GreekHelmet,
 	Palette,
 	Plant,
-	Route2,
 	SquareRootSquare,
 	Telescope,
 } from "~/components/ui/icon";
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
 import { PasswordVisibilityButton } from "~/components/ui/password-visibility-button";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
+import {
+	SelectionControl,
+	SelectionText,
+} from "~/components/ui/selection-control";
 import { SnapCarouselSelector } from "~/components/ui/snap-carousel-selector";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
@@ -106,7 +109,6 @@ import {
 	getOnboardingStep,
 	getOnboardingStepPath,
 	getOnboardingStepProgress,
-	ONBOARDING_PROFILE_STEPS,
 	type OnboardingProfileStep,
 	type OnboardingStepId,
 } from "~/features/auth/onboarding-route-model";
@@ -132,10 +134,6 @@ import { cn } from "~/lib/utils";
 // Password icons represent the current visibility state across this auth flow.
 // Decision: https://app.notion.com/p/39f2e87228bf81c28511c0728134c774
 const COLORS = DAYOVA_DESIGN_SYSTEM.colors;
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-const STUDY_DAY_SELECTION_DURATION_MS = 180;
-const STUDY_DAY_PRESS_IN_DURATION_MS = 80;
-const STUDY_DAY_PRESS_OUT_DURATION_MS = 120;
 const QUESTION_TITLE_STYLE = DAYOVA_DESIGN_SYSTEM.typography.headline.h2;
 const ONBOARDING_CONTENT_TOP_SPACING = 40;
 const CODE_LENGTH = 6;
@@ -160,35 +158,48 @@ type PasswordResetStage =
 
 type IntroStep = {
 	kind: "intro";
-	id: "intro-upload" | "intro-path" | "intro-tasks";
+	id: "intro-upload" | "intro-path" | "intro-tasks" | "intro-calendar";
+	eyebrow: string;
 	title: string;
 	description: string;
-	illustration: "path" | "tasks" | "upload";
+	illustration: "path" | "tasks" | "upload" | "calendar";
 };
 
 const INTRO_STEPS = [
 	{
 		kind: "intro",
 		id: "intro-tasks",
-		title: "Du weißt, was heute wirklich zählt.",
+		eyebrow: "DEIN START MIT DAYOVA",
+		title: "Schluss mit Aufschieben.",
 		description:
-			"Ein machbarer nächster Lernschritt bringt dich jeden Tag näher an deine Prüfung.",
+			"Du musst nicht alles auf einmal schaffen. Dayova zeigt dir, was als Nächstes dran ist – damit du leichter anfängst und dranbleibst.",
 		illustration: "tasks",
 	},
 	{
 		kind: "intro",
-		id: "intro-upload",
-		title: "Deine Prüfung. Alles an einem Ort.",
+		id: "intro-calendar",
+		eyebrow: "01 · DEINE LERNZEITEN",
+		title: "Lernzeiten festlegen.",
 		description:
-			"Lade Aufgaben, Mitschriften und Lernmaterial hoch. Dayova verbindet sie mit deinem echten Prüfungsziel.",
+			"Sag Dayova, wann du Zeit hast. Dein Lernplan passt in deinen Alltag – mit festen Lernzeiten, die dir beim Dranbleiben helfen.",
+		illustration: "calendar",
+	},
+	{
+		kind: "intro",
+		id: "intro-upload",
+		eyebrow: "02 · DEIN SCHULMATERIAL",
+		title: "Schulmaterial hochladen.",
+		description:
+			"Fotografiere deine Mitschriften oder lade Arbeitsblätter hoch. So lernst du mit dem Stoff, der für deine Prüfung zählt.",
 		illustration: "upload",
 	},
 	{
 		kind: "intro",
 		id: "intro-path",
-		title: "Aus Stoff wird ein klarer Weg.",
+		eyebrow: "03 · DEIN LERNPLAN",
+		title: "Lernplan erstellen lassen.",
 		description:
-			"Dayova erkennt Themen und Lücken und ordnet sie so, dass du nicht mehr raten musst, wo du anfängst.",
+			"Dayova macht aus deinem Stoff einen Lernplan – passend zu deinen Lernzeiten. Du weißt, was du wann lernst.",
 		illustration: "path",
 	},
 ] as const satisfies readonly IntroStep[];
@@ -301,23 +312,26 @@ export function AuthChoiceScreen() {
 						/>
 					</Animated.View>
 
-					<Text
+					<FeedbackPressable
 						accessibilityRole="button"
 						accessibilityLabel="Dayova, App-Informationen"
 						onPress={() => setShowReleaseInformation(true)}
-						allowFontScaling={false}
-						className="mt-6 text-center font-poppins font-semibold text-heading-1 text-text"
-						style={{
-							fontSize: responsiveLayout.brandFontSize,
-							lineHeight: responsiveLayout.brandLineHeight,
-							width: Math.min(
-								Math.max(width - 16, 0),
-								contentSizeLayout.containerMaxWidth,
-							),
-						}}
 					>
-						Dayova
-					</Text>
+						<Text
+							allowFontScaling={false}
+							className="mt-6 text-center font-poppins font-semibold text-heading-1 text-text"
+							style={{
+								fontSize: responsiveLayout.brandFontSize,
+								lineHeight: responsiveLayout.brandLineHeight,
+								width: Math.min(
+									Math.max(width - 16, 0),
+									contentSizeLayout.containerMaxWidth,
+								),
+							}}
+						>
+							Dayova
+						</Text>
+					</FeedbackPressable>
 					<Text
 						allowFontScaling={false}
 						className="mt-4 text-center font-poppins text-body-2 text-secondary-text"
@@ -447,19 +461,22 @@ export function AuthChoiceScreen() {
 							alignItems: "center",
 						}}
 					>
-						<Text
+						<FeedbackPressable
 							accessibilityRole="button"
 							accessibilityLabel="Dayova, App-Informationen"
 							onPress={() => setShowReleaseInformation(true)}
-							className="text-center font-poppins font-semibold text-text"
-							style={{
-								fontSize: scaled(AUTH_CHOICE_FRAME.title.fontSize),
-								lineHeight: scaled(AUTH_CHOICE_FRAME.title.lineHeight),
-								includeFontPadding: false,
-							}}
 						>
-							Dayova
-						</Text>
+							<Text
+								className="text-center font-poppins font-semibold text-text"
+								style={{
+									fontSize: scaled(AUTH_CHOICE_FRAME.title.fontSize),
+									lineHeight: scaled(AUTH_CHOICE_FRAME.title.lineHeight),
+									includeFontPadding: false,
+								}}
+							>
+								Dayova
+							</Text>
+						</FeedbackPressable>
 					</Animated.View>
 
 					<Animated.View
@@ -588,7 +605,7 @@ export function OnboardingStepScreen({ stepId }: { stepId: OnboardingStepId }) {
 	const [passwordVisible, setPasswordVisible] = useState(false);
 	const [isRegistering, setIsRegistering] = useState(false);
 	const [renderError, setRenderError] = useState<string | null>(null);
-	const textInputRef = useRef<TextInput | null>(null);
+	const textInputRef = useRef<TextInputInstance | null>(null);
 	const registrationActionGateRef = useRef(createAsyncActionGate());
 	const {
 		startRegistrationWithEmail,
@@ -598,6 +615,7 @@ export function OnboardingStepScreen({ stepId }: { stepId: OnboardingStepId }) {
 	} = useAuthFlow();
 	const {
 		answers,
+		setAnswer,
 		progressOrigin,
 		setRegistrationStage,
 		setProgressOrigin,
@@ -679,12 +697,17 @@ export function OnboardingStepScreen({ stepId }: { stepId: OnboardingStepId }) {
 			return;
 		}
 		updateError(null);
-		const decision = getOnboardingStepDecision(step, answers);
+		const confirmedAnswers =
+			step.kind === "range" && !answers.studyTime.trim()
+				? { ...answers, studyTime: "30" }
+				: answers;
+		const decision = getOnboardingStepDecision(step, confirmedAnswers);
 		if (step.kind === "text") Keyboard.dismiss();
 		if (decision.error) {
 			updateError(decision.error);
 			return;
 		}
+		if (confirmedAnswers !== answers) setAnswer("studyTime", "30");
 		if (step.kind === "text" && step.field === "email") {
 			await registrationActionGateRef.current.run(async () => {
 				try {
@@ -717,10 +740,7 @@ export function OnboardingStepScreen({ stepId }: { stepId: OnboardingStepId }) {
 				}}
 			/>
 			<ThemedStatusBar />
-			<KeyboardAvoidingView
-				behavior={Platform.OS === "ios" ? "padding" : undefined}
-				className="flex-1"
-			>
+			<KeyboardAvoidingView behavior="padding" className="flex-1">
 				<View
 					className="flex-1 px-6"
 					// The routed question clears the runtime device safe-area inset.
@@ -752,7 +772,7 @@ export function OnboardingStepScreen({ stepId }: { stepId: OnboardingStepId }) {
 export function OnboardingVerificationScreen() {
 	const insets = useSafeAreaInsets();
 	const [verificationCode, setVerificationCode] = useState("");
-	const verificationInputRef = useRef<TextInput | null>(null);
+	const verificationInputRef = useRef<TextInputInstance | null>(null);
 	const verificationSubmittedRef = useRef(false);
 	const { verifyEmailCode, resendVerification, isLoading } = useAuthFlow();
 	const {
@@ -1042,24 +1062,12 @@ function IntroStepView({
 					showsVerticalScrollIndicator={false}
 					// Runtime safe-area and content-size values define the scrollable frame.
 					contentContainerStyle={{
-						alignItems: "center",
+						alignItems: "stretch",
 						paddingBottom: Math.max(bottomInset + 20, 28),
 						paddingHorizontal: contentSizeLayout.horizontalPadding,
 					}}
 				>
-					<View className="w-full">
-						<IntroArtwork accessibleLayout item={item} />
-					</View>
-
-					<Text
-						accessibilityRole="header"
-						className="mt-6 max-w-[350px] text-center font-poppins font-semibold text-heading-2 text-text"
-					>
-						{item.title}
-					</Text>
-					<Text className="mt-3 max-w-[340px] text-center font-poppins text-body-3 text-secondary-text">
-						{item.description}
-					</Text>
+					<IntroPageContent item={item} accessibleLayout />
 
 					<View className="mt-8 w-full">
 						<IntroDots
@@ -1079,10 +1087,6 @@ function IntroStepView({
 								{isLastIntro ? "Meinen Start personalisieren" : "Weiter"}
 							</Text>
 						</Button>
-						<Text className="mt-3 text-center font-poppins text-body-5 text-secondary-text">
-							Danach {ONBOARDING_PROFILE_STEPS.length} kurze, bewusste Schritte
-							· etwa 2 Minuten
-						</Text>
 					</View>
 				</ScrollView>
 			</View>
@@ -1098,15 +1102,6 @@ function IntroStepView({
 				paddingBottom: Math.max(bottomInset + 20, 28),
 			}}
 		>
-			<View className="items-center px-6">
-				<View className="flex-row items-center gap-2 rounded-full bg-primary/10 px-4 py-2">
-					<Route2 size={16} color={COLORS.primary} strokeWidth={2.2} />
-					<Text className="font-poppins font-semibold text-body-5 text-primary">
-						SO FUNKTIONIERT DAYOVA
-					</Text>
-				</View>
-			</View>
-
 			<Animated.FlatList
 				ref={listRef}
 				testID="intro-pager"
@@ -1129,29 +1124,18 @@ function IntroStepView({
 				onScroll={scrollHandler}
 				onMomentumScrollEnd={handleScrollEnd}
 				onScrollEndDrag={handleScrollEnd}
-				renderItem={({ item }) => {
-					// Pager width and artwork height are measured runtime geometry.
-					return (
-						<View style={{ width }} className="items-center px-6 pt-4">
-							<IntroArtwork compactHeight={isCompactHeight} item={item} />
-
-							<Text
-								accessibilityRole="header"
-								className={cn(
-									"max-w-[350px] text-center font-poppins font-semibold text-text",
-									isCompactHeight
-										? "mt-4 text-heading-2"
-										: "mt-6 text-heading-1",
-								)}
-							>
-								{item.title}
-							</Text>
-							<Text className="mt-3 max-w-[340px] text-center font-poppins text-body-3 text-secondary-text">
-								{item.description}
-							</Text>
+				renderItem={({ item }) => (
+					// Pager pages follow the runtime viewport width; content scrolls on short phones.
+					<ScrollView
+						style={{ width }}
+						contentContainerStyle={{ flexGrow: 1 }}
+						showsVerticalScrollIndicator={false}
+					>
+						<View className="flex-1 px-6 pb-6">
+							<IntroPageContent item={item} compactHeight={isCompactHeight} />
 						</View>
-					);
-				}}
+					</ScrollView>
+				)}
 			/>
 
 			<View className="px-6">
@@ -1170,50 +1154,67 @@ function IntroStepView({
 				>
 					<Text>{isLastIntro ? "Meinen Start personalisieren" : "Weiter"}</Text>
 				</Button>
-				<Text className="mt-3 text-center font-poppins text-body-5 text-secondary-text">
-					Danach {ONBOARDING_PROFILE_STEPS.length} kurze, bewusste Schritte ·
-					etwa 2 Minuten
-				</Text>
 			</View>
 		</View>
 	);
 }
 
-function IntroArtwork({
+function IntroPageContent({
+	item,
 	accessibleLayout = false,
 	compactHeight = false,
-	item,
 }: {
+	item: IntroStep;
 	accessibleLayout?: boolean;
 	compactHeight?: boolean;
-	item: IntroStep;
 }) {
-	const containerHeight = accessibleLayout ? 184 : compactHeight ? 220 : 286;
-
+	const { usableWidth } = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
+	const artworkWidth = Math.min(usableWidth, 380);
+	const artworkHeight = accessibleLayout ? 360 : compactHeight ? 340 : 400;
 	return (
-		<View
-			className="w-full items-center justify-center overflow-hidden rounded-[32px] bg-system-subtle"
-			// Runtime content-size mode chooses the bounded decorative-artwork height.
-			style={{ height: containerHeight }}
-		>
-			{item.illustration === "upload" ? (
-				<IntroUploadArtwork
-					width={accessibleLayout ? 210 : compactHeight ? 246 : 280}
-					height={accessibleLayout ? 190 : compactHeight ? 222 : 254}
-				/>
-			) : null}
-			{item.illustration === "path" ? (
-				<IntroLearningPathArtwork
-					width={accessibleLayout ? 250 : compactHeight ? 284 : 330}
-					height={accessibleLayout ? 168 : compactHeight ? 208 : 254}
-				/>
-			) : null}
-			{item.illustration === "tasks" ? (
-				<IntroTasksArtwork
-					width={accessibleLayout ? 262 : compactHeight ? 294 : 345}
-					height={accessibleLayout ? 178 : compactHeight ? 200 : 236}
-				/>
-			) : null}
+		<View className="mx-auto w-full max-w-[480px] flex-1">
+			<Text className="mb-4 font-poppins font-semibold text-body-4 text-primary-strong">
+				{item.eyebrow}
+			</Text>
+			<Text
+				accessibilityRole="header"
+				className="font-poppins font-semibold text-heading-1 text-text"
+			>
+				{item.title}
+			</Text>
+			<Text className="mt-3 font-poppins text-body-3 text-secondary-text">
+				{item.description}
+			</Text>
+			<View className="mt-5 flex-1 items-center justify-center">
+				<View className="w-full items-center justify-center">
+					{item.illustration === "tasks" ? (
+						<IntroTasksArtwork
+							width={artworkWidth - 16}
+							height={artworkHeight}
+						/>
+					) : null}
+					{item.illustration === "calendar" ? (
+						<IntroCalendarArtwork
+							width={artworkWidth - 24}
+							height={artworkHeight}
+						/>
+					) : null}
+					{item.illustration === "upload" ? (
+						<IntroUploadArtwork
+							width={artworkWidth - 24}
+							height={artworkHeight}
+						/>
+					) : null}
+					{item.illustration === "path" ? (
+						<IntroLearningPathArtwork
+							width={artworkWidth - 24}
+							height={artworkHeight}
+						/>
+					) : null}
+				</View>
+			</View>
 		</View>
 	);
 }
@@ -1325,7 +1326,7 @@ function QuestionStepView({
 	error: string | null;
 	busy: boolean;
 	passwordVisible: boolean;
-	inputRef: RefObject<TextInput | null>;
+	inputRef: RefObject<TextInputInstance | null>;
 	bottomInset: number;
 	onBack: () => boolean;
 	onContinue: () => void;
@@ -1339,7 +1340,12 @@ function QuestionStepView({
 	const reducedMotion = useReducedMotion();
 	const isWheelStep = step.kind === "wheel";
 	const stepDecision = getOnboardingStepDecision(step, answers);
-	const canContinue = isOnboardingStepReady(step, answers);
+	const canContinue = isOnboardingStepReady(
+		step,
+		step.kind === "range" && !answers.studyTime.trim()
+			? { ...answers, studyTime: "30" }
+			: answers,
+	);
 	const currentAnswer = "field" in step ? answers[step.field] : "";
 	const localValidationError =
 		step.kind === "text" && currentAnswer.trim() && step.field !== "password"
@@ -1434,13 +1440,12 @@ function QuestionStepView({
 				disabled={busy}
 			/>
 
-			<ScrollView
+			<KeyboardSafeScrollView
+				enabled={step.kind === "text"}
 				key={step.id}
 				testID="onboarding-question-scroll"
 				className="flex-1"
-				keyboardShouldPersistTaps="handled"
 				contentInsetAdjustmentBehavior="never"
-				showsVerticalScrollIndicator={false}
 				// Runtime safe-area and layout mode reserve space for the primary action.
 				contentContainerStyle={{
 					flexGrow: 1,
@@ -1506,6 +1511,16 @@ function QuestionStepView({
 							<StudyTimeFactContent
 								title={step.title}
 								studyTime={answers.studyTime}
+								source={
+									step.id === "learning-routine-fact"
+										? "Quelle: Cepeda et al. (2006) · verteiltes Lernen"
+										: undefined
+								}
+								body={
+									step.id === "learning-routine-fact"
+										? step.description
+										: undefined
+								}
 							/>
 						) : null}
 						{step.kind === "payoff" ? <PayoffAnswer /> : null}
@@ -1593,7 +1608,7 @@ function QuestionStepView({
 					</View>
 				</Animated.View>
 				{shouldStackInlineContent ? primaryAction : null}
-			</ScrollView>
+			</KeyboardSafeScrollView>
 
 			{shouldStackInlineContent ? null : primaryAction}
 			{isLearningTimeStep ? (
@@ -1624,7 +1639,7 @@ export function LoginScreen() {
 	const [verificationCode, setVerificationCode] = useState("");
 	const [verificationMode, setVerificationMode] = useState(false);
 	const [passwordResetMode, setPasswordResetMode] = useState(false);
-	const verificationInputRef = useRef<TextInput | null>(null);
+	const verificationInputRef = useRef<TextInputInstance | null>(null);
 	const submittedRef = useRef(false);
 	const loginActionGateRef = useRef(createAsyncActionGate());
 	const {
@@ -1828,7 +1843,7 @@ export function LoginScreen() {
 						</View>
 
 						<View className="w-full flex-row justify-end">
-							<Pressable
+							<FeedbackPressable
 								accessibilityRole="button"
 								accessibilityLabel="Passwort vergessen"
 								accessibilityHint="Öffnet den Ablauf zum Zurücksetzen deines Passworts"
@@ -1846,7 +1861,7 @@ export function LoginScreen() {
 								<Text className="text-right font-poppins text-body-4 text-primary">
 									Passwort vergessen?
 								</Text>
-							</Pressable>
+							</FeedbackPressable>
 						</View>
 
 						{error ? (
@@ -1884,7 +1899,7 @@ export function LoginScreen() {
 							<Text className="text-center font-poppins text-body-3 text-text">
 								Du hast keinen Account?
 							</Text>
-							<Pressable
+							<FeedbackPressable
 								accessibilityLabel="Jetzt registrieren"
 								accessibilityRole="button"
 								hitSlop={8}
@@ -1893,7 +1908,7 @@ export function LoginScreen() {
 								<Text className="text-center font-poppins text-body-3 text-primary">
 									Jetzt Registrieren
 								</Text>
-							</Pressable>
+							</FeedbackPressable>
 						</View>
 					</View>
 				</KeyboardSafeScrollView>
@@ -1909,7 +1924,6 @@ function PasswordResetScreen({
 	initialEmail: string;
 	onCancel: () => void;
 }) {
-	const { colors: COLORS } = useDayovaTheme();
 	const insets = useSafeAreaInsets();
 	const { height } = useWindowDimensions();
 	const reducedMotion = useReducedMotion();
@@ -1923,7 +1937,7 @@ function PasswordResetScreen({
 	const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [notice, setNotice] = useState<string | null>(null);
-	const codeInputRef = useRef<TextInput | null>(null);
+	const codeInputRef = useRef<TextInputInstance | null>(null);
 	const codeSubmittedRef = useRef(false);
 	const requestInFlightRef = useRef(false);
 	const {
@@ -2156,16 +2170,7 @@ function PasswordResetScreen({
 			>
 				<View className="flex-1 items-center px-8">
 					<View className="w-full flex-row items-center">
-						<Pressable
-							accessibilityRole="button"
-							accessibilityLabel="Zurück"
-							disabled={isLoading}
-							hitSlop={8}
-							onPress={handleBack}
-							className="h-12 w-12 items-center justify-center rounded-full border border-border bg-surface"
-						>
-							<ArrowLeft size={20} color={COLORS.text} strokeWidth={2.2} />
-						</Pressable>
+						<BackButton disabled={isLoading} onPress={handleBack} />
 					</View>
 
 					<Image
@@ -2300,7 +2305,7 @@ function PasswordResetScreen({
 					</View>
 
 					{stage === "reset_code" || stage === "second_factor" ? (
-						<Pressable
+						<FeedbackPressable
 							accessibilityLabel="Code erneut senden"
 							accessibilityRole="button"
 							accessibilityState={{ disabled: isLoading }}
@@ -2312,7 +2317,7 @@ function PasswordResetScreen({
 							<Text className="font-poppins text-body-3 text-primary">
 								Code erneut senden
 							</Text>
-						</Pressable>
+						</FeedbackPressable>
 					) : null}
 				</View>
 			</KeyboardSafeScrollView>
@@ -2339,7 +2344,7 @@ function VerificationScreen({
 	error: string | null;
 	disabled: boolean;
 	gestureEnabled?: boolean;
-	inputRef: RefObject<TextInput | null>;
+	inputRef: RefObject<TextInputInstance | null>;
 	progress: number;
 	topInset: number;
 	bottomInset: number;
@@ -2353,14 +2358,9 @@ function VerificationScreen({
 		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ title: "E-Mail bestätigen", gestureEnabled }} />
 			<ThemedStatusBar />
-			<KeyboardAvoidingView
-				behavior={Platform.OS === "ios" ? "padding" : undefined}
-				className="flex-1"
-			>
-				<ScrollView
+			<KeyboardAvoidingView behavior="padding" className="flex-1">
+				<KeyboardSafeScrollView
 					testID="onboarding-verification-scroll"
-					keyboardShouldPersistTaps="handled"
-					showsVerticalScrollIndicator={false}
 					contentInsetAdjustmentBehavior="never"
 					contentContainerStyle={{
 						flexGrow: 1,
@@ -2400,7 +2400,7 @@ function VerificationScreen({
 						<Text className="mt-5 text-center font-poppins text-body-5 text-text">
 							Kein Code angekommen?
 						</Text>
-						<Pressable
+						<FeedbackPressable
 							accessibilityLabel="Code erneut senden"
 							accessibilityRole="button"
 							accessibilityState={{ disabled }}
@@ -2411,7 +2411,7 @@ function VerificationScreen({
 							<Text className="text-center font-poppins font-semibold text-body-5 text-primary">
 								Erneut senden
 							</Text>
-						</Pressable>
+						</FeedbackPressable>
 
 						{error ? (
 							<Animated.Text
@@ -2432,7 +2432,7 @@ function VerificationScreen({
 							</Animated.Text>
 						) : null}
 					</View>
-				</ScrollView>
+				</KeyboardSafeScrollView>
 			</KeyboardAvoidingView>
 		</View>
 	);
@@ -2503,28 +2503,20 @@ export function OnboardingRecoveryScreen({
 					{ONBOARDING_DURATION_OPTIONS.map((duration) => {
 						const selected = answers.studyTime === String(duration);
 						return (
-							<Pressable
+							<SelectionControl
+								selected={selected}
+								appearance="pill"
 								key={duration}
 								accessibilityRole="radio"
 								accessibilityState={{ disabled: isSubmitting, selected }}
 								disabled={isSubmitting}
 								onPress={() => onChange("studyTime", String(duration))}
-								className={cn(
-									"rounded-full border px-4 py-3",
-									selected
-										? "border-primary bg-primary"
-										: "border-path-1 bg-system-subtle",
-								)}
+								contentClassName="px-4 py-3"
 							>
-								<Text
-									className={cn(
-										"font-poppins font-semibold text-body-4",
-										selected ? "text-on-primary" : "text-text",
-									)}
-								>
-									{duration} Minuten
-								</Text>
-							</Pressable>
+								<SelectionText className="font-poppins font-semibold text-body-4">
+									{formatOnboardingDuration(duration)}
+								</SelectionText>
+							</SelectionControl>
 						);
 					})}
 				</View>
@@ -2536,7 +2528,9 @@ export function OnboardingRecoveryScreen({
 					{LEARNING_DAYS.map((day) => {
 						const selected = selectedDays.has(day.label);
 						return (
-							<Pressable
+							<SelectionControl
+								selected={selected}
+								appearance="pill"
 								key={day.label}
 								accessibilityRole="checkbox"
 								accessibilityState={{
@@ -2550,22 +2544,12 @@ export function OnboardingRecoveryScreen({
 										toggleOnboardingStudyDay(answers.studyDays, day.label),
 									)
 								}
-								className={cn(
-									"rounded-full border px-4 py-3",
-									selected
-										? "border-primary bg-primary"
-										: "border-path-1 bg-system-subtle",
-								)}
+								contentClassName="px-4 py-3"
 							>
-								<Text
-									className={cn(
-										"font-poppins font-semibold text-body-4",
-										selected ? "text-on-primary" : "text-text",
-									)}
-								>
+								<SelectionText className="font-poppins font-semibold text-body-4">
 									{day.label}
-								</Text>
-							</Pressable>
+								</SelectionText>
+							</SelectionControl>
 						);
 					})}
 				</View>
@@ -2573,7 +2557,7 @@ export function OnboardingRecoveryScreen({
 				<Text className="mt-6 font-poppins font-semibold text-body-3 text-text">
 					Startzeit
 				</Text>
-				<Pressable
+				<FeedbackPressable
 					accessibilityRole="button"
 					accessibilityState={{ disabled: isSubmitting }}
 					disabled={isSubmitting}
@@ -2597,7 +2581,7 @@ export function OnboardingRecoveryScreen({
 							? `${answers.learningTime} Uhr`
 							: "Uhrzeit auswählen"}
 					</Text>
-				</Pressable>
+				</FeedbackPressable>
 				{(error ?? validationError) ? (
 					<ErrorMessage className="mt-4 text-center">
 						{error ?? validationError}
@@ -2778,8 +2762,6 @@ function AuthProgressHeader({
 			<BackButton
 				accessibilityState={{ disabled }}
 				disabled={disabled}
-				iconSize={18}
-				strokeWidth={2.2}
 				onPress={() => onBack()}
 			/>
 			<View className="flex-1 gap-2">
@@ -2833,7 +2815,7 @@ function PillTextInput({
 	onChangeText,
 	onSubmit,
 }: {
-	refObject: RefObject<TextInput | null>;
+	refObject: RefObject<TextInputInstance | null>;
 	testID: string;
 	value: string;
 	accessibilityLabel: string;
@@ -2935,7 +2917,7 @@ function OtpCodeInput({
 }: {
 	value: string;
 	onChangeText: (value: string) => void;
-	inputRef: RefObject<TextInput | null>;
+	inputRef: RefObject<TextInputInstance | null>;
 	disabled: boolean;
 }) {
 	const { colors: COLORS } = useDayovaTheme();
@@ -2995,13 +2977,19 @@ function OtpCodeInput({
 				autoCorrect={false}
 				autoCapitalize="none"
 				caretHidden
-				className="absolute inset-0 opacity-[0.01]"
+				className="absolute inset-0 text-transparent"
 				maxLength={CODE_LENGTH}
 				selectionColor="transparent"
 			/>
 		</View>
 	);
 }
+
+// Presentation only: allowed values and persistence belong to the learning-time model.
+const getDurationRingLabel = (minutes: number) => ({
+	value: String(minutes >= 60 ? minutes / 60 : minutes).replace(".", ","),
+	unit: minutes >= 60 ? "h" : "min",
+});
 
 function RangeAnswer({
 	step,
@@ -3038,21 +3026,23 @@ function RangeAnswer({
 	return (
 		<View className="w-full items-center">
 			<SnapCarouselSelector
+				appearance="onboarding"
 				accessibilityLabel="Tägliche Lernzeit"
 				accessibilityValue={
 					hasExplicitSelection
-						? `${displayedStudyTime} Minuten`
-						: `${displayedStudyTime} Minuten Vorschau, noch nicht ausgewählt`
+						? formatOnboardingDuration(displayedStudyTime)
+						: `${formatOnboardingDuration(displayedStudyTime)} Vorschau, noch nicht ausgewählt`
 				}
 				decrementLabel="Weniger Lernzeit"
 				incrementLabel="Mehr Lernzeit"
 				items={step.values}
 				selectedIndex={selectedIndex}
 				getItemKey={(value) => String(value)}
-				getItemPrimaryLabel={(value) => String(value)}
+				getItemPrimaryLabel={(value) => getDurationRingLabel(value).value}
+				getItemSecondaryLabel={(value) => getDurationRingLabel(value).unit}
 				getItemProgress={(_, index) => (index + 1) / step.values.length}
-				primaryLabel={String(displayedStudyTime)}
-				secondaryLabel="Minuten"
+				primaryLabel={getDurationRingLabel(displayedStudyTime).value}
+				secondaryLabel={getDurationRingLabel(displayedStudyTime).unit}
 				progress={
 					selectedValue === undefined
 						? 0
@@ -3060,16 +3050,6 @@ function RangeAnswer({
 				}
 				onSelect={(value) => setAnswer("studyTime", String(value))}
 			/>
-			{hasExplicitSelection ? null : (
-				<Button
-					size="sm"
-					accessibilityLabel={`${displayedStudyTime} Minuten auswählen`}
-					className="mt-4 self-center"
-					onPress={() => setAnswer("studyTime", String(displayedStudyTime))}
-				>
-					<Text>{displayedStudyTime} Minuten auswählen</Text>
-				</Button>
-			)}
 		</View>
 	);
 }
@@ -3083,99 +3063,19 @@ function AnimatedStudyDayPill({
 	isSelected: boolean;
 	onToggle: () => void;
 }) {
-	const { colors } = useDayovaTheme();
-	const reducedMotion = useReducedMotion();
-	const selectionProgress = useSharedValue(isSelected ? 1 : 0);
-	const pressedScale = useSharedValue(1);
-
-	useEffect(() => {
-		const nextProgress = isSelected ? 1 : 0;
-		selectionProgress.set(
-			reducedMotion
-				? nextProgress
-				: withTiming(nextProgress, {
-						duration: STUDY_DAY_SELECTION_DURATION_MS,
-						easing: Easing.out(Easing.cubic),
-					}),
-		);
-	}, [isSelected, reducedMotion, selectionProgress]);
-
-	const pillStyle = useAnimatedStyle(() => ({
-		backgroundColor: interpolateColor(
-			selectionProgress.get(),
-			[0, 1],
-			[colors.systemSubtle, colors.primary],
-		),
-		borderColor: interpolateColor(
-			selectionProgress.get(),
-			[0, 1],
-			[colors.path1, colors.primary],
-		),
-		transform: [{ scale: pressedScale.get() }],
-	}));
-	const checkStyle = useAnimatedStyle(() => {
-		const progress = selectionProgress.get();
-		return {
-			opacity: progress,
-			transform: [{ scale: 0.72 + progress * 0.28 }],
-		};
-	});
-	const labelStyle = useAnimatedStyle(() => ({
-		color: interpolateColor(
-			selectionProgress.get(),
-			[0, 1],
-			[colors.text, colors.onPrimary],
-		),
-	}));
-
-	const setPressedScale = (scale: number, duration: number) => {
-		if (reducedMotion) return;
-		pressedScale.set(
-			withTiming(scale, {
-				duration,
-				easing: Easing.out(Easing.cubic),
-			}),
-		);
-	};
-
 	return (
-		<AnimatedPressable
+		<SelectionControl
+			selected={isSelected}
+			appearance="pill"
 			accessibilityRole="checkbox"
 			accessibilityLabel={label}
-			accessibilityState={{ checked: isSelected }}
 			onPress={onToggle}
-			onPressIn={() => setPressedScale(0.97, STUDY_DAY_PRESS_IN_DURATION_MS)}
-			onPressOut={() => setPressedScale(1, STUDY_DAY_PRESS_OUT_DURATION_MS)}
-			className="min-h-12 min-w-[100px] flex-row items-center justify-center rounded-full border px-3 py-3"
-			// Runtime state and press feedback intentionally animate outside NativeWind.
-			style={pillStyle}
+			contentClassName="min-h-12 min-w-[100px] px-6 py-3"
 		>
-			<View
-				testID={`study-day-pill-check-slot-${label}`}
-				className="h-4 w-4 items-center justify-center"
-			>
-				<Animated.View
-					// Selection animates the checkmark on the UI thread.
-					style={checkStyle}
-				>
-					<Check size={16} color={colors.onPrimary} strokeWidth={2.4} />
-				</Animated.View>
-			</View>
-			<Animated.Text
-				className="ml-2 font-poppins font-semibold text-body-3"
-				// Selection animation and Android font metrics require native styles.
-				style={[
-					Platform.select({ android: { includeFontPadding: false } }),
-					labelStyle,
-				]}
-			>
+			<SelectionText className="font-poppins font-semibold text-body-3">
 				{label}
-			</Animated.Text>
-			<View
-				testID={`study-day-pill-balance-slot-${label}`}
-				className="ml-2 h-4 w-4"
-			/>
-		</AnimatedPressable>
+			</SelectionText>
+		</SelectionControl>
 	);
 }
 
@@ -3184,22 +3084,34 @@ function StudyDaysAnswer() {
 	const selectedDays = new Set(parseOnboardingStudyDays(answers.studyDays));
 
 	return (
-		<View className="w-full flex-row flex-wrap justify-center gap-3 px-2">
-			{LEARNING_DAYS.map((day) => (
-				<AnimatedStudyDayPill
-					key={day.value}
-					label={day.label}
-					isSelected={selectedDays.has(day.label)}
-					onToggle={() =>
-						setAnswer(
-							"studyDays",
-							toggleOnboardingStudyDay(
-								answers.studyDays,
-								day.label as LearningDayLabel,
-							),
-						)
-					}
-				/>
+		<View className="w-full gap-3">
+			{[
+				LEARNING_DAYS.slice(0, 2),
+				LEARNING_DAYS.slice(2, 4),
+				LEARNING_DAYS.slice(4, 6),
+				LEARNING_DAYS.slice(6),
+			].map((days) => (
+				<View
+					key={days[0].value}
+					className="flex-row flex-wrap justify-center gap-3"
+				>
+					{days.map((day) => (
+						<AnimatedStudyDayPill
+							key={day.value}
+							label={day.label}
+							isSelected={selectedDays.has(day.label)}
+							onToggle={() =>
+								setAnswer(
+									"studyDays",
+									toggleOnboardingStudyDay(
+										answers.studyDays,
+										day.label as LearningDayLabel,
+									),
+								)
+							}
+						/>
+					))}
+				</View>
 			))}
 		</View>
 	);

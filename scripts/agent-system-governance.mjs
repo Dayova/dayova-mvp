@@ -177,7 +177,6 @@ export const evalSuites = {
 	"maintain-agent-system-routing": {
 		kind: "behavioral-and-mutation-safety",
 		fixture: ".agents/evals/maintain-dayova-agent-system.json",
-		result: ".agents/evals/maintain-dayova-agent-system.forward-test.json",
 		owner: "DAY-332",
 	},
 };
@@ -365,7 +364,7 @@ const skillDefinitions = {
 			"diagnosing-bugs",
 			"Diagnose a hard bug, failure, regression, or performance problem.",
 			"Implement a known fix without a diagnosis phase.",
-			"read-only",
+			"repository-runtime-write-conditional",
 		],
 		[
 			"domain-modeling",
@@ -493,7 +492,7 @@ const skillDefinitions = {
 			"convex-performance-audit",
 			"Audit Convex read amplification, subscriptions, contention, limits, or slow functions.",
 			"Implement unrelated Convex features or perform a generic code review.",
-			"read-only",
+			"repository-runtime-write-conditional",
 		],
 		[
 			"convex-quickstart",

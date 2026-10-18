@@ -1,8 +1,8 @@
 // @vitest-environment node
 import { spawnSync } from "node:child_process";
 import {
-	mkdtempSync,
 	mkdirSync,
+	mkdtempSync,
 	readFileSync,
 	rmSync,
 	writeFileSync,
@@ -125,6 +125,7 @@ const evaluate = (expression: string, context: Record<string, unknown>) =>
 	runInNewContext(expression.slice(3, -2), {
 		...context,
 		contains: (value: string, part: string) => value.includes(part),
+		startsWith: (value: string, prefix: string) => value.startsWith(prefix),
 	});
 
 const event = (eventName: string, association = "MEMBER", fork = false) => ({
@@ -145,6 +146,38 @@ const event = (eventName: string, association = "MEMBER", fork = false) => ({
 			base: { repo: { id: 123, full_name: "Dayova/dayova-mvp" } },
 		},
 	},
+});
+
+describe("repository quality gates", () => {
+	it("starts CI for pull requests targeting stack parents as well as main", () => {
+		expect(workflow.on.pull_request.branches).toBeUndefined();
+		expect(workflow.on.pull_request["branches-ignore"]).toBeUndefined();
+		expect(workflow.on.pull_request.types).toContain("synchronize");
+	});
+
+	it("keeps every check in the shared CI job", () => {
+		const commands = workflow.jobs.checks.steps
+			.map((step: { run?: string }) => step.run)
+			.filter(Boolean);
+		expect(commands).toEqual([
+			"pnpm format:check",
+			"pnpm lint",
+			"pnpm check:unused",
+			"pnpm skills:validate",
+			"pnpm typecheck",
+			"pnpm test",
+		]);
+	});
+
+	it("runs the shared job for trusted PRs, main, and the merge queue", () => {
+		for (const github of [
+			event("pull_request"),
+			event("push"),
+			{ ...event("push"), ref_name: "gh-readonly-queue/main/pr-846" },
+		]) {
+			expect(evaluate(workflow.jobs.checks.if, { github })).toBe(true);
+		}
+	});
 });
 
 describe("PR OTA workflow routing", () => {
@@ -183,8 +216,28 @@ describe("PR OTA workflow routing", () => {
 		],
 		["main push", event("push"), true],
 		["other push", { ...event("push"), ref_name: "feature" }, false],
+		[
+			"main merge queue push",
+			{
+				...event("push"),
+				ref_name: "gh-readonly-queue/main/pr-123-test",
+				event: {},
+			},
+			false,
+			true,
+		],
+		[
+			"other merge queue push",
+			{ ...event("push"), ref_name: "gh-readonly-queue/release/pr-123-test" },
+			false,
+		],
+		[
+			"similar queue prefix push",
+			{ ...event("push"), ref_name: "gh-readonly-queue/main-malicious/test" },
+			false,
+		],
 		["manual CI", event("workflow_dispatch"), false],
-	])("routes %s to production compatibility checks", (_label, github, expected) => {
+	])("routes %s to production compatibility checks", (_label, github, expected, queueChecks = false) => {
 		const context = { github };
 		const canRun = (id: string): boolean => {
 			const job = workflow.jobs[id];
@@ -194,7 +247,7 @@ describe("PR OTA workflow routing", () => {
 			);
 		};
 		expect(canRun("checks")).toBe(
-			expected || github.event_name === "workflow_dispatch",
+			expected || queueChecks || github.event_name === "workflow_dispatch",
 		);
 		expect(canRun("production_fingerprint")).toBe(expected);
 		expect(canRun("ota_checks")).toBe(expected);
@@ -264,7 +317,9 @@ describe("PR OTA workflow routing", () => {
 		);
 		expect(rendered).toContain(`### ${expected}`);
 		expect(rendered).toContain(`**Checked commit:** \`${context.github.sha}\``);
-		expect(rendered).toContain("**This report applies only to the checked commit.**");
+		expect(rendered).toContain(
+			"**This report applies only to the checked commit.**",
+		);
 		expect(rendered).toContain("this result is **outdated**");
 		expect(rendered).toContain("latest commit is **unconfirmed**");
 		expect(rendered).toContain(`[View EAS run](${context.workflow.url})`);

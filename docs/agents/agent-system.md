@@ -60,7 +60,9 @@ in its own `SKILL.md`. This keeps the manifest complete without copying volatile
 procedure into a second authority.
 
 `pnpm skills:validate` requires one record for every repository skill and every
-maintained source. A missing, stale, or unowned record fails validation.
+maintained source. Missing, unmatched, or unowned records fail validation.
+Review dates are owner-maintained; the validator checks their format, while the
+review cadence below defines when an actual review is due.
 
 ## Maintenance route
 
@@ -69,8 +71,11 @@ Use `$maintain-dayova-agent-system` for changes to repository skills,
 authorization, evaluations, or source adoption. Its positive, negative, and
 mutation-safety cases live in
 [`maintain-dayova-agent-system.json`](../../.agents/evals/maintain-dayova-agent-system.json).
-The bounded fresh-agent execution result lives in
-[`maintain-dayova-agent-system.forward-test.json`](../../.agents/evals/maintain-dayova-agent-system.forward-test.json).
+Keep dated execution results and sanitized traces on the owning PR or Linear
+issue, with the tested commit, environment, and limitations. Maintained fixtures
+stay beside the validation tools; a historical passing report is not a runtime
+evaluation of today's catalog. The original bounded forward-test record is
+preserved as [historical PR evidence](https://github.com/Dayova/dayova-mvp/pull/450#issuecomment-6253901689).
 
 The workflow must keep these transitions explicit:
 
@@ -84,12 +89,15 @@ The workflow must keep these transitions explicit:
 7. Publish a reviewed GitHub change with the evidence required by
    [DAY-271](https://linear.app/dayova/issue/DAY-271/enforce-before-and-after-screenshots-and-screen-recordings-on-every).
 
-The repository owns the required four-artifact outcome; the user's global GitHub
-attachment skill owns upload mechanics. User-facing plans and pull requests also
+The repository owns the required four-artifact outcome. Use the authenticated
+GitHub CLI's `--attach` support for upload mechanics, following the session's
+GitHub evidence guidance. User-facing plans and pull requests also
 require the distinct Dayova product-quality review tracked by
 [DAY-289](https://linear.app/dayova/issue/DAY-289/add-a-dayova-product-quality-reviewer-for-plans-and-user-facing-pull).
-Treat its absence as an explicit workflow gap rather than substituting generic
-code review.
+For internal tooling, documentation, infrastructure, and pure refactors, record
+lightweight product triage and skip full product review when observable product
+behavior is unchanged. Missing tooling for a required user-facing review is an
+explicit workflow gap; generic code review does not replace it.
 
 Source-specific composition remains in
 [`matt-pocock-skills.md`](matt-pocock-skills.md) and
