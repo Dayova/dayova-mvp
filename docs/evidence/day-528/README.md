@@ -1,10 +1,24 @@
 # DAY-528 validation
 
-## Main integration refresh — 18 October 2026
+## Latest main follow-up — 18 October 2026
+
+Parent #661 is `527f56814db3c5a23b34895d2f6edf4092b42ba9`; direct base #748 is
+`88b8faa88d75a5c30be499432403bc9bada7d78a`. These contain main
+`006f88eb6557f60cf9628edd7604859795b38926`, which advanced again while the
+quality-gate integration below was being validated. The additional changes are
+the header/session accessibility integration from #880. They merged cleanly.
+
+Formatting, lint, TypeScript and unused-code checks pass after that follow-up.
+Five focused UI suites / 25 tests cover the changed header/session layout and
+both deletion screens. The earlier full Vitest results below precede this UI
+follow-up; fresh remote CI must cover the latest stack heads. No new native or
+provider acceptance is inferred from integrating main's source/evidence files.
+
+## Earlier quality-gate integration refresh — 18 October 2026
 
 Parent #661 is `98574de3a64cb018abc1f464afd1632b41218734`; direct base #748 is
 `3c32c5e5e1cf6ad63bec89bf1d47065623642ee9`. Both include main
-`006f88eb6557f60cf9628edd7604859795b38926`. See the latest #895 head for this
+`d572142312a73720d3d803978db3c16404342923`. See the #895 integration snapshot for this
 layer's integration; all sections below describe earlier named snapshots.
 
 The only parent merge conflict was PR workflow routing. The resolution adopts
