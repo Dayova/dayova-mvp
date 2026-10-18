@@ -6,6 +6,16 @@ Notion is Dayova's main internal documentation and knowledge workspace. Linear o
 
 Linear workspace `dayova`, team `Dayova` (`DAY`), is the source of truth for issues and PRDs. GitHub Issues for `Dayova/dayova-mvp` is a bidirectionally synced compatibility surface, and linked pull requests drive Linear workflow status automation. Agent-facing operation rules live in `docs/agents/issue-tracker.md`.
 
+## AI observability and evaluation boundary
+
+Langfuse is the AI tracing/cost/evaluation destination; PostHog remains product
+analytics. Production traces export operational metadata and usage only through
+`ai/observability.ts`, with optional HMAC user attribution and no raw learner
+content. The standalone evaluation CLI publishes only explicit synthetic runs.
+See the [runtime and evaluation runbook](../../../ai/README.md) and canonical
+[AI model strategy](https://app.notion.com/p/3ae2e87228bf81ccb1ccdbbc83c7709c).
+Model experiments never change production routing automatically.
+
 ## Language
 
 **PostHog Student Profile**:
