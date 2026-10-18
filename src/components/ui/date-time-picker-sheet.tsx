@@ -9,6 +9,7 @@ import type {
 	DateTimePickerDisplay,
 	DateTimePickerSheetProps,
 } from "./date-time-picker-sheet.types";
+import { getDateTimePickerConfirmAccessibilityLabel } from "./date-time-picker-sheet.types";
 
 const DAYOVA_PRIMARY = DAYOVA_DESIGN_SYSTEM.colors.primary;
 
@@ -21,6 +22,7 @@ const normalizeIosDisplay = (display?: DateTimePickerDisplay) => {
 };
 
 function DateTimePickerSheet({
+	embedded = false,
 	visible,
 	value,
 	mode,
@@ -30,6 +32,7 @@ function DateTimePickerSheet({
 	doneLabel = "Fertig",
 	onChange,
 	onClose,
+	onConfirm,
 }: DateTimePickerSheetProps) {
 	const { width } = useWindowDimensions();
 	const normalizedDisplay = normalizeIosDisplay(display);
@@ -47,40 +50,62 @@ function DateTimePickerSheet({
 	const handleValueChange = (event: DateTimePickerChangeEvent, date: Date) => {
 		onChange({ ...event, type: "set" }, date);
 	};
+	const handleConfirm = () => {
+		onConfirm?.(value);
+		onClose();
+	};
 
+	const content = (
+		<View className="items-center overflow-hidden">
+			<DateTimePicker
+				accentColor={DAYOVA_PRIMARY}
+				value={value}
+				mode={mode}
+				display={normalizedDisplay}
+				maximumDate={maximumDate}
+				minimumDate={minimumDate}
+				locale="de-DE"
+				onValueChange={handleValueChange}
+				// Expo's native picker needs explicit measured dimensions.
+				style={{
+					width: Math.min(width, 560) - 48,
+					height: pickerHeight,
+				}}
+			/>
+		</View>
+	);
+	if (embedded)
+		return visible ? (
+			<>
+				{content}
+				<Button onPress={handleConfirm}>
+					<Text>{doneLabel}</Text>
+				</Button>
+			</>
+		) : null;
 	return (
 		<DayovaSheetFrame
+			scrollable={false}
 			accessibilityLabel={accessibilityLabel}
 			visible={visible}
 			onClose={onClose}
 			showCloseButton={false}
 			closeAccessibilityLabel="Auswahl schließen"
 			footer={
-				<Button accessibilityLabel="Auswahl schließen" onPress={onClose}>
-					<Text>{doneLabel}</Text>
+				<Button
+					accessibilityLabel={getDateTimePickerConfirmAccessibilityLabel(
+						doneLabel,
+					)}
+					onPress={handleConfirm}
+				>
+					<Text className="shrink text-center">{doneLabel}</Text>
 				</Button>
 			}
 		>
-			<View className="items-center overflow-hidden">
-				<DateTimePicker
-					accentColor={DAYOVA_PRIMARY}
-					value={value}
-					mode={mode}
-					display={normalizedDisplay}
-					maximumDate={maximumDate}
-					minimumDate={minimumDate}
-					locale="de-DE"
-					onValueChange={handleValueChange}
-					// Expo's native picker needs explicit measured dimensions.
-					style={{
-						width: Math.min(width, 560) - 48,
-						height: pickerHeight,
-					}}
-				/>
-			</View>
+			{content}
 		</DayovaSheetFrame>
 	);
 }
 
-export { DateTimePickerSheet };
 export type { DateTimePickerSheetEvent as DateTimePickerEvent } from "./date-time-picker-sheet.types";
+export { DateTimePickerSheet };

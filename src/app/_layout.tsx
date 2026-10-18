@@ -1,10 +1,9 @@
 import "~/global.css";
-import { ClerkProvider, useAuth as useClerkAuth } from "@clerk/expo";
+import { ClerkProvider } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { PortalHost } from "@rn-primitives/portal";
-import { ConvexReactClient } from "convex/react";
-import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
 import { Stack } from "expo-router";
 import { ThemeProvider } from "expo-router/react-navigation";
 import * as SystemUI from "expo-system-ui";
@@ -16,13 +15,16 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AnalyticsIdentity } from "~/components/analytics-identity";
 import { AuthNavigationGate } from "~/components/auth-navigation-gate";
+import { FeatureAnalyticsProvider } from "~/components/feature-analytics-provider";
 import { NotificationSync } from "~/components/notification-sync";
 import { TrialReminderSync } from "~/components/trial-reminder-sync";
 import {
 	SheetAccessibilityProvider,
 	useSheetAccessibility,
 } from "~/components/ui/sheet-accessibility";
+import { SheetSafeAreaProvider } from "~/components/ui/sheet-safe-area";
 import { AccessProvider } from "~/context/AccessContext";
+import { AiConsentProvider } from "~/context/AiConsentContext";
 import { AuthProvider } from "~/context/AuthContext";
 import { OnboardingProvider } from "~/context/OnboardingContext";
 import {
@@ -31,6 +33,7 @@ import {
 	postHogHost,
 	validationAnalyticsBeforeSend,
 } from "~/lib/analytics";
+import { useClerkConvexAuth } from "~/lib/clerk-convex-auth";
 import { env, missingPublicRuntimeConfig } from "~/lib/runtime-config";
 import { DayovaThemeProvider, NAV_THEMES, useDayovaTheme } from "~/lib/theme";
 import { DARK_THEME_VARIABLES } from "~/lib/theme-variables";
@@ -56,6 +59,8 @@ function AppNavigator() {
 					<Stack
 						screenOptions={{
 							headerShown: false,
+							// Keep ordinary pages on the same native transition per platform.
+							animation: "default",
 							contentStyle: { backgroundColor: colors.background },
 						}}
 					>
@@ -64,13 +69,12 @@ function AppNavigator() {
 						<Stack.Screen
 							name="subscription"
 							options={{
-								animation: "slide_from_right",
 								gestureEnabled: true,
 								presentation: "card",
 							}}
 						/>
 						<Stack.Screen
-							name="pro-welcome"
+							name="subscription-success"
 							options={{
 								animation: "none",
 								gestureEnabled: false,
@@ -80,16 +84,22 @@ function AppNavigator() {
 						<Stack.Screen
 							name="learning-times/edit"
 							options={{
-								animation: "slide_from_right",
 								contentStyle: { backgroundColor: colors.background },
 								gestureEnabled: true,
 								presentation: "card",
 							}}
 						/>
 						<Stack.Screen
-							name="timetable/index"
+							name="timetable"
 							options={{
-								animation: "slide_from_right",
+								contentStyle: { backgroundColor: colors.background },
+								gestureEnabled: true,
+								presentation: "card",
+							}}
+						/>
+						<Stack.Screen
+							name="personal-subjects"
+							options={{
 								contentStyle: { backgroundColor: colors.background },
 								gestureEnabled: true,
 								presentation: "card",
@@ -171,25 +181,31 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 							}
 							tokenCache={tokenCache}
 						>
-							<ConvexProviderWithClerk
+							<ConvexProviderWithAuth
 								client={convexClient}
-								useAuth={useClerkAuth}
+								useAuth={useClerkConvexAuth}
 							>
 								<ThemeProvider value={NAV_THEMES[resolvedTheme]}>
-									<BottomSheetModalProvider>
-										<SheetAccessibilityProvider>
-											<OnboardingProvider>
-												<AuthProvider>
-													<AccessProvider>
-														<AnalyticsIdentity />
-														<AppNavigator />
-													</AccessProvider>
-												</AuthProvider>
-											</OnboardingProvider>
-										</SheetAccessibilityProvider>
-									</BottomSheetModalProvider>
+									<SheetSafeAreaProvider>
+										<BottomSheetModalProvider>
+											<SheetAccessibilityProvider>
+												<OnboardingProvider>
+													<AuthProvider>
+														<AccessProvider>
+															<AiConsentProvider>
+																<AnalyticsIdentity />
+																<FeatureAnalyticsProvider>
+																	<AppNavigator />
+																</FeatureAnalyticsProvider>
+															</AiConsentProvider>
+														</AccessProvider>
+													</AuthProvider>
+												</OnboardingProvider>
+											</SheetAccessibilityProvider>
+										</BottomSheetModalProvider>
+									</SheetSafeAreaProvider>
 								</ThemeProvider>
-							</ConvexProviderWithClerk>
+							</ConvexProviderWithAuth>
 						</ClerkProvider>
 					</PostHogProvider>
 				</KeyboardProvider>

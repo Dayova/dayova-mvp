@@ -61,6 +61,9 @@ describe("AnimatedFlowerLoader", () => {
 	test("starts both animation loops and cancels both when unmounted", async () => {
 		const screen = await render(<AnimatedFlowerLoader />);
 
+		expect(
+			screen.getByRole("progressbar", { name: "Wird geladen" }),
+		).toHaveProp("accessibilityValue", { text: "Wird geladen" });
 		expect(mockWithRepeat).toHaveBeenCalledTimes(2);
 		expect(mockWithRepeat).toHaveBeenNthCalledWith(1, expect.anything(), -1);
 		expect(mockWithRepeat).toHaveBeenNthCalledWith(2, expect.anything(), -1);

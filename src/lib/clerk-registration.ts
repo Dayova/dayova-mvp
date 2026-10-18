@@ -10,7 +10,6 @@ export type ClerkRegistrationInput = {
 	password: string;
 	name?: string;
 	phone?: string;
-	birthDate?: string;
 	grade?: string;
 	schoolType?: SupportedSchoolType;
 	state?: string;
@@ -66,7 +65,6 @@ export const prepareClerkRegistration = (input: ClerkRegistrationInput) => {
 	const profile = {
 		name: input.name?.trim(),
 		phone: input.phone?.trim(),
-		birthDate: input.birthDate,
 		grade,
 		schoolType,
 		state,

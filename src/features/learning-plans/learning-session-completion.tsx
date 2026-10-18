@@ -36,7 +36,7 @@ export function LearningSessionCompletion({
 				correctCount={correctCount}
 				attemptCount={attemptCount}
 				onRepeat={onContinueLearning}
-				onAnalysis={onPrimary}
+				onOpenLearningPlan={onPrimary}
 				isBusy={isBusy}
 			/>
 		);
@@ -44,7 +44,7 @@ export function LearningSessionCompletion({
 
 	let title = "Übung abgeschlossen";
 	let description =
-		"Du hast alle Aufgaben geschafft. Sieh dir jetzt deine Auswertung in der Analyse an.";
+		"Du hast alle Aufgaben geschafft. In deinem Lernplan findest du deinen nächsten Lernschritt.";
 	let completionLabel = "Übung geschafft";
 	let Icon = Pencil;
 	let iconClassName = "bg-ueben-subtle";
@@ -69,11 +69,8 @@ export function LearningSessionCompletion({
 		iconColor = DAYOVA_DESIGN_SYSTEM.colors.primary;
 	}
 
-	const primaryLabel = isDiagnostic
-		? "Auswertung ansehen"
-		: isTheory
-			? "Theorie abschließen"
-			: "Analyse ansehen";
+	const primaryLabel =
+		isTheory && !isDiagnostic ? "Theorie abschließen" : "Zum Lernplan";
 
 	return (
 		<Animated.View

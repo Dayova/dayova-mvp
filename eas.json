@@ -1,7 +1,8 @@
 {
   "cli": {
     "version": ">= 18.11.0",
-    "appVersionSource": "remote"
+    "appVersionSource": "remote",
+    "requireCommit": true
   },
   "build": {
     "base": {
@@ -16,6 +17,13 @@
       "environment": "development",
       "env": {
         "APP_VARIANT": "development"
+      }
+    },
+    "development-simulator": {
+      "extends": "development",
+      "environment": "production",
+      "ios": {
+        "simulator": true
       }
     },
     "preview": {
@@ -34,6 +42,27 @@
       "environment": "production",
       "env": {
         "APP_VARIANT": "production"
+      }
+    },
+    "ota-staging": {
+      "extends": "base",
+      "distribution": "internal",
+      "channel": "ota-staging",
+      "environment": "production",
+      "env": {
+        "APP_VARIANT": "production"
+      }
+    },
+    "ota-staging-testflight": {
+      "extends": "production",
+      "distribution": "store",
+      "channel": "ota-staging"
+    },
+    "ota-staging-simulator": {
+      "extends": "ota-staging-testflight",
+      "autoIncrement": false,
+      "ios": {
+        "simulator": true
       }
     },
     "apk-test": {
@@ -61,9 +90,31 @@
     }
   },
   "submit": {
+    "internal": {
+      "android": {
+        "track": "internal",
+        "releaseStatus": "completed"
+      }
+    },
+    "closed": {
+      "android": {
+        "track": "alpha",
+        "releaseStatus": "completed"
+      }
+    },
+    "open": {
+      "android": {
+        "track": "beta",
+        "releaseStatus": "completed"
+      }
+    },
     "production": {
       "ios": {
         "ascAppId": "6768416097"
+      },
+      "android": {
+        "track": "production",
+        "releaseStatus": "draft"
       }
     }
   }

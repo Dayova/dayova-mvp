@@ -1,0 +1,9 @@
+appId: ${APP_ID}
+---
+- runFlow: launch-unauthenticated.yaml
+- tapOn: Login
+- extendedWaitUntil:
+    visible: Willkommen
+    timeout: 15000
+- assertVisible: E-Mail-Adresse
+- assertVisible: Passwort

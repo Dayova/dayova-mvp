@@ -3,9 +3,9 @@ import { fireEvent, render } from "@testing-library/react-native";
 import { processColor } from "react-native";
 import {
 	getExamCountdownLabel,
-	LearningPath,
 	SessionPreviewCard,
 } from "~/app/learning-plans/[planId]/index";
+import { LearningPathVisual } from "~/features/learning-plans/learning-path-visual";
 import type { PlanSession } from "~/features/learning-plans/types";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 
@@ -13,6 +13,10 @@ jest.mock("expo-router", () => ({
 	Stack: { Screen: () => null },
 	useLocalSearchParams: () => ({ planId: "plan_1" }),
 	useRouter: () => ({ push: jest.fn() }),
+}));
+
+jest.mock("~/components/ui/dayova-sheet-frame", () => ({
+	DayovaSheetFrame: () => null,
 }));
 
 jest.mock("convex/react", () => ({
@@ -30,6 +34,10 @@ jest.mock("#convex/_generated/api", () => ({
 
 jest.mock("~/context/AuthContext", () => ({
 	useAuthSession: () => ({ user: { clerkId: "user_1" } }),
+}));
+
+jest.mock("~/context/AiConsentContext", () => ({
+	useAiConsent: () => ({ requestAiConsent: async () => true }),
 }));
 
 jest.mock("~/components/ui/screen", () => {
@@ -132,9 +140,9 @@ describe("learning-plan path", () => {
 		);
 
 		const startButton = screen.getByRole("button", {
-			name: "Lernsession starten: Lineare Funktionen verstehen",
+			name: "Starten: Lineare Funktionen verstehen",
 		});
-		expect(screen.getByText("Lernsession starten")).toBeOnTheScreen();
+		expect(screen.getByText("Starten")).toBeOnTheScreen();
 		expect(screen.queryByText("Als Nächstes")).toBeNull();
 
 		fireEvent.press(startButton);
@@ -154,7 +162,7 @@ describe("learning-plan path", () => {
 		expect(
 			screen.getByText("Lerninhalte werden vorbereitet"),
 		).toBeOnTheScreen();
-		expect(screen.queryByText("Lernsession starten")).toBeNull();
+		expect(screen.queryByText("Starten")).toBeNull();
 	});
 
 	test("offers a retry when content preparation fails", async () => {
@@ -227,7 +235,8 @@ describe("learning-plan path", () => {
 			}),
 		];
 		const screen = await render(
-			<LearningPath
+			<LearningPathVisual
+				mode="screen"
 				examCountdownLabel="Noch 14 Tage"
 				examDateLabel="18. August 2026"
 				onOpenSession={onOpenSession}

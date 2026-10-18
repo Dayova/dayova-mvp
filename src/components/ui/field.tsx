@@ -1,10 +1,6 @@
-import {
-	TouchableOpacity,
-	type TouchableOpacityProps,
-	View,
-	type ViewProps,
-} from "react-native";
+import { type TouchableOpacityProps, View, type ViewProps } from "react-native";
 import { ErrorMessage } from "~/components/ui/error-message";
+import { FeedbackTouchableOpacity } from "~/components/ui/feedback-pressable";
 import { Text } from "~/components/ui/text";
 import { cn } from "~/lib/utils";
 
@@ -41,7 +37,7 @@ function FieldControl({
 	return (
 		<View
 			className={cn(
-				"min-h-16 flex-row items-center rounded-input border border-transparent bg-card px-5 shadow-black/5 shadow-sm",
+				"min-h-16 flex-row items-center rounded-input border border-border bg-card px-5",
 				invalid && "border-destructive/70",
 				disabled && "opacity-50",
 				className,
@@ -65,10 +61,10 @@ function FieldTrigger({
 	invalid?: boolean;
 }) {
 	return (
-		<TouchableOpacity
+		<FeedbackTouchableOpacity
 			activeOpacity={activeOpacity}
 			className={cn(
-				"min-h-16 flex-row items-center rounded-input border border-transparent bg-card px-5 shadow-black/5 shadow-sm",
+				"min-h-16 flex-row items-center rounded-input border border-border bg-card px-5",
 				invalid && "border-destructive/70",
 				disabled && "opacity-50",
 				className,

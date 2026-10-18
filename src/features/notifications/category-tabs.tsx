@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { View } from "react-native";
 import Animated, {
 	Easing,
 	interpolateColor,
@@ -9,6 +9,7 @@ import Animated, {
 	useSharedValue,
 	withTiming,
 } from "react-native-reanimated";
+import { FeedbackTouchableOpacity } from "~/components/ui/feedback-pressable";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
 
@@ -51,7 +52,7 @@ export function CategoryTabs({
 
 	return (
 		<View
-			className="flex-row rounded-full bg-card"
+			className="flex-row rounded-full border border-border bg-card"
 			onLayout={({ nativeEvent }) => {
 				const nextIndicatorWidth =
 					(nativeEvent.layout.width - 8) / CATEGORIES.length;
@@ -61,7 +62,6 @@ export function CategoryTabs({
 				minHeight: 60,
 				paddingHorizontal: 4,
 				paddingVertical: 6,
-				boxShadow: "0 6px 16px rgba(20, 28, 48, 0.06)",
 			}}
 		>
 			<Animated.View
@@ -89,7 +89,7 @@ export function CategoryTabs({
 				const selected = value === category.key;
 
 				return (
-					<TouchableOpacity
+					<FeedbackTouchableOpacity
 						key={category.key}
 						accessibilityRole="tab"
 						accessibilityState={{ selected }}
@@ -110,7 +110,7 @@ export function CategoryTabs({
 							label={category.label}
 							selectionPosition={selectionPosition}
 						/>
-					</TouchableOpacity>
+					</FeedbackTouchableOpacity>
 				);
 			})}
 		</View>

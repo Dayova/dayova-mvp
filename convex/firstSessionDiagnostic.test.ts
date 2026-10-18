@@ -2,6 +2,7 @@
 
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { AI_CONSENT_VERSION } from "../src/lib/ai-consent";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
@@ -508,7 +509,7 @@ test("completing one answered diagnostic twice advances only once", async () => 
 	);
 });
 
-test("does not invent a rolling slot when no learning time is saved", async () => {
+test("does not append a new rolling appointment without saved learning times", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);
 	await storeDiagnostic(t, learningPlanId);
@@ -549,6 +550,10 @@ test("does not invent a rolling slot when no learning time is saved", async () =
 			(session) => session.planningStatus === "provisional",
 		),
 	).toBe(false);
+	expect(await t.query(api.learningTimes.listMine, {})).toEqual([]);
+	expect(openSessions?.[0]?.id).toBe(initial?.sessions[1]?.id);
+	expect(openSessions?.[0]?.dateKey).toBe(initial?.sessions[1]?.dateKey);
+	expect(openSessions?.[0]?.startTime).toBe(initial?.sessions[1]?.startTime);
 });
 
 test("requires every diagnostic answer before the rolling plan can advance", async () => {
@@ -923,6 +928,17 @@ test("uses diagnostic correctness to choose a different evidence target", async 
 
 test("does not start diagnostic generation from required topics without material", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await t.run(async (ctx) => {
+		await ctx.db.insert("users", {
+			tokenIdentifier: user.tokenIdentifier,
+			clerkId: "first-session-diagnostic",
+			email: "student@example.com",
+			aiConsentStatus: "granted",
+			aiConsentVersion: AI_CONSENT_VERSION,
+			aiConsentGrantedAt: 1,
+			aiConsentUpdatedAt: 1,
+		});
+	});
 	const learningPlanId = await createPlan(t);
 	await t.mutation(api.learningPlans.updateRequiredTopics, {
 		id: learningPlanId,

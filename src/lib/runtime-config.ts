@@ -12,9 +12,7 @@ const publicEnvSchema = {
 	EXPO_PUBLIC_PRIVACY_URL: z.string().url().optional(),
 	EXPO_PUBLIC_TERMS_URL: z.string().url().optional(),
 	EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL: z.string().url().optional(),
-	EXPO_PUBLIC_CANCELLATION_URL: z.string().url().optional(),
 	EXPO_PUBLIC_SUPPORT_URL: z.string().url().optional(),
-	EXPO_PUBLIC_PARENT_CHECKOUT_URL: z.string().url().optional(),
 } as const;
 
 type PublicRuntimeConfigKey = keyof typeof publicEnvSchema;
@@ -38,7 +36,6 @@ const requiredReleasePublicEnvKeys = [
 	"EXPO_PUBLIC_PRIVACY_URL",
 	"EXPO_PUBLIC_TERMS_URL",
 	"EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL",
-	"EXPO_PUBLIC_CANCELLATION_URL",
 	"EXPO_PUBLIC_SUPPORT_URL",
 ] satisfies PublicRuntimeConfigKey[];
 const revenueCatPublicEnvKeyByPlatform = {
@@ -61,9 +58,7 @@ export const readPublicRuntimeConfig = (): StrictPublicRuntimeConfigValues => ({
 	EXPO_PUBLIC_TERMS_URL: process.env.EXPO_PUBLIC_TERMS_URL,
 	EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL:
 		process.env.EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL,
-	EXPO_PUBLIC_CANCELLATION_URL: process.env.EXPO_PUBLIC_CANCELLATION_URL,
 	EXPO_PUBLIC_SUPPORT_URL: process.env.EXPO_PUBLIC_SUPPORT_URL,
-	EXPO_PUBLIC_PARENT_CHECKOUT_URL: process.env.EXPO_PUBLIC_PARENT_CHECKOUT_URL,
 });
 
 const toStrictPublicRuntimeConfig = (

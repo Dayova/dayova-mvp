@@ -8,6 +8,11 @@ Canonical product framing: [Dayova Business Plan 2026 — Exact Exam, Real Gaps,
 
 ## Language
 
+**Dayova**:
+The sole product name, including during the trial and a paid subscription. Monthly and annual subscriptions describe billing cadence, not product tiers. Use copy such as `Dayova abonnieren`, `Dayova freischalten`, and `Willkommen bei Dayova`; use `subscription-success` for the purchase-confirmation route and related code.
+_Avoid_: Dayova Pro, or invented Premium/Plus product tiers. Existing store product IDs and access states are technical contracts, not branding to rename.
+_Decision_: [Das Produkt heißt Dayova](https://app.notion.com/p/3d52e87228bf811d9060e7cd264a9d2a), reaffirmed 2026-09-08.
+
 **Persönlicher Lernplan**:
 The user-facing adaptive study path created after the learner uploads at least one `Interne Schulquelle`. Creation schedules a `Wissenscheck` and a rolling two-session future window instead of asking setup questions or generating the complete plan up front.
 _Avoid_: Wissensanalyse, setup quiz, fully generated schedule
@@ -146,6 +151,10 @@ _Avoid_: Treating Generalprobe as a fourth learner-facing phase separate from Pr
 - Saving an exam is independent from generating a `Persönlicher Lernplan`. Without uploaded school material, keep the exam and a resumable material-missing plan draft in the overview; do not analyze material or create plan sessions.
 - Learning-plan setup asks the learner for the required exam topics before school-material upload. Persist that answer on both the exam entry and its material-missing plan draft so back navigation and later resume retain it. The missing-material prompt maps those topics into concrete upload guidance. Retain the draft when an upload fails or the last school document is removed.
 - Visible Back, iOS edge-swipe, and Android system Back share one creation intent. Later setup screens return to the preceding saved step; leaving the first step of an existing draft requires pause confirmation. Every unaccepted draft remains under `In Erstellung` in the learning-plan overview and resumes at the next incomplete step without presenting setup work as a finished plan.
+  Before confirming pause on an existing draft, persist changed local exam topics
+  through the shared mutation that updates both draft and exam. Wait for success
+  before leaving; retain the sheet and input with a retryable error on failure.
+  This saved-draft contract does not imply autosave for an unsaved exam form.
 - External learning aids and typed teacher guidance may enrich a plan but never satisfy the school-material requirement.
 - The confirmed exam scope should be an exhaustive map of distinct, assessable capabilities supported by internal school evidence, not a few broad chapter labels. Split broad areas into what the learner must explain and solve or apply, while never inventing or duplicating topics to reach a target count.
 - Learning-plan creation contains no knowledge-question or quiz step. Its first knowledge test is the scheduled, timed `Wissenscheck` with five to ten questions.

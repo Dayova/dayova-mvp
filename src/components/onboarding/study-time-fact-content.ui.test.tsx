@@ -16,6 +16,7 @@ jest.mock("react-native-reanimated", () => {
 		__esModule: true,
 		default: { View: ReactNative.View },
 		FadeInUp: animationBuilder,
+		useReducedMotion: () => false,
 	};
 });
 
@@ -33,19 +34,17 @@ describe("StudyTimeFactContent", () => {
 	test("renders the selected study-time fact with a screen-reader heading", async () => {
 		const screen = await render(
 			<StudyTimeFactContent
-				title="Deine Lernzeit reicht aus"
+				title="Du brauchst nicht stundenlang zu lernen."
 				studyTime="45 min"
 			/>,
 		);
 
 		expect(
-			screen.getByRole("header", { name: "Deine Lernzeit reicht aus" }),
+			screen.getByRole("header", {
+				name: "Du brauchst nicht stundenlang zu lernen.",
+			}),
 		).toBeOnTheScreen();
 		expect(screen.getByText("Schon gewusst?")).toBeOnTheScreen();
-		expect(
-			screen.getByText(
-				"Deine 45 Minuten reichen aus, um eine starke Lernroutine aufzubauen. Studien zeigen: Kleine Lerneinheiten bleiben länger hängen als langes Pauken auf einmal.",
-			),
-		).toBeOnTheScreen();
+		expect(screen.getByText(/45 Minuten geben dir Zeit/)).toBeOnTheScreen();
 	});
 });

@@ -1,0 +1,59 @@
+appId: de.dayova.app-dev
+name: DAY-349 iOS native stack back and gesture ownership
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "Registrierung"
+    timeout: 60000
+- tapOn: "Registrierung"
+- extendedWaitUntil:
+    visible: "Du weißt, was heute wirklich zählt."
+    timeout: 30000
+
+# The pager owns a non-edge horizontal swipe.
+- swipe:
+    start: 85%, 55%
+    end: 15%, 55%
+    duration: 800
+- assertVisible: "Deine Prüfung. Alles an einem Ort."
+- swipe:
+    start: 15%, 55%
+    end: 85%, 55%
+    duration: 800
+- assertVisible: "Du weißt, was heute wirklich zählt."
+
+# A short edge-directed interaction must cancel on the first intro page.
+# Simulator automation does not prove the native interactive-pop preview.
+- swipe:
+    start: 1%, 45%
+    end: 22%, 45%
+    duration: 1200
+- assertVisible: "Du weißt, was heute wirklich zählt."
+
+- tapOn: "Weiter"
+- tapOn: "Weiter"
+- tapOn: "Meinen Start personalisieren"
+- extendedWaitUntil:
+    visible: "Wie dürfen wir dich nennen?"
+    timeout: 30000
+- tapOn:
+    id: "onboarding-name-input"
+- inputText: "Stack Test"
+- hideKeyboard
+- tapOn: "Weiter"
+- assertVisible: "Wie lange möchtest du pro Lerntag einplanen?"
+
+# The duration selector keeps its own non-edge horizontal interaction.
+- swipe:
+    start: 82%, 50%
+    end: 18%, 50%
+    duration: 800
+- assertVisible: "90"
+
+# The routed back control pops exactly one native route and preserves the answer
+# held above both route screens. Interactive edge-pop remains a physical-device gate.
+- tapOn: "Zurück"
+- extendedWaitUntil:
+    visible: "Wie dürfen wir dich nennen?"
+    timeout: 30000
+- assertVisible: "Stack Test"

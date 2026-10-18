@@ -50,7 +50,7 @@ export default function ChangePasswordScreen() {
 			router.back();
 			return;
 		}
-		router.replace("/settings");
+		router.replace("/profile");
 	};
 
 	const clearFieldError = (field: PasswordField) => {

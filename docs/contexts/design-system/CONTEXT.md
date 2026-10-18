@@ -7,8 +7,8 @@ Notion is Dayova's main internal documentation and knowledge workspace. Keep thi
 ## Language
 
 **Content-size resilience**:
-Dayova's quality contract for every portrait phone and tablet layout across system text and display sizing: default sizing stays visually identical to the approved baseline, while non-default sizes may reflow, stack, grow, or vertically scroll but must remain polished, complete, and fully usable. Screens stay bounded to the portrait viewport; horizontal scrolling remains valid only where it is an intentional part of an inherently horizontal component, never as a workaround for larger text or display sizing. Meaningful copy and actions remain present at their system-scaled size and reflow vertically; intentional ellipsis is valid only when the complete value remains accessible. Portrait-tablet compatibility keeps the phone information architecture in a centered, bounded-width single column and changes only behavior that is buggy or visibly awkward. Dedicated tablet composition, navigation, information density, landscape, split-screen, and foldable postures are separate product modes.
-_Avoid_: Pixel-identical layouts at every accessibility size, merely fitting without visual quality, clipping content, shrinking or capping meaningful text, hiding actions, inaccessible truncation, disabling system scaling, screen-level horizontal scrolling, treating portrait tablet compatibility as a dedicated tablet mode
+Dayova's quality contract for every portrait phone and tablet layout across system text and display sizing: default sizing stays visually identical to the approved baseline, while non-default sizes may reflow, stack, grow, or vertically scroll but must remain polished, complete, and fully usable. Screens stay bounded to the portrait viewport; horizontal scrolling remains valid only where it is an intentional part of an inherently horizontal component, never as a workaround for larger text or display sizing. Meaningful copy and actions remain present at their system-scaled size and reflow vertically; intentional ellipsis is valid only when the complete value remains accessible. Semantic display headings use Dayova's shared native-style large-title curve (currently a 1.75 maximum multiplier), while body copy, controls, field values, errors, and supporting text continue to receive the user's full text-size preference. This heading-only curve prevents custom Poppins display type from growing linearly to roughly three times its base size and splitting ordinary German words into isolated fragments at AXXXL. Portrait-tablet compatibility keeps the phone information architecture in a centered, bounded-width single column and changes only behavior that is buggy or visibly awkward. Dedicated tablet composition, navigation, information density, landscape, split-screen, and foldable postures are separate product modes.
+_Avoid_: Pixel-identical layouts at every accessibility size, merely fitting without visual quality, clipping content, arbitrary screen-local text caps, shrinking or capping body/action/error content, hiding actions, inaccessible truncation, disabling system scaling, screen-level horizontal scrolling, treating portrait tablet compatibility as a dedicated tablet mode
 
 ## Current Design Delivery Model
 
@@ -43,10 +43,19 @@ visible until an outgoing `react-native-screens` pop transition finishes. iOS
 keeps the native SwiftUI toggle shape and applies Dayova primary through the
 SwiftUI tint modifier.
 
-App screens that collect a date or time must use `DateTimePickerSheet` from
-`src/components/ui/date-time-picker-sheet`. Do not import the underlying Expo UI
-picker directly from a screen. The wrapper owns platform display normalization,
-German locale, safe-area handling, and native presentation.
+App screens that collect a date or time in one interaction must use
+`DateTimePickerSheet` from `src/components/ui/date-time-picker-sheet`. Do not
+import the underlying Expo UI picker directly from a screen. The wrapper owns
+platform display normalization, German locale, safe-area handling, and native
+presentation. Dedicated date steps with a persistent calendar use `InlineDatePicker`
+from `src/components/ui/inline-date-picker` instead. It owns native inline
+rendering, theme, native sizing, and Android date-only timezone conversion.
+[DAY-515](https://linear.app/dayova/issue/DAY-515) defines the exam-date step: the
+calendar appears below the question, without a separate selected-date card. Day
+changes immediately update the Continue label on iOS ("Weiter mit 2. November 2026").
+Android uses "Weiter" because its native Material calendar already displays the
+selected date prominently above the calendar grid.
+The creation progress header stays visible, and Continue advances to topics.
 
 ## Icons
 
@@ -95,7 +104,22 @@ hausaufgabe `#B88AAE`. Current badge subtle fills are: wrong
 Do not add `*-foreground` color partners without an explicit design-system
 decision that introduces them as real semantic palette tokens. Use the palette
 directly: `text-text` for primary text, `text-secondary-text` for secondary
-text, and `text-white` for white text on dark or saturated surfaces.
+text, and `text-white` for white text on dark surfaces or the existing
+primary-interactive gradient. The solid system cyan selection surface is the
+documented exception: its content uses `onPrimary` (`#1A1A1A`) in both themes.
+That pairing has a 7.85:1 contrast ratio on `#00BAFF`; white has only 2.22:1.
+Use `onPrimary` for solid selected pills, tabs, their checkmarks, and equivalent
+compact controls. Do not reuse `surface` or theme-dependent primary text as an
+implicit foreground token.
+
+Exam/subject, answer and other branded selections use the same vertical
+`primaryInteractive` gradient (`#00A0E6` → `#4FD8FF`) as primary buttons.
+The `selection` token aliases that gradient. Selected letters, checkmarks and
+pill labels use fixed `onPrimary` for readable contrast in both themes.
+Card text remains theme text, with an accent fill and cyan border. Shared
+`SelectionControl` owns press feedback, interruptible transitions, radio/checkbox
+semantics and reduced motion; screens own immediate selected state. See the
+[selection decision](adr/answer-selection-colors.md).
 
 Typography uses Poppins only. Body text is Regular; headings, buttons, selected
 tabs, labels that need emphasis, and other highlighted text use SemiBold.
@@ -105,6 +129,10 @@ hierarchy is `heading-1` 32/48, `heading-2` 24/36, `body-1` 20/30, `body-2`
 spacing. Top-level page-intro groups use 12px between their heading and
 supporting copy. Compact navigation chrome, dense data rows, and headings inside
 cards may keep tighter spacing when the elements form one local unit.
+Semantic headings must go through the shared `Text` primitive with a heading
+variant or `accessibilityRole="header"`; the primitive owns the documented
+large-title scaling curve. Do not reproduce `maxFontSizeMultiplier` values in
+individual screens. Non-heading text keeps unrestricted system scaling.
 
 Light-mode pill buttons have exactly two visual appearances: the light-mode
 gradient button and the black button using the primary text color `#1A1A1A`.
@@ -112,41 +140,101 @@ There are no white pill buttons in the current light-mode design system. Both
 appearances are 56px tall with a 44px radius and a 0.3px inside stroke: gradient
 buttons use the vertical light-mode gradient `#00A0E6` top to `#4FD8FF` bottom
 with a white stroke, and black buttons use the light border token `#DCE6EE`.
+Production screens use the shared `Button` and `BackButton` components for
+these actions. A screen-local clone is not an allowed visual variant; add a
+shared variant and update this context if a new interaction contract is truly
+needed.
+
+DAY-490's approved Today calendar navigation is a scoped exception: the
+`DashboardCalendarHeader` reset-to-today control uses the shared ghost Button
+with a bordered card surface and theme text, preserving the approved light
+pill without making it a general-purpose CTA variant. See
+[the dashboard isolation contract](../../dashboard-main-isolation.md).
+
+Learning-time settings restore the personal-subject management pattern: muted
+weekday badges, bordered cards, a visible pencil, and swipe-to-delete with a
+text-only rounded action. The shared `destructive-outline` Button is a scoped
+management-action exception, not a new primary CTA: `danger-action` foreground
+and border on `danger-subtle` fill in both themes. It matches the independently
+introduced personal-subject variant in PR #816 without changing existing Button
+defaults. Screen readers retain a named delete action on the pencil. See
+[the restoration record](../../qa/learning-times-settings-restoration-2026-10-02.md).
+
+The empty timetable uses one full-width gradient import button and a full-width
+neutral manual-entry button. File and camera are equal sources inside the shared
+`ActionSheet`, following the school-material upload pattern. Use source rows
+instead of tiles when content-size layout requires stacking. Native pickers open
+after the sheet's `onDismiss`, and the pending selection disables competing
+entry actions. The editor keeps reimport subordinate to its existing save action.
+This decision introduces no new button appearance; see
+[DAY-378](https://linear.app/dayova/issue/DAY-378/clarify-timetable-entry-with-one-import-action-and-a-secondary-manual).
 
 The trial-activation and expired-trial payment flow are deliberate full-bleed
-branded exceptions. The expired-trial flow separates payer selection from
-subscription completion into two routes. Both use the shared
+branded exceptions. The expired-trial route presents one Store-only path into
+the subscription route; it must not offer payer selection, QR codes, website
+checkout links, or other purchase steering. Both routes use the shared
 `primaryInteractive` gradient as the view's only gradient, white text on the
-saturated outer surface, and
-theme-independent light surfaces for content that needs primary and secondary
-text. Payer choices stay on the first route; they never expand subscription
-details in place, and the subscription route does not repeat the chosen payer
-as a summary row. On the subscription route, plan choices use a translucent
-white surface with a thin border, restrained inset highlight, and shadow, while
-their text stays dark in every app theme. The selected plan uses a dark outline
-and checked indicator instead of a tinted fill. The annual plan emphasizes its
-monthly equivalent and keeps the annual charge in the description. The
-subscription header pairs its back action with the current two-step progress in
-one compact row instead of isolating navigation above the page title. Secondary
-actions use `systemSubtle`,
-payment details use `surface` with a primary-accent border, the subscription
-checkout action uses the standard black treatment, and purchase restoration is
-an underlined white link. The parent-payment checkout link continues to use
-`primaryStrong`. Reusing shared semantic values keeps both ends of the trial flow
-synchronized with future Dayova color changes. This treatment is limited to
-focused access-setup moments and is not a third general-purpose light-mode
-button appearance. The trial-activation screen may use its white primary button
-for legible contrast on that saturated surface; this does not introduce a
-reusable third button appearance. The expired-trial screen passes the fixed
-shared light tokens through the native style API because the tracked Fabric
-variable-invalidation issue can otherwise leave newly mounted descendants with
-mixed light and dark tokens.
+saturated outer surface, and theme-independent light surfaces for content that
+needs primary and secondary text. On the subscription route, plan choices use a
+translucent white surface with a thin border, restrained inset highlight, and
+shadow, while their text stays dark in every app theme. The selected plan uses a
+dark outline and checked indicator instead of a tinted fill. Prices and billing
+periods always come from the native Store: the complete charge is prominent and
+an annual monthly equivalent is secondary when the Store provides one. The
+subscription checkout action uses the standard black treatment, and purchase
+restoration is an underlined white link. Reusing shared semantic values keeps
+both ends of the trial flow synchronized with future Dayova color changes. This
+treatment is limited to focused access-setup moments and is not a third
+general-purpose light-mode button appearance. The trial-activation screen may
+use its white primary button for legible contrast on that saturated surface;
+this does not introduce a reusable third button appearance. The expired-trial
+screen passes the fixed shared light tokens through the native style API because
+the tracked Fabric variable-invalidation issue can otherwise leave newly mounted
+descendants with mixed light and dark tokens.
 
 The post-purchase confirmation route extends this focused access-flow exception:
 it uses the same `primaryInteractive` gradient and fixed light surfaces, then
 offers one forward-only action into the app. Show it after a newly completed
 purchase, not after restoring an existing subscription, so the celebration
 acknowledges a real transition without becoming recurring friction.
+
+## Product-surface previews
+
+### Personal-subject action appearance
+
+Exam-type and subject selection share `SelectionOptionRow`: identical card
+geometry, icon treatment, radio checked semantics and a selection-gradient check
+indicator with a white (`#FFFFFF`) check, as specified in the
+[selection color decision](adr/answer-selection-colors.md). The subject catalog
+is one continuous list, without a
+separate personal-subject heading. Adding a subject always saves it for reuse;
+there is no permanent-versus-one-time choice or extra confirmation step.
+Existing built-in/personal matches are reused; timetable-only or legacy one-time
+matches are persisted when explicitly added. Legacy selections remain readable
+without silently migrating existing entries. The settings pencil opens "Fach
+bearbeiten" with save and delete actions. Delete opens the existing confirmation
+only after the editor's native dismissal; swipe deletion remains available.
+
+DAY-187 restores the September device-review treatment in the independent
+personal-subject feature. Shared Button variants `cancel` (bordered card,
+theme text) and `destructive-outline` (danger border/text on subtle fill) are
+opt-in exceptions to the general solid/gradient CTA appearances above.
+They reuse the reviewed #729 palette: light `#B01B10` / `#FFF0EE`, dark
+`hsl(4 100% 75%)` / `hsl(4 55% 16%)`. Existing destructive defaults do not
+change. ConfirmationSheet exposes `actionAppearance="outlined"` for this
+consumer; other callers retain their current appearance.
+See [restoration scope and provenance](../../qa/day-187-design-restoration-2026-10-02.md).
+
+Onboarding artwork or other explanatory UI that depicts a live Dayova product
+surface must render the same shared presentation module through an explicit
+screen/artwork contract. Do not recreate the product card, learning path,
+upload surface, copy, tokens, or status/progress layout as a parallel component or static
+mockup. Artwork mode stays decorative, non-interactive, accessibility-hidden,
+and bounded to its artboard; the surrounding screen owns the accessible
+explanation. A deliberate divergence requires a superseding decision with the
+learner reason, alternatives, trade-off, reversal condition, and fresh native
+evidence. See
+[ADR: Render Onboarding Product Previews Through Shared Product Modules](adr/onboarding-artwork-rendering.md).
 
 The current app corner system is: info/small boxes use 24px, 345px-wide
 rectangles and card-like surfaces use 32px, and buttons use 44px. Device frame
@@ -160,13 +248,176 @@ lives in `src/lib/theme.ts`. Theme preference handling lives in
 `src/lib/theme-preference.ts`; settings should expose the existing light,
 system, and dark options rather than introducing another toggle model.
 
-Icon-only close controls for sheets and modal chrome use the shared `CloseButton`
-component: path 2 background (`#D7DCE3`) with path 3 icon (`#8A8D92`).
+Back and close navigation controls share `NavigationIconButton` through
+`BackButton` and `CloseButton`: 48pt circles, card background, semantic border,
+and a 20pt theme-text Hugeicon with 2.4 stroke. Both use the shared Button's
+pressed, disabled, web-focus and accessibility behavior, with 8pt hit slop.
+This includes sheet/modal close controls, password reset and subscription back
+navigation. Contextual labels and existing navigation/confirmation behavior
+remain with the caller. Content-removal X actions are not navigation controls.
+This supersedes the smaller path-2/path-3 close treatment per Jakob's
+16 October direction ([DAY-523](https://linear.app/dayova/issue/DAY-523/unify-app-wide-back-and-close-navigation-controls)).
+
+The learning-plan creation header is a scoped exception, per the 14 October
+2026 user direction: both back and close use native SwiftUI buttons through
+Expo UI, with Apple's `glass` button style on iOS 26+ and `bordered` on older
+iOS versions. The native control owns interaction and accessibility, while
+Dayova's Hugeicons remain the button content. Android and web retain the shared
+BackButton/CloseButton controls, now with matching geometry and appearance.
+Keep native glass scoped to the creation header. The creation progress
+bar is 16pt tall, centered beside the 48pt button hosts. This keeps the bar
+compact while preserving comfortable button tap areas.
 
 ## Notes
 
+- Use `SupportContact` for contacting the team from Settings, access screens,
+  and blocking operational errors. Put the action beside the failure and keep
+  existing recovery actions available. Pass a static, user-facing screen name
+  as `context`; never pass raw errors, account identifiers, or learning content.
+  It opens an editable email draft and provides the address, a native copy/share
+  action, and a website fallback in `DayovaSheetFrame`. Keep explicit accessible
+  labels on launch controls so returning from another app preserves their names.
+  See [DAY-381](https://linear.app/dayova/issue/DAY-381/make-support-easy-to-contact-from-app-failures).
 - Capture reusable component and styling decisions here.
 - Put design-system ADRs in `docs/contexts/design-system/adr/`.
 - Use NativeWind for static app UI. Follow the rendering-choice matrix in
   `docs/styling.md` when deciding between NativeWind, RN geometry styles, SVGs,
   and native artwork modules.
+
+### Duration input
+
+`DurationPickerSheet` is the app-owned adapter for elapsed learning time. It uses
+universal Expo UI Picker columns: native hour/minute wheels on iOS, platform
+menus on Android/web. It does not interpret durations as clock times, dates or
+AM/PM. Learning-plan editors use 5-minute increments from 5 to 240 minutes;
+invalid combinations cannot be confirmed. Selection is staged until Übernehmen;
+closing discards it. Present it after the editor dismisses and return only after
+the duration sheet dismisses. Native picker geometry/theme is owned here; app
+screens must not import the platform picker directly.
+
+## Onboarding learning-time controls
+
+The duration selector uses the onboarding appearance of `SnapCarouselSelector`:
+a 128-point thin progress ring and a 96-point selected gradient tick, based on
+the supplied MVP Login 5 reference. It renders the values supplied by the
+existing learning-time model; this design change defines no allowed duration
+range and makes no backend, validation, or persistence changes. Duration values
+and their compatibility rules belong to PR #813. The ring uses compact min/h
+labels, independently of the allowed values. Continue confirms the displayed
+initial value; merely opening the page does not save it.
+
+The 5 October 2026 user correction supersedes the darker selected weekday
+palette: weekday pills now use the primary-action gradient and `onPrimary`
+text through `SelectionControl`, following the
+[selection-color ADR](adr/answer-selection-colors.md).
+Their accessible checkbox state
+is retained; the visual checkmark is omitted. Weekday pills retain the original
+48-point minimum height and semibold body-3
+type, arranged 2/2/2/1 with wrapping for larger content sizes. Initial answers
+are empty; example selections belong only in historical screenshot evidence.
+
+The duration explanation adapts to the chosen value; an additional explanation
+between weekdays and start time brings the profile flow to twelve steps.
+
+## Press feedback
+
+Shared Buttons (including icons and links) and custom actions use
+`FeedbackPressable`: 90 ms press compression to 97%, followed by a damped
+return. Small/icon Buttons and compact add, close and notification controls use
+92% so their compression remains visible on small surfaces. Shared feedback
+controls also select 92% automatically for measured surfaces up to 96 × 64 dp;
+larger surfaces use 97%, and explicit press scales remain authoritative. Layout
+callbacks are forwarded unchanged. The detached notched-card action uses its
+visible circle size for the same rule. Short taps complete
+the 90 ms compression before springing back; release never cancels the inward
+motion prematurely. Disabling, unmounting or reduced motion invalidates pending
+animation callbacks. Animation starts in the touch handler so fast taps are not lost to state
+batching; action dispatch never waits for animation. Opacity-based controls use
+`FeedbackTouchableOpacity`, preserving their existing active opacity.
+Coverage includes shared ActionSurface/FieldTrigger/sheets, dashboard cards,
+learning-plan cards and theory disclosures, settings, learning times, timetable,
+notifications, access screens, and plain authentication/onboarding actions.
+Existing active colors, labels, handlers, and caller styles remain intact.
+Shared selection rows and pills retain `SelectionControl` as their single press
+animation, including in auth, learning-time and timetable flows. Do not wrap
+these controls in `FeedbackPressable`.
+Calendar selection, learning-path breathing and analytics flips stay on child
+views; their outer controls now provide independent press feedback. Native
+controls retain system feedback. The notched card's invisible hit target drives
+the shared press motion on its visible action circle, keeping the hit area fixed.
+Both interactive brand titles also use the shared press control.
+Caller transforms take precedence so existing animations are not replaced.
+The simple transform runs with React Native Animated's native driver on native
+platforms; it adds no dependency and does not migrate existing Reanimated code.
+Reduced motion disables scaling, including when the preference changes during
+an interaction. Until the preference is available, controls remain static.
+Selection rows invoke the existing safe iOS selection haptic only when choosing
+an unselected option. Buttons do not add automatic haptics: existing success and
+native-control feedback must not be duplicated.
+
+Tracked in [DAY-508](https://linear.app/dayova/issue/DAY-508).
+
+The October 2026 source audit traced interactive call sites across 80 TSX files,
+including shared wrappers and dynamic calendar controls. Remaining raw press
+controls are the shared feedback and selection implementations and the
+notched-card hit target. Native tabs,
+switches and pickers retain platform feedback; static onboarding artwork is not
+interactive. This is source coverage, not a claim of visual QA on every screen.
+
+## Learning-plan preparation
+
+The preparation screen hides the creation header, including its back/close
+controls and overall-flow progress bar, in every preparation stage. Its job is
+to explain the ongoing work: flower and heading first, one preparation progress
+bar second, and the checklist third. Completion advances automatically; a quiet
+ghost action, **Später fortsetzen**, remains in a persistent footer during
+processing and errors, outside the scrolling content so it stays reachable at
+large text sizes. Two progress bars compete for attention and overload this
+waiting surface: the upper bar describes the overall creation flow, while the
+remaining bar and checklist describe preparation. Showing both on one waiting
+screen adds competing progress contexts without another decision for the learner.
+Removing the upper bar and its two navigation buttons reduces visual load and
+keeps attention on preparation. Form steps retain their creation header. Without
+that header, the preparation screen owns safe-area padding in its scroll view
+and footer.
+Flower, heading, progress bar, and checklist form one vertically centered group
+in the available space above the footer. The scroll content grows to fill that
+space but can overflow vertically on small displays or at larger text sizes.
+
+Leaving is not a server-side cancellation or rollback: an already dispatched
+analysis action or mutation may still finish and persist its result. The client
+stops dispatching subsequent preparation steps and ignores late navigation after
+exit. Back/close controls cannot reliably undo that server work; the explicit
+**Später fortsetzen** label describes leaving a saved draft without promising
+to pause or abort all processing. This is a reason to clarify the exit, not to
+trap the learner on the waiting screen.
+**Später fortsetzen** returns to Learning Plans with the saved, unaccepted
+draft intact; Android system back remains available. Errors also retain retry.
+Do not remove this explicit exit on iOS, where the back gesture is disabled.
+
+The temporary creation flow uses one preparation screen for material analysis,
+recognized scope, and diagnostic preparation. It skips the separate scope
+confirmation screen, automatically applies the recognized scope through the
+existing mutation, and continues to review after preparation. Existing scope and
+generating links redirect to analysis so saved links remain resumable. To restore
+manual confirmation, restore its route and the analysis-to-scope transition
+together; the backend confirmation requirement remains in place.
+
+The screen places a compact Dayova flower above a heading, animated shared
+`FlowProgressBar`, and a three-step checklist. Visual stages use an estimated
+completion time, divided into thirds. The estimate starts at 15 seconds and
+adapts to the median of the last five successful full runs in the current app
+session (samples bounded to 1–60 seconds). Failed, cancelled, and resumed runs do
+not train the estimate. This is a presentation estimate, not measured backend
+phase completion or a guaranteed ETA.
+
+Actual readiness always wins: there are no minimum stage durations or completion
+holds. If work finishes in eight seconds, navigation starts at eight seconds,
+even when a remaining visual stage must be skipped. The final item stays active
+if processing exceeds the estimate. Backend requests remain sequential; errors
+and cancellation stop visual advancement and subsequent requests. Resumed work
+skips completed stages. Errors remain on the screen with a retry action.
+
+Pending items are numbered, the active item shows an indicator, and completed
+visual stages use the shared Hugeicons check on cyan with `onPrimary`. Reduced
+motion retains static stage indicators.

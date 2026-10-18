@@ -23,6 +23,23 @@ export type DashboardWeekProgress = {
 	totalLearningSessions: number;
 };
 
+export const getNextLearningStepAccessibilityLabel = ({
+	isStarted,
+	title,
+	dateLabel,
+	timeLabel,
+}: {
+	isStarted: boolean;
+	title: string;
+	dateLabel: string | null;
+	timeLabel: string | null;
+}) => {
+	const details = [dateLabel, timeLabel]
+		.filter((label): label is string => Boolean(label))
+		.join(", ");
+	return `${isStarted ? "Weiterlernen" : "Nächsten Lernschritt öffnen"}: ${title}${details ? `. ${details}` : ""}`;
+};
+
 export const getAdjacentDashboardDayKey = ({
 	selectedDayKey,
 	direction,
@@ -36,6 +53,7 @@ export const getAdjacentDashboardDayKey = ({
 	return getDayKey(addDays(selectedDate, direction === "next" ? 1 : -1));
 };
 
+/** Returns Monday through Sunday around a valid day key, preserving invalid input as a singleton. */
 export const getDashboardWeekDayKeys = (selectedDayKey: string) => {
 	const selectedDate = parseDayKey(selectedDayKey);
 	if (!selectedDate) return [selectedDayKey];
@@ -47,6 +65,27 @@ export const getDashboardWeekDayKeys = (selectedDayKey: string) => {
 	);
 };
 
+/** Keeps the weekday on week moves, falling back to the first available day in a partial week. */
+export const getDashboardWeekSelection = ({
+	selectedDayKey,
+	weekDelta,
+	dayPagerKeys,
+}: {
+	selectedDayKey: string;
+	weekDelta: number;
+	dayPagerKeys: string[];
+}) => {
+	const date = parseDayKey(selectedDayKey);
+	if (!date) return undefined;
+	const nextDayKey = getDayKey(addDays(date, weekDelta * 7));
+	return dayPagerKeys.includes(nextDayKey)
+		? nextDayKey
+		: getDashboardWeekDayKeys(nextDayKey).find((key) =>
+				dayPagerKeys.includes(key),
+			);
+};
+
+/** Builds the bounded date-navigation window around the anchor day. */
 export const getDashboardCalendarDayKeys = ({
 	anchorDayKey,
 	radiusInDays = 730,
@@ -64,6 +103,7 @@ export const getDashboardCalendarDayKeys = ({
 	);
 };
 
+/** Prioritizes the selected week and neighboring days within the 31-day query budget. */
 export const getDashboardRelevantDayKeys = ({
 	selectedDayKey,
 	todayKey,
@@ -81,6 +121,9 @@ export const getDashboardRelevantDayKeys = ({
 	};
 
 	if (selectedDate) {
+		for (const dayKey of getDashboardWeekDayKeys(selectedDayKey)) {
+			addKey(dayKey);
+		}
 		for (const offset of [-1, 0, 1]) {
 			addKey(getDayKey(addDays(selectedDate, offset)));
 		}
@@ -237,10 +280,10 @@ export const findNextActionableAgendaItemId = ({
 		currentMinutes,
 	})?.entry.id;
 
+/** Finds the earliest unfinished learning session from today, including elapsed times today. */
 export const findNextActionableAgendaItem = ({
 	items,
 	todayKey,
-	currentMinutes,
 }: {
 	items: DashboardAgendaItem[];
 	todayKey: string;
@@ -256,5 +299,17 @@ export const findNextActionableAgendaItem = ({
 		.find(
 			(item) =>
 				item.kind === "learningSession" &&
-				!isDashboardAgendaItemPast({ item, todayKey, currentMinutes }),
+				item.dayKey >= todayKey &&
+				(item.entry.executionStatus
+					? item.entry.executionStatus !== "completed"
+					: item.entry.completed !== true),
 		);
+
+/** Filters timetable-origin entries only; homework and exams remain visible. */
+export const getVisibleDashboardEntries = (entries: DayEntry[]): DayEntry[] =>
+	entries.filter((entry) => entry.source !== "timetable");
+
+/** Reports visible activity on a day, including completed entries and past dates. */
+export const hasDashboardDayEntries = (
+	entries: DayEntry[] | undefined,
+): boolean => getVisibleDashboardEntries(entries ?? []).length > 0;

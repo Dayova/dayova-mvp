@@ -1,22 +1,18 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { useRef, useState } from "react";
-import {
-	ActivityIndicator,
-	Pressable,
-	ScrollView,
-	StyleSheet,
-	useWindowDimensions,
-	View,
-} from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "~/components/ui/button";
+import { ErrorMessage } from "~/components/ui/error-message";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import { Bell, Check, SquareLock } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAccess } from "~/context/AccessContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { openExternalUrl } from "~/lib/open-external-url";
 import { env } from "~/lib/runtime-config";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 const TRIAL_TERMS_VERSION = "2026-07-28-v1";
 const TRIAL_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
@@ -43,14 +39,13 @@ const timelineItems = [
 ] as const;
 
 export function TrialActivationScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const { access, activateTrial } = useAccess();
 	const insets = useSafeAreaInsets();
-	const { fontScale, height: windowHeight } = useWindowDimensions();
 	const [isStarting, setIsStarting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const activationInFlightRef = useRef(false);
 	const showStarting = isStarting || access?.canUseApp === true;
-	const scrollEnabled = windowHeight < 820 || fontScale > 1;
 
 	const startTrial = async () => {
 		if (showStarting || activationInFlightRef.current) return;
@@ -58,8 +53,11 @@ export function TrialActivationScreen() {
 		setError(null);
 		setIsStarting(true);
 		try {
+			trackFeature("trial.start", "attempted");
 			await activateTrial(TRIAL_TERMS_VERSION);
+			trackFeature("trial.start", "succeeded");
 		} catch {
+			trackFeature("trial.start", "failed");
 			setError("Deine Testphase konnte nicht gestartet werden.");
 		} finally {
 			activationInFlightRef.current = false;
@@ -87,33 +85,44 @@ export function TrialActivationScreen() {
 				style={gradientFillStyle}
 			/>
 			<ScrollView
+				testID="trial-scroll-view"
 				alwaysBounceVertical={false}
-				bounces={scrollEnabled}
+				bounces={false}
 				className="flex-1"
-				contentInsetAdjustmentBehavior={scrollEnabled ? "automatic" : "never"}
-				key={scrollEnabled ? "scrollable-trial" : "fixed-trial"}
-				scrollEnabled={scrollEnabled}
+				contentInsetAdjustmentBehavior="never"
 				showsVerticalScrollIndicator={false}
-				// Disabled iOS ScrollViews do not apply automatic top insets, so
-				// fixed mode owns that runtime safe-area value explicitly.
+				// Runtime safe areas bound the viewport on both platforms, including
+				// while scrolling. Automatic content insets only apply on iOS.
+				style={{
+					marginTop: insets.top,
+					marginBottom: insets.bottom,
+					marginLeft: insets.left,
+					marginRight: insets.right,
+				}}
 				contentContainerStyle={{
+					alignItems: "center",
 					flexGrow: 1,
-					paddingBottom: Math.max(insets.bottom, 16),
-					paddingTop: scrollEnabled ? 0 : insets.top,
+					justifyContent: "center",
+					paddingBottom: Math.max(16 - insets.bottom, 0),
+					paddingHorizontal: 24,
+					paddingTop: 16,
 				}}
 			>
-				<View className="flex-1 px-7 pt-5 pb-2">
-					<View className="gap-3 pb-7">
-						<Text className="font-semibold text-body-4 text-white/85">
+				<View
+					testID="trial-content-block"
+					className="w-full max-w-[560px] justify-center py-4"
+				>
+					<View className="items-center gap-3 pb-7">
+						<Text className="text-center font-semibold text-body-4 text-white/85">
 							14 TAGE KOSTENLOS
 						</Text>
 						<Text
 							variant="h1"
-							className="max-w-[330px] text-left font-semibold text-heading-1 text-white leading-tight"
+							className="max-w-[420px] text-center font-semibold text-heading-1 text-white leading-tight"
 						>
 							So läuft deine Testphase
 						</Text>
-						<Text className="max-w-[330px] text-body-3 text-white/90">
+						<Text className="max-w-[420px] text-center text-body-3 text-white/90">
 							Voller Zugriff. Ohne Zahlungsmittel. Ohne automatische
 							Verlängerung.
 						</Text>
@@ -186,18 +195,14 @@ export function TrialActivationScreen() {
 
 						{error ? (
 							<View className="mb-3 rounded-3xl bg-white/95 px-4 py-3">
-								<Text
-									accessibilityLiveRegion="polite"
-									className="text-center text-body-3 text-destructive"
-									selectable
-								>
+								<ErrorMessage className="text-center text-body-3">
 									{error}
-								</Text>
+								</ErrorMessage>
 							</View>
 						) : null}
 						<Button
 							accessibilityHint="Aktiviert deine kostenlose 14-tägige Testphase."
-							className="border-white bg-white shadow-black/10 active:bg-white/90"
+							className="border-white bg-white active:bg-white/90"
 							disabled={showStarting}
 							onPress={() => void startTrial()}
 							variant="outline"
@@ -216,7 +221,7 @@ export function TrialActivationScreen() {
 							Mit „Dayova starten“ akzeptierst du die Bedingungen der Testphase.
 						</Text>
 						<View className="flex-row flex-wrap justify-center gap-x-4 gap-y-1 pt-1">
-							<Pressable
+							<FeedbackPressable
 								accessibilityRole="link"
 								disabled={!env.EXPO_PUBLIC_TERMS_URL}
 								hitSlop={8}
@@ -225,8 +230,8 @@ export function TrialActivationScreen() {
 								<Text className="text-body-4 text-white underline">
 									Nutzungsbedingungen
 								</Text>
-							</Pressable>
-							<Pressable
+							</FeedbackPressable>
+							<FeedbackPressable
 								accessibilityRole="link"
 								disabled={!env.EXPO_PUBLIC_PRIVACY_URL}
 								hitSlop={8}
@@ -235,7 +240,7 @@ export function TrialActivationScreen() {
 								<Text className="text-body-4 text-white underline">
 									Datenschutz
 								</Text>
-							</Pressable>
+							</FeedbackPressable>
 						</View>
 					</View>
 				</View>

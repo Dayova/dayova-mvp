@@ -495,7 +495,7 @@ behavior, not part of this workaround.
 | [`index.ts`](./index.ts) | Exposes the local module's TypeScript entry point. |
 | [`src/lib/system-color-scheme.ios.ts`](../../src/lib/system-color-scheme.ios.ts) | Application adapter that turns the native getter/event into a React hook. |
 | [`src/lib/ios-appearance-module.test.ts`](../../src/lib/ios-appearance-module.test.ts) | Guards deployment-target and API-availability invariants. |
-| [`patches/expo-updates@57.0.10.patch`](../../patches/expo-updates@57.0.10.patch) | Keeps Expo Updates' Release-only deferred splash and root on the active window appearance. |
+| [`patches/expo-updates@57.0.21.patch`](../../patches/expo-updates@57.0.21.patch) | Keeps Expo Updates' Release-only deferred splash and root on the active window appearance. |
 
 ## Primary references
 

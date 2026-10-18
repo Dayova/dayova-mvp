@@ -1,8 +1,8 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ScrollView, TouchableOpacity, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
 	Easing,
@@ -13,39 +13,39 @@ import Animated, {
 	withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-screens/experimental";
 import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { CreateTypePickerModal } from "~/components/create-type-picker-modal";
-import { Button } from "~/components/ui/button";
+import { BackButton, Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
+import { CreateEntryIcon } from "~/components/ui/create-entry-icon";
+import { FeedbackTouchableOpacity } from "~/components/ui/feedback-pressable";
 import {
 	ArrowUpRight,
 	ClipboardEdit,
 	Clock3,
-	GraduationCap,
 	Plus,
 	PropertyEdit,
 	Route2,
 	Trash2,
 } from "~/components/ui/icon";
-import {
-	CompactNotchedActionCard,
-	NotchedActionCard,
-} from "~/components/ui/notched-action-card";
+import { CompactNotchedActionCard } from "~/components/ui/notched-action-card";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
 import { getLearningPlanCreationOverview } from "~/features/learning-plans/creation-overview";
 import { learningPlanResumePath } from "~/features/learning-plans/creation-routes";
-import { LearningPlanCardFooter } from "~/features/learning-plans/learning-plan-card-footer";
+import { LearningPlanCardVisual } from "~/features/learning-plans/learning-plan-card-visual";
 import { MaterialRequiredSheet } from "~/features/learning-plans/material-required-sheet";
 import { getRollingLearningWindowLabel } from "~/features/learning-plans/rolling-learning-window";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
-import { ROUTES } from "~/lib/routes";
+import { dismissToOrReplace } from "~/lib/navigation";
+import { getSafeReturnTo, ROUTES } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
 
 const PLAN_ACTION_RAIL_WIDTH = 104;
@@ -321,7 +321,7 @@ function PlansTabSwitch({
 			{tabs.map((tab) => {
 				const isActive = tab.key === activeTab;
 				return (
-					<TouchableOpacity
+					<FeedbackTouchableOpacity
 						key={tab.key}
 						accessibilityRole="tab"
 						accessibilityState={{ selected: isActive }}
@@ -351,7 +351,7 @@ function PlansTabSwitch({
 								{tab.label}
 							</Text>
 						</View>
-					</TouchableOpacity>
+					</FeedbackTouchableOpacity>
 				);
 			})}
 		</View>
@@ -382,7 +382,7 @@ function LearningPlanActionRail({
 			]}
 		>
 			<View className="items-center gap-4">
-				<TouchableOpacity
+				<FeedbackTouchableOpacity
 					accessibilityLabel="Lernplan bearbeiten"
 					accessibilityRole="button"
 					activeOpacity={0.78}
@@ -394,9 +394,9 @@ function LearningPlanActionRail({
 						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
 						strokeWidth={2.1}
 					/>
-				</TouchableOpacity>
+				</FeedbackTouchableOpacity>
 				<View className="h-0.5 w-8 rounded-full bg-light-1" />
-				<TouchableOpacity
+				<FeedbackTouchableOpacity
 					accessibilityLabel="Lernplan löschen"
 					accessibilityRole="button"
 					activeOpacity={0.78}
@@ -408,7 +408,7 @@ function LearningPlanActionRail({
 						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
 						strokeWidth={2.1}
 					/>
-				</TouchableOpacity>
+				</FeedbackTouchableOpacity>
 			</View>
 		</Animated.View>
 	);
@@ -425,7 +425,6 @@ function LearningPlanCard({
 	onDelete: () => void;
 	onPress: () => void;
 }) {
-	const { colors } = useDayovaTheme();
 	const needsSchoolMaterial = plan.needsSchoolMaterial;
 	const creationOverview = getLearningPlanCreationOverview(plan);
 	const progress = Number.isFinite(plan.progressPercent)
@@ -461,13 +460,15 @@ function LearningPlanCard({
 		: needsSchoolMaterial
 			? "Lernmaterial hochladen"
 			: plan.currentSession?.sessionPurpose === "diagnostic"
-				? "Wissenscheck · 5–10 Fragen"
+				? "Wissenscheck"
 				: plan.currentSession?.goal ||
 					plan.currentSession?.title ||
 					plan.examTypeLabel;
 	const [isActionRailVisible, setIsActionRailVisible] = useState(false);
 	const translateX = useSharedValue(0);
 	const gestureStartX = useSharedValue(0);
+	const didDrag = useSharedValue(false);
+	const isActionRailOpen = useSharedValue(false);
 	const cardAnimatedStyle = useAnimatedStyle(() => ({
 		transform: [{ translateX: translateX.get() }],
 	}));
@@ -485,6 +486,11 @@ function LearningPlanCard({
 		.onBegin(() => {
 			"worklet";
 			gestureStartX.set(translateX.get());
+			didDrag.set(false);
+		})
+		.onStart(() => {
+			"worklet";
+			didDrag.set(true);
 			scheduleOnRN(setIsActionRailVisible, true);
 		})
 		.onUpdate((event) => {
@@ -499,6 +505,7 @@ function LearningPlanCard({
 		.onEnd(() => {
 			"worklet";
 			const shouldOpen = -translateX.get() >= PLAN_SWIPE_OPEN_THRESHOLD;
+			isActionRailOpen.set(shouldOpen);
 			translateX.set(
 				shouldOpen
 					? withTiming(-PLAN_ACTION_RAIL_WIDTH, {
@@ -519,13 +526,39 @@ function LearningPlanCard({
 							},
 						),
 			);
+		})
+		.onFinalize((event) => {
+			"worklet";
+			// A vertical drag can fail this pan without ever reaching onStart.
+			if (
+				Math.abs(event.translationX) > 10 ||
+				Math.abs(event.translationY) > 10
+			) {
+				didDrag.set(true);
+			}
 		});
+	const activateCard = () => {
+		const shouldCloseActions = isActionRailOpen.get();
+		isActionRailOpen.set(false);
+		translateX.set(0);
+		setIsActionRailVisible(false);
+		if (shouldCloseActions) return;
+		onPress();
+	};
+	const pressCard = () => {
+		// Suppress the trailing touch press, including failed vertical pans.
+		// Accessibility activation has no touch gesture and uses activateCard.
+		if (didDrag.get()) return;
+		activateCard();
+	};
 	const editPlan = () => {
+		isActionRailOpen.set(false);
 		translateX.set(0);
 		setIsActionRailVisible(false);
 		router.push(`/learning-plans/new?learningPlanId=${plan.id}` as const);
 	};
 	const deletePlan = () => {
+		isActionRailOpen.set(false);
 		translateX.set(0);
 		setIsActionRailVisible(false);
 		onDelete();
@@ -542,94 +575,45 @@ function LearningPlanCard({
 			) : null}
 			<GestureDetector gesture={panGesture}>
 				<Animated.View style={cardAnimatedStyle}>
-					<NotchedActionCard
-						cardAccessibilityHint={
+					<LearningPlanCardVisual
+						accessibilityHint={
 							creationOverview
 								? "Setzt die gespeicherte Lernplan-Erstellung am nächsten offenen Schritt fort."
 								: needsSchoolMaterial
 									? "Öffnet einen Hinweis und bietet an, Schulmaterial hochzuladen."
 									: "Öffnet diesen Lernplan und zeigt die zugehörigen Lernsessions an."
 						}
-						cardAccessibilityLabel={
+						accessibilityLabel={
 							creationOverview
 								? `${formatGermanUiText(plan.subject)}, ${creationOverview.badgeLabel}, ${plan.examDateLabel ?? "Termin wird geladen"}, ${creationOverview.progressLabel}`
 								: needsSchoolMaterial
 									? `${formatGermanUiText(plan.subject)}, Material fehlt, ${plan.examDateLabel ?? "Termin wird geladen"}, Lernmaterial hochladen`
 									: `${formatGermanUiText(plan.subject)}, ${status.label}, ${plan.examDateLabel ?? "Termin wird geladen"}, ${formatGermanUiText(currentTitle)}, ${rollingWindowLabel}, ${remainingDays === 1 ? "noch 1 Tag" : `noch ${remainingDays} Tage`}`
 						}
-						actionIcon={
-							<ArrowUpRight
-								size={24}
-								color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-								strokeWidth={1.9}
-							/>
-						}
-						onPress={onPress}
-						pressType="card"
-					>
-						<View className="gap-2">
-							<View className="flex-row items-start justify-between gap-3">
-								<Text
-									className="min-w-0 flex-1 pr-2 font-poppins font-semibold text-body-1 text-text"
-									numberOfLines={2}
-								>
-									{formatGermanUiText(plan.subject)}
-								</Text>
-								<View className="shrink-0 flex-row gap-2">
-									<Badge {...status} />
-									{creationOverview || needsSchoolMaterial ? null : (
-										<Badge
-											label={`${plan.currentSession?.durationMinutes ?? "–"} min`}
-											background={STATUS_NEUTRAL_BACKGROUND}
-											foreground={DAYOVA_DESIGN_SYSTEM.colors.primary}
-										/>
-									)}
-								</View>
-							</View>
-
-							<View className="flex-row items-center gap-1">
-								<GraduationCap
-									size={14}
-									color={colors.secondaryText}
-									strokeWidth={2}
-								/>
-								<Text className="font-poppins text-body-4 text-secondary-text">
-									{plan.examDateLabel ?? "Termin wird geladen"}
-								</Text>
-							</View>
-
-							<Text
-								className="max-w-[282px] font-poppins font-semibold text-body-2 text-text"
-								numberOfLines={2}
-							>
-								{formatGermanUiText(currentTitle)}
-							</Text>
-						</View>
-
-						{creationOverview ? (
-							<View className="mt-4 flex-row items-center gap-1.5">
-								<ClipboardEdit
-									size={14}
-									color={colors.secondaryText}
-									strokeWidth={2}
-								/>
-								<Text className="font-poppins text-body-4 text-secondary-text">
-									{creationOverview.progressLabel}
-								</Text>
-							</View>
-						) : needsSchoolMaterial ? (
-							<Text className="mt-4 max-w-[282px] font-poppins text-body-4 text-secondary-text">
-								Lade Schulmaterial hoch, damit Dayova deinen Lernplan erstellen
-								kann.
-							</Text>
-						) : (
-							<LearningPlanCardFooter
-								progress={progress}
-								remainingDays={remainingDays}
-								rollingWindowLabel={rollingWindowLabel}
-							/>
-						)}
-					</NotchedActionCard>
+						model={{
+							subject: formatGermanUiText(plan.subject),
+							status,
+							examDateLabel: plan.examDateLabel ?? "Termin wird geladen",
+							currentTitle: formatGermanUiText(currentTitle),
+							state: creationOverview
+								? {
+										kind: "creation",
+										progressLabel: creationOverview.progressLabel,
+									}
+								: needsSchoolMaterial
+									? { kind: "materialRequired" }
+									: {
+											kind: "ready",
+											durationMinutes:
+												plan.currentSession?.durationMinutes ?? null,
+											progress,
+											remainingDays,
+											rollingWindowLabel,
+										},
+						}}
+						onPress={pressCard}
+						onAccessibilityActivate={activateCard}
+					/>
 				</Animated.View>
 			</GestureDetector>
 		</View>
@@ -793,6 +777,8 @@ function HomeworkCard({
 }
 
 export default function LearningPlansScreen() {
+	const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
+	const returnTarget = getSafeReturnTo(returnTo);
 	const insets = useSafeAreaInsets();
 	const { colors } = useDayovaTheme();
 	const { user } = useAuthSession();
@@ -885,30 +871,47 @@ export default function LearningPlansScreen() {
 	};
 
 	return (
-		<View className="flex-1 bg-background">
+		<SafeAreaView
+			edges={{ bottom: true }}
+			// The native safe area needs the current theme color at runtime.
+			style={{ flex: 1, backgroundColor: colors.background }}
+		>
 			<ThemedStatusBar />
 			<View
-				className="gap-6 px-6"
+				className="gap-6 px-6 pb-6"
+				// Use the same runtime safe-area offset as the current Today header.
 				style={{
-					paddingTop: Math.max(insets.top - 4, 32),
-					paddingBottom: 18,
+					paddingTop: insets.top + 16,
 				}}
 			>
-				<View className="mt-7 flex-row items-center justify-between">
-					<Text className="font-poppins font-semibold text-heading-1 text-text">
+				<View className="min-h-12 flex-row items-center justify-between gap-6">
+					{returnTarget ? (
+						<BackButton
+							accessibilityLabel="Zurück zu Heute"
+							onPress={() => {
+								router.setParams({ returnTo: undefined });
+								dismissToOrReplace(router, returnTarget);
+							}}
+						/>
+					) : null}
+					<Text
+						accessibilityRole="header"
+						className="min-w-0 flex-1 font-poppins font-semibold text-heading-2 text-text"
+					>
 						Deine Pläne
 					</Text>
 
-					<TouchableOpacity
+					<FeedbackTouchableOpacity
 						accessibilityRole="button"
+						pressScale={0.92}
 						accessibilityLabel="Neuen Eintrag erstellen."
 						accessibilityHint="Öffnet den Eintragserstellungsdialog, um entweder eine Prüfung oder Hausaufgabe zu erstellen."
 						activeOpacity={0.88}
 						onPress={openCreateTypePicker}
-						className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
+						className="h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border bg-card"
 					>
-						<Plus size={28} color={colors.text} strokeWidth={1.8} />
-					</TouchableOpacity>
+						<CreateEntryIcon />
+					</FeedbackTouchableOpacity>
 				</View>
 
 				<PlansTabSwitch activeTab={activeTab} onChange={setActiveTab} />
@@ -916,11 +919,7 @@ export default function LearningPlansScreen() {
 
 			<ScrollView
 				className="flex-1"
-				contentContainerStyle={{
-					paddingHorizontal: 24,
-					paddingTop: 0,
-					paddingBottom: Math.max(insets.bottom + 72, 104),
-				}}
+				contentContainerClassName="px-6 pb-6"
 				showsVerticalScrollIndicator={false}
 			>
 				{activeTab === "learningPlans" ? (
@@ -1075,6 +1074,6 @@ export default function LearningPlansScreen() {
 				onClose={closeDeleteSheet}
 				onConfirm={() => void deleteSelectedItem()}
 			/>
-		</View>
+		</SafeAreaView>
 	);
 }

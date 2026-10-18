@@ -7,6 +7,28 @@ const buildRouteQuery = (entries: Array<[string, string | undefined]>) =>
 		.map(([key, value]) => `${key}=${encodeURIComponent(String(value))}`)
 		.join("&");
 
+export const examEntryResumePath = (params: {
+	examDayEntryId: string;
+	subject: string;
+	personalSubjectId?: string;
+	subjectIsOneTime?: boolean;
+	examTypeLabel: string;
+	examDateKey: string;
+	durationMinutes: number;
+	topicDescription: string;
+}) =>
+	`${ROUTES.createExam}&${buildRouteQuery([
+		["step", "basics"],
+		["examDayEntryId", params.examDayEntryId],
+		["subject", params.subject],
+		["personalSubjectId", params.personalSubjectId],
+		["subjectIsOneTime", params.subjectIsOneTime ? "true" : undefined],
+		["examTypeLabel", params.examTypeLabel],
+		["dayKey", params.examDateKey],
+		["durationMinutes", String(params.durationMinutes)],
+		["topicDescription", params.topicDescription],
+	])}` as const;
+
 export const examEntrySuccessPath = ({
 	dayKey,
 	examDateLabel,

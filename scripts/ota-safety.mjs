@@ -7,14 +7,28 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
 const expoCliPath = require.resolve("expo/bin/cli");
-const fingerprintCliPath = require.resolve("expo/bin/fingerprint");
 const baselinePath = resolve(
 	projectRoot,
 	"release/production-ota-baseline.json",
 );
 const platforms = ["ios", "android"];
+const fingerprintEnvironmentVariables = {
+	ios: "OTA_IOS_FINGERPRINT",
+	android: "OTA_ANDROID_FINGERPRINT",
+};
 const isNonEmptyString = (value) =>
 	typeof value === "string" && value.trim().length > 0;
+const isUuid = (value) =>
+	isNonEmptyString(value) &&
+	/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+		value,
+	);
+const isFullGitSha = (value) =>
+	isNonEmptyString(value) && /^[0-9a-f]{40}$/i.test(value);
+const isFingerprintHash = (value) =>
+	isNonEmptyString(value) && /^[0-9a-f]{40}$/i.test(value);
+const isBuildVersion = (value) =>
+	isNonEmptyString(value) && /^\d+$/.test(value);
 
 const expectedProductionManifest = {
 	iosBundleIdentifier: "de.dayova.app",
@@ -101,6 +115,7 @@ export const evaluateProductionOta = ({
 	sourceSha,
 }) => {
 	const errors = [];
+	const reviewedEquivalences = [];
 
 	if (appVariant !== "production") {
 		errors.push(
@@ -108,7 +123,7 @@ export const evaluateProductionOta = ({
 		);
 	}
 
-	if (baseline.schemaVersion !== 1) {
+	if (baseline.schemaVersion !== 2) {
 		errors.push(
 			`unsupported baseline schema ${baseline.schemaVersion ?? "missing"}`,
 		);
@@ -118,12 +133,38 @@ export const evaluateProductionOta = ({
 			`baseline channel must be production; received ${baseline.channel ?? "missing"}`,
 		);
 	}
+	const targetRuntimes = platforms.map(
+		(platform) => baseline.platforms?.[platform]?.runtimeVersion,
+	);
+	if (new Set(targetRuntimes).size > 1) {
+		errors.push(
+			"schema 2 requires a shared runtime for iOS and Android; mixed native runtimes require separate compatible release sources, not runtime relabelling",
+		);
+	}
+	if (!isNonEmptyString(baseline.runtimeVersion)) {
+		errors.push("baseline runtimeVersion must be a nonempty shared runtime");
+	}
 
 	errors.push(...validateProductionManifest(config));
+
+	if (baseline.appVersion !== config.version) {
+		errors.push(
+			`app version ${config.version ?? "missing"} does not match baseline app version ${baseline.appVersion ?? "missing"}`,
+		);
+	}
+	if (baseline.sdkVersion !== config.sdkVersion) {
+		errors.push(
+			`Expo SDK ${config.sdkVersion ?? "missing"} does not match baseline SDK ${baseline.sdkVersion ?? "missing"}`,
+		);
+	}
 
 	for (const platform of platforms) {
 		const platformBaseline = baseline.platforms?.[platform];
 		const currentRuntimeVersion = getRuntimeVersion(config, platform);
+		const currentAppIdentifier =
+			platform === "ios"
+				? config.ios?.bundleIdentifier
+				: config.android?.package;
 
 		if (!platformBaseline) {
 			errors.push(`${platform} has no distributed-build baseline`);
@@ -135,9 +176,32 @@ export const evaluateProductionOta = ({
 				`${platform} baseline build ${platformBaseline.buildVersion} distribution is not verified`,
 			);
 		}
+		if (!isNonEmptyString(platformBaseline.distribution?.audience)) {
+			errors.push(`${platform} distribution audience must be recorded`);
+		}
+		if (!isNonEmptyString(platformBaseline.distribution?.evidence)) {
+			errors.push(`${platform} distribution evidence must be recorded`);
+		}
+		if (platformBaseline.embeddedUpdate?.status !== "verified") {
+			errors.push(
+				`${platform} baseline build ${platformBaseline.buildVersion} embedded update is not verified`,
+			);
+		}
+		if (!isUuid(platformBaseline.embeddedUpdate?.updateId)) {
+			errors.push(`${platform} embedded updateId must be a UUID`);
+		}
+		if (!isNonEmptyString(platformBaseline.embeddedUpdate?.evidence)) {
+			errors.push(`${platform} embedded update evidence must be recorded`);
+		}
 
-		if (!isNonEmptyString(platformBaseline.sourceSha)) {
-			errors.push(`${platform} baseline sourceSha must be a non-empty string`);
+		if (!isUuid(platformBaseline.buildId)) {
+			errors.push(`${platform} baseline buildId must be a UUID`);
+		}
+		if (!isBuildVersion(platformBaseline.buildVersion)) {
+			errors.push(`${platform} baseline buildVersion must be numeric`);
+		}
+		if (!isFullGitSha(platformBaseline.sourceSha)) {
+			errors.push(`${platform} baseline sourceSha must be a full Git SHA`);
 		}
 
 		if (currentRuntimeVersion !== baseline.runtimeVersion) {
@@ -145,25 +209,90 @@ export const evaluateProductionOta = ({
 				`${platform} runtime ${currentRuntimeVersion ?? "missing"} does not match baseline runtime ${baseline.runtimeVersion}`,
 			);
 		}
+		if (platformBaseline.runtimeVersion !== baseline.runtimeVersion) {
+			errors.push(
+				`${platform} build runtime ${platformBaseline.runtimeVersion ?? "missing"} does not match baseline runtime ${baseline.runtimeVersion}`,
+			);
+		}
+		if (platformBaseline.appVersion !== baseline.appVersion) {
+			errors.push(
+				`${platform} build app version ${platformBaseline.appVersion ?? "missing"} does not match baseline app version ${baseline.appVersion}`,
+			);
+		}
+		if (platformBaseline.sdkVersion !== baseline.sdkVersion) {
+			errors.push(
+				`${platform} build SDK ${platformBaseline.sdkVersion ?? "missing"} does not match baseline SDK ${baseline.sdkVersion}`,
+			);
+		}
+		if (platformBaseline.appIdentifier !== currentAppIdentifier) {
+			errors.push(
+				`${platform} build identifier ${platformBaseline.appIdentifier ?? "missing"} does not match production identifier ${currentAppIdentifier ?? "missing"}`,
+			);
+		}
+		if (platformBaseline.channel !== baseline.channel) {
+			errors.push(
+				`${platform} build channel ${platformBaseline.channel ?? "missing"} does not match baseline channel ${baseline.channel}`,
+			);
+		}
+		if (
+			platformBaseline.embeddedUpdate?.runtimeVersion !==
+			platformBaseline.runtimeVersion
+		) {
+			errors.push(
+				`${platform} embedded update runtime ${platformBaseline.embeddedUpdate?.runtimeVersion ?? "missing"} does not match build runtime ${platformBaseline.runtimeVersion ?? "missing"}`,
+			);
+		}
 
 		const distributedFingerprint = platformBaseline.fingerprint;
 		const currentFingerprint = fingerprints[platform];
-		const hasDistributedFingerprint = isNonEmptyString(distributedFingerprint);
-		const hasCurrentFingerprint = isNonEmptyString(currentFingerprint);
+		const hasDistributedFingerprint = isFingerprintHash(distributedFingerprint);
+		const hasCurrentFingerprint = isFingerprintHash(currentFingerprint);
+		// Preserve the build's actual fingerprint. Only exact, separately audited
+		// equivalents may cover non-native input drift; unknown hashes stay blocked.
+		const reviewedFingerprints =
+			platformBaseline.reviewedCompatibleFingerprints === undefined
+				? []
+				: platformBaseline.reviewedCompatibleFingerprints;
+		const validReviews =
+			Array.isArray(reviewedFingerprints) &&
+			reviewedFingerprints.every(
+				(entry) =>
+					entry &&
+					isFingerprintHash(entry.fingerprint) &&
+					entry.buildFingerprint === distributedFingerprint &&
+					isFullGitSha(entry.sourceSha) &&
+					isNonEmptyString(entry.evidence),
+			);
+		if (!validReviews) {
+			errors.push(
+				`${platform} reviewed compatible fingerprints require exact build binding, source SHA and evidence`,
+			);
+		}
+		const hasReviewedMatch =
+			validReviews &&
+			reviewedFingerprints.some(
+				(entry) => entry.fingerprint === currentFingerprint,
+			);
+		if (hasReviewedMatch && currentFingerprint !== distributedFingerprint) {
+			reviewedEquivalences.push(`${platform} ${currentFingerprint}`);
+		}
 
 		if (!hasDistributedFingerprint) {
 			errors.push(
-				`${platform} baseline fingerprint must be a non-empty string`,
+				`${platform} baseline fingerprint must be a 40-character hash`,
 			);
 		}
 		if (!hasCurrentFingerprint) {
-			errors.push(`${platform} current fingerprint must be a non-empty string`);
+			errors.push(
+				`${platform} current fingerprint must be a 40-character hash`,
+			);
 		}
 
 		if (
 			hasDistributedFingerprint &&
 			hasCurrentFingerprint &&
-			currentFingerprint !== distributedFingerprint
+			currentFingerprint !== distributedFingerprint &&
+			!hasReviewedMatch
 		) {
 			errors.push(
 				`${platform} fingerprint ${currentFingerprint} does not match distributed build ${platformBaseline.buildVersion} fingerprint ${distributedFingerprint}`,
@@ -174,7 +303,7 @@ export const evaluateProductionOta = ({
 	const baselineSummary = platforms
 		.map((platform) => {
 			const entry = baseline.platforms?.[platform];
-			const abbreviatedSourceSha = isNonEmptyString(entry?.sourceSha)
+			const abbreviatedSourceSha = isFullGitSha(entry?.sourceSha)
 				? entry.sourceSha.slice(0, 7)
 				: "invalid";
 			return entry
@@ -188,9 +317,12 @@ export const evaluateProductionOta = ({
 
 	return {
 		safe: errors.length === 0,
+		failureKind: errors.length === 0 ? null : "compatibility",
 		reason:
 			errors.length === 0
-				? "Production manifest and native fingerprints match the verified distributed binaries."
+				? reviewedEquivalences.length > 0
+					? `Production manifest is compatible with verified distributed binaries using reviewed native equivalence: ${reviewedEquivalences.join(", ")}.`
+					: "Production manifest and phase-equivalent native fingerprints match the verified distributed binaries."
 				: errors.join("; "),
 		errors,
 		baseline: baselineSummary,
@@ -208,11 +340,27 @@ const runJsonCommand = (command, args) =>
 			stdio: ["ignore", "pipe", "pipe"],
 		}),
 	);
+export const readWorkflowFingerprints = () =>
+	Object.fromEntries(
+		platforms.map((platform) => {
+			const variableName = fingerprintEnvironmentVariables[platform];
+			const fingerprint = process.env[variableName];
 
-const createReport = () => {
+			if (!isNonEmptyString(fingerprint)) {
+				throw new Error(
+					`${variableName} is missing; production fingerprints must come from the EAS fingerprint job using the production environment`,
+				);
+			}
+
+			return [platform, fingerprint.trim()];
+		}),
+	);
+
+export const createReport = () => {
 	if (process.env.APP_VARIANT !== "production") {
 		return {
 			safe: false,
+			failureKind: "preflight",
 			reason: `APP_VARIANT must be production; received ${process.env.APP_VARIANT ?? "missing"}`,
 			errors: [
 				`APP_VARIANT must be production; received ${process.env.APP_VARIANT ?? "missing"}`,
@@ -232,17 +380,7 @@ const createReport = () => {
 			"public",
 			"--json",
 		]);
-		const fingerprints = Object.fromEntries(
-			platforms.map((platform) => [
-				platform,
-				runJsonCommand(process.execPath, [
-					fingerprintCliPath,
-					"fingerprint:generate",
-					"--platform",
-					platform,
-				]).hash,
-			]),
-		);
+		const fingerprints = readWorkflowFingerprints();
 		const sourceSha =
 			process.env.GITHUB_SHA ??
 			execFileSync("git", ["rev-parse", "HEAD"], {
@@ -261,6 +399,7 @@ const createReport = () => {
 		const message = error instanceof Error ? error.message : String(error);
 		return {
 			safe: false,
+			failureKind: "preflight",
 			reason: `OTA preflight could not be completed: ${message}`,
 			errors: [message],
 			baseline: "unavailable",

@@ -9,7 +9,9 @@ jest.mock("~/components/ui/icon", () => {
 
 	return {
 		ArrowLeft: Icon,
+		BookOpen: Icon,
 		CalendarDays: Icon,
+		ChevronDown: Icon,
 		Clock3: Icon,
 		Trash2: Icon,
 	};
@@ -59,6 +61,7 @@ const renderEditor = async (selectedDay = 1) => {
 		onRemoveLesson: jest.fn(),
 		onOpenTime: jest.fn(),
 		onOpenDayPicker: jest.fn(),
+		onOpenSubjectPicker: jest.fn(),
 	};
 	const screen = await render(
 		<TimetableWeekEditor
@@ -75,13 +78,13 @@ const renderEditor = async (selectedDay = 1) => {
 describe("TimetableWeekEditor", () => {
 	test("navigates by weekday tabs and adds to the visible day", async () => {
 		const { screen, callbacks } = await renderEditor();
-		const monday = screen.getByRole("button", { name: "Montag, 2 Stunden" });
-		const tuesday = screen.getByRole("button", {
+		const monday = screen.getByRole("radio", { name: "Montag, 2 Stunden" });
+		const tuesday = screen.getByRole("radio", {
 			name: "Dienstag, 1 Stunde",
 		});
 
-		expect(monday.props.accessibilityState).toEqual({ selected: true });
-		expect(tuesday.props.accessibilityState).toEqual({ selected: false });
+		expect(monday.props.accessibilityState).toMatchObject({ checked: true });
+		expect(tuesday.props.accessibilityState).toMatchObject({ checked: false });
 
 		await fireEvent.press(tuesday);
 		expect(callbacks.onSelectedDayChange).toHaveBeenCalledWith(2);
@@ -131,3 +134,7 @@ describe("TimetableWeekEditor", () => {
 		expect(callbacks.onOpenDayPicker).toHaveBeenCalledWith("math");
 	});
 });
+
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+);

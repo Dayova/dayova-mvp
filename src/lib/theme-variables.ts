@@ -14,6 +14,7 @@ export const DARK_THEME_VARIABLES = {
 	"--popover": "248 10% 13%",
 	"--surface": "248 10% 13%",
 	"--primary": "196.2 100% 50%",
+	"--on-primary": "0 0% 10.2%",
 	"--primary-strong": "198.3 100% 58%",
 	"--progress-track": "195.3 56.1% 13.5%",
 	"--button-neutral": "0 0% 100%",
@@ -21,6 +22,8 @@ export const DARK_THEME_VARIABLES = {
 	"--muted": "247 10% 18%",
 	"--accent": "196.2 100% 18%",
 	"--destructive": "3.2 100% 66%",
+	"--danger-action": "4 100% 75%",
+	"--danger-subtle": "4 55% 16%",
 	"--success": "135.1 58.6% 56%",
 	"--success-subtle": "142 45% 15%",
 	"--wrong": "35.1 100% 58%",
@@ -139,6 +142,7 @@ const darkThemeHsl = (variable: DarkThemeVariable) =>
  */
 export const DARK_THEME_COLORS = {
 	primary: darkThemeHex("--primary"),
+	onPrimary: darkThemeHex("--on-primary"),
 	primaryStrong: darkThemeHex("--primary-strong"),
 	primaryAccent: darkThemeHex("--path-7"),
 	buttonNeutral: darkThemeHex("--button-neutral"),
@@ -158,6 +162,8 @@ export const DARK_THEME_COLORS = {
 	wrong: darkThemeHex("--wrong"),
 	wrongSubtle: darkThemeHex("--wrong-subtle"),
 	destructive: darkThemeHex("--destructive"),
+	dangerAction: darkThemeHex("--danger-action"),
+	dangerSubtle: darkThemeHex("--danger-subtle"),
 	info: darkThemeHex("--info"),
 	infoSubtle: darkThemeHex("--info-subtle"),
 	system: darkThemeHex("--system"),

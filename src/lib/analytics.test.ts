@@ -3,6 +3,7 @@ import {
 	type AnalyticsIdentityInput,
 	createValidationAnalytics,
 	getValidationFileSizeBucket,
+	isPostHogConfiguredForApiKey,
 	type ValidationEventName,
 	validationAnalyticsBeforeSend,
 } from "./analytics";
@@ -14,8 +15,16 @@ const createAdapter = () => ({
 });
 
 describe("validation analytics contract", () => {
-	it("exposes exactly the eleven Validation Phase event names", () => {
+	it("enables PostHog when a nonblank key is configured", () => {
+		expect(isPostHogConfiguredForApiKey("phc_production")).toBe(true);
+		expect(isPostHogConfiguredForApiKey("  ")).toBe(false);
+		expect(isPostHogConfiguredForApiKey()).toBe(false);
+	});
+
+	it("exposes validation events and bounded feature instrumentation", () => {
 		type ExpectedEventName =
+			| "feature_interaction"
+			| "app_screen_viewed"
 			| "onboarding_completed"
 			| "homework_created"
 			| "exam_created"
@@ -164,7 +173,9 @@ describe("validation analytics contract", () => {
 		);
 	});
 
-	it("captures onboarding completion with only its exact properties and central shared context", () => {
+	it.each([
+		2, 3,
+	] as const)("captures onboarding v%i completion with only its exact properties and central shared context", (onboardingVersion) => {
 		const adapter = createAdapter();
 		const analytics = createValidationAnalytics(adapter, {
 			configured: true,
@@ -181,7 +192,7 @@ describe("validation analytics contract", () => {
 
 		analytics.capture("onboarding_completed", {
 			local_day_key: "2026-07-21",
-			onboarding_version: 2,
+			onboarding_version: onboardingVersion,
 		});
 
 		expect(adapter.identify).toHaveBeenCalledWith("clerk_user_123");
@@ -193,7 +204,7 @@ describe("validation analytics contract", () => {
 			eas_runtime_version: "1.0.3",
 			eas_is_embedded_launch: false,
 			local_day_key: "2026-07-21",
-			onboarding_version: 2,
+			onboarding_version: onboardingVersion,
 		});
 	});
 

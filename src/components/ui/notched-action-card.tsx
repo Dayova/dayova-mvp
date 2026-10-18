@@ -2,6 +2,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 import {
 	type AccessibilityRole,
+	Animated,
 	type LayoutChangeEvent,
 	Pressable,
 	type PressableProps,
@@ -10,6 +11,11 @@ import {
 	type ViewStyle,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
+import {
+	FeedbackPressable,
+	getPressScaleForSize,
+	usePressMotion,
+} from "~/components/ui/feedback-pressable";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
@@ -27,6 +33,7 @@ type CommonProps = Omit<
 	actionOffsetRight?: number;
 	actionSize?: number;
 	cardHeight?: number;
+	cardContentClassName?: string;
 	cardPath?: string;
 	cardStyle?: ViewStyle;
 	children?: ReactNode;
@@ -68,8 +75,21 @@ type CardPressProps = {
 	actionDisabled?: never;
 };
 
+type DecorativeProps = {
+	pressType: "none";
+
+	onPress?: never;
+	actionAccessibilityLabel?: never;
+	actionAccessibilityHint?: never;
+	actionDisabled?: never;
+	cardAccessibilityLabel?: never;
+	cardAccessibilityHint?: never;
+	cardAccessibilityRole?: never;
+	cardDisabled?: never;
+};
+
 export type NotchedActionCardProps = CommonProps &
-	(ActionPressProps | CardPressProps);
+	(ActionPressProps | CardPressProps | DecorativeProps);
 
 const DEFAULT_CARD_WIDTH = 368;
 const DEFAULT_CARD_HEIGHT = 211;
@@ -186,13 +206,13 @@ function ActionFrame({
 	actionSize,
 	children,
 	...props
-}: ViewProps & {
+}: React.ComponentProps<typeof Animated.View> & {
 	actionOffsetBottom: number;
 	actionOffsetRight: number;
 	actionSize: number;
 }) {
 	return (
-		<View
+		<Animated.View
 			{...props}
 			className={cn("absolute z-20 overflow-hidden", props.className)}
 			style={[
@@ -204,14 +224,13 @@ function ActionFrame({
 					height: actionSize,
 					borderRadius: actionSize / 2,
 					zIndex: 20,
-					elevation: 20,
 					overflow: "hidden",
 				},
 				props.style,
 			]}
 		>
 			{children}
-		</View>
+		</Animated.View>
 	);
 }
 
@@ -235,6 +254,10 @@ function ActionPressableFrame({
 	onPress: NonNullable<PressableProps["onPress"]>;
 }) {
 	const [pressed, setPressed] = useState(false);
+	const { scale, pressIn, pressOut } = usePressMotion(
+		!actionDisabled,
+		getPressScaleForSize(actionSize, actionSize),
+	);
 	const touchTargetExpansion = Math.max(
 		0,
 		(MINIMUM_TOUCH_TARGET_SIZE - actionSize) / 2,
@@ -250,7 +273,10 @@ function ActionPressableFrame({
 				actionOffsetBottom={actionOffsetBottom}
 				actionOffsetRight={actionOffsetRight}
 				actionSize={actionSize}
-				style={pressed && !actionDisabled ? { opacity: 0.72 } : null}
+				style={{
+					opacity: pressed && !actionDisabled ? 0.72 : 1,
+					transform: [{ scale }],
+				}}
 			>
 				<ActionGradient>{actionIcon}</ActionGradient>
 			</ActionFrame>
@@ -264,8 +290,14 @@ function ActionPressableFrame({
 				disabled={actionDisabled}
 				hitSlop={touchTargetExpansion}
 				onPress={onPress}
-				onPressIn={() => setPressed(true)}
-				onPressOut={() => setPressed(false)}
+				onPressIn={() => {
+					setPressed(true);
+					pressIn();
+				}}
+				onPressOut={() => {
+					setPressed(false);
+					pressOut();
+				}}
 				style={{
 					position: "absolute",
 					right: actionOffsetRight,
@@ -274,7 +306,6 @@ function ActionPressableFrame({
 					height: actionSize,
 					borderRadius: actionSize / 2,
 					zIndex: 30,
-					elevation: 30,
 					backgroundColor: "transparent",
 				}}
 			/>
@@ -305,6 +336,7 @@ export function NotchedActionCard({
 	actionOffsetRight = DEFAULT_ACTION_OFFSET_RIGHT,
 	actionSize = DEFAULT_ACTION_SIZE,
 	cardHeight = DEFAULT_CARD_HEIGHT,
+	cardContentClassName,
 	cardPath,
 	cardStyle,
 	children,
@@ -376,6 +408,7 @@ export function NotchedActionCard({
 				height={resolvedCardHeight}
 				viewBox={`0 0 ${resolvedCardWidth} ${resolvedCardHeight}`}
 				preserveAspectRatio="none"
+				// react-native-svg positioning is expressed through its native style prop.
 				style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
 			>
 				<Path
@@ -387,7 +420,11 @@ export function NotchedActionCard({
 			</Svg>
 
 			<View
-				className="relative z-10 w-full px-6 pt-6 pb-[22px]"
+				className={cn(
+					"relative z-10 w-full px-6 pt-6 pb-[22px]",
+					cardContentClassName,
+				)}
+				// The content clears the card's measured runtime geometry and caller override.
 				style={[
 					cardStyle,
 					{
@@ -412,7 +449,7 @@ export function NotchedActionCard({
 		} = props;
 
 		return (
-			<Pressable
+			<FeedbackPressable
 				{...viewProps}
 				accessible
 				accessibilityRole={cardAccessibilityRole}
@@ -423,6 +460,7 @@ export function NotchedActionCard({
 				disabled={cardDisabled}
 				onLayout={handleLayout}
 				onPress={onPress}
+				// Measured height, caller style, and press state are runtime inputs.
 				style={({ pressed }) => [
 					{ minHeight: cardHeight },
 					style,
@@ -438,7 +476,34 @@ export function NotchedActionCard({
 					actionOffsetRight={actionOffsetRight}
 					actionSize={actionSize}
 				/>
-			</Pressable>
+			</FeedbackPressable>
+		);
+	}
+
+	if (props.pressType === "none") {
+		const { pressType: _pressType, ...viewProps } = props;
+
+		return (
+			<View
+				{...viewProps}
+				accessible={false}
+				accessibilityElementsHidden
+				importantForAccessibility="no-hide-descendants"
+				pointerEvents="none"
+				className={cn("relative w-full", className)}
+				onLayout={handleLayout}
+				// Measured card height and caller-provided styles are runtime inputs.
+				style={[{ minHeight: cardHeight }, style]}
+			>
+				{cardContents}
+
+				<DecorativeAction
+					actionIcon={actionIcon}
+					actionOffsetBottom={actionOffsetBottom}
+					actionOffsetRight={actionOffsetRight}
+					actionSize={actionSize}
+				/>
+			</View>
 		);
 	}
 
@@ -456,6 +521,7 @@ export function NotchedActionCard({
 			{...viewProps}
 			className={cn("relative w-full", className)}
 			onLayout={handleLayout}
+			// Measured card height and caller-provided styles are runtime inputs.
 			style={[{ minHeight: cardHeight }, style]}
 		>
 			{cardContents}

@@ -12,6 +12,7 @@ type ListRowProps = React.ComponentProps<typeof ActionSurface> & {
 	labelClassName?: string;
 	description?: string;
 	trailing?: ReactNode;
+	tone?: "default" | "destructive";
 };
 
 function ListRow({
@@ -22,6 +23,7 @@ function ListRow({
 	label,
 	labelClassName,
 	trailing,
+	tone = "default",
 	...props
 }: ListRowProps) {
 	const isInteractive = typeof props.onPress === "function";
@@ -49,7 +51,8 @@ function ListRow({
 		>
 			<View
 				className={cn(
-					"min-w-0 flex-1",
+					"min-w-0",
+					!stackTrailing && "flex-1",
 					shouldStackInlineContent ? "items-start" : "flex-row items-center",
 				)}
 			>
@@ -64,10 +67,16 @@ function ListRow({
 						{icon}
 					</View>
 				) : null}
-				<View className="min-w-0 flex-1">
+				<View
+					className={cn(
+						"min-w-0",
+						shouldStackInlineContent ? "self-stretch" : "flex-1",
+					)}
+				>
 					<Text
 						className={cn(
-							"font-poppins font-semibold text-body-2 text-text",
+							"font-poppins font-semibold text-body-2",
+							tone === "destructive" ? "text-destructive" : "text-text",
 							labelClassName,
 						)}
 						numberOfLines={shouldStackInlineContent ? undefined : 1}

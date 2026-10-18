@@ -47,6 +47,44 @@ const expectPracticeFirstMix = (
 };
 
 describe("learning plan AI scheduling", () => {
+	test("creates initial sessions in remaining learner-saved windows", () => {
+		vi.setSystemTime(new Date("2026-06-01T15:00:00.000Z"));
+		const result = __testOnlyLearningPlanAi.normalizeSessions(
+			"2026-06-02",
+			1,
+			[
+				{
+					phase: "practice",
+					title: "Wissenscheck",
+					dayOffsetBeforeExam: 1,
+					startTime: "16:00",
+					durationMinutes: 20,
+					goal: "Prüfe deinen Wissensstand.",
+					tasks: ["Beantworte die Fragen."],
+					expectedOutcome: "Dein Wissensstand ist erfasst.",
+				},
+			],
+			[{ dayOfWeek: 1, startTime: "16:00", endTime: "20:00" }],
+			[],
+			20,
+			[],
+			{
+				maxSessionMinutes: 20,
+				minimumSessionCount: 2,
+				topicReadiness: { secure: 1, developing: 0, unknown: 0 },
+				praxisSessionCount: 1,
+			},
+		);
+		expect(result.sessions.length).toBeGreaterThanOrEqual(2);
+		expect(
+			result.sessions.every(
+				(session) => session.startTime > "17:00" && session.startTime < "20:00",
+			),
+		).toBe(true);
+		expect(result.planningHint ?? "").not.toContain(
+			MISSING_LEARNING_TIMES_HINT,
+		);
+	});
 	beforeEach(() => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date("2026-06-01T08:00:00.000Z"));

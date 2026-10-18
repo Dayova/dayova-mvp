@@ -34,6 +34,7 @@ const config = {
 					40: "hsl(var(--primary-40))",
 					30: "hsl(var(--primary-30))",
 				},
+				"on-primary": "hsl(var(--on-primary))",
 				"progress-track": "hsl(var(--progress-track))",
 				"button-neutral": "hsl(var(--button-neutral))",
 				secondary: {
@@ -48,6 +49,8 @@ const config = {
 					30: "hsl(var(--secondary-30))",
 				},
 				destructive: "hsl(var(--destructive))",
+				"danger-action": "hsl(var(--danger-action))",
+				"danger-subtle": "hsl(var(--danger-subtle))",
 				success: {
 					DEFAULT: "hsl(var(--success))",
 					subtle: "hsl(var(--success-subtle))",

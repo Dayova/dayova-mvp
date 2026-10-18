@@ -1,32 +1,12 @@
-import { TouchableOpacity, type TouchableOpacityProps } from "react-native";
-import { X } from "~/components/ui/icon";
-import { useDayovaTheme } from "~/lib/theme";
+import { NavigationIconButton } from "~/components/ui/button";
 
 type CloseButtonProps = Omit<
-	TouchableOpacityProps,
-	"children" | "className" | "style"
+	React.ComponentProps<typeof NavigationIconButton>,
+	"kind" | "children" | "className" | "style" | "iconSize" | "strokeWidth"
 >;
 
-function CloseButton({
-	accessibilityLabel = "Schließen",
-	activeOpacity = 0.75,
-	hitSlop = 8,
-	...props
-}: CloseButtonProps) {
-	const { colors } = useDayovaTheme();
-
-	return (
-		<TouchableOpacity
-			accessibilityLabel={accessibilityLabel}
-			accessibilityRole="button"
-			activeOpacity={activeOpacity}
-			hitSlop={hitSlop}
-			className="h-10 w-10 items-center justify-center rounded-full bg-path-2 shadow-black/10 shadow-sm"
-			{...props}
-		>
-			<X size={24} color={colors.path3} strokeWidth={2} />
-		</TouchableOpacity>
-	);
+function CloseButton(props: CloseButtonProps) {
+	return <NavigationIconButton kind="close" {...props} />;
 }
 
 export { CloseButton };
