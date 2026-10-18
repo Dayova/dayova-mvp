@@ -25,7 +25,8 @@ const mockRouter = {
 	back: jest.fn(),
 	canGoBack: () => true,
 };
-const mockCreateEntry = jest.fn<() => Promise<string>>();
+const mockCreateEntry =
+	jest.fn<(_args: Record<string, unknown>) => Promise<string>>();
 const mockUpdateEntry = jest.fn<() => Promise<void>>();
 const mockUpdateRequiredTopics = jest.fn<() => Promise<void>>();
 const mockGenerateUploadUrl = jest.fn<() => Promise<Record<string, unknown>>>();
