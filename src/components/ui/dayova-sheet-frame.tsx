@@ -32,11 +32,10 @@ import {
 	View,
 	type ViewInstance,
 } from "react-native";
-import { CloseButton } from "~/components/ui/close-button";
+import { DayovaSheetHeader } from "~/components/ui/dayova-sheet-header";
 import { InputComponentContext } from "~/components/ui/input";
 import { useSheetAccessibility } from "~/components/ui/sheet-accessibility";
 import { useSheetSafeAreaInsets } from "~/components/ui/sheet-safe-area";
-import { Text } from "~/components/ui/text";
 import { getContentSizeLayout } from "~/lib/content-size-layout";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
@@ -88,7 +87,7 @@ function SheetModalContainer({ children }: { children?: ReactNode }) {
 
 /**
  * Owns app-sheet sizing, scrolling, keyboard handling, dismissal, and modal focus.
- * Keeps the close control above the full-width title at every system text size.
+ * Shares compact, content-aware header chrome across app-owned sheets.
  */
 function DayovaSheetFrame({
 	visible,
@@ -396,43 +395,17 @@ function DayovaSheetFrame({
 					/>
 				) : null}
 				{hasHeader ? (
-					<View className="mb-6 gap-3" testID="dayova-sheet-header">
-						{canShowCloseButton ? (
-							<View
-								className={cn("self-end", (title || description) && "mb-2")}
-								testID="dayova-sheet-close-row"
-							>
-								<CloseButton
-									accessibilityLabel={closeAccessibilityLabel}
-									onPress={dismiss}
-								/>
-							</View>
-						) : null}
-						{title ? (
-							<View
-								ref={initialFocusRef}
-								accessible
-								accessibilityLabel={accessibleTitle}
-								accessibilityRole="header"
-								className="w-full"
-								collapsable={false}
-								testID="dayova-sheet-title-row"
-							>
-								<Text
-									accessible={false}
-									accessibilityRole="header"
-									className="font-poppins font-semibold text-body-1 text-text"
-								>
-									{title}
-								</Text>
-							</View>
-						) : null}
-						{description ? (
-							<Text className="font-poppins text-body-3 text-secondary-text">
-								{description}
-							</Text>
-						) : null}
-					</View>
+					<DayovaSheetHeader
+						// Recheck native text fit when content, chrome or system sizing changes.
+						key={`${typeof title === "string" ? title : accessibleTitle}:${sheetWidth}:${fontScale}:${canShowCloseButton}`}
+						title={title}
+						description={description}
+						accessibleTitle={accessibleTitle}
+						initialFocusRef={initialFocusRef}
+						showCloseButton={canShowCloseButton}
+						closeAccessibilityLabel={closeAccessibilityLabel}
+						onClose={dismiss}
+					/>
 				) : null}
 				{children ? (
 					<View className={cn(contentClassName)}>{children}</View>

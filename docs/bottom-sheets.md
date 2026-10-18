@@ -13,9 +13,12 @@ subject and exam-type selector.
   Short information, confirmation and option sheets must not reserve empty space.
 - Content scrolls by default, including the heading, so long titles and large
   system text cannot consume a fixed header and make the body unreachable.
-  At every text size, the close control gets its own right-aligned row,
-  followed by 20pt to a full-width title and 12pt to supporting copy.
-  Hidden close controls reserve no empty row; content follows at 24pt. Only the native date/time wheel opts out
+  Titles and the 48pt close control share a compact row, with 16pt between them.
+  One- and two-line titles remain inline. Native text layout exceeding two lines
+  moves the close control above the full-width title with 12pt between them;
+  the fit is rechecked when title, sheet width, system text size or close visibility
+  changes. Supporting copy follows at 12pt, content at 24pt. Hidden close
+  controls reserve no empty space. Only the native date/time wheel opts out
   of the surrounding scroll view.
 - Shared `Input` fields automatically use Gorhom's keyboard-aware input while
   they are inside `DayovaSheetFrame`. Use `onOpening` to focus
@@ -52,6 +55,12 @@ subject and exam-type selector.
   `RuleTester` regression coverage.
 - Lifecycle and close-control behavior use React Native Testing Library rather
   than source-text assertions.
+- The compact-header decision was made by Jakob Rössner on 18 October 2026,
+  superseding DAY-501's unconditional separate close row. See the
+  [canonical decision](https://app.notion.com/p/3fd2e87228bf81588539c6e23c17abfe).
+  App-owned sheets share this structure on iOS and Android; native pickers retain
+  their platform chrome. This is a product decision informed by platform guidance,
+  not a claim that every OS sheet must use the same button placement.
 - Screen-reader modal behavior, focus, escape, and background isolation follow
   the shared contract in `docs/accessibility.md`.
 

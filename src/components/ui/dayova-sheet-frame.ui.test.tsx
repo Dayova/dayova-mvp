@@ -12,6 +12,7 @@ import {
 	AccessibilityInfo,
 	BackHandler,
 	Keyboard,
+	Text as NativeText,
 	Platform,
 	View,
 } from "react-native";
@@ -631,8 +632,8 @@ describe("DayovaSheetFrame", () => {
 	});
 
 	test.each([
-		1, 2,
-	])("places close control above full-width title at font scale %s", async (fontScale) => {
+		1, 1.2, 1.5, 2, 3,
+	])("keeps fitting native titles beside close at font scale %s", async (fontScale) => {
 		mockWindowDimensions.fontScale = fontScale;
 		const screen = await render(
 			<DayovaSheetFrame
@@ -646,12 +647,83 @@ describe("DayovaSheetFrame", () => {
 			name: "Was möchtest du planen?",
 		});
 		expect(screen.getByTestId("dayova-sheet-title-row")).toBe(title);
-		expect(screen.getByTestId("dayova-sheet-title-row").props.className).toBe(
-			"w-full",
+		await fireEvent(
+			screen.getByTestId("dayova-sheet-title-text"),
+			"textLayout",
+			{
+				nativeEvent: {
+					lines: [{ text: "Was möchtest du" }, { text: "planen?" }],
+				},
+			},
 		);
-		expect(screen.getByTestId("dayova-sheet-close-row")).not.toContainElement(
-			title,
+		expect(screen.getByTestId("dayova-sheet-heading")).toContainElement(title);
+		expect(screen.getByTestId("dayova-sheet-heading")).toContainElement(
+			screen.getByTestId("dayova-sheet-close-control"),
 		);
+		expect(
+			screen.getByTestId("dayova-sheet-heading").props.className,
+		).toContain("flex-row");
+	});
+	test("gives crowded native text full width without oscillating, then rechecks changed content and sizing", async () => {
+		const props = {
+			visible: true,
+			onClose: jest.fn(),
+			title: "Persönliches Fach wirklich dauerhaft löschen?",
+		};
+		const screen = await render(<DayovaSheetFrame {...props} />);
+		await fireEvent(
+			screen.getByTestId("dayova-sheet-title-text"),
+			"textLayout",
+			{
+				nativeEvent: {
+					lines: [
+						{ text: "Persönliches" },
+						{ text: "Fach wirklich" },
+						{ text: "dauerhaft löschen?" },
+					],
+				},
+			},
+		);
+		expect(
+			screen.getByTestId("dayova-sheet-heading").props.className,
+		).toContain("flex-col-reverse");
+		expect(
+			screen.getByTestId("dayova-sheet-title-row").props.className,
+		).toContain("w-full");
+		await fireEvent(
+			screen.getByTestId("dayova-sheet-title-text"),
+			"textLayout",
+			{
+				nativeEvent: {
+					lines: [
+						{ text: "Persönliches Fach wirklich" },
+						{ text: "dauerhaft löschen?" },
+					],
+				},
+			},
+		);
+		expect(
+			screen.getByTestId("dayova-sheet-heading").props.className,
+		).toContain("flex-col-reverse");
+		mockWindowDimensions.width = 768;
+		await screen.rerender(<DayovaSheetFrame {...props} />);
+		expect(
+			screen.getByTestId("dayova-sheet-heading").props.className,
+		).toContain("flex-row");
+		await fireEvent(
+			screen.getByTestId("dayova-sheet-title-text"),
+			"textLayout",
+			{
+				nativeEvent: {
+					lines: [{ text: "one" }, { text: "two" }, { text: "three" }],
+				},
+			},
+		);
+		await screen.rerender(<DayovaSheetFrame {...props} title="Info" />);
+		expect(
+			screen.getByTestId("dayova-sheet-heading").props.className,
+		).toContain("flex-row");
+		expect(screen.getByRole("header", { name: "Info" })).toBeOnTheScreen();
 	});
 	test.each([
 		{ dismissible: false },
@@ -665,9 +737,85 @@ describe("DayovaSheetFrame", () => {
 				{...props}
 			/>,
 		);
-		expect(screen.queryByTestId("dayova-sheet-close-row")).toBeNull();
+		expect(screen.queryByTestId("dayova-sheet-close-control")).toBeNull();
+		expect(
+			screen.getByTestId("dayova-sheet-title-row").props.className,
+		).toContain("w-full");
 		expect(
 			screen.getByRole("header", { name: "Bitte warten" }),
+		).toBeOnTheScreen();
+	});
+	test("rechecks a ReactNode title while its accessible name stays the same", async () => {
+		const props = {
+			visible: true,
+			onClose: jest.fn(),
+			accessibilityLabel: "Fach bearbeiten",
+		};
+		const screen = await render(
+			<DayovaSheetFrame
+				{...props}
+				title={<NativeText>one two three</NativeText>}
+			/>,
+		);
+		await fireEvent(
+			screen.getByTestId("dayova-sheet-title-text"),
+			"textLayout",
+			{
+				nativeEvent: {
+					lines: [{ text: "one" }, { text: "two" }, { text: "three" }],
+				},
+			},
+		);
+		expect(
+			screen.getByTestId("dayova-sheet-heading").props.className,
+		).toContain("flex-col-reverse");
+		// The parent can recreate inline JSX while the rendered title is unchanged.
+		await screen.rerender(
+			<DayovaSheetFrame
+				{...props}
+				title={<NativeText>one two three</NativeText>}
+			/>,
+		);
+		await fireEvent(
+			screen.getByTestId("dayova-sheet-title-text"),
+			"textLayout",
+			{
+				nativeEvent: { lines: [{ text: "one two " }, { text: "three" }] },
+			},
+		);
+		expect(
+			screen.getByTestId("dayova-sheet-heading").props.className,
+		).toContain("flex-col-reverse");
+		await screen.rerender(
+			<DayovaSheetFrame
+				{...props}
+				title={<NativeText testID="replacement-title">Info</NativeText>}
+			/>,
+		);
+		await fireEvent(
+			screen.getByTestId("dayova-sheet-title-text"),
+			"textLayout",
+			{
+				nativeEvent: { lines: [{ text: "Info" }] },
+			},
+		);
+		expect(
+			screen.getByTestId("dayova-sheet-heading").props.className,
+		).toContain("flex-row");
+		expect(screen.getByTestId("replacement-title")).toBeOnTheScreen();
+	});
+	test("does not add empty heading chrome above description-only content", async () => {
+		const screen = await render(
+			<DayovaSheetFrame
+				visible
+				onClose={jest.fn()}
+				showCloseButton={false}
+				description="Deine Änderungen werden gespeichert."
+			/>,
+		);
+		expect(screen.queryByTestId("dayova-sheet-heading")).toBeNull();
+		expect(
+			screen.getByText("Deine Änderungen werden gespeichert."),
 		).toBeOnTheScreen();
 	});
 });
