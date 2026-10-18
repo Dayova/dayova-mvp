@@ -76,7 +76,7 @@ const generatedChoiceValidator = v.object({
 	text: v.string(),
 });
 
-const generatedSessionContentItemValidator = v.object({
+export const generatedSessionContentItemValidator = v.object({
 	phase: v.optional(
 		v.union(v.literal("theory"), v.literal("practice"), v.literal("rehearsal")),
 	),
@@ -1083,6 +1083,7 @@ export const getSessionGenerationContext = internalQuery({
 	args: {
 		sessionId: v.id("learningPlanSessions"),
 		includePriorContent: v.optional(v.boolean()),
+		excludePriorSessionIds: v.optional(v.array(v.id("learningPlanSessions"))),
 	},
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
@@ -1117,6 +1118,13 @@ export const getSessionGenerationContext = internalQuery({
 			)
 			.take(50);
 		const existingItems = await listItems(ctx, args.sessionId);
+		const snapshotItems = await ctx.db
+			.query("learningSessionContentItems")
+			.withIndex("by_sessionId_and_sortOrder", (q) =>
+				q.eq("sessionId", args.sessionId),
+			)
+			.order("asc")
+			.take(1001);
 		const currentSessionAttempts = await ctx.db
 			.query("learningSessionAnswerAttempts")
 			.withIndex("by_sessionId_and_createdAt", (q) =>
@@ -1154,7 +1162,10 @@ export const getSessionGenerationContext = internalQuery({
 			if (planSession.sortOrder >= session.sortOrder && !wasCompleted) continue;
 
 			const items = await listItems(ctx, planSession._id);
-			if (args.includePriorContent !== false) {
+			if (
+				args.includePriorContent !== false &&
+				!args.excludePriorSessionIds?.includes(planSession._id)
+			) {
 				for (const item of items) {
 					if (item.coverageKey && priorCoverageKeys.length < 2_000) {
 						priorCoverageKeys.push(item.coverageKey);
@@ -1258,6 +1269,7 @@ export const getSessionGenerationContext = internalQuery({
 			priorSessionItems,
 			priorSessionEvidence,
 			priorCoverageKeys,
+			expectedContent: JSON.stringify(snapshotItems),
 			existingItemCount: existingItems.length,
 			hasTheoryKnowledgeCheck: existingItems.some(isTheoryKnowledgeCheckItem),
 			hasCompleteTheoryPracticePairs:

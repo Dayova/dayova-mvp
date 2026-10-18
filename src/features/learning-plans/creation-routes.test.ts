@@ -86,3 +86,13 @@ test("resumes creation without routing through a separate question screen", () =
 		learningPlanResumePath(learningPlanId, "generated", "firstSession"),
 	).toBe("/learning-plans/learning-plan-id/review");
 });
+
+test("resumes prepared first-session plans directly without flashing analysis", () => {
+	const id = "learning-plan-id" as Id<"learningPlans">;
+	expect(
+		learningPlanResumePath(id, "questionsReady", "firstSession", 123),
+	).toBe("/learning-plans/learning-plan-id/generating");
+	expect(learningPlanResumePath(id, "questionsReady", "firstSession")).toBe(
+		"/learning-plans/learning-plan-id/scope",
+	);
+});

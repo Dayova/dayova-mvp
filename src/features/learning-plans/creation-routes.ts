@@ -52,11 +52,18 @@ export const learningPlanResumePath = (
 	id: Id<"learningPlans">,
 	status: "draft" | "questionsReady" | "generated" | "accepted",
 	diagnosticPlacement?: "firstSession",
+	scopeConfirmedAt?: number,
 ) => {
 	if (status === "draft") {
 		return `${ROUTES.createLearningPlan}?learningPlanId=${encodeURIComponent(id)}&step=material` as const;
 	}
 	if (status === "questionsReady") {
+		if (diagnosticPlacement === "firstSession") {
+			return learningPlanStepPath(
+				id,
+				scopeConfirmedAt ? "generating" : "scope",
+			);
+		}
 		return learningPlanStepPath(id, "analysis");
 	}
 	if (status === "generated") {
