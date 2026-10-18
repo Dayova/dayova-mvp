@@ -24,6 +24,30 @@ Convex agent skills for common tasks can be installed by running
 
 ## Agent skills
 
+### Test quality
+
+Before adding or changing a test, name the observable behavior, the public
+interface exercised, and a plausible bug that must make it fail. Use the existing
+behavior tests as seams; do not extract trivial helpers just to test them.
+
+Expected results must come from a worked example or documented contract, not the
+implementation's constants or formula. A mocked response cannot prove the mocked
+behavior works; checking the real consumer's handling of an external response is
+valid. Exercise real app
+logic and mock only external services/native APIs or an explicitly documented
+consumer boundary. Include failure behavior when a mock hides a real failure mode.
+
+Do not test source strings, internal call order, Tailwind classes, component-tree
+shape, or exact layout/animation props. Render and interact for UI behavior;
+check accessibility roles/states directly. Validate visual layout on a device.
+For configuration, test resolved output or execute its decisions rather than
+matching implementation text. Type-only assertions belong to typechecking.
+
+No test may silently return or iterate over an empty result without checking its
+precondition. When improving a weak test, temporarily introduce the claimed bug
+and verify a failure, then restore the implementation. Do not add a test merely
+because a file changed. See `docs/testing.md` for examples and review guidance.
+
 ### Delivery workflow
 
 For explicitly mutating repository work (for example implementation, fixes, refactors, or review-feedback changes), completion normally includes:
@@ -49,6 +73,16 @@ Linear is the source of truth for issues and PRDs: use workspace `dayova`, team 
 Map the `bug` and `enhancement` category roles plus the five triage disposition roles through `docs/agents/triage-labels.md`; do not substitute similarly named Linear labels.
 
 ### Domain docs
+
+Read `CONTEXT-MAP.md` for canonical Notion entry points before searching for
+internal knowledge. Update the owning Notion page for new shared knowledge;
+keep only concise implementation contracts and links in the repository.
+Put per-task validation reports, screenshots, recordings, and review evidence
+on the relevant GitHub PR or Linear issue, with durable lessons in Notion.
+Do not create or restore `docs/evidence`, `docs/pr-screenshots`, `docs/qa`, or
+`docs/validation`, or equivalent task archives elsewhere in the repository.
+Local generated artifacts belong in ignored `.maestro/artifacts/` or a temporary
+directory. Keep maintained executable tests and QA tools beside the code/tooling.
 
 Use a multi-context documentation layout with `CONTEXT-MAP.md` at the repo root. Notion is Dayova's main internal documentation and knowledge workspace; consult it when product, business, research, or decision context materially affects the task. Repo-local context docs and ADRs contain only the code-facing guidance that must evolve with this repository. Link to relevant Notion pages instead of duplicating shared internal documentation. See `docs/agents/domain.md`.
 

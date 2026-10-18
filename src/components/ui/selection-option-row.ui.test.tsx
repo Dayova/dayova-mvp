@@ -45,28 +45,18 @@ test.each([
 		checked: selected,
 		disabled: false,
 	});
-	expect(screen.getByText(label).props.numberOfLines).toBeUndefined();
 	await fireEvent.press(screen.getByRole("radio"));
 	expect(onPress).toHaveBeenCalledTimes(1);
 	expect(triggerSelectionHaptic).toHaveBeenCalledTimes(selected ? 0 : 1);
 });
 
-const mockAnimate = jest.fn();
-jest.mock("react-native-reanimated", () => ({
-	...jest.requireActual<Record<string, unknown>>(
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual<Record<string, unknown>>(
 		"../../../tests/mocks/selection-reanimated.cjs",
 	),
-	withTiming: (value: number) => {
-		mockAnimate(value);
-		return value;
-	},
-	withSpring: (value: number) => {
-		mockAnimate(value);
-		return value;
-	},
-}));
+);
 
-test("exam and subject rows animate a press without committing a canceled selection", async () => {
+test("exam and subject rows do not commit a canceled selection", async () => {
 	const onPress = jest.fn();
 	const screen = await render(
 		<SelectionOptionRow
@@ -76,12 +66,9 @@ test("exam and subject rows animate a press without committing a canceled select
 			onPress={onPress}
 		/>,
 	);
-	mockAnimate.mockClear();
 	const row = screen.getByRole("radio", { name: "Klausur" });
 	await fireEvent(row, "pressIn");
-	expect(mockAnimate).toHaveBeenCalledWith(0.98);
 	await fireEvent(row, "pressOut");
-	expect(mockAnimate).toHaveBeenCalledWith(1);
 	expect(onPress).not.toHaveBeenCalled();
 	await fireEvent.press(row);
 	expect(onPress).toHaveBeenCalledTimes(1);

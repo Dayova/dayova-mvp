@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-	getOfflineAccess,
 	getNextAccessRefreshAt,
-	OFFLINE_ACCESS_WINDOW_MS,
+	getOfflineAccess,
 	resolveAccessRoute,
 } from "./access-policy";
 import {
@@ -151,7 +150,7 @@ describe("getOfflineAccess", () => {
 					state: "paid",
 					subscriptionExpiresAt: Date.parse("2026-08-28T10:00:00.000Z"),
 				},
-				now: verifiedAt + OFFLINE_ACCESS_WINDOW_MS,
+				now: Date.parse("2026-07-31T10:00:00.000Z"),
 				verifiedAt,
 			}),
 		).toBe(true);
@@ -163,7 +162,7 @@ describe("getOfflineAccess", () => {
 					state: "paid",
 					subscriptionExpiresAt: Date.parse("2026-08-28T10:00:00.000Z"),
 				},
-				now: verifiedAt + OFFLINE_ACCESS_WINDOW_MS + 1,
+				now: Date.parse("2026-07-31T10:00:00.001Z"),
 				verifiedAt,
 			}),
 		).toBe(false);

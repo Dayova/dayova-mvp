@@ -157,6 +157,7 @@ jest.mock("~/components/ui/dayova-sheet-frame", () => ({
 		dismissDurationMs,
 		footer,
 		title,
+		description,
 		onClose,
 		onDismiss,
 		closeAccessibilityLabel,
@@ -167,6 +168,7 @@ jest.mock("~/components/ui/dayova-sheet-frame", () => ({
 		dismissDurationMs?: number;
 		footer: ReactNode;
 		title?: string;
+		description?: ReactNode;
 		onClose: () => void;
 		onDismiss?: () => void;
 		closeAccessibilityLabel?: string;
@@ -178,6 +180,7 @@ jest.mock("~/components/ui/dayova-sheet-frame", () => ({
 		return visible ? (
 			<>
 				<Text>{title}</Text>
+				{description ? <Text>{description}</Text> : null}
 				<Pressable
 					accessibilityRole="button"
 					accessibilityLabel={closeAccessibilityLabel}
@@ -357,11 +360,6 @@ describe("learning times settings", () => {
 			screen.getByRole("button", { name: "Lernzeit hinzufügen" }),
 		);
 		expect(screen.getByText("Mittwoch")).toBeOnTheScreen();
-		for (const label of ["Abbrechen", "Hinzufügen"]) {
-			const action = screen.getByRole("button", { name: label });
-			expect(action.props.className).toContain("min-h-14");
-			expect(action.props.className).toContain("flex-1");
-		}
 		expect(mockPush).not.toHaveBeenCalled();
 		await fireEvent.press(screen.getByRole("button", { name: "Abbrechen" }));
 		await fireEvent.press(

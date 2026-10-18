@@ -1,5 +1,4 @@
 import { expect, test } from "vitest";
-import { GERMAN_FEDERAL_STATES } from "../src/lib/federal-states";
 import { profileProperties } from "./crmProfile";
 
 test("profile mapping uses the Clerk name convention and Notion's existing state codes", () => {
@@ -18,28 +17,6 @@ test("profile mapping uses the Clerk name convention and Notion's existing state
 		State: { select: { name: "NW" } },
 		"School Type": { select: { name: "Gesamt- / Gemeinschaftsschule" } },
 	});
-	expect(
-		GERMAN_FEDERAL_STATES.map((state) => profileProperties({ state }).State),
-	).toEqual(
-		[
-			"HB",
-			"HH",
-			"BW",
-			"SN",
-			"ST",
-			"BB",
-			"BY",
-			"BE",
-			"HE",
-			"NI",
-			"NW",
-			"RP",
-			"SL",
-			"SH",
-			"TH",
-			"MV",
-		].map((name) => ({ select: { name } })),
-	);
 });
 
 test("missing and unsupported profile values preserve CRM fields without leaking legacy school names", () => {
@@ -71,5 +48,28 @@ test("single names and explicit opt-outs clear stale profile values", () => {
 		Student: { title: [{ text: { content: "Dayova student" } }] },
 		"First Name": { rich_text: [] },
 		"Last Name": { rich_text: [] },
+	});
+});
+
+test.each([
+	["Bremen", "HB"],
+	["Hamburg", "HH"],
+	["Baden-Württemberg", "BW"],
+	["Sachsen", "SN"],
+	["Sachsen-Anhalt", "ST"],
+	["Brandenburg", "BB"],
+	["Bayern", "BY"],
+	["Berlin", "BE"],
+	["Hessen", "HE"],
+	["Niedersachsen", "NI"],
+	["Nordrhein-Westfalen", "NW"],
+	["Rheinland-Pfalz", "RP"],
+	["Saarland", "SL"],
+	["Schleswig-Holstein", "SH"],
+	["Thüringen", "TH"],
+	["Mecklenburg-Vorpommern", "MV"],
+])("maps %s to the Notion state code %s", (state, code) => {
+	expect(profileProperties({ state }).State).toEqual({
+		select: { name: code },
 	});
 });

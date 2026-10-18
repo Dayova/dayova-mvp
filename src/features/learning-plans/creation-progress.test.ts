@@ -1,45 +1,16 @@
 import { describe, expect, test } from "vitest";
 import {
 	getExamEntryCreationProgress,
-	getLearningPlanCreationProgressPercentage,
 	getSafeLearningPlanCreationProgress,
-	LEARNING_PLAN_CREATION_STEPS,
-	LEARNING_PLAN_CREATION_TOTAL_STEPS,
 } from "./creation-progress";
 
 describe("learning-plan creation progress", () => {
-	test("advances visibly through the opening exam steps", () => {
-		expect(LEARNING_PLAN_CREATION_STEPS).toEqual({
-			examType: 1,
-			examSubject: 1.5,
-			examDate: 2,
-			examTopics: 3,
-			materialUpload: 3.5,
-			materialAnalysis: 4,
-			scopeConfirmation: 4.5,
-			planGeneration: 5,
-		});
-		expect(LEARNING_PLAN_CREATION_TOTAL_STEPS).toBe(5);
-
-		const openingProgress = [
-			LEARNING_PLAN_CREATION_STEPS.examType,
-			LEARNING_PLAN_CREATION_STEPS.examSubject,
-			LEARNING_PLAN_CREATION_STEPS.examDate,
-		];
+	test("maps exam entry screens to their creation steps", () => {
 		expect(
-			openingProgress.every(
-				(progress, index) =>
-					index === 0 || progress > (openingProgress[index - 1] ?? 0),
+			(["examType", "examDetails", "basics"] as const).map(
+				getExamEntryCreationProgress,
 			),
-		).toBe(true);
-	});
-
-	test("turns intermediate progress into a changing percentage", () => {
-		expect(
-			(["examType", "examDetails", "basics"] as const)
-				.map(getExamEntryCreationProgress)
-				.map(getLearningPlanCreationProgressPercentage),
-		).toEqual([20, 30, 40]);
+		).toEqual([1, 1.5, 2]);
 	});
 
 	test("normalizes non-finite progress for visual and accessible output", () => {
@@ -49,6 +20,5 @@ describe("learning-plan creation progress", () => {
 				totalSteps: Number.POSITIVE_INFINITY,
 			}),
 		).toEqual({ currentStep: 1, totalSteps: 5 });
-		expect(getLearningPlanCreationProgressPercentage(Number.NaN)).toBe(20);
 	});
 });

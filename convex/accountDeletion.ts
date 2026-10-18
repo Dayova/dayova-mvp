@@ -170,7 +170,7 @@ async function enqueueDeletion(
 		ctx,
 		ownerTokenIdentifier,
 		clerkUserId,
-		requestedAt,
+		existing?.requestedAt ?? requestedAt,
 	);
 	if (existing) {
 		if (
@@ -320,6 +320,62 @@ export const getRequestForProcessing = internalQuery({
 				query.eq("requestId", args.requestId),
 			)
 			.unique(),
+});
+
+// Repair requests accepted before lifecycle tracking before any provider/data
+// side effects. Destination binding remains an explicit operator decision via
+// retryRequest; a deploy must never silently choose a new cleanup destination.
+export const prepareRequestForProcessing = internalMutation({
+	args: { requestId: v.string() },
+	returns: v.union(deletionRequestValidator, v.null()),
+	handler: async (ctx, args) => {
+		const request = await ctx.db
+			.query("accountDeletionRequests")
+			.withIndex("by_requestId", (q) => q.eq("requestId", args.requestId))
+			.unique();
+		if (
+			!request ||
+			request.status === "completed" ||
+			request.status === "manualReview" ||
+			request.stage === "complete" ||
+			(request.nextAttemptAt !== undefined &&
+				request.nextAttemptAt > Date.now())
+		)
+			return request;
+
+		let errorCode: string | undefined;
+		if (!request.ownerTokenIdentifier || !request.clerkUserId) {
+			errorCode = "legacy_identity_missing";
+		} else {
+			const identity = await getClerkIdentity(
+				ctx,
+				request.ownerTokenIdentifier,
+			);
+			if (identity && identity.clerkId !== request.clerkUserId) {
+				errorCode = "legacy_identity_mismatch";
+			} else {
+				await markClerkIdentityDeleted(
+					ctx,
+					request.ownerTokenIdentifier,
+					request.clerkUserId,
+					request.requestedAt,
+				);
+				if (!request.crmDataSourceId)
+					errorCode = "legacy_crm_destination_missing";
+			}
+		}
+		if (errorCode) {
+			const patch = {
+				status: "manualReview" as const,
+				lastErrorCode: errorCode,
+				nextAttemptAt: undefined,
+				updatedAt: Date.now(),
+			};
+			await ctx.db.patch("accountDeletionRequests", request._id, patch);
+			return { ...request, ...patch };
+		}
+		return request;
+	},
 });
 
 export const advanceRequestStage = internalMutation({

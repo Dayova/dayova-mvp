@@ -2,8 +2,9 @@
 
 Execution: [DAY-528](https://linear.app/dayova/issue/DAY-528).
 Depends on the server-authoritative deletion pipeline in PR #661 / DAY-358.
-Native GitHub stack #810: `main -> #661 -> #748 -> #895`. PR #748 is the
-direct base and preserves background AI usage while respecting deletion guards.
+Former native GitHub stack #810 was `main -> #661 -> #748 -> #895`.
+PRs #661 and #748 have merged; #895 now targets main directly, retaining their
+deletion guards and background AI usage.
 
 ## Ownership and behavior
 
@@ -104,9 +105,9 @@ is implied by merging this implementation.
 Use an isolated local Convex deployment with a development Clerk issuer. Keep
 `pnpm exec convex dev` running in one terminal, then run
 `node scripts/check-clerk-lifecycle-local.mjs` in another. The script refuses
-cloud deployments/non-loopback HTTP URLs, explicitly selects `--deployment local`
-for every CLI call, creates a synthetic local identity, and checks signed HTTP
-delivery, signature/instance rejection, stale email protection and deletion access
+cloud deployments/non-loopback HTTP URLs, pins every CLI call to the local or
+anonymous deployment in `.env.local`, creates a synthetic local identity, and
+checks signed HTTP delivery, signature/instance rejection, stale email protection and deletion access
 denial. It generates a local-only signing secret and never prints it. This is a
 real backend HTTP smoke test; provider delivery and Notion writes still need the
 isolated integration rehearsal described above.
@@ -145,6 +146,22 @@ destination configured, review and explicitly bind the intended destination
 by passing `crmDataSourceId` to `retryRequest`. This can fill an absent destination
 only; an existing destination/page binding cannot be redirected. Do not guess it
 from email.
+
+On the first processing attempt, requests accepted before this lifecycle layer
+get a replay barrier from their stored `ownerTokenIdentifier`, `clerkUserId` and
+original `requestedAt`, without changing their accepted policy version. This
+repair is transactional and idempotent and runs before provider or data deletion.
+Missing identity fields or a conflicting existing Clerk identity go directly to
+`manualReview` (`legacy_identity_missing` / `legacy_identity_mismatch`); repair
+those only from verified identity evidence. A missing CRM destination likewise
+stops processing (`legacy_crm_destination_missing`), even when a source is now
+configured. Review the intended retained-contact source, then call
+`accountDeletion:retryRequest` with that exact configured `crmDataSourceId`.
+The retry cannot bind another source or redirect an existing destination/page.
+The resumed worker repairs the barrier before continuing, including for legacy
+requests already at `deleteNotion`. Existing manual-review requests remain paused
+until this explicit retry. Completed, expired-audit and future-scheduled requests
+are not backfilled or reprocessed.
 
 Sources: [Clerk delivery and ordering](https://clerk.com/docs/guides/development/webhooks/overview),
 [Svix signature verification](https://docs.svix.com/receiving/verifying-payloads/how),

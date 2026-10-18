@@ -214,6 +214,77 @@ test("lost PATCH response recovers by persisted page ID after the Clerk ID was c
 	expect(patches()).toBe(1);
 }, 10_000);
 
+test("legacy deletion repairs its barrier and completes after an explicit destination review", async () => {
+	vi.useFakeTimers();
+	try {
+		const { t, request, patches } = await fixture();
+		const requestedAt = 1000;
+		const args = { requestId: request.requestId };
+		await t.run(async (ctx) => {
+			const row = await ctx.db.query("accountDeletionRequests").unique();
+			const barrier = await ctx.db.query("clerkIdentities").unique();
+			if (!row || !barrier) throw new Error("Missing deletion fixture");
+			await ctx.db.delete("clerkIdentities", barrier._id);
+			await ctx.db.patch("accountDeletionRequests", row._id, {
+				crmDataSourceId: undefined,
+				crmPageId: undefined,
+				requestedAt,
+				policyVersion: "legacy-policy",
+			});
+		});
+		await t.action(
+			internal.accountDeletionActions.processDeletionRequest,
+			args,
+		);
+		expect(patches()).toBe(0);
+		expect(
+			await t.query(internal.accountDeletion.getRequestForProcessing, args),
+		).toMatchObject({
+			status: "manualReview",
+			lastErrorCode: "legacy_crm_destination_missing",
+		});
+		expect(
+			await t.run((ctx) => ctx.db.query("clerkIdentities").unique()),
+		).toMatchObject({
+			tokenIdentifier: identity.tokenIdentifier,
+			clerkId: identity.subject,
+			deletedAt: requestedAt,
+		});
+		await expect(
+			t.withIdentity(identity).mutation(api.users.syncCurrentUser, {}),
+		).rejects.toThrow("dauerhaft gelöscht");
+		await expect(
+			t.mutation(internal.accountDeletion.retryRequest, {
+				requestId: request.requestId,
+				crmDataSourceId: "33333333-3333-4333-8333-333333333333",
+			}),
+		).rejects.toThrow("cannot be redirected");
+		await t.mutation(internal.accountDeletion.retryRequest, {
+			requestId: request.requestId,
+			crmDataSourceId: source,
+		});
+		await t.finishAllScheduledFunctions(vi.runAllTimers);
+		expect(patches()).toBe(1);
+		expect(
+			await t.query(internal.accountDeletion.getRequestForProcessing, args),
+		).toMatchObject({
+			status: "completed",
+			stage: "complete",
+			policyVersion: "legacy-policy",
+			requestedAt,
+		});
+		expect(
+			await t.run((ctx) => ctx.db.query("clerkIdentities").unique()),
+		).toMatchObject({
+			deletedAt: requestedAt,
+			deletionCompletedAt: expect.any(Number),
+		});
+	} finally {
+		vi.clearAllTimers();
+		vi.useRealTimers();
+	}
+}, 10_000);
+
 test("the processor completes a verified no-match and retries disabled cleanup", async () => {
 	const { t, request, properties, patches } = await fixture();
 	vi.stubEnv("NOTION_CRM_DELETION_MODE", "off");

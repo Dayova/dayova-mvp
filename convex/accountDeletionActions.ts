@@ -156,8 +156,8 @@ export const processDeletionRequest = internalAction({
 	args: { requestId: v.string() },
 	returns: v.null(),
 	handler: async (ctx, args) => {
-		const request = await ctx.runQuery(
-			internal.accountDeletion.getRequestForProcessing,
+		const request = await ctx.runMutation(
+			internal.accountDeletion.prepareRequestForProcessing,
 			args,
 		);
 		if (

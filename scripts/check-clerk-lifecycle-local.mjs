@@ -6,15 +6,32 @@ import { Webhook } from "svix";
 
 // Run with `convex dev` running in a separate terminal. Never targets cloud data.
 const localEnv = readFileSync(".env.local", "utf8");
-assert.match(localEnv, /^CONVEX_DEPLOYMENT=local:/m);
+const deployment = localEnv.match(
+	/^CONVEX_DEPLOYMENT=((?:local|anonymous):\S+)/m,
+)?.[1];
+assert.ok(deployment, "A local or anonymous Convex deployment is required");
 const site = localEnv.match(/^EXPO_PUBLIC_CONVEX_SITE_URL=(\S+)/m)?.[1];
 assert.ok(site && new URL(site).hostname === "127.0.0.1");
 
 function cli(args, options = {}) {
 	const result = spawnSync(
 		process.execPath,
-		["./node_modules/convex/bin/main.js", ...args, "--deployment", "local"],
-		{ encoding: "utf8", input: options.input },
+		[
+			"./node_modules/convex/bin/main.js",
+			...args,
+			...(deployment.startsWith("anonymous:") ? [] : ["--deployment", "local"]),
+		],
+		{
+			encoding: "utf8",
+			input: options.input,
+			env: {
+				...process.env,
+				CONVEX_DEPLOYMENT: deployment,
+				CONVEX_DEPLOY_KEY: "",
+				CONVEX_SELF_HOSTED_URL: "",
+				CONVEX_SELF_HOSTED_ADMIN_KEY: "",
+			},
+		},
 	);
 	if (!options.allowFailure)
 		assert.equal(result.status, 0, `Local Convex ${args[0]} failed`);

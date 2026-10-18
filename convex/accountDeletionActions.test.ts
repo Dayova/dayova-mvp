@@ -14,6 +14,51 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
+test.each([
+	"ownerTokenIdentifier",
+	"clerkUserId",
+] as const)("legacy requests missing %s stop before provider or data deletion", async (missing) => {
+	const backend = convexTest(schema, modules);
+	const fetch = vi.fn();
+	vi.stubGlobal("fetch", fetch);
+	vi.stubEnv("CLERK_SECRET_KEY", "test-server-key");
+	await backend.run((ctx) =>
+		ctx.db.insert("accountDeletionRequests", {
+			requestId: "missing-identity",
+			ownerTokenIdentifier: "test:user",
+			clerkUserId: "test-user",
+			[missing]: undefined,
+			status: "queued",
+			stage: "revokeSessions",
+			attemptCount: 0,
+			deletedRecords: 0,
+			policyVersion: "legacy-policy",
+			requestedAt: 1000,
+			updatedAt: 1000,
+		}),
+	);
+	await backend.action(internal.accountDeletionActions.processDeletionRequest, {
+		requestId: "missing-identity",
+	});
+	expect(
+		await backend.query(internal.accountDeletion.getRequestForProcessing, {
+			requestId: "missing-identity",
+		}),
+	).toMatchObject({
+		status: "manualReview",
+		stage: "revokeSessions",
+		lastErrorCode: "legacy_identity_missing",
+		deletedRecords: 0,
+		policyVersion: "legacy-policy",
+	});
+	expect(fetch).not.toHaveBeenCalled();
+	expect(
+		await backend.run((ctx) =>
+			ctx.db.system.query("_scheduled_functions").take(1),
+		),
+	).toHaveLength(0);
+});
+
 test("competing final data batches schedule only one Notion continuation", async () => {
 	vi.useFakeTimers();
 	const backend = convexTest(schema, modules);
@@ -22,6 +67,7 @@ test("competing final data batches schedule only one Notion continuation", async
 			requestId: "competing-data-workers",
 			ownerTokenIdentifier: "test:user",
 			clerkUserId: "test-user",
+			crmDataSourceId: "test-source",
 			status: "processing",
 			stage: "deleteData",
 			attemptCount: 0,
@@ -80,6 +126,7 @@ test.each([
 			requestId: "competing-workers",
 			ownerTokenIdentifier: "test:user",
 			clerkUserId: "test-user",
+			crmDataSourceId: "test-source",
 			status: "processing",
 			stage,
 			attemptCount: 0,

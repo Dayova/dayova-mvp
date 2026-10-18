@@ -17,6 +17,7 @@ function luminance(rgb: number[]) {
 
 test("branded selection glyphs retain small-text contrast across the gradient", () => {
 	const stops = DAYOVA_DESIGN_SYSTEM.gradients.selection.colors.map(channels);
+	expect(stops.length).toBeGreaterThanOrEqual(2);
 	const foreground = luminance(channels(DAYOVA_DESIGN_SYSTEM.colors.onPrimary));
 	for (let stop = 0; stop < stops.length - 1; stop++) {
 		for (let sample = 0; sample <= 100; sample++) {
@@ -33,10 +34,4 @@ test("branded selection glyphs retain small-text contrast across the gradient", 
 			expect(contrast).toBeGreaterThanOrEqual(4.5);
 		}
 	}
-});
-
-test("selection and primary actions share the canonical Dayova gradient", () => {
-	expect(DAYOVA_DESIGN_SYSTEM.gradients.selection).toBe(
-		DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive,
-	);
 });

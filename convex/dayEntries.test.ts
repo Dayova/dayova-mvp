@@ -32,10 +32,14 @@ test("revises the same pending exam after navigating back through creation", asy
 		plannedDateLabel: "Donnerstag, 1. Oktober",
 		durationMinutes: 45,
 	});
-	const entries = await t.run((ctx) => ctx.db.query("dayEntries").take(2));
+	const grouped = await t.query(api.dayEntries.listByDayKeys, {
+		dayKeys: ["2026-09-30", "2026-10-01"],
+	});
+	expect(grouped["2026-09-30"]).toEqual([]);
+	const entries = grouped["2026-10-01"];
 	expect(entries).toHaveLength(1);
 	expect(entries[0]).toMatchObject({
-		_id: id,
+		id,
 		dayKey: "2026-10-01",
 		subject: "Chemie",
 		title: "Chemie Test",
@@ -90,16 +94,17 @@ test("pending exam edits replace or clear the personal subject reference", async
 		plannedDateLabel: "2. Oktober",
 		durationMinutes: 60,
 	});
-	const result = await t.run(async (ctx) => ({
-		entry: await ctx.db.get("dayEntries", id),
-		references: await ctx.db.query("personalSubjectReferences").take(10),
-	}));
-	expect(result.entry).toMatchObject({
+	const result = await t.query(api.dayEntries.get, { id });
+	expect(result).toMatchObject({ subject: "Chemie", title: "Chemie Klausur" });
+	expect(result?.personalSubjectId).toBeUndefined();
+	await t.mutation(api.personalSubjects.rename, {
+		id: latin.id,
+		name: "Sprache",
+	});
+	expect(await t.query(api.dayEntries.get, { id })).toMatchObject({
 		subject: "Chemie",
 		title: "Chemie Klausur",
 	});
-	expect(result.entry?.personalSubjectId).toBeUndefined();
-	expect(result.references).toEqual([]);
 });
 
 test("stores an explicit one-time subject through create and resume", async () => {
@@ -219,9 +224,7 @@ test("stores required exam topics without creating a learning plan", async () =>
 	).resolves.toMatchObject({
 		topicDescription: "Lineare Funktionen, Steigung und Achsenabschnitt",
 	});
-	expect(await t.run((ctx) => ctx.db.query("learningPlans").take(1))).toEqual(
-		[],
-	);
+	expect(await t.query(api.learningPlans.listOverview, {})).toEqual([]);
 });
 
 test("manual timed entry overlapping an existing entry is rejected with conflict details", async () => {

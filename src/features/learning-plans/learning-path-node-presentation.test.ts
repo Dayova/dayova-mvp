@@ -1,8 +1,5 @@
 import { describe, expect, test } from "vitest";
-import {
-	getLearningPathNodePresentation,
-	LEARNING_PATH_BREATHING,
-} from "./learning-path-node-presentation";
+import { getLearningPathNodePresentation } from "./learning-path-node-presentation";
 
 describe("getLearningPathNodePresentation", () => {
 	test("completed sessions use the Duolingo check treatment and only show a solid halo when selected", () => {
@@ -89,13 +86,5 @@ describe("getLearningPathNodePresentation", () => {
 			{ halo: "solid", icon: "dumbbell", motion: "still", tone: "gray" },
 			{ halo: "none", icon: "repeat", motion: "still", tone: "gray" },
 		]);
-	});
-
-	test("the breathing treatment visibly shrinks and grows once per two-second cycle", () => {
-		expect(LEARNING_PATH_BREATHING).toEqual({
-			halfCycleMs: 1000,
-			maxScale: 1.06,
-			minScale: 0.96,
-		});
 	});
 });
