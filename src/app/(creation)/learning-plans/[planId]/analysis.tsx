@@ -26,6 +26,7 @@ import {
 	useBackIntent,
 } from "~/lib/navigation";
 import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
+import { extractUserFacingErrorCode } from "~/lib/user-facing-errors";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
@@ -111,11 +112,23 @@ export default function LearningPlanAnalysisScreen() {
 				})
 				.catch((error: unknown) => {
 					if (didCloseRef.current) return;
+					const errorCode = extractUserFacingErrorCode(error) ?? undefined;
 					const message = getErrorMessage(
 						error,
 						"Dein Lernplan konnte nicht vorbereitet werden. Bitte versuche es erneut.",
 					);
 					setErrorMessage(message);
+					if (errorCode === "aiConsentRequired") {
+						didStartRef.current = false;
+						dismissToOrReplace(
+							router,
+							learningPlanMaterialPath(planId, {
+								errorCode,
+								errorMessage: message,
+							}),
+						);
+						didCloseRef.current = true;
+					}
 				})
 				.finally(() => setIsBusy(false));
 		});
