@@ -24,8 +24,24 @@ the existing deletion pipeline after the already-completed Clerk steps. An
 in-app verified deletion creates the same tombstone. It survives completion, so
 old tokens and late create/update events cannot resurrect the account. The
 tombstone contains opaque identity keys and ordering/deletion timestamps, never
-an email, name or raw event. Its retention belongs in the DAY-357 approval;
-do not independently expire the access barrier while old deliveries can arrive.
+an email, name or raw event. Under Jakob's 18 October DAY-357 decision,
+successful pipeline completion starts its 90-day retention clock. The 30-day
+audit cleanup cannot remove this separate barrier. Unresolved failures do not
+start expiry; barriers without confirmed completion remain fail-closed.
+
+Hourly bounded cleanup expires completed audits after 30 days and completed
+barriers after 90 days. Independently, lifecycle mutations ignore event
+timestamps at least 90 days old, even when a replay carries a fresh signature.
+For legitimate older missed updates, use the read-only audit and explicit
+per-account reconciliation below; repair fetches current Clerk state rather
+than trusting an old event payload. A new Clerk identity is still a new account.
+
+Before activation, verify that accepted Convex JWTs expire before the 90-day
+barrier window and that deleted Clerk accounts cannot refresh them. Before any
+backup restore, pause lifecycle/CRM delivery and application writes, restore
+deletion/replay evidence, and reconcile restored accounts against live Clerk
+before resuming integrations. Never restore a pre-deletion snapshot directly
+into a live integration. Database expiry does not certify provider backup expiry.
 
 ## CRM decision approved by Jakob on 17 October 2026
 

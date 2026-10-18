@@ -1,5 +1,28 @@
 # DAY-528 validation
 
+## Approved deletion retention — 18 October 2026
+
+Jakob approved the DAY-357 decision record and the amendment specifying
+30 days for completed audit details and 90 days for minimal replay barriers,
+each measured from successful pipeline completion. Open queued, processing,
+retrying and manual-review requests retain sanitized diagnostics and recovery
+context; they do not start expiry. The approved identifier is
+`DAY-357-approved-2026-10-18`. Existing requests keep their original policy version.
+
+The parent adds indexed, bounded audit cleanup and a release-only HTTPS guard
+for configured Convex API/site URLs; local HTTP development endpoints remain valid.
+The lifecycle layer separately expires completed barriers, with an independent
+event-age cutoff that continues after per-account barrier expiry. Regression
+coverage exercises 30/90-day boundaries, access denial after audit expiry,
+freshly signed old create/update/delete deliveries after barrier expiry,
+unresolved failures, active identities and bounded repeatable cleanup batches.
+
+This section supersedes older pending-policy/audit-expiry statements below.
+Current checks are recorded in the PR descriptions. Native/provider acceptance,
+safe restore procedures, approved independent CRM-contact retention and production
+configuration/activation remain distinct requirements. No production deployment
+or release is certified by these code tests.
+
 ## SDK 58 integration — 18 October 2026
 
 Parent #661 is `ce7c9a36092782ec1bc183e4bb261f742a7d574f`; direct base #748 is

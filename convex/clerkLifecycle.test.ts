@@ -3,6 +3,7 @@ import { convexTest } from "convex-test";
 import { Webhook } from "svix";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api, internal } from "./_generated/api";
+import { DELETION_REPLAY_RETENTION_MS } from "./clerkIdentity";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -16,11 +17,15 @@ const identity = {
 	email: "old@example.com",
 };
 beforeEach(() => {
+	// Ordering fixtures use millisecond timestamps near the epoch.
+	vi.useFakeTimers({ toFake: ["Date"] });
+	vi.setSystemTime(60_000);
 	vi.stubEnv("CLERK_JWT_ISSUER_DOMAIN", issuer);
 	vi.stubEnv("CLERK_WEBHOOK_INSTANCE_ID", instanceId);
 	vi.stubEnv("CLERK_WEBHOOK_SIGNING_SECRET", secret);
 });
 afterEach(() => {
+	vi.useRealTimers();
 	vi.unstubAllEnvs();
 	vi.unstubAllGlobals();
 });
@@ -70,6 +75,129 @@ const signed = (payload: unknown, timestamp = new Date()) => {
 		},
 	};
 };
+
+test("audit expiry preserves access denial until barrier expiry, then rejects freshly signed old events", async () => {
+	const t = convexTest(schema, modules);
+	const user = t.withIdentity(identity);
+	const accepted = await user.mutation(
+		internal.accountDeletion.enqueueVerifiedDeletion,
+		{},
+	);
+	await t.run(async (ctx) => {
+		const request = await ctx.db.query("accountDeletionRequests").unique();
+		if (!request) throw new Error("Missing request");
+		await ctx.db.patch("accountDeletionRequests", request._id, {
+			stage: "deleteNotion",
+			crmDeletionVerified: true,
+		});
+	});
+	const completedAt = Date.now();
+	expect(
+		await t.mutation(internal.accountDeletion.completeRequest, {
+			requestId: accepted.requestId,
+		}),
+	).toBe(true);
+	expect(
+		await t.run((ctx) => ctx.db.query("clerkIdentities").unique()),
+	).toMatchObject({
+		deletionCompletedAt: completedAt,
+	});
+	vi.setSystemTime(completedAt + 30 * 24 * 60 * 60 * 1000);
+	expect(
+		await t.mutation(internal.accountDeletion.purgeCompletedAudits, {}),
+	).toBe(1);
+	await expect(user.mutation(api.users.syncCurrentUser, {})).rejects.toThrow(
+		"dauerhaft gelöscht",
+	);
+	vi.setSystemTime(completedAt + DELETION_REPLAY_RETENTION_MS - 1);
+	expect(
+		await t.mutation(internal.clerkLifecycle.purgeExpiredDeletionBarriers, {}),
+	).toBe(0);
+	vi.setSystemTime(completedAt + DELETION_REPLAY_RETENTION_MS);
+	expect(
+		await t.mutation(internal.clerkLifecycle.purgeExpiredDeletionBarriers, {}),
+	).toBe(1);
+	for (const type of ["user.created", "user.updated", "user.deleted"]) {
+		const response = await t.fetch(
+			"/clerk-webhook",
+			signed({
+				object: "event",
+				instance_id: instanceId,
+				type,
+				timestamp: completedAt,
+				data:
+					type === "user.deleted"
+						? { id: identity.subject, deleted: true }
+						: clerkUser(completedAt),
+			}),
+		);
+		expect(response.status).toBe(200);
+	}
+	expect(
+		await t.run((ctx) => ctx.db.query("clerkIdentities").take(10)),
+	).toEqual([]);
+	expect(await t.run((ctx) => ctx.db.query("users").take(10))).toEqual([]);
+	expect(
+		await t.run((ctx) => ctx.db.query("accountDeletionRequests").take(10)),
+	).toEqual([]);
+	// A genuinely new identity and current event remain eligible.
+	expect(
+		await t.mutation(internal.clerkLifecycle.apply, {
+			...update(Date.now()),
+			clerkId: "user_replacement",
+		}),
+	).toBe("applied");
+});
+
+test("unresolved deletion barriers and active identities do not expire", async () => {
+	const t = convexTest(schema, modules);
+	await t
+		.withIdentity(identity)
+		.mutation(internal.accountDeletion.enqueueVerifiedDeletion, {});
+	await t.mutation(internal.clerkLifecycle.apply, {
+		...update(Date.now()),
+		clerkId: "user_active",
+	});
+	vi.setSystemTime(Date.now() + 2 * DELETION_REPLAY_RETENTION_MS);
+	expect(
+		await t.mutation(internal.clerkLifecycle.purgeExpiredDeletionBarriers, {}),
+	).toBe(0);
+	expect(
+		await t.mutation(internal.accountDeletion.purgeCompletedAudits, {}),
+	).toBe(0);
+	expect(
+		await t.run((ctx) => ctx.db.query("clerkIdentities").take(10)),
+	).toHaveLength(2);
+	await expect(
+		t.withIdentity(identity).mutation(api.users.syncCurrentUser, {}),
+	).rejects.toThrow("dauerhaft gelöscht");
+});
+
+test("expires completed replay barriers in bounded idempotent batches", async () => {
+	const t = convexTest(schema, modules);
+	await t.run(async (ctx) => {
+		for (let index = 0; index < 101; index++) {
+			await ctx.db.insert("clerkIdentities", {
+				tokenIdentifier: `${issuer}|user_${index}`,
+				clerkId: `user_${index}`,
+				updatedAt: 1,
+				eventAt: 1,
+				deletedAt: 1,
+				deletionCompletedAt: 2,
+			});
+		}
+	});
+	vi.setSystemTime(DELETION_REPLAY_RETENTION_MS + 2);
+	expect(
+		await t.mutation(internal.clerkLifecycle.purgeExpiredDeletionBarriers, {}),
+	).toBe(100);
+	expect(
+		await t.mutation(internal.clerkLifecycle.purgeExpiredDeletionBarriers, {}),
+	).toBe(1);
+	expect(
+		await t.mutation(internal.clerkLifecycle.purgeExpiredDeletionBarriers, {}),
+	).toBe(0);
+});
 
 test("signed HTTP webhook selects the verified primary and updates the same app user", async () => {
 	const t = convexTest(schema, modules),

@@ -425,6 +425,14 @@ export const completeRequest = internalMutation({
 		)
 			return false;
 		const now = Date.now();
+		if (!request.ownerTokenIdentifier) return false;
+		const barrier = await getClerkIdentity(ctx, request.ownerTokenIdentifier);
+		if (!barrier || barrier.deletedAt === undefined) {
+			throw new Error("Deletion replay barrier is missing");
+		}
+		await ctx.db.patch("clerkIdentities", barrier._id, {
+			deletionCompletedAt: now,
+		});
 		await ctx.db.patch("accountDeletionRequests", request._id, {
 			ownerTokenIdentifier: undefined,
 			clerkUserId: undefined,

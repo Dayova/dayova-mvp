@@ -11,7 +11,11 @@ Notion is Dayova's main internal documentation and knowledge workspace. Keep thi
   resurrection. Historical reconciliation defaults to read-only and never joins
   accounts by email. See [the lifecycle runbook](../../runbooks/clerk-lifecycle.md).
   The CRM behavior is tracked in [DAY-528](https://linear.app/dayova/issue/DAY-528);
-  broader retention approval remains in the
+  Completed deletion audits expire after 30 days and minimal replay barriers
+  after 90 days; unresolved failures retain recovery context. A separate
+  90-day lifecycle-event age limit prevents old payloads recreating identity
+  records after barrier expiry. Restores require live Clerk reconciliation
+  before integrations resume. The approved policy is recorded in the
   [Notion DAY-357 decision record](https://app.notion.com/p/3c82e87228bf81e1b3efe45d3e8e7d07).
 
 - Registration is password-based: the learner enters an E-Mail address, sets a

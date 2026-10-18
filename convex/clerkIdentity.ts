@@ -1,5 +1,7 @@
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 
+export const DELETION_REPLAY_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
+
 export const getClerkIdentity = (
 	ctx: QueryCtx | MutationCtx,
 	tokenIdentifier: string,
@@ -11,7 +13,7 @@ export const getClerkIdentity = (
 		)
 		.unique();
 
-// A deleted Clerk ID is never reused. Keep only the minimal replay/access barrier;
+// Keep only the minimal replay/access barrier until 90 days after completion;
 // names, email and event payloads are removed from it on deletion.
 export async function markClerkIdentityDeleted(
 	ctx: MutationCtx,

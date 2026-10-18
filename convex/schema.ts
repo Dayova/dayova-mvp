@@ -138,7 +138,10 @@ export default defineSchema({
 		eventAt: v.number(),
 		verifiedEmail: v.optional(v.string()),
 		deletedAt: v.optional(v.number()),
-	}).index("by_tokenIdentifier", ["tokenIdentifier"]),
+		deletionCompletedAt: v.optional(v.number()),
+	})
+		.index("by_tokenIdentifier", ["tokenIdentifier"])
+		.index("by_deletionCompletedAt", ["deletionCompletedAt"]),
 	accountDeletionRequests: defineTable({
 		requestId: v.string(),
 		ownerTokenIdentifier: v.optional(v.string()),
