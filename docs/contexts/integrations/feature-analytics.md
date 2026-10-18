@@ -27,6 +27,12 @@ on both iOS and Android when the public API key is configured. Do not interpret
 this dataset as all app users because authentication and configuration gates still
 apply.
 
+Native development clients can expose absent EAS channel/runtime metadata as
+empty strings. The provider converts those two SDK values to `undefined` before
+the strict analytics contract runs. It does not invent a channel or runtime,
+disable analytics, or relax event/property validation; valid release metadata
+and the boolean embedded-launch flag are preserved.
+
 The provider rejects callbacks retained from a previous account. It does not
 write backend activity on every tap: screen exposure must not redefine the
 existing meaningful-activity/next-day-return contract. PostHog transport failures

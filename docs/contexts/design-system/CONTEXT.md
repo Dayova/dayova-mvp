@@ -319,6 +319,51 @@ are empty; example selections belong only in historical screenshot evidence.
 The duration explanation adapts to the chosen value; an additional explanation
 between weekdays and start time brings the profile flow to twelve steps.
 
+## Press feedback
+
+Shared Buttons (including icons and links) and custom actions use
+`FeedbackPressable`: 90 ms press compression to 97%, followed by a damped
+return. Small/icon Buttons and compact add, close and notification controls use
+92% so their compression remains visible on small surfaces. Shared feedback
+controls also select 92% automatically for measured surfaces up to 96 × 64 dp;
+larger surfaces use 97%, and explicit press scales remain authoritative. Layout
+callbacks are forwarded unchanged. The detached notched-card action uses its
+visible circle size for the same rule. Short taps complete
+the 90 ms compression before springing back; release never cancels the inward
+motion prematurely. Disabling, unmounting or reduced motion invalidates pending
+animation callbacks. Animation starts in the touch handler so fast taps are not lost to state
+batching; action dispatch never waits for animation. Opacity-based controls use
+`FeedbackTouchableOpacity`, preserving their existing active opacity.
+Coverage includes shared ActionSurface/FieldTrigger/sheets, dashboard cards,
+learning-plan cards and theory disclosures, settings, learning times, timetable,
+notifications, access screens, and plain authentication/onboarding actions.
+Existing active colors, labels, handlers, and caller styles remain intact.
+Shared selection rows and pills retain `SelectionControl` as their single press
+animation, including in auth, learning-time and timetable flows. Do not wrap
+these controls in `FeedbackPressable`.
+Calendar selection, learning-path breathing and analytics flips stay on child
+views; their outer controls now provide independent press feedback. Native
+controls retain system feedback. The notched card's invisible hit target drives
+the shared press motion on its visible action circle, keeping the hit area fixed.
+Both interactive brand titles also use the shared press control.
+Caller transforms take precedence so existing animations are not replaced.
+The simple transform runs with React Native Animated's native driver on native
+platforms; it adds no dependency and does not migrate existing Reanimated code.
+Reduced motion disables scaling, including when the preference changes during
+an interaction. Until the preference is available, controls remain static.
+Selection rows invoke the existing safe iOS selection haptic only when choosing
+an unselected option. Buttons do not add automatic haptics: existing success and
+native-control feedback must not be duplicated.
+
+Tracked in [DAY-508](https://linear.app/dayova/issue/DAY-508).
+
+The October 2026 source audit traced interactive call sites across 80 TSX files,
+including shared wrappers and dynamic calendar controls. Remaining raw press
+controls are the shared feedback and selection implementations and the
+notched-card hit target. Native tabs,
+switches and pickers retain platform feedback; static onboarding artwork is not
+interactive. This is source coverage, not a claim of visual QA on every screen.
+
 ## Learning-plan preparation
 
 The preparation screen hides the creation header, including its back/close

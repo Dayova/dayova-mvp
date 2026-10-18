@@ -16,7 +16,6 @@ import {
 	type NativeScrollEvent,
 	type NativeSyntheticEvent,
 	Platform,
-	Pressable,
 	ScrollView,
 	TextInput,
 	type TextInputInstance,
@@ -73,6 +72,7 @@ import {
 	DateTimePickerSheet,
 } from "~/components/ui/date-time-picker-sheet";
 import { ErrorMessage } from "~/components/ui/error-message";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import {
 	Atom,
@@ -312,23 +312,26 @@ export function AuthChoiceScreen() {
 						/>
 					</Animated.View>
 
-					<Text
+					<FeedbackPressable
 						accessibilityRole="button"
 						accessibilityLabel="Dayova, App-Informationen"
 						onPress={() => setShowReleaseInformation(true)}
-						allowFontScaling={false}
-						className="mt-6 text-center font-poppins font-semibold text-heading-1 text-text"
-						style={{
-							fontSize: responsiveLayout.brandFontSize,
-							lineHeight: responsiveLayout.brandLineHeight,
-							width: Math.min(
-								Math.max(width - 16, 0),
-								contentSizeLayout.containerMaxWidth,
-							),
-						}}
 					>
-						Dayova
-					</Text>
+						<Text
+							allowFontScaling={false}
+							className="mt-6 text-center font-poppins font-semibold text-heading-1 text-text"
+							style={{
+								fontSize: responsiveLayout.brandFontSize,
+								lineHeight: responsiveLayout.brandLineHeight,
+								width: Math.min(
+									Math.max(width - 16, 0),
+									contentSizeLayout.containerMaxWidth,
+								),
+							}}
+						>
+							Dayova
+						</Text>
+					</FeedbackPressable>
 					<Text
 						allowFontScaling={false}
 						className="mt-4 text-center font-poppins text-body-2 text-secondary-text"
@@ -458,19 +461,22 @@ export function AuthChoiceScreen() {
 							alignItems: "center",
 						}}
 					>
-						<Text
+						<FeedbackPressable
 							accessibilityRole="button"
 							accessibilityLabel="Dayova, App-Informationen"
 							onPress={() => setShowReleaseInformation(true)}
-							className="text-center font-poppins font-semibold text-text"
-							style={{
-								fontSize: scaled(AUTH_CHOICE_FRAME.title.fontSize),
-								lineHeight: scaled(AUTH_CHOICE_FRAME.title.lineHeight),
-								includeFontPadding: false,
-							}}
 						>
-							Dayova
-						</Text>
+							<Text
+								className="text-center font-poppins font-semibold text-text"
+								style={{
+									fontSize: scaled(AUTH_CHOICE_FRAME.title.fontSize),
+									lineHeight: scaled(AUTH_CHOICE_FRAME.title.lineHeight),
+									includeFontPadding: false,
+								}}
+							>
+								Dayova
+							</Text>
+						</FeedbackPressable>
 					</Animated.View>
 
 					<Animated.View
@@ -1837,7 +1843,7 @@ export function LoginScreen() {
 						</View>
 
 						<View className="w-full flex-row justify-end">
-							<Pressable
+							<FeedbackPressable
 								accessibilityRole="button"
 								accessibilityLabel="Passwort vergessen"
 								accessibilityHint="Öffnet den Ablauf zum Zurücksetzen deines Passworts"
@@ -1855,7 +1861,7 @@ export function LoginScreen() {
 								<Text className="text-right font-poppins text-body-4 text-primary">
 									Passwort vergessen?
 								</Text>
-							</Pressable>
+							</FeedbackPressable>
 						</View>
 
 						{error ? (
@@ -1893,7 +1899,7 @@ export function LoginScreen() {
 							<Text className="text-center font-poppins text-body-3 text-text">
 								Du hast keinen Account?
 							</Text>
-							<Pressable
+							<FeedbackPressable
 								accessibilityLabel="Jetzt registrieren"
 								accessibilityRole="button"
 								hitSlop={8}
@@ -1902,7 +1908,7 @@ export function LoginScreen() {
 								<Text className="text-center font-poppins text-body-3 text-primary">
 									Jetzt Registrieren
 								</Text>
-							</Pressable>
+							</FeedbackPressable>
 						</View>
 					</View>
 				</KeyboardSafeScrollView>
@@ -2299,7 +2305,7 @@ function PasswordResetScreen({
 					</View>
 
 					{stage === "reset_code" || stage === "second_factor" ? (
-						<Pressable
+						<FeedbackPressable
 							accessibilityLabel="Code erneut senden"
 							accessibilityRole="button"
 							accessibilityState={{ disabled: isLoading }}
@@ -2311,7 +2317,7 @@ function PasswordResetScreen({
 							<Text className="font-poppins text-body-3 text-primary">
 								Code erneut senden
 							</Text>
-						</Pressable>
+						</FeedbackPressable>
 					) : null}
 				</View>
 			</KeyboardSafeScrollView>
@@ -2394,7 +2400,7 @@ function VerificationScreen({
 						<Text className="mt-5 text-center font-poppins text-body-5 text-text">
 							Kein Code angekommen?
 						</Text>
-						<Pressable
+						<FeedbackPressable
 							accessibilityLabel="Code erneut senden"
 							accessibilityRole="button"
 							accessibilityState={{ disabled }}
@@ -2405,7 +2411,7 @@ function VerificationScreen({
 							<Text className="text-center font-poppins font-semibold text-body-5 text-primary">
 								Erneut senden
 							</Text>
-						</Pressable>
+						</FeedbackPressable>
 
 						{error ? (
 							<Animated.Text
@@ -2551,7 +2557,7 @@ export function OnboardingRecoveryScreen({
 				<Text className="mt-6 font-poppins font-semibold text-body-3 text-text">
 					Startzeit
 				</Text>
-				<Pressable
+				<FeedbackPressable
 					accessibilityRole="button"
 					accessibilityState={{ disabled: isSubmitting }}
 					disabled={isSubmitting}
@@ -2575,7 +2581,7 @@ export function OnboardingRecoveryScreen({
 							? `${answers.learningTime} Uhr`
 							: "Uhrzeit auswählen"}
 					</Text>
-				</Pressable>
+				</FeedbackPressable>
 				{(error ?? validationError) ? (
 					<ErrorMessage className="mt-4 text-center">
 						{error ?? validationError}

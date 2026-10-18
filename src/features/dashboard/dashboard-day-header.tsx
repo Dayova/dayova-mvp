@@ -1,4 +1,5 @@
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import { Plus } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useDayovaTheme } from "~/lib/theme";
@@ -32,7 +33,8 @@ function DashboardDayHeader({
 				</Text>
 			</View>
 			{showAddPlanAction ? (
-				<Pressable
+				<FeedbackPressable
+					pressScale={0.92}
 					accessibilityHint="Öffnet die Erstellung eines neuen Lernplans."
 					accessibilityLabel="Lernplan hinzufügen"
 					accessibilityRole="button"
@@ -41,7 +43,7 @@ function DashboardDayHeader({
 					onPress={onAddPlan}
 				>
 					<Plus size={22} color={colors.primaryStrong} strokeWidth={2.2} />
-				</Pressable>
+				</FeedbackPressable>
 			) : null}
 		</View>
 	);

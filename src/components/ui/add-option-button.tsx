@@ -1,4 +1,5 @@
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import { Plus } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useDayovaTheme } from "~/lib/theme";
@@ -12,7 +13,7 @@ export function AddOptionButton({
 }) {
 	const { colors } = useDayovaTheme();
 	return (
-		<Pressable
+		<FeedbackPressable
 			accessibilityLabel={label}
 			accessibilityRole="button"
 			className="min-h-16 flex-row items-center gap-4 rounded-3xl border border-primary/50 border-dashed bg-card px-5 py-3 active:opacity-80"
@@ -24,6 +25,6 @@ export function AddOptionButton({
 			<Text className="flex-1 font-poppins font-semibold text-body-2 text-primary">
 				{label}
 			</Text>
-		</Pressable>
+		</FeedbackPressable>
 	);
 }

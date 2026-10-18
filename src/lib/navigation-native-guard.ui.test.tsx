@@ -33,6 +33,7 @@ function Exam() {
 			<Text>{step === 2 ? "Subject step" : "Exam type step"}</Text>
 			<Button title="Header back" onPress={back} />
 			<Button title="Replace flow" onPress={() => router.replace("/")} />
+			<Button title="Close flow" onPress={() => router.dismissTo("/")} />
 			<Button
 				title="Native parent back"
 				onPress={() => navigation.getParent()?.goBack()}
@@ -57,10 +58,13 @@ async function renderCreation() {
 }
 
 describe("native back protection across nested stacks", () => {
-	test("permits a deliberate replacement while native back is protected", async () => {
+	test.each([
+		"Replace flow",
+		"Close flow",
+	])("permits %s from the root while native back is protected", async (action) => {
 		const result = await renderCreation();
 		expect(screen.getByText("Subject step")).toBeTruthy();
-		await fireEvent.press(screen.getByText("Replace flow"));
+		await fireEvent.press(screen.getByText(action));
 		await waitFor(() =>
 			expect(screen.getByText("Home destination")).toBeTruthy(),
 		);
