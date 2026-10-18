@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { View } from "react-native";
 import Animated, {
 	Easing,
 	interpolateColor,
@@ -9,6 +9,7 @@ import Animated, {
 	useSharedValue,
 	withTiming,
 } from "react-native-reanimated";
+import { FeedbackTouchableOpacity } from "~/components/ui/feedback-pressable";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
 
@@ -88,7 +89,7 @@ export function CategoryTabs({
 				const selected = value === category.key;
 
 				return (
-					<TouchableOpacity
+					<FeedbackTouchableOpacity
 						key={category.key}
 						accessibilityRole="tab"
 						accessibilityState={{ selected }}
@@ -109,7 +110,7 @@ export function CategoryTabs({
 							label={category.label}
 							selectionPosition={selectionPosition}
 						/>
-					</TouchableOpacity>
+					</FeedbackTouchableOpacity>
 				);
 			})}
 		</View>

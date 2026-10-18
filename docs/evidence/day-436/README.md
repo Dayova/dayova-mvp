@@ -12,8 +12,8 @@ Old `/analyse` URLs (including detail screens) redirect to Pläne. `/timetable` 
 
 Philipp supplied these original iPhone screenshots on 18 September 2026:
 
-- [Heute](before-home.PNG): four tabs and the “Stundenplan fertigstellen” prompt.
-- [Analyse](before-analysis.PNG): analysis screen and four tabs.
+- [Heute](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-436/before-home.PNG?raw=true): four tabs and the “Stundenplan fertigstellen” prompt.
+- [Analyse](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-436/before-analysis.PNG?raw=true): analysis screen and four tabs.
 
 These images show Philipp’s existing integrated development build, **not a verified capture of the PR base**. Their exact capture commit is unknown. The independent PR base is `3a95cd02c0773d86813372eee876ff6545f151be` (`main`).
 
@@ -36,8 +36,8 @@ The connected device is an iPhone 16 with development app `de.dayova.app-dev`, v
 
 Original PNG captures taken directly from Philipp’s connected iPhone 16 with `devicectl device capture screenshot`; iOS 27.0 (24A437), development app `de.dayova.app-dev` 1.0.4 (1). They show the integrated development checkout with DAY-436 code from `958a31f1b5af4270f27bea9c1203cd83df30443d`, not an isolated installation of this PR.
 
-- [Heute](after-home.png), 12:03 CEST: exactly three tabs, Einstellungen gear icon, next learning step still present, timetable setup card absent, daily count visible.
-- [Einstellungen](after-settings.png), 12:05 CEST: Lernzeiten and the integrated checkout’s existing personal-subject row remain; no timetable row. The personal-subject feature is from separate unmerged work.
+- [Heute](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-436/after-home.png?raw=true), 12:03 CEST: exactly three tabs, Einstellungen gear icon, next learning step still present, timetable setup card absent, daily count visible.
+- [Einstellungen](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-436/after-settings.png?raw=true), 12:05 CEST: Lernzeiten and the integrated checkout’s existing personal-subject row remain; no timetable row. The personal-subject feature is from separate unmerged work.
 
 Both images were visually inspected. The floating “Tools” gear is development tooling, separate from the app’s Einstellungen tab. An initial stuck development “Refreshing” banner was cleared by restarting the app; intermediate captures containing that banner were excluded. Screen capture created unmodified original PNGs.
 

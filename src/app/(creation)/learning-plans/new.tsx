@@ -61,6 +61,7 @@ import {
 } from "~/lib/navigation";
 import { ROUTES } from "~/lib/routes";
 import { ACCEPTED_FILE_TYPES, validateUploadFile } from "~/lib/upload-policy";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 
 const UPLOAD_TIMEOUT_MS = 45_000;
@@ -80,6 +81,7 @@ type PendingUploadRequest = {
 };
 
 export default function NewLearningPlanScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const params = useLocalSearchParams<{
 		step?: string;
@@ -147,11 +149,17 @@ export default function NewLearningPlanScreen() {
 	const [topicsInput, setTopicsInput] = useState<string | null>(
 		params.topicDescription ?? params.teacherGuidance ?? null,
 	);
+	// Route params can be older than the saved draft; only actual input edits
+	// may overwrite its topics when pausing.
+	const hasEditedTopicsRef = useRef(false);
 	const [isBusy, setIsBusy] = useState(false);
 	const [isUploading, setIsUploading] = useState(false);
 	const [isUploadSheetVisible, setIsUploadSheetVisible] = useState(false);
 	const [isPauseConfirmationVisible, setIsPauseConfirmationVisible] =
 		useState(false);
+	const [pauseErrorMessage, setPauseErrorMessage] = useState<string | null>(
+		null,
+	);
 	const pendingUploadRequestRef = useRef<PendingUploadRequest | null>(null);
 	const topicActionGateRef = useRef(createAsyncActionGate());
 	const removeActionGateRef = useRef(createAsyncActionGate());
@@ -659,7 +667,14 @@ export default function NewLearningPlanScreen() {
 			await runWithErrorHandling(
 				"Das Material konnte nicht entfernt werden.",
 				async () => {
-					await removeDocument({ id: documentId });
+					trackFeature("material.remove", "attempted", documentId);
+					try {
+						await removeDocument({ id: documentId });
+						trackFeature("material.remove", "succeeded", documentId);
+					} catch (error) {
+						trackFeature("material.remove", "failed", documentId);
+						throw error;
+					}
 				},
 			);
 		});
@@ -698,7 +713,50 @@ export default function NewLearningPlanScreen() {
 		return true;
 	};
 
+	const openPauseConfirmation = () => {
+		setPauseErrorMessage(null);
+		setIsPauseConfirmationVisible(true);
+	};
+
+	const pauseCreation = async () => {
+		if (!learningPlanId) return;
+		await topicActionGateRef.current.run(async () => {
+			setIsBusy(true);
+			setPauseErrorMessage(null);
+			try {
+				if (
+					hasEditedTopicsRef.current &&
+					topics !== snapshot?.plan.topicDescription
+				) {
+					if (!isMeaningfulTopicDescription(topics)) {
+						throw new Error(
+							"Bitte ergänze gültige Prüfungsthemen, bevor du pausierst.",
+						);
+					}
+					await retryOnceAfterAuthResume(() =>
+						updateRequiredTopics({
+							id: learningPlanId,
+							topicDescription: topics,
+						}),
+					);
+				}
+				setIsPauseConfirmationVisible(false);
+				setExitApproved(true);
+			} catch (error) {
+				setPauseErrorMessage(
+					getErrorMessage(
+						error,
+						"Deine Änderungen konnten nicht gespeichert werden. Bitte versuche es erneut.",
+					),
+				);
+			} finally {
+				setIsBusy(false);
+			}
+		});
+	};
+
 	const goBack = () => {
+		if (isBusy || topicActionGateRef.current.isRunning) return true;
 		const intent = getLearningPlanCreationBackIntent({
 			step: setupStep,
 			hasSavedDraft: Boolean(learningPlanId),
@@ -712,7 +770,7 @@ export default function NewLearningPlanScreen() {
 			return true;
 		}
 		if (intent.kind === "confirmPause") {
-			setIsPauseConfirmationVisible(true);
+			openPauseConfirmation();
 			return true;
 		}
 		return exitCreation();
@@ -808,6 +866,18 @@ export default function NewLearningPlanScreen() {
 		active: !isEditing,
 		currentStep: currentProgressStep,
 		onBack: goBack,
+		onClose: () => {
+			if (isBusy || topicActionGateRef.current.isRunning) return;
+			if (learningPlanId) {
+				openPauseConfirmation();
+				return;
+			}
+			dismissToOrReplace(
+				router,
+				examDayEntryId ? `/entry/${examDayEntryId}` : ROUTES.learningPlans,
+			);
+		},
+		closeDisabled: isBusy,
 	});
 
 	const continueToAnalysis = () => {
@@ -823,7 +893,10 @@ export default function NewLearningPlanScreen() {
 			{isEditing ? (
 				<LearningPlanEditor
 					topics={topics}
-					onChangeTopics={setTopicsInput}
+					onChangeTopics={(value) => {
+						hasEditedTopicsRef.current = true;
+						setTopicsInput(value);
+					}}
 					canEditTopics={canEditTopics}
 					isLoading={snapshotResult === undefined}
 					isMissing={snapshotResult === null}
@@ -922,7 +995,10 @@ export default function NewLearningPlanScreen() {
 								canContinue={canContinueTopics}
 								errorMessage={errorMessage}
 								isBusy={isBusy}
-								onChangeTopics={setTopicsInput}
+								onChangeTopics={(value) => {
+									hasEditedTopicsRef.current = true;
+									setTopicsInput(value);
+								}}
 								onContinue={() => void continueToMaterial()}
 								topics={topics}
 							/>
@@ -1031,10 +1107,16 @@ export default function NewLearningPlanScreen() {
 				}
 				actionLayout="stacked"
 				confirmTone={isEditing ? "destructive" : "primary"}
+				isBusy={isEditing ? false : isBusy}
+				errorMessage={pauseErrorMessage}
 				onClose={() => setIsPauseConfirmationVisible(false)}
 				onConfirm={() => {
-					setIsPauseConfirmationVisible(false);
-					setExitApproved(true);
+					if (isEditing) {
+						setIsPauseConfirmationVisible(false);
+						setExitApproved(true);
+					} else {
+						void pauseCreation();
+					}
 				}}
 			/>
 		</Screen>

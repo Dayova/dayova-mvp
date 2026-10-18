@@ -1,10 +1,22 @@
-import { beforeEach, describe, expect, jest, test } from "@jest/globals";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	jest,
+	test,
+} from "@jest/globals";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
+import { Platform } from "react-native";
 import NewEntryScreen from "~/app/(creation)/entry/new";
 import NewLearningPlanScreen from "~/app/(creation)/learning-plans/new";
 
 let mockParams: Record<string, string> = {};
-let mockProgress: { currentStep: number; onBack: () => void };
+let mockProgress: {
+	currentStep: number;
+	onBack: () => void;
+	onClose: () => void;
+};
 const mockRouter = {
 	replace: jest.fn(),
 	push: jest.fn(),
@@ -15,6 +27,7 @@ const mockRouter = {
 };
 const mockCreateEntry = jest.fn<() => Promise<string>>();
 const mockUpdateEntry = jest.fn<() => Promise<void>>();
+const mockUpdateRequiredTopics = jest.fn<() => Promise<void>>();
 const mockGenerateUploadUrl = jest.fn<() => Promise<Record<string, unknown>>>();
 const mockRegisterUploadedDocument = jest.fn<() => Promise<void>>();
 const mockCapture = jest.fn();
@@ -69,6 +82,11 @@ let mockSnapshot:
 	| null
 	| undefined;
 let mockPauseVisible = false;
+let mockPauseProps: {
+	onConfirm: () => void;
+	isBusy?: boolean;
+	errorMessage?: string | null;
+};
 type RemovalCallback = (event: { data: { action: { type: string } } }) => void;
 const mockRemovalGuards = new Map<
 	string,
@@ -103,6 +121,9 @@ jest.mock("convex/react", () => ({
 			reference as Parameters<typeof getFunctionName>[0],
 		);
 		if (functionName === "dayEntries:create") return mockCreateEntry;
+		if (functionName === "learningPlans:updateRequiredTopics") {
+			return mockUpdateRequiredTopics;
+		}
 		if (functionName === "learningPlans:generateUploadUrl") {
 			return mockGenerateUploadUrl;
 		}
@@ -206,16 +227,10 @@ jest.mock("react-native-keyboard-controller", () => ({
 	KeyboardStickyView:
 		jest.requireActual<typeof import("react-native")>("react-native").View,
 }));
-jest.mock("react-native-reanimated", () => ({
-	__esModule: true,
-	default: {
-		View: jest.requireActual<typeof import("react-native")>("react-native")
-			.View,
-	},
-	FadeIn: { duration: () => undefined },
-	FadeInDown: { duration: () => undefined },
-	LinearTransition: { duration: () => undefined },
-}));
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+);
+
 jest.mock("~/components/ui/keyboard-safe-scroll-view", () => ({
 	KeyboardSafeScrollView:
 		jest.requireActual<typeof import("react-native")>("react-native")
@@ -275,9 +290,33 @@ jest.mock("~/components/ui/action-sheet", () => {
 		},
 	};
 });
+jest.mock("~/components/ui/confirmation-sheet", () => ({
+	ConfirmationSheet: (
+		props: React.ComponentProps<
+			typeof import("~/components/ui/confirmation-sheet").ConfirmationSheet
+		>,
+	) => {
+		mockPauseVisible = props.visible;
+		mockPauseProps = props;
+		const { ConfirmationSheet } = jest.requireActual<
+			typeof import("~/components/ui/confirmation-sheet")
+		>("~/components/ui/confirmation-sheet");
+		return <ConfirmationSheet {...props} />;
+	},
+}));
 jest.mock("~/components/ui/date-time-picker-sheet", () => ({
 	DateTimePickerSheet: () => null,
 }));
+jest.mock("~/components/ui/inline-date-picker", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	return {
+		InlineDatePicker: (props: Record<string, unknown>) =>
+			React.createElement("InlineDatePicker", {
+				...props,
+				testID: "inline-calendar",
+			}),
+	};
+});
 jest.mock("~/components/ui/select-sheet", () => ({ SelectSheet: () => null }));
 jest.mock("~/components/ui/dayova-sheet-frame", () => ({
 	DayovaSheetFrame: ({
@@ -324,6 +363,7 @@ beforeEach(() => {
 	};
 	mockCreateEntry.mockResolvedValue("exam-1");
 	mockUpdateEntry.mockReset().mockResolvedValue(undefined);
+	mockUpdateRequiredTopics.mockResolvedValue(undefined);
 	mockGenerateUploadUrl.mockResolvedValue({
 		uploadUrl: "https://upload.dayova.test/material",
 		uploadToken: "upload-token",
@@ -349,6 +389,10 @@ beforeEach(() => {
 		examTypeLabel: "Klassenarbeit",
 		dayKey: "2026-09-30",
 	};
+});
+
+afterEach(() => {
+	jest.restoreAllMocks();
 });
 
 function followReplacement() {
@@ -389,6 +433,55 @@ async function selectGalleryPhotos(
 
 describe("exam creation across the topics boundary", () => {
 	test.each([
+		{
+			platform: "ios" as const,
+			initialLabel: "Weiter mit 30. September 2026",
+			selectedLabel: "Weiter mit 2. November 2026",
+		},
+		{
+			platform: "android" as const,
+			initialLabel: "Weiter",
+			selectedLabel: "Weiter",
+		},
+	])("carries an inline calendar selection into topics and back on $platform", async ({
+		platform,
+		initialLabel,
+		selectedLabel,
+	}) => {
+		jest.replaceProperty(Platform, "OS", platform);
+		let screen = await render(<NewEntryScreen />);
+		expect(mockProgress.currentStep).toBe(2);
+		expect(
+			screen.getByRole("button", { name: initialLabel }),
+		).toBeOnTheScreen();
+		await fireEvent(
+			screen.getByTestId("inline-calendar"),
+			"change",
+			new Date(2026, 10, 2, 15, 30),
+		);
+		expect(
+			screen.getByRole("button", { name: selectedLabel }),
+		).toBeOnTheScreen();
+		await fireEvent.press(
+			screen.getByRole("button", { name: /^Weiter(?: mit .+)?$/ }),
+		);
+		expect(followReplacement()).toBe("/learning-plans/new");
+		expect(mockParams.examDateKey).toBe("2026-11-02");
+		await screen.unmount();
+		screen = await render(<NewLearningPlanScreen />);
+		await act(() => mockProgress.onBack());
+		expect(followReplacement()).toBe("/entry/new");
+		await screen.unmount();
+		screen = await render(<NewEntryScreen />);
+		expect(
+			screen.getByRole("button", { name: selectedLabel }),
+		).toBeOnTheScreen();
+		expect(screen.getByTestId("inline-calendar").props.value).toEqual(
+			new Date(2026, 10, 2),
+		);
+	});
+
+	test.each([
 		"available",
 		"missing",
 		"occupied",
@@ -396,14 +489,18 @@ describe("exam creation across the topics boundary", () => {
 		mockAvailability.status = status;
 		const screen = await render(<NewEntryScreen />);
 		expect(screen.queryByText("Ist genug Lernzeit eingeplant?")).toBeNull();
-		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(
+			screen.getByRole("button", { name: /^Weiter(?: mit .+)?$/ }),
+		);
 		expect(followReplacement()).toBe("/learning-plans/new");
 	});
 
 	test("returns from topics to the date and can continue again with the same exam", async () => {
 		let screen = await render(<NewEntryScreen />);
 		expect(mockProgress.currentStep).toBe(2);
-		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(
+			screen.getByRole("button", { name: /^Weiter(?: mit .+)?$/ }),
+		);
 		expect(followReplacement()).toBe("/learning-plans/new");
 		await screen.unmount();
 		screen = await render(<NewLearningPlanScreen />);
@@ -421,7 +518,9 @@ describe("exam creation across the topics boundary", () => {
 		expect(
 			screen.getByText("Wann findet die Prüfung statt?"),
 		).toBeOnTheScreen();
-		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(
+			screen.getByRole("button", { name: /^Weiter(?: mit .+)?$/ }),
+		);
 		expect(followReplacement()).toBe("/learning-plans/new");
 		expect(mockParams).toMatchObject({
 			subject: "Biologie",
@@ -438,7 +537,9 @@ describe("exam creation across the topics boundary", () => {
 		mockParams.subject = "Debattieren";
 		mockParams.subjectIsOneTime = "true";
 		let screen = await render(<NewEntryScreen />);
-		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(
+			screen.getByRole("button", { name: /^Weiter(?: mit .+)?$/ }),
+		);
 		expect(followReplacement()).toBe("/learning-plans/new");
 		expect(mockParams.subjectIsOneTime).toBe("true");
 		await screen.unmount();
@@ -460,15 +561,21 @@ describe("exam creation across the topics boundary", () => {
 		await act(() => mockProgress.onBack());
 		expect(mockProgress.currentStep).toBe(1.5);
 		await fireEvent.press(screen.getByRole("radio", { name: "Chemie" }));
-		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(
+			screen.getByRole("button", { name: /^Weiter(?: mit .+)?$/ }),
+		);
 		mockUpdateEntry.mockRejectedValueOnce(
 			new Error("Speichern fehlgeschlagen"),
 		);
-		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(
+			screen.getByRole("button", { name: /^Weiter(?: mit .+)?$/ }),
+		);
 		expect(screen.getByText("Speichern fehlgeschlagen")).toBeOnTheScreen();
 		expect(mockUpdateEntry).toHaveBeenCalledTimes(1);
 		expect(mockRouter.replace).not.toHaveBeenCalled();
-		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(
+			screen.getByRole("button", { name: /^Weiter(?: mit .+)?$/ }),
+		);
 		expect(mockUpdateEntry).toHaveBeenLastCalledWith(
 			expect.objectContaining({
 				id: "exam-1",
@@ -512,6 +619,178 @@ describe("exam creation across the topics boundary", () => {
 		expect(mockPauseVisible).toBe(true);
 		expect(mockRouter.replace).not.toHaveBeenCalled();
 		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+	});
+
+	test("closes exam setup from a later step without stepping backward", async () => {
+		await render(<NewEntryScreen />);
+		expect(mockProgress.currentStep).toBe(2);
+		await act(() => mockProgress.onClose());
+		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/home");
+		expect(mockProgress.currentStep).toBe(2);
+	});
+
+	test("closes unsaved topics to the saved exam instead of reopening the date step", async () => {
+		mockParams = {
+			examDayEntryId: "exam-1",
+			fromExamEntry: "true",
+			step: "topic",
+		};
+		await render(<NewLearningPlanScreen />);
+		await act(() => mockProgress.onClose());
+		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/entry/exam-1");
+		expect(mockRouter.replace).not.toHaveBeenCalled();
+	});
+
+	test("confirms pausing when closing directly from material upload", async () => {
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "material",
+		};
+		mockSnapshot = {
+			plan: { topicDescription: "Zellteilung und Mitose" },
+			documents: [],
+		};
+		await render(<NewLearningPlanScreen />);
+		await act(() => mockProgress.onClose());
+		expect(mockPauseVisible).toBe(true);
+		expect(mockRouter.setParams).not.toHaveBeenCalled();
+		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+	});
+
+	test("saves edited draft topics before confirming pause and leaving", async () => {
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "topic",
+		};
+		mockSnapshot = {
+			plan: { topicDescription: "Zellteilung und Mitose" },
+			documents: [],
+		};
+		let finishSave!: () => void;
+		mockUpdateRequiredTopics.mockImplementationOnce(
+			() =>
+				new Promise<void>((resolve) => {
+					finishSave = resolve;
+				}),
+		);
+		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.changeText(
+			screen.getByLabelText("Prüfungsthemen"),
+			"Genetik und Vererbung",
+		);
+		await act(() => mockProgress.onClose());
+		await act(() => {
+			mockPauseProps.onConfirm();
+			mockPauseProps.onConfirm();
+		});
+		expect(mockUpdateRequiredTopics).toHaveBeenCalledTimes(1);
+		expect(mockUpdateRequiredTopics).toHaveBeenCalledWith({
+			id: "plan-1",
+			topicDescription: "Genetik und Vererbung",
+		});
+		expect(mockPauseProps.isBusy).toBe(true);
+		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+		await act(() => finishSave());
+		await waitFor(() =>
+			expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans"),
+		);
+		expect(mockRouter.dismissTo).toHaveBeenCalledTimes(1);
+	});
+
+	test("keeps edited topics and the pause sheet when saving fails", async () => {
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "topic",
+		};
+		mockSnapshot = {
+			plan: { topicDescription: "Zellteilung und Mitose" },
+			documents: [],
+		};
+		mockUpdateRequiredTopics.mockRejectedValueOnce(
+			new Error("Speichern fehlgeschlagen"),
+		);
+		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.changeText(
+			screen.getByLabelText("Prüfungsthemen"),
+			"Genetik und Vererbung",
+		);
+		await act(() => mockProgress.onClose());
+		await act(() => mockPauseProps.onConfirm());
+		await waitFor(() => expect(mockPauseProps.errorMessage).toBeTruthy());
+		expect(mockPauseVisible).toBe(true);
+		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+		expect(screen.getByLabelText("Prüfungsthemen")).toHaveProp(
+			"value",
+			"Genetik und Vererbung",
+		);
+		await act(() => mockPauseProps.onConfirm());
+		await waitFor(() =>
+			expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans"),
+		);
+		expect(mockUpdateRequiredTopics).toHaveBeenCalledTimes(2);
+	});
+
+	test("pauses an unchanged draft without rewriting its saved topics", async () => {
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "material",
+		};
+		mockSnapshot = {
+			plan: { topicDescription: "Zellteilung und Mitose" },
+			documents: [],
+		};
+		await render(<NewLearningPlanScreen />);
+		await act(() => mockProgress.onClose());
+		await act(() => mockPauseProps.onConfirm());
+		await waitFor(() =>
+			expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans"),
+		);
+		expect(mockUpdateRequiredTopics).not.toHaveBeenCalled();
+	});
+
+	test("does not overwrite newer saved topics from stale route params on pause", async () => {
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "topic",
+			topicDescription: "Alter Themenstand aus dem Link",
+		};
+		mockSnapshot = {
+			plan: { topicDescription: "Neue gespeicherte Prüfungsthemen" },
+			documents: [],
+		};
+		await render(<NewLearningPlanScreen />);
+		await act(() => mockProgress.onClose());
+		await act(() => mockPauseProps.onConfirm());
+		await waitFor(() =>
+			expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans"),
+		);
+		expect(mockUpdateRequiredTopics).not.toHaveBeenCalled();
+	});
+
+	test("keeps an invalid local edit rather than discarding it when pausing", async () => {
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "topic",
+		};
+		mockSnapshot = {
+			plan: { topicDescription: "Zellteilung und Mitose" },
+			documents: [],
+		};
+		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.changeText(screen.getByLabelText("Prüfungsthemen"), "");
+		await act(() => mockProgress.onBack());
+		await act(() => mockPauseProps.onConfirm());
+		await waitFor(() => expect(mockPauseProps.errorMessage).toBeTruthy());
+		expect(mockPauseVisible).toBe(true);
+		expect(mockUpdateRequiredTopics).not.toHaveBeenCalled();
+		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+		expect(screen.getByLabelText("Prüfungsthemen")).toHaveProp("value", "");
 	});
 
 	test("uploads gallery photos without library-wide permission", async () => {
@@ -841,7 +1120,7 @@ describe("editing from a learning-plan card", () => {
 		const screen = await render(<NewLearningPlanScreen />);
 		await fireEvent.press(screen.getByRole("button", { name: "Abbrechen" }));
 		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans");
-		expect(mockUpdateEntry).not.toHaveBeenCalled();
+		expect(mockUpdateRequiredTopics).not.toHaveBeenCalled();
 	});
 	test("protects topic changes on native back, keeps editing, then discards", async () => {
 		const screen = await render(<NewLearningPlanScreen />);
@@ -861,7 +1140,7 @@ describe("editing from a learning-plan card", () => {
 		await fireEvent.press(screen.getByRole("button", { name: "Abbrechen" }));
 		await fireEvent.press(screen.getByRole("button", { name: "Verwerfen" }));
 		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans");
-		expect(mockUpdateEntry).not.toHaveBeenCalled();
+		expect(mockUpdateRequiredTopics).not.toHaveBeenCalled();
 	});
 	test("saves topics without requiring material and returns to plans", async () => {
 		const screen = await render(<NewLearningPlanScreen />);
@@ -870,7 +1149,7 @@ describe("editing from a learning-plan card", () => {
 			"Genetik und Vererbung",
 		);
 		await fireEvent.press(screen.getByRole("button", { name: "Speichern" }));
-		expect(mockUpdateEntry).toHaveBeenCalledWith({
+		expect(mockUpdateRequiredTopics).toHaveBeenCalledWith({
 			id: "plan-1",
 			topicDescription: "Genetik und Vererbung",
 		});
@@ -878,7 +1157,9 @@ describe("editing from a learning-plan card", () => {
 		expect(mockRouter.push).not.toHaveBeenCalled();
 	});
 	test("retries saving topics once when authentication resumes", async () => {
-		mockUpdateEntry.mockRejectedValueOnce(new Error("Nicht authentifiziert."));
+		mockUpdateRequiredTopics.mockRejectedValueOnce(
+			new Error("Nicht authentifiziert."),
+		);
 		const screen = await render(<NewLearningPlanScreen />);
 		await fireEvent.changeText(
 			screen.getByLabelText("Prüfungsthemen"),
@@ -888,15 +1169,15 @@ describe("editing from a learning-plan card", () => {
 		await act(async () => {
 			await new Promise((resolve) => setTimeout(resolve, 750));
 		});
-		expect(mockUpdateEntry).toHaveBeenCalledTimes(2);
-		expect(mockUpdateEntry).toHaveBeenLastCalledWith({
+		expect(mockUpdateRequiredTopics).toHaveBeenCalledTimes(2);
+		expect(mockUpdateRequiredTopics).toHaveBeenLastCalledWith({
 			id: "plan-1",
 			topicDescription: "Genetik und Vererbung",
 		});
 		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans");
 	});
 	test("keeps the draft editable when the authentication retry also fails", async () => {
-		mockUpdateEntry
+		mockUpdateRequiredTopics
 			.mockRejectedValueOnce(new Error("Nicht authentifiziert."))
 			.mockRejectedValueOnce(new Error("Nicht authentifiziert."));
 		const screen = await render(<NewLearningPlanScreen />);
@@ -908,18 +1189,18 @@ describe("editing from a learning-plan card", () => {
 		await act(async () => {
 			await new Promise((resolve) => setTimeout(resolve, 750));
 		});
-		expect(mockUpdateEntry).toHaveBeenCalledTimes(2);
+		expect(mockUpdateRequiredTopics).toHaveBeenCalledTimes(2);
 		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
 		expect(screen.getByText("Nicht authentifiziert.")).toBeOnTheScreen();
 		expect(screen.getByLabelText("Prüfungsthemen")).toHaveDisplayValue(
 			"Genetik und Vererbung",
 		);
 		await fireEvent.press(screen.getByRole("button", { name: "Speichern" }));
-		expect(mockUpdateEntry).toHaveBeenCalledTimes(3);
+		expect(mockUpdateRequiredTopics).toHaveBeenCalledTimes(3);
 		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans");
 	});
 	test("retains the draft after a save error and allows retry", async () => {
-		mockUpdateEntry.mockRejectedValueOnce(
+		mockUpdateRequiredTopics.mockRejectedValueOnce(
 			new Error("Speichern fehlgeschlagen"),
 		);
 		const screen = await render(<NewLearningPlanScreen />);
@@ -929,7 +1210,7 @@ describe("editing from a learning-plan card", () => {
 		);
 		await fireEvent.press(screen.getByRole("button", { name: "Speichern" }));
 		expect(screen.getByText("Speichern fehlgeschlagen")).toBeOnTheScreen();
-		expect(mockUpdateEntry).toHaveBeenCalledTimes(1);
+		expect(mockUpdateRequiredTopics).toHaveBeenCalledTimes(1);
 		expect(screen.getByLabelText("Prüfungsthemen")).toHaveDisplayValue(
 			"Genetik und Vererbung",
 		);
@@ -945,7 +1226,7 @@ describe("editing from a learning-plan card", () => {
 		const screen = await render(<NewLearningPlanScreen />);
 		expect(screen.queryByLabelText("Prüfungsthemen")).toBeNull();
 		await fireEvent.press(screen.getByRole("button", { name: "Fertig" }));
-		expect(mockUpdateEntry).not.toHaveBeenCalled();
+		expect(mockUpdateRequiredTopics).not.toHaveBeenCalled();
 		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans");
 	});
 });
@@ -991,7 +1272,7 @@ describe("learning-plan editor recovery", () => {
 	});
 	test("locks repeated saves but lets the user leave a pending write honestly", async () => {
 		let finish: () => void = () => {};
-		mockUpdateEntry.mockImplementationOnce(
+		mockUpdateRequiredTopics.mockImplementationOnce(
 			() =>
 				new Promise<void>((resolve) => {
 					finish = resolve;
@@ -1005,7 +1286,7 @@ describe("learning-plan editor recovery", () => {
 		const save = screen.getByRole("button", { name: "Speichern" });
 		await fireEvent.press(save);
 		await fireEvent.press(save);
-		expect(mockUpdateEntry).toHaveBeenCalledTimes(1);
+		expect(mockUpdateRequiredTopics).toHaveBeenCalledTimes(1);
 		expect(screen.getByRole("button", { name: "Abbrechen" })).toBeEnabled();
 		await act(() => mockPreventRemove?.());
 		expect(screen.queryByText("Änderungen verwerfen?")).toBeNull();

@@ -55,8 +55,8 @@ metadata was removed. These are not AI-generated or retouched UI images.
 
 | Surface | Before | After |
 | --- | --- | --- |
-| Settings | ![Settings before](evidence/settings-before.png) | ![Settings after](evidence/settings-after.png) |
-| Profile | ![Profile before](evidence/profile-before.png) | ![Profile after](evidence/profile-after.png) |
+| Settings | ![Settings before](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/qa/day-394-settings-borders/evidence/settings-before.png?raw=true) | ![Settings after](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/qa/day-394-settings-borders/evidence/settings-after.png?raw=true) |
+| Profile | ![Profile before](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/qa/day-394-settings-borders/evidence/profile-before.png?raw=true) | ![Profile after](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/qa/day-394-settings-borders/evidence/profile-after.png?raw=true) |
 
 Before: `IMG_1933.PNG` (settings) and `IMG_1929.PNG` (profile), physical iPhone,
 1179 × 2556; exact device, OS and app revision unknown.

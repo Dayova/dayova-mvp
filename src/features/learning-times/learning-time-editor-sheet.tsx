@@ -21,6 +21,7 @@ import {
 import { LearningTimeEditorFields } from "~/features/learning-times/learning-time-editor-fields";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { getUserFacingErrorMessage } from "~/lib/user-facing-errors";
 import { cn } from "~/lib/utils";
 
@@ -62,6 +63,7 @@ export function LearningTimeEditorSheet({
 	id?: string;
 	onClose: () => void;
 }) {
+	const trackFeature = useFeatureAnalytics();
 	const { shouldStackInlineContent } = useContentSizeLayout();
 	const [visible, setVisible] = useState(true);
 	// Native dismissal can invoke the callback captured when the sheet opened.
@@ -175,14 +177,17 @@ export function LearningTimeEditorSheet({
 			setIsSaving(true);
 			setErrorMessage(null);
 			try {
+				trackFeature("learning_times.save", "attempted");
 				await saveLearningTime({
 					id: selectedEntry?.id,
 					dayOfWeek: selectedDayValue,
 					startTime,
 					endTime,
 				});
+				trackFeature("learning_times.save", "succeeded");
 				closeToOverview();
 			} catch (error) {
+				trackFeature("learning_times.save", "failed");
 				setErrorMessage(
 					getUserFacingErrorMessage(error, "Bitte versuche es erneut.", {
 						source: "learning-times.save",
@@ -201,9 +206,12 @@ export function LearningTimeEditorSheet({
 			setIsSaving(true);
 			setErrorMessage(null);
 			try {
+				trackFeature("learning_times.remove", "attempted");
 				await removeLearningTime({ id: selectedEntry.id });
+				trackFeature("learning_times.remove", "succeeded");
 				closeToOverview();
 			} catch (error) {
+				trackFeature("learning_times.remove", "failed");
 				setErrorMessage(
 					getUserFacingErrorMessage(error, "Bitte versuche es erneut.", {
 						source: "learning-times.remove",
