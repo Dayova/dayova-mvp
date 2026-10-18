@@ -23,8 +23,10 @@ const otherIdentity = {
 };
 
 test.each([
-	15, 210, 240,
-])("persists %i-minute onboarding windows without truncation", async (minutes) => {
+	[15, "00:15"],
+	[210, "03:30"],
+	[240, "04:00"],
+])("persists %i-minute onboarding windows without truncation", async (minutes, endTime) => {
 	const t = convexTest(schema, modules).withIdentity(userIdentity);
 	await t.mutation(api.users.syncCurrentUser, { name: "User" });
 	await t.mutation(api.users.saveOnboardingAnswers, {
@@ -33,7 +35,6 @@ test.each([
 			learningTime: "00:00",
 		}),
 	});
-	const endTime = `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 	await expect(t.query(api.learningTimes.listMine, {})).resolves.toMatchObject([
 		{ dayOfWeek: 1, startTime: "00:00", endTime },
 		{ dayOfWeek: 3, startTime: "00:00", endTime },

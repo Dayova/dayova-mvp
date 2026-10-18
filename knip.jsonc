@@ -2,6 +2,10 @@
 	"$schema": "https://unpkg.com/knip@6/schema.json",
 	"entry": [
 		"plugins/*.js",
+		// Invoked manually or by the validation-only EAS benchmark.
+		"scripts/benchmark-checks.mjs",
+		// Checked by TypeScript, never executed by a runtime test runner.
+		"tests/**/*.types.ts",
 		// Maintained standalone native QA and release helpers.
 		"scripts/native-qa/*.mjs",
 		"release/**/scripts/*.cjs",

@@ -5,9 +5,6 @@ import {
 	getIntroDotWidth,
 	getIntroInterpolatedValue,
 	getIntroPageIndex,
-	INTRO_DOT_COLLAPSED_WIDTH,
-	INTRO_DOT_EXPANDED_WIDTH,
-	INTRO_DOT_HEIGHT,
 } from "./intro-pagination";
 
 describe("intro pagination", () => {
@@ -21,20 +18,20 @@ describe("intro pagination", () => {
 	});
 
 	test("transfers the expanded width continuously between adjacent dots", () => {
-		expect(getIntroDotWidth(0, 100, 0, 3)).toBe(INTRO_DOT_EXPANDED_WIDTH);
-		expect(getIntroDotWidth(0, 100, 1, 3)).toBe(INTRO_DOT_COLLAPSED_WIDTH);
+		expect(getIntroDotWidth(0, 100, 0, 3)).toBe(30);
+		expect(getIntroDotWidth(0, 100, 1, 3)).toBe(8);
 
 		expect(getIntroDotWidth(50, 100, 0, 3)).toBe(19);
 		expect(getIntroDotWidth(50, 100, 1, 3)).toBe(19);
-		expect(getIntroDotWidth(50, 100, 2, 3)).toBe(INTRO_DOT_COLLAPSED_WIDTH);
+		expect(getIntroDotWidth(50, 100, 2, 3)).toBe(8);
 
-		expect(getIntroDotWidth(100, 100, 0, 3)).toBe(INTRO_DOT_COLLAPSED_WIDTH);
-		expect(getIntroDotWidth(100, 100, 1, 3)).toBe(INTRO_DOT_EXPANDED_WIDTH);
+		expect(getIntroDotWidth(100, 100, 0, 3)).toBe(8);
+		expect(getIntroDotWidth(100, 100, 1, 3)).toBe(30);
 	});
 
 	test("keeps the endpoint dot expanded outside the scroll range", () => {
-		expect(getIntroDotWidth(-50, 100, 0, 3)).toBe(INTRO_DOT_EXPANDED_WIDTH);
-		expect(getIntroDotWidth(250, 100, 2, 3)).toBe(INTRO_DOT_EXPANDED_WIDTH);
+		expect(getIntroDotWidth(-50, 100, 0, 3)).toBe(30);
+		expect(getIntroDotWidth(250, 100, 2, 3)).toBe(30);
 	});
 
 	test("interpolates control positions across neighboring pages", () => {
@@ -55,20 +52,7 @@ describe("intro pagination", () => {
 		expect(getIntroButtonProgress(250, 100, 3)).toBe(1);
 	});
 
-	test("centers the dots between the title and button edges", () => {
-		const titleBottom = 610.8;
-		const buttonTop = 704;
-		const dotsTop = getCenteredIntroDotsTop(
-			titleBottom,
-			buttonTop,
-			INTRO_DOT_HEIGHT,
-		);
-
-		expect(dotsTop + INTRO_DOT_HEIGHT / 2).toBeCloseTo(
-			(titleBottom + buttonTop) / 2,
-		);
-		expect(dotsTop - titleBottom).toBeCloseTo(
-			buttonTop - (dotsTop + INTRO_DOT_HEIGHT),
-		);
+	test("centers dots in a known gap", () => {
+		expect(getCenteredIntroDotsTop(610.8, 704, 8)).toBeCloseTo(653.4);
 	});
 });

@@ -13,7 +13,10 @@ describe("empty dashboard handoff", () => {
 		});
 		expect(
 			getDashboardNextStepFallbackAction({ hasLearningPlans: false }),
-		).toBe(EMPTY_DASHBOARD_PRIMARY_ACTION);
+		).toMatchObject({
+			label: "Erste Prüfung planen",
+			route: "/entry/new?type=exam",
+		});
 	});
 
 	test("keeps existing learners in their learning plans when no near-term step exists", () => {

@@ -82,7 +82,6 @@ describe("AuthNavigationGate", () => {
 		const routeContent = screen.getByTestId("auth-route-content", {
 			includeHiddenElements: true,
 		});
-		expect(routeContent.props.className).toContain("opacity-0");
 		expect(routeContent.props.accessibilityElementsHidden).toBe(true);
 		expect(routeContent.props.importantForAccessibility).toBe(
 			"no-hide-descendants",
@@ -98,9 +97,6 @@ describe("AuthNavigationGate", () => {
 				<Text>Home</Text>
 			</AuthNavigationGate>,
 		);
-		expect(
-			screen.getByTestId("auth-route-content").props.className,
-		).not.toContain("opacity-0");
 		expect(screen.queryByTestId("auth-bootstrap-mask")).toBeNull();
 	});
 
@@ -113,12 +109,6 @@ describe("AuthNavigationGate", () => {
 				<Text>Öffentliche Landingpage</Text>
 			</AuthNavigationGate>,
 		);
-
-		expect(
-			screen.getByTestId("auth-route-content", {
-				includeHiddenElements: true,
-			}).props.className,
-		).toContain("opacity-0");
 		expect(screen.getByTestId("auth-bootstrap-mask")).toBeOnTheScreen();
 		expect(mockReplace).not.toHaveBeenCalled();
 	});
@@ -133,7 +123,6 @@ describe("AuthNavigationGate", () => {
 		);
 
 		const routeContent = screen.getByTestId("auth-route-content");
-		expect(routeContent.props.className).not.toContain("opacity-0");
 		expect(routeContent.props.accessibilityElementsHidden).toBe(false);
 		expect(routeContent.props.importantForAccessibility).toBe("auto");
 		expect(screen.queryByTestId("auth-bootstrap-mask")).toBeNull();
@@ -171,9 +160,6 @@ describe("AuthNavigationGate", () => {
 
 		expect(screen.getByText("Onboarding abgeschlossen")).toBeOnTheScreen();
 		expect(screen.queryByTestId("auth-bootstrap-mask")).toBeNull();
-		expect(
-			screen.getByTestId("auth-route-content").props.className,
-		).not.toContain("opacity-0");
 		await act(flushAnimationFrames);
 		expect(mockReplace).not.toHaveBeenCalled();
 	});

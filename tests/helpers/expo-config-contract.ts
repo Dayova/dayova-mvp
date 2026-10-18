@@ -8,6 +8,7 @@ export type ExpoConfigKey =
 	| "production:public";
 
 export type ExpoConfigSnapshot = {
+	userInterfaceStyle?: string;
 	version?: string;
 	sdkVersion?: string;
 	ios?: {

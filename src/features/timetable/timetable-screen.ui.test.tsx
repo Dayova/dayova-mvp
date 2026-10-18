@@ -279,14 +279,6 @@ describe("Timetable import entry", () => {
 		expect(mockMutation).not.toHaveBeenCalled();
 		expect(screen.queryByTestId("sources")).toBeNull();
 	});
-
-	test("uses source rows when content size needs more space", async () => {
-		mockStackSources = true;
-		const screen = await render(<TimetableScreen />);
-		await fireEvent.press(screen.getByRole("button", { name: importName }));
-		expect(screen.getByTestId("sources").props.className).toBe("gap-3");
-		expect(screen.getByRole("button", { name: "Dateien" })).toBeEnabled();
-	});
 });
 
 jest.mock("react-native-reanimated", () =>

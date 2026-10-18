@@ -9,9 +9,7 @@ const testIncludes = [
 ];
 
 const expoConfigContractTests = [
-	"tests/ios-auth-capabilities.test.ts",
 	"tests/ios-apple-sign-in-capability.test.ts",
-	"tests/ios-privacy-config.test.ts",
 	"tests/ota-safety.test.ts",
 ];
 

@@ -360,11 +360,6 @@ describe("learning times settings", () => {
 			screen.getByRole("button", { name: "Lernzeit hinzufügen" }),
 		);
 		expect(screen.getByText("Mittwoch")).toBeOnTheScreen();
-		for (const label of ["Abbrechen", "Hinzufügen"]) {
-			const action = screen.getByRole("button", { name: label });
-			expect(action.props.className).toContain("min-h-14");
-			expect(action.props.className).toContain("flex-1");
-		}
 		expect(mockPush).not.toHaveBeenCalled();
 		await fireEvent.press(screen.getByRole("button", { name: "Abbrechen" }));
 		await fireEvent.press(

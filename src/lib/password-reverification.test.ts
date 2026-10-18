@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 import {
-	reverifyPasswordFactor,
 	type PasswordReverificationSession,
+	reverifyPasswordFactor,
 } from "./password-reverification";
 
 describe("reverifyPasswordFactor", () => {

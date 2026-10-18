@@ -3,9 +3,6 @@ import { MISSING_LEARNING_TIMES_HINT } from "../../../convex/learningPlanPlannin
 
 export const LEARNING_TIME_REPLAN_PARAM = "learning-times";
 
-export const buildPlanGenerationAnswers = (_snapshot: LearningPlanSnapshot) =>
-	[] as Array<{ questionId: string; answer: string }>;
-
 export const shouldReplanAfterLearningTimes = (
 	snapshot: LearningPlanSnapshot | null,
 	replanReason?: string,

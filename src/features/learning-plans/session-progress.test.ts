@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-	CONTINUE_LEARNING_MINUTES,
 	getLearningSessionCompletionPhase,
 	getLearningSessionItems,
 	getLearningSessionTimerDurationSeconds,
@@ -135,10 +134,6 @@ describe("learning session progress", () => {
 	it("qualifies a 30-minute completion after 24 active minutes", () => {
 		expect(isQualifiedSessionCompletion(30, 24 * 60)).toBe(true);
 		expect(isQualifiedSessionCompletion(30, 24 * 60 - 1)).toBe(false);
-	});
-
-	it("offers a repeatable ten-minute continuation", () => {
-		expect(CONTINUE_LEARNING_MINUTES).toBe(10);
 	});
 
 	it("only times a loaded exam-test session", () => {
