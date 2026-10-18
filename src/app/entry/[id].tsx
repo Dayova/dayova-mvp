@@ -66,7 +66,7 @@ function DetailTile({
 	if (!value) return null;
 
 	return (
-		<View className="flex-1 rounded-[24px] border border-border bg-card px-5 py-5">
+		<View className="rounded-[24px] border border-border bg-card px-5 py-5">
 			<View className="mb-3 flex-row items-center">
 				{icon}
 				<Text className="ml-2 font-poppins font-semibold text-body-5 text-text/50 uppercase">
