@@ -24,5 +24,5 @@ const getDashboardSummaryCardLayoutClass = (
 	layout: DashboardSummaryCardLayout | undefined,
 ) => (layout === "stacked" ? "w-full" : "flex-1");
 
+export type { DashboardSummaryCardLayout };
 export { getDashboardScreenLayout, getDashboardSummaryCardLayoutClass };
-export type { DashboardScreenLayout, DashboardSummaryCardLayout };

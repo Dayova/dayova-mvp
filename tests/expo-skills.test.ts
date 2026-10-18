@@ -74,22 +74,13 @@ describe("Expo skill compatibility guidance", () => {
 		const packageJson = JSON.parse(
 			readFileSync(new URL("package.json", workspaceRoot), "utf8"),
 		) as { scripts?: Record<string, string> };
-		const patchUrl = new URL(
-			"patches/expo-skills/dayova.patch",
-			workspaceRoot,
-		);
+		const patchUrl = new URL("patches/expo-skills/dayova.patch", workspaceRoot);
 		const overridesUrl = new URL(
 			"patches/expo-skills/overrides.json",
 			workspaceRoot,
 		);
-		const updaterUrl = new URL(
-			"scripts/update-expo-skills.mjs",
-			workspaceRoot,
-		);
-		const maintenanceUrl = new URL(
-			"docs/agents/expo-skills.md",
-			workspaceRoot,
-		);
+		const updaterUrl = new URL("scripts/update-expo-skills.mjs", workspaceRoot);
+		const maintenanceUrl = new URL("docs/agents/expo-skills.md", workspaceRoot);
 
 		expect(packageJson.scripts?.["skills:update:expo"]).toBe(
 			"node scripts/update-expo-skills.mjs",
@@ -133,9 +124,7 @@ describe("Expo skill compatibility guidance", () => {
 			},
 		]);
 
-		const overrideManifest = JSON.parse(
-			readFileSync(overridesUrl, "utf8"),
-		) as {
+		const overrideManifest = JSON.parse(readFileSync(overridesUrl, "utf8")) as {
 			overrides: Array<{
 				target: string;
 				source: string;
@@ -161,11 +150,10 @@ describe("Expo skill compatibility guidance", () => {
 				"utf8",
 			).replaceAll("\r\n", "\n"),
 		).toBe(
-			readExpoSkill(
-				"expo-native-ui",
-				"references",
-				"controls.md",
-			).replaceAll("\r\n", "\n"),
+			readExpoSkill("expo-native-ui", "references", "controls.md").replaceAll(
+				"\r\n",
+				"\n",
+			),
 		);
 	});
 
@@ -192,11 +180,7 @@ describe("Expo skill compatibility guidance", () => {
 			"references",
 			"controls.md",
 		);
-		const storage = readExpoSkill(
-			"expo-native-ui",
-			"references",
-			"storage.md",
-		);
+		const storage = readExpoSkill("expo-native-ui", "references", "storage.md");
 		const nativeControlGuidance = `${skill}\n${controls}\n${storage}`;
 
 		expect(nativeControlGuidance).not.toContain(
@@ -218,9 +202,7 @@ describe("Expo skill compatibility guidance", () => {
 		expect(skill).not.toContain("CSS and Tailwind are not supported");
 		expect(skill).not.toContain("Centralize the palette in `theme/colors.ts`");
 		expect(controls).toContain("@expo/ui/community/datetime-picker");
-		expect(controls).toContain(
-			'from "~/components/ui/date-time-picker-sheet"',
-		);
+		expect(controls).toContain('from "~/components/ui/date-time-picker-sheet"');
 		expect(storage).toContain('from "~/components/ui/switch"');
 	});
 });

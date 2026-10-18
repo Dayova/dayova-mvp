@@ -147,8 +147,12 @@ describe("OTA report freshness status", () => {
 
 	it("does not publish a status for closed or fork PRs", async () => {
 		for (const invalid of [
-			(pr: ReturnType<typeof fixture>["pr"]) => { pr.state = "closed"; },
-			(pr: ReturnType<typeof fixture>["pr"]) => { pr.head.repo.id = 2; },
+			(pr: ReturnType<typeof fixture>["pr"]) => {
+				pr.state = "closed";
+			},
+			(pr: ReturnType<typeof fixture>["pr"]) => {
+				pr.head.repo.id = 2;
+			},
 		]) {
 			const f = fixture();
 			invalid(f.pr);

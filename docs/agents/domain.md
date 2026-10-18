@@ -8,6 +8,11 @@ Notion is Dayova's main internal documentation and knowledge workspace. Technica
 
 Repo-local context docs and ADRs are code-adjacent technical guides. They capture the stable terminology, architectural constraints, implementation contracts, and decision pointers that must evolve with this repository. They should link to the relevant Notion page and summarize only the implementation-critical detail needed to work safely; they are not a second internal knowledge base.
 
+Decision records normally live in Notion, including technical decision rationale,
+alternatives, evidence, and named acceptance. A repo-local ADR may retain a
+concise code-facing contract and a link to the canonical Notion record; do not
+duplicate the full retrospective narrative in the repository by default.
+
 ## Agent access
 
 Use the semantic Notion connector when a task depends on internal product, business, research, meeting, or decision context. Search Notion before claiming that internal guidance does not exist, and preserve the canonical Notion page URL when referencing it from Linear, GitHub, or repo-local docs. If Notion access is unavailable, state that limitation. Continue only when the task can be completed safely from the available Linear and repository evidence. If missing Notion context could materially change the implementation or decision, stop and surface the blocker rather than guessing or reconstructing the missing documentation.
