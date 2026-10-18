@@ -5,6 +5,7 @@ import { z } from "zod";
 const publicEnvSchema = {
 	EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1),
 	EXPO_PUBLIC_CONVEX_URL: z.string().url(),
+	EXPO_PUBLIC_CONVEX_SITE_URL: z.string().url().optional(),
 	EXPO_PUBLIC_POSTHOG_API_KEY: z.string().optional(),
 	EXPO_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
 	EXPO_PUBLIC_REVENUECAT_IOS_API_KEY: z.string().min(1).optional(),
@@ -48,6 +49,7 @@ export const readPublicRuntimeConfig = (): StrictPublicRuntimeConfigValues => ({
 	EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY:
 		process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY,
 	EXPO_PUBLIC_CONVEX_URL: process.env.EXPO_PUBLIC_CONVEX_URL,
+	EXPO_PUBLIC_CONVEX_SITE_URL: process.env.EXPO_PUBLIC_CONVEX_SITE_URL,
 	EXPO_PUBLIC_POSTHOG_API_KEY: process.env.EXPO_PUBLIC_POSTHOG_API_KEY,
 	EXPO_PUBLIC_POSTHOG_HOST: process.env.EXPO_PUBLIC_POSTHOG_HOST,
 	EXPO_PUBLIC_REVENUECAT_IOS_API_KEY:
