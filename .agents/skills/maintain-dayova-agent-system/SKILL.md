@@ -48,7 +48,7 @@ kind of truth and one governed path from upstream input to repository behavior.
    `pnpm skills:validate`, and execute the affected behavioral cases. Dogfood a
    changed high-risk workflow on a bounded Dayova task. Completion requires the
    structural checks and every in-scope regression to pass.
-8. Review the complete diff and publish through the branch or Graphite stack
+8. Review the complete diff and publish through the branch or GitHub native stack
    owned by the work. Explain the evidence choice in the PR, attach selected media
    directly, and link the implementation evidence from the relevant Linear issue.
    Follow the contract's media-presentation guidance in descriptions and comments:

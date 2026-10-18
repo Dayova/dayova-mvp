@@ -36,6 +36,8 @@ For explicitly mutating repository work (for example implementation, fixes, refa
 
 The user does not need to repeat “commit and push.” Preserve the existing branch, pull request, and stack when the task belongs to one. Push only a branch that already represents the current work item or pull request, or a new branch intentionally created for this work.
 
+Use GitHub native stacks for dependent pull requests. Graphite is retired and is not an adoption option or workflow prerequisite. Preserve each PR's actual parent and branch ownership; stacking does not bypass review, CI, or merge authorization. See the [developer handbook](https://app.notion.com/p/3dc2e87228bf815e890fc5f1397c4940).
+
 For new work, determine the correct integration base from the task, current branch, stack, and repository workflow; create a scoped `codex/` branch from that base. Do not assume the default branch is always the correct base.
 
 Never push directly to the default branch, treat another developer's, release, shared integration, or stack-parent branch as safe merely because it is non-default, stage unrelated user changes, or mix a distinct follow-up into the current branch. Put unrelated follow-up work on a separate branch, commit, and pull request. Read-only review, diagnosis, explanation, research, and status requests remain non-mutating. Stop and surface the blocker when scope or branch ownership is ambiguous, unrelated changes cannot be separated safely, validation has a material failure, authentication is unavailable.

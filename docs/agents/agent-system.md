@@ -224,7 +224,7 @@ keep an obsolete skill merely as historical documentation.
 
 ## Related owned work
 
-- [DAY-181](https://linear.app/dayova/issue/DAY-181/adopt-graphite-as-the-required-stacked-change-workflow-for-humans-and): branch and Graphite stack workflow.
+- [DAY-492](https://linear.app/dayova/issue/DAY-492): GitHub PR and native-stack workflow; follow the [developer handbook](https://app.notion.com/p/3dc2e87228bf815e890fc5f1397c4940). Graphite adoption (DAY-181) is canceled.
 - [DAY-269](https://linear.app/dayova/issue/DAY-269/define-when-agents-should-fix-discovered-problems-immediately-vs): fix now, capture/reconcile, or discard.
 - Change-specific pull-request evidence: [DAY-271](https://linear.app/dayova/issue/DAY-271), [DAY-272](https://linear.app/dayova/issue/DAY-272), [DAY-273](https://linear.app/dayova/issue/DAY-273), [DAY-274](https://linear.app/dayova/issue/DAY-274), [DAY-275](https://linear.app/dayova/issue/DAY-275), [DAY-276](https://linear.app/dayova/issue/DAY-276), and [DAY-277](https://linear.app/dayova/issue/DAY-277).
 - [DAY-289](https://linear.app/dayova/issue/DAY-289/add-a-dayova-product-quality-reviewer-for-plans-and-user-facing-pull): Dayova product-quality review.
