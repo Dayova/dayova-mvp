@@ -1,6 +1,30 @@
-# DAY-528 validation — 17 October 2026
+# DAY-528 validation
 
-## Stack refresh after main merged PR #857
+## Readiness refresh — 18 October 2026
+
+Native stack #810 remains `main -> #661 -> #748 -> #895`. Parent #661 is
+`83a26edc95a233d160231d93cf4bf466ca2e271c`; direct base #748 is
+`7eca83984989e8e6a99b189cb656090034fdebed`. The top layer incorporates both in
+integration commit `1c0b11b0788ecc523fadb47d54b3bebae28e5137`.
+
+The refresh preserves current main through `b80cf796`, stops losing deletion
+workers from scheduling duplicate continuations, and includes the same guard on
+the final data-to-Notion transition. Five concurrent-worker regressions pass.
+Both deletion screens now retain verification failure reasons and clear the
+password after a failed attempt. The runbook describes the authenticated HTTP
+password-verification flow.
+
+Combined-stack lint/TypeScript and **146 Vitest files / 1,135 tests** passed.
+The combined backend compiled and pushed to development `utmost-oriole-983`;
+missing-request action/query smoke checks and unauthenticated HTTP rejection
+(401) passed. Parent and direct-base required CI have passed on the hashes above.
+The lifecycle layer's latest CI and OTA reports must cover its latest head.
+Production activation and the documented policy/device/provider gates remain open.
+
+The sections below are historical evidence from 17 October and earlier. Their
+commit hashes and validation counts describe those earlier snapshots.
+
+## Historical stack refresh after main merged PR #857 — 17 October 2026
 
 Main advanced to `110d166e` after the previous successful stack checks. Its
 interaction-feedback change conflicted with #661's Paywall imports. Merge
@@ -29,7 +53,7 @@ The Clerk configuration and retained-contact rehearsal above verify the matching
 development instance. No identity keys were normalized or rewritten. The runbook
 now explicitly requires this issuer preflight before activation/config changes.
 
-## Current integrated stack
+## Historical integration before the PR #857 refresh
 
 Native stack #810 remains `main -> #661 -> #748 -> #895`.
 Repaired parent #661: `d169c77d4c932b49660379f3e3607db81adda153`;
