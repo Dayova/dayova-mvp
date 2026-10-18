@@ -365,3 +365,45 @@ test("rejects account deletion without an authenticated identity", async () => {
 		backend.mutation(internal.accountDeletion.enqueueVerifiedDeletion, {}),
 	).rejects.toThrow("Nicht authentifiziert");
 });
+
+test("concurrent verified requests share one tombstone and keep access blocked after failure", async () => {
+	vi.useFakeTimers();
+	try {
+		const backend = convexTest(schema, modules);
+		const user = backend.withIdentity(userIdentity);
+		await user.mutation(api.users.syncCurrentUser, { name: "Delete Me" });
+		const requests = await Promise.all([
+			user.mutation(internal.accountDeletion.enqueueVerifiedDeletion, {}),
+			user.mutation(internal.accountDeletion.enqueueVerifiedDeletion, {}),
+		]);
+		expect(requests[0]).toMatchObject({ status: "accepted" });
+		expect(requests[1]).toEqual(requests[0]);
+		const records = await backend.run((ctx) =>
+			ctx.db.query("accountDeletionRequests").take(10),
+		);
+		expect(records).toHaveLength(1);
+		expect(records[0].requestId).toBe(requests[0].requestId);
+
+		await backend.mutation(internal.accountDeletion.markRequestRetry, {
+			requestId: requests[0].requestId,
+			expectedStage: "revokeSessions",
+			errorCode: "revokeSessions_http_503",
+			nextAttemptAt: Date.now() + 60_000,
+			shouldRetry: true,
+		});
+		await expect(user.query(api.users.getMe, {})).rejects.toThrow(
+			"Dieses Konto wird dauerhaft gelöscht",
+		);
+		await expect(
+			user.mutation(api.users.syncCurrentUser, { name: "Still Here" }),
+		).rejects.toThrow("Dieses Konto wird dauerhaft gelöscht");
+		expect(
+			await backend.query(internal.accountDeletion.getRequestForProcessing, {
+				requestId: requests[0].requestId,
+			}),
+		).toMatchObject({ status: "retryScheduled", attemptCount: 1 });
+	} finally {
+		vi.clearAllTimers();
+		vi.useRealTimers();
+	}
+});
