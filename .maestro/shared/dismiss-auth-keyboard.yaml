@@ -10,5 +10,14 @@ appId: ${APP_ID}
           element: ${AUTH_HEADING}
           direction: UP
           timeout: 10000
-      - tapOn: ${AUTH_HEADING}
+      - tapOn:
+          text: ${AUTH_HEADING}
+          point: "50%,10%"
+      # Use the scroll view's interactive dismissal gesture before Maestro
+      # verifies the keyboard is hidden; its generic center swipe can hit an
+      # auth input on tall iPhones and focus that field again.
+      - swipe:
+          start: "90%,40%"
+          end: "90%,70%"
+          duration: 500
 - hideKeyboard

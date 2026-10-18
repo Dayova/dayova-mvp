@@ -20,7 +20,7 @@ const IOS_SYSTEM_COLOR_SCHEME_PATH = resolve(
 );
 const EXPO_UPDATES_PATCH_PATH = resolve(
 	process.cwd(),
-	"patches/expo-updates@57.0.21.patch",
+	"patches/expo-updates@58.0.17.patch",
 );
 const PNPM_WORKSPACE_PATH = resolve(process.cwd(), "pnpm-workspace.yaml");
 
@@ -176,7 +176,7 @@ describe("iOS system appearance module", () => {
 		const pnpmWorkspace = readFileSync(PNPM_WORKSPACE_PATH, "utf8");
 
 		expect(pnpmWorkspace).toContain(
-			"expo-updates@57.0.21: patches/expo-updates@57.0.21.patch",
+			"expo-updates@58.0.17: patches/expo-updates@58.0.17.patch",
 		);
 		expect(patch).toContain(
 			"let traitCollection = getWindow().traitCollection",

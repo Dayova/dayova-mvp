@@ -2,8 +2,8 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
-import { parse } from "yaml";
 import { describe, expect, it } from "vitest";
+import { parse } from "yaml";
 import {
 	createReport,
 	evaluateProductionOta,
@@ -513,7 +513,7 @@ describe("production release configuration", () => {
 		}
 	});
 
-	it("resolves the patched SDK 57 production binary behind runtime 1.0.5", () => {
+	it("isolates the SDK 58 production binary behind runtime 1.0.6", () => {
 		const expoCliPath = require.resolve("expo/bin/cli");
 		const resolvedConfig = JSON.parse(
 			execFileSync(
@@ -531,11 +531,11 @@ describe("production release configuration", () => {
 		);
 
 		expect(resolvedConfig).toMatchObject({
-			version: "1.0.5",
-			sdkVersion: "57.0.0",
+			version: "1.0.6",
+			sdkVersion: "58.0.0",
 			ios: {
 				bundleIdentifier: "de.dayova.app",
-				runtimeVersion: "1.0.5",
+				runtimeVersion: "1.0.6",
 			},
 			android: {
 				package: "com.dayova",
