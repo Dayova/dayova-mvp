@@ -245,7 +245,7 @@ weekday badges, bordered cards, a visible pencil, and swipe-to-delete with a
 text-only rounded action. Its `destructive-outline` appearance introduced in
 PR #816 now follows DAY-501's general destructive-action rule above. Screen
 readers retain a named delete action on the pencil. See
-[the restoration record](../../qa/learning-times-settings-restoration-2026-10-02.md).
+[the restoration record](https://github.com/Dayova/dayova-mvp/pull/817#issuecomment-6252198402).
 
 The empty timetable uses one full-width gradient import button and a full-width
 neutral manual-entry button. File and camera are equal sources inside the shared
@@ -306,7 +306,7 @@ DAY-187 restored the September device-review treatment in personal subjects.
 Its cancel and destructive-outline appearances are now the general DAY-501
 rule above, replacing the former opt-in API. The palette remains light
 `#B01B10` / `#FFF0EE`, dark `hsl(4 100% 75%)` / `hsl(4 55% 16%)`.
-See [restoration scope and provenance](../../qa/day-187-design-restoration-2026-10-02.md).
+See [restoration scope and provenance](https://github.com/Dayova/dayova-mvp/pull/816#issuecomment-6252197350).
 
 Onboarding artwork or other explanatory UI that depicts a live Dayova product
 surface must render the same shared presentation module through an explicit

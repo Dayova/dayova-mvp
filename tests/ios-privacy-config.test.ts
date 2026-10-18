@@ -1,7 +1,7 @@
-import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { readExpoConfigSnapshot } from "./helpers/expo-config-contract";
 
 const IOS_INFO_PLIST_PATH = resolve(process.cwd(), "ios/Dayova/Info.plist");
 
@@ -24,20 +24,9 @@ const readNativeInfoPlistValue = (key: string) => {
 };
 
 const readFinalExpoInfoPlist = () => {
-	const output = execFileSync(
-		"npx",
-		["expo", "config", "--type", "introspect", "--json"],
-		{
-			cwd: process.cwd(),
-			encoding: "utf8",
-			env: {
-				...process.env,
-				APP_VARIANT: "production",
-			},
-		},
+	return (
+		readExpoConfigSnapshot("production", "introspect").ios?.infoPlist ?? {}
 	);
-
-	return JSON.parse(output).ios?.infoPlist ?? {};
 };
 
 describe("iOS privacy purpose strings", () => {
@@ -68,5 +57,5 @@ describe("iOS privacy purpose strings", () => {
 				`${key} should not be requested`,
 			).toBeUndefined();
 		}
-	}, 30_000);
+	});
 });

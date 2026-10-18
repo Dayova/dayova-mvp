@@ -47,7 +47,7 @@ The login flow deliberately leaves the password empty for its valid-format
 email submission; its later synthetic password is used only for visibility.
 Authenticated Clerk/Convex coverage belongs to DAY-321.
 
-See [DAY-410 Android validation](validation/day-410-android.md) for device results
+See [DAY-410 Android validation](https://github.com/Dayova/dayova-mvp/pull/594#issuecomment-6252191871) for device results
 and known limits. Its full-suite pass used a warm development Metro started with
 `--minify`; unminified startup was intermittent on that Windows host (DAY-412).
 Minification keeps development mode and the existing test-service configuration;
@@ -56,6 +56,19 @@ journeys await DAY-411 validation.
 
 These device tests are opt-in and are not part of `pnpm test`. They need a native
 artifact and a running virtual device. Jest and Vitest do not require Maestro.
+
+Reusable capture checks live in `scripts/native-qa/`:
+
+- `assert-safe-area.mjs` takes a UIAutomator XML path, exact accessible text/label,
+  and the permitted top/bottom pixel coordinates. Run it with Node after obtaining
+  those boundaries from the tested device.
+- `assert-above-keyboard.py` checks a live focused Android control against the
+  visible IME. Use `--help` for label/input matching, `--adb` and `--serial`.
+
+Keep generated dumps and recordings in ignored `.maestro/artifacts/` or a
+temporary directory. Publish dated results and media on the relevant PR or
+Linear issue; reusable internal lessons belong in Notion. These tools do not
+certify current device behavior without a new run on the actual tested build.
 
 Both `test:smoke:*` scripts run all four flows. Add `--include-tags auth` for
 login/recovery or `--include-tags onboarding` for registration. To run one flow
