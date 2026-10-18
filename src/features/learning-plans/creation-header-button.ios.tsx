@@ -5,6 +5,7 @@ import {
 	buttonBorderShape,
 	buttonStyle,
 	controlSize,
+	frame,
 } from "@expo/ui/swift-ui/modifiers";
 import { Platform, View } from "react-native";
 import { ArrowLeft, X } from "~/components/ui/icon";
@@ -30,6 +31,8 @@ export function CreationHeaderButton({
 				onPress={onPress}
 				disabled={disabled}
 				modifiers={[
+					// SDK 58 hosts align to the top; retain the centered 48pt target.
+					frame({ width: 48, height: 48, alignment: "center" }),
 					buttonStyle(
 						Number.parseInt(String(Platform.Version), 10) >= 26
 							? "glass"

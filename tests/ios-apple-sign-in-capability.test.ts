@@ -16,18 +16,15 @@ describe("iOS Apple sign-in capability", () => {
 	it.each([
 		["development", "de.dayova.app-dev"],
 		["production", "de.dayova.app"],
-	] as const)(
-		"keeps Apple sign-in absent from the %s Expo config",
-		(variant, bundleIdentifier) => {
-			const iosConfig = readFinalExpoIosConfig(variant);
+	] as const)("keeps Apple sign-in absent from the %s Expo config", (variant, bundleIdentifier) => {
+		const iosConfig = readFinalExpoIosConfig(variant);
 
-			expect(iosConfig.bundleIdentifier).toBe(bundleIdentifier);
-			expect(iosConfig.usesAppleSignIn).toBeUndefined();
-			expect(iosConfig.entitlements ?? {}).not.toHaveProperty(
-				"com.apple.developer.applesignin",
-			);
-		},
-	);
+		expect(iosConfig.bundleIdentifier).toBe(bundleIdentifier);
+		expect(iosConfig.usesAppleSignIn).toBeUndefined();
+		expect(iosConfig.entitlements ?? {}).not.toHaveProperty(
+			"com.apple.developer.applesignin",
+		);
+	});
 
 	it("keeps Apple sign-in absent from generated native entitlements when present", () => {
 		if (!existsSync(IOS_ENTITLEMENTS_PATH)) {
@@ -36,8 +33,6 @@ describe("iOS Apple sign-in capability", () => {
 
 		const nativeEntitlements = readFileSync(IOS_ENTITLEMENTS_PATH, "utf8");
 
-		expect(nativeEntitlements).not.toContain(
-			"com.apple.developer.applesignin",
-		);
+		expect(nativeEntitlements).not.toContain("com.apple.developer.applesignin");
 	});
 });

@@ -3,6 +3,7 @@ import {
 	type NativeScrollEvent,
 	type NativeSyntheticEvent,
 	ScrollView,
+	type ScrollViewInstance,
 	type TextStyle,
 	View,
 	type ViewStyle,
@@ -17,6 +18,7 @@ import {
 	Trash2,
 } from "~/components/ui/icon";
 import { Input } from "~/components/ui/input";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import {
 	SelectionControl,
 	SelectionText,
@@ -209,7 +211,8 @@ function TimetableWeekEditor({
 	onOpenDayPicker,
 	onOpenSubjectPicker,
 }: TimetableWeekEditorProps) {
-	const lessonPagerRef = useRef<ScrollView>(null);
+	const { shouldStackInlineContent } = useContentSizeLayout();
+	const lessonPagerRef = useRef<ScrollViewInstance>(null);
 	const shouldAnimateLessonScrollRef = useRef(false);
 	const [lessonPagerWidth, setLessonPagerWidth] = useState(0);
 	const [lessonIndexByDay, setLessonIndexByDay] = useState<
@@ -278,6 +281,7 @@ function TimetableWeekEditor({
 		<View className="gap-4">
 			<View
 				accessibilityLabel="Wochentag auswählen"
+				accessibilityRole="radiogroup"
 				className="flex-row flex-wrap justify-between gap-1"
 			>
 				{lessonsByDay.map((day) => {
@@ -301,7 +305,13 @@ function TimetableWeekEditor({
 				})}
 			</View>
 
-			<View className="flex-row items-baseline justify-between gap-4">
+			<View
+				className={cn(
+					"gap-4",
+					!shouldStackInlineContent &&
+						"flex-row items-baseline justify-between",
+				)}
+			>
 				<Text className="font-poppins font-semibold text-heading-2 text-text">
 					{selectedDayData?.label}
 				</Text>
@@ -382,5 +392,4 @@ function TimetableWeekEditor({
 	);
 }
 
-export type { TimetableWeekEditorProps };
 export { TimetableWeekEditor };

@@ -8,30 +8,31 @@ import { dayovaUiPlugin } from "./eslint/dayova-ui-plugin.mjs";
 const tsconfigRootDir = path.dirname(fileURLToPath(import.meta.url));
 
 const reactCompilerRules = Object.fromEntries(
-  Object.keys(reactHooks.configs.flat["recommended-latest"].rules).map(
-    (ruleName) => [ruleName, "error"],
-  ),
+	Object.keys(reactHooks.configs.flat["recommended-latest"].rules).map(
+		(ruleName) => [ruleName, "error"],
+	),
 );
 
 export default tseslint.config(
-  {
-    ignores: [
-      ".expo/**",
-      "android/**",
-      "assets/**",
-      "convex/_generated/**",
-      "node_modules/**",
-    ],
-  },
-  {
-    files: ["src/**/*.{ts,tsx}", "index.ts"],
-    languageOptions: {
-      parser: tseslint.parser,
-      parserOptions: {
-        projectService: true,
-        tsconfigRootDir,
-      },
-    },
+	{
+		ignores: [
+			".expo/**",
+			"android/**",
+			"assets/**",
+			"convex/_generated/**",
+			"node_modules/**",
+		],
+	},
+	{
+		files: ["src/**/*.{ts,tsx}", "index.ts"],
+		languageOptions: {
+			parser: tseslint.parser,
+			parserOptions: {
+				// React and Dayova rules inspect syntax; only the Convex block needs types.
+				projectService: false,
+				tsconfigRootDir,
+			},
+		},
 		plugins: {
 			"dayova-ui": dayovaUiPlugin,
 			"react-hooks": reactHooks,
@@ -44,7 +45,7 @@ export default tseslint.config(
 			"dayova-ui/no-test-modules-in-router": "error",
 			"dayova-ui/require-compose-host-theme": "error",
 		},
-  },
+	},
 	{
 		files: ["src/**/*.{test,spec}.{ts,tsx}"],
 		ignores: [
@@ -82,25 +83,25 @@ export default tseslint.config(
 			],
 		},
 	},
-  {
-    files: ["convex/**/*.ts"],
-    languageOptions: {
-      parser: tseslint.parser,
-      parserOptions: {
-        projectService: true,
-        tsconfigRootDir,
-      },
-    },
-    plugins: {
-      "@convex-dev": convexPlugin,
-    },
-    rules: {
-      "@convex-dev/no-old-registered-function-syntax": "error",
-      "@convex-dev/require-args-validator": "error",
-      "@convex-dev/explicit-table-ids": "error",
-      "@convex-dev/no-filter-in-query": "error",
-      "@convex-dev/no-collect-in-query": "error",
-      "@convex-dev/import-wrong-runtime": "off",
-    },
-  },
+	{
+		files: ["convex/**/*.ts"],
+		languageOptions: {
+			parser: tseslint.parser,
+			parserOptions: {
+				projectService: true,
+				tsconfigRootDir,
+			},
+		},
+		plugins: {
+			"@convex-dev": convexPlugin,
+		},
+		rules: {
+			"@convex-dev/no-old-registered-function-syntax": "error",
+			"@convex-dev/require-args-validator": "error",
+			"@convex-dev/explicit-table-ids": "error",
+			"@convex-dev/no-filter-in-query": "error",
+			"@convex-dev/no-collect-in-query": "error",
+			"@convex-dev/import-wrong-runtime": "off",
+		},
+	},
 );

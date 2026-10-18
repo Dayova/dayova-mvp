@@ -28,9 +28,11 @@ native source, or other fingerprint source hash changed. PR #662's remaining
 changes are test code and documentation; intervening app changes from `main`
 do not alter the native fingerprint sources.
 
-The two exact PR hashes are therefore reviewed as native-equivalent to their
-respective verified builds. The baseline retains each binary's original hash
-and binds the additional accepted hash to this full audit source SHA and this
-comparison. Unknown hashes still fail closed. This review does not publish an
+This historical assessment reviewed the two exact PR hashes as native-equivalent
+to their respective verified builds at source
+`2e3ccd579d170887f6c88980e419ca6a44b7e024`. Those hashes are not listed in the
+current `release/production-ota-baseline.json`; this document does not authorize
+them or establish compatibility for later revisions, including the SDK 58
+integration. Unknown hashes still fail closed. This review does not publish an
 OTA update or replace device and distribution verification. The merged `main`
 commit must pass its own production checks before any update is published.

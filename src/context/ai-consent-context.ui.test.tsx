@@ -20,7 +20,10 @@ const grantedSnapshot: AiConsentSnapshot = {
 };
 
 let mockSnapshot: AiConsentSnapshot | undefined = emptySnapshot;
-const mockSetDecision = jest.fn(async () => grantedSnapshot);
+const mockSetDecision = jest.fn(
+	async (_args: { decision: string; version: typeof AI_CONSENT_VERSION }) =>
+		grantedSnapshot,
+);
 const mockWithdraw = jest.fn(async () => ({
 	...grantedSnapshot,
 	status: "withdrawn" as const,
