@@ -457,7 +457,7 @@ describe("production release configuration", () => {
 		}
 	});
 
-	it("resolves the patched SDK 57 production binary behind runtime 1.0.5", () => {
+	it("isolates the 1.0.7 native release from the distributed OTA baseline", () => {
 		const expoCliPath = require.resolve("expo/bin/cli");
 		const resolvedConfig = JSON.parse(
 			execFileSync(
@@ -475,11 +475,11 @@ describe("production release configuration", () => {
 		);
 
 		expect(resolvedConfig).toMatchObject({
-			version: "1.0.5",
+			version: "1.0.7",
 			sdkVersion: "57.0.0",
 			ios: {
 				bundleIdentifier: "de.dayova.app",
-				runtimeVersion: "1.0.5",
+				runtimeVersion: "1.0.7",
 			},
 			android: {
 				package: "com.dayova",
@@ -487,6 +487,27 @@ describe("production release configuration", () => {
 			},
 		});
 		expect(packageJson.version).toBe(resolvedConfig.version);
+		const distributedBaseline = JSON.parse(
+			readFileSync(
+				new URL("../release/production-ota-baseline.json", import.meta.url),
+				"utf8",
+			),
+		);
+		const report = evaluate({
+			config: resolvedConfig,
+			baseline: distributedBaseline,
+			fingerprints: {
+				ios: distributedBaseline.platforms.ios.fingerprint,
+				android: distributedBaseline.platforms.android.fingerprint,
+			},
+		});
+		expect(report.safe).toBe(false);
+		expect(report.reason).toContain(
+			"ios runtime 1.0.7 does not match baseline runtime",
+		);
+		expect(report.reason).toContain(
+			"android runtime 1.0.7 does not match baseline runtime",
+		);
 	});
 
 	it("uses the EAS production fingerprint job as the gate input", () => {
