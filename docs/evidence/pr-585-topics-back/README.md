@@ -6,11 +6,11 @@ returns to the preceding learning-time step at 50%.
 
 | Before: unexpected exam overview | After: preceding setup step |
 | --- | --- |
-| <img src="before-back-result.png" width="280" alt="Before: Biologie Klassenarbeit overview after Back" /> | <img src="after-back-result.png" width="280" alt="After: Back returns to the learning-time check at 50 percent" /> |
+| <img src="https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/pr-585-topics-back/before-back-result.png?raw=true" width="280" alt="Before: Biologie Klassenarbeit overview after Back" /> | <img src="https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/pr-585-topics-back/after-back-result.png?raw=true" width="280" alt="After: Back returns to the learning-time check at 50 percent" /> |
 
 | After: topics before Back | After: selected date retained | After: topics restored by Continue |
 | --- | --- | --- |
-| <img src="after-topics.png" width="240" alt="Topics at 60 percent before Back" /> | <img src="after-date-preserved.png" width="240" alt="30 September 2026 retained at the 40 percent date step" /> | <img src="after-topics-restored.png" width="240" alt="Zellaufbau, Fotosynthese restored at 60 percent" /> |
+| <img src="https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/pr-585-topics-back/after-topics.png?raw=true" width="240" alt="Topics at 60 percent before Back" /> | <img src="https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/pr-585-topics-back/after-date-preserved.png?raw=true" width="240" alt="30 September 2026 retained at the 40 percent date step" /> | <img src="https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/pr-585-topics-back/after-topics-restored.png?raw=true" width="240" alt="Zellaufbau, Fotosynthese restored at 60 percent" /> |
 
 **Screen recordings** — the previews animate; each links directly to its downloadable MP4.
 
@@ -23,7 +23,7 @@ The before excerpt comes from the user-supplied
 `signal-2026-09-13-17-47-26-609.mp4`; its source revision and device model
 are unknown. It shows the 50% step, 60% topics, Back, and the unexpected
 overview. In the delivered excerpt, the Back touch is visible at 1.0 s and
-the overview at 1.4 s. The [topics screenshot](before-topics.png) also shows
+the overview at 1.4 s. The [topics screenshot](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/pr-585-topics-back/before-topics.png?raw=true) also shows
 the original Back touch. Only the relevant excerpt is published; the full
 original recording remains local.
 

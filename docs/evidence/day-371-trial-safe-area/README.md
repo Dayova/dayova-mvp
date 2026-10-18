@@ -80,23 +80,23 @@ Previews are limited to 280 px wide. Click any screenshot to view the original.
 
 | Before | After |
 | --- | --- |
-| [<img src="android-compact-before.png" alt="Android status-bar overlap" width="280">](android-compact-before.png) | [<img src="android-compact-after.png" alt="Android status-bar clearance" width="280">](android-compact-after.png) |
+| [<img src="https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-371-trial-safe-area/android-compact-before.png?raw=true" alt="Android status-bar overlap" width="280">](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-371-trial-safe-area/android-compact-before.png?raw=true) | [<img src="https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-371-trial-safe-area/android-compact-after.png?raw=true" alt="Android status-bar clearance" width="280">](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-371-trial-safe-area/android-compact-after.png?raw=true) |
 
 ### Android: three-button navigation
 
 | Before | After scrolling |
 | --- | --- |
-| [<img src="android-threebutton-before.png" alt="Android footer obscured" width="280">](android-threebutton-before.png) | [<img src="android-threebutton-after.png" alt="Android footer reachable" width="280">](android-threebutton-after.png) |
+| [<img src="https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-371-trial-safe-area/android-threebutton-before.png?raw=true" alt="Android footer obscured" width="280">](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-371-trial-safe-area/android-threebutton-before.png?raw=true) | [<img src="https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-371-trial-safe-area/android-threebutton-after.png?raw=true" alt="Android footer reachable" width="280">](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-371-trial-safe-area/android-threebutton-after.png?raw=true) |
 
 ### Android: 200% font scale
 
-[<img src="android-large-text-after.png" alt="Large text footer after scrolling" width="280">](android-large-text-after.png)
+[<img src="https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-371-trial-safe-area/android-large-text-after.png?raw=true" alt="Large text footer after scrolling" width="280">](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-371-trial-safe-area/android-large-text-after.png?raw=true)
 
 ### iOS comparison
 
 | Before | After |
 | --- | --- |
-| [<img src="ios-before.png" alt="iOS baseline" width="280">](ios-before.png) | [<img src="ios-after.png" alt="iOS with explicit safe-area viewport" width="280">](ios-after.png) |
+| [<img src="https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-371-trial-safe-area/ios-before.png?raw=true" alt="iOS baseline" width="280">](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-371-trial-safe-area/ios-before.png?raw=true) | [<img src="https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-371-trial-safe-area/ios-after.png?raw=true" alt="iOS with explicit safe-area viewport" width="280">](https://github.com/Dayova/dayova-mvp/blob/3eb4e5d29f8cb2771fb79825c3b447587c514740/docs/evidence/day-371-trial-safe-area/ios-after.png?raw=true) |
 
 ## Regression tests
 

@@ -1,0 +1,280 @@
+import { LinearGradient } from "expo-linear-gradient";
+import { createElement } from "react";
+import { StyleSheet, View } from "react-native";
+import { ArrowRightStraight, Play, Plus } from "~/components/ui/icon";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
+import { ActionSurface } from "~/components/ui/surface";
+import { Text } from "~/components/ui/text";
+import { LearningPlanStatusBadge } from "~/features/learning-plans/learning-plan-status-badge";
+import { addDays, getDayKey, parseDayKey } from "~/lib/day-key";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { formatGermanUiText } from "~/lib/german-ui-text";
+import { useDayovaTheme } from "~/lib/theme";
+import { cn } from "~/lib/utils";
+import {
+	type DashboardAgendaItem,
+	getAgendaEntryTitle,
+} from "./dashboard-agenda";
+import {
+	type DashboardNextStepFallbackAction,
+	EMPTY_DASHBOARD_PRIMARY_ACTION,
+} from "./dashboard-empty-state";
+import { LearningCardIllustration } from "./learning-card-illustration";
+
+type Props = {
+	todayKey?: string;
+	item: DashboardAgendaItem | undefined;
+	plan?: {
+		subject: string;
+		completedCount?: number;
+		sessionCount?: number;
+		currentSession?: {
+			id: string;
+			goal?: string;
+			sessionPurpose?: "diagnostic" | "learning";
+		} | null;
+	};
+	isLoading: boolean;
+	fallbackAction: DashboardNextStepFallbackAction;
+	onOpenItem: (item: DashboardAgendaItem) => void;
+	onOpenFallback: () => void;
+};
+
+/** Reference-inspired learning card, using Dayova surfaces and one learning action. */
+export function TodayLearningCard({
+	todayKey = getDayKey(new Date()),
+	item,
+	plan,
+	isLoading,
+	fallbackAction,
+	onOpenItem,
+	onOpenFallback,
+}: Props) {
+	const { shouldStackInlineContent } = useContentSizeLayout();
+	const { colors } = useDayovaTheme();
+	// Theme-derived blue tint for the card background.
+	const tint = (strength: number) =>
+		`#${[1, 3, 5]
+			.map((offset) =>
+				Math.round(
+					Number.parseInt(colors.systemSubtle.slice(offset, offset + 2), 16) *
+						(1 - strength) +
+						Number.parseInt(colors.primary.slice(offset, offset + 2), 16) *
+							strength,
+				)
+					.toString(16)
+					.padStart(2, "0"),
+			)
+			.join("")}`;
+	const cardStart = tint(0.16);
+	const cardEnd = tint(0.04);
+	const subject = formatGermanUiText(
+		plan?.subject ?? item?.entry.subject ?? "Dein Lernplan",
+	);
+	const fullTitle = item
+		? formatGermanUiText(getAgendaEntryTitle(item.entry))
+		: "";
+	// Keep the visible title focused on the task; subject remains accessible.
+	const topic = fullTitle.startsWith(`${subject} `)
+		? fullTitle.slice(subject.length + 1)
+		: fullTitle;
+	const title = isLoading
+		? "Dein nächster Lernschritt wird geladen …"
+		: item
+			? topic
+			: "Kein Lernschritt geplant";
+	const session =
+		plan?.currentSession?.id === item?.entry.relatedLearningPlanSessionId
+			? plan?.currentSession
+			: undefined;
+	const learningKind =
+		session?.sessionPurpose === "diagnostic" ? "Wissenscheck" : "Lernen";
+	const context = `${subject} · ${learningKind}`;
+	const goal = session?.goal ? formatGermanUiText(session.goal).trim() : "";
+	const hasNoPlan =
+		fallbackAction.route === EMPTY_DASHBOARD_PRIMARY_ACTION.route;
+	const description =
+		goal ||
+		(item
+			? "Dein nächster Lernschritt"
+			: "Hier findest du deine bestehenden Lernpläne.");
+	const duration = item?.entry.durationMinutes;
+	const stepDate = parseDayKey(item?.dayKey);
+	const todayDate = parseDayKey(todayKey);
+	const dayLabel =
+		item && stepDate && todayDate
+			? item.dayKey === todayKey
+				? "Heute"
+				: item.dayKey === getDayKey(addDays(todayDate, 1))
+					? "Morgen"
+					: new Intl.DateTimeFormat("de-DE", {
+							day: "numeric",
+							month: "short",
+						}).format(stepDate)
+			: null;
+	const buttonLabel = isLoading
+		? "Wird geladen …"
+		: item
+			? item.entry.executionStatus === "started"
+				? "Weiterlernen"
+				: "Jetzt lernen"
+			: hasNoPlan
+				? "Lernplan erstellen"
+				: "Lernpläne ansehen";
+	const metadata = [
+		duration != null && duration > 0
+			? `${duration} ${duration === 1 ? "Minute" : "Minuten"}`
+			: null,
+	]
+		.filter(Boolean)
+		.join(" · ");
+	const visibleTitle =
+		!item && !isLoading && hasNoPlan ? "Noch kein Lernplan" : title;
+	const supportingCopy = item
+		? goal && goal.length <= 70
+			? goal
+			: session?.sessionPurpose === "diagnostic"
+				? "Zeige mit kurzen Aufgaben, was du bereits sicher kannst."
+				: "Festige dein Wissen mit passenden Aufgaben zu diesem Thema."
+		: isLoading
+			? ""
+			: hasNoPlan
+				? "Plane deine nächste Prüfung und lerne Schritt für Schritt."
+				: "Hier findest du deine bestehenden Lernpläne.";
+	const ActionIcon =
+		item || isLoading ? Play : hasNoPlan ? Plus : ArrowRightStraight;
+	return (
+		<ActionSurface
+			accessibilityRole="button"
+			accessibilityLabel={[
+				buttonLabel,
+				item ? context : visibleTitle,
+				title,
+				description,
+				dayLabel,
+				metadata,
+			]
+				.filter(Boolean)
+				.join(". ")}
+			accessibilityHint={
+				item ? "Öffnet diesen Lernschritt." : fallbackAction.accessibilityHint
+			}
+			disabled={isLoading}
+			accessibilityState={{ disabled: isLoading, busy: isLoading }}
+			accessibilityLiveRegion="polite"
+			onPress={() => {
+				if (isLoading) return;
+				if (item) onOpenItem(item);
+				else onOpenFallback();
+			}}
+			className="overflow-hidden rounded-button border border-border bg-system-subtle px-6 pt-6 pb-4"
+			// Standard height is fixed; larger content sizes release it for vertical reflow.
+			style={{
+				backgroundColor: colors.systemSubtle,
+				minHeight: 240,
+				height: shouldStackInlineContent ? undefined : 240,
+			}}
+			testID="today-learning-card"
+		>
+			<LinearGradient
+				colors={[cardStart, cardEnd, cardEnd]}
+				locations={[0, 0.55, 1]}
+				start={{ x: 0, y: 0 }}
+				end={{ x: 1, y: 0 }}
+				pointerEvents="none"
+				// Native gradient needs concrete absolute bounds.
+				style={StyleSheet.absoluteFill}
+				testID="today-learning-card-gradient"
+			/>
+			<View
+				className={cn(
+					"gap-2",
+					!shouldStackInlineContent && "flex-1",
+					shouldStackInlineContent ? "flex-col" : "flex-row items-start",
+				)}
+			>
+				<View
+					className={cn("gap-2", !shouldStackInlineContent && "flex-1")}
+					testID="today-learning-card-context"
+				>
+					{item && !isLoading ? (
+						<View
+							className="flex-row flex-wrap gap-2"
+							testID="today-learning-badges"
+						>
+							{[
+								duration != null && duration > 0 ? `${duration} min` : null,
+								dayLabel,
+							]
+								.filter((label): label is string => Boolean(label))
+								.map((label) => (
+									<LearningPlanStatusBadge
+										key={label}
+										className="border border-border"
+										fixedTextScale={false}
+										status={{
+											label,
+											background: DAYOVA_DESIGN_SYSTEM.colors.systemSubtle,
+											foreground: DAYOVA_DESIGN_SYSTEM.colors.primary,
+										}}
+									/>
+								))}
+						</View>
+					) : null}
+					<Text
+						accessibilityRole="header"
+						numberOfLines={shouldStackInlineContent ? undefined : 2}
+						ellipsizeMode="tail"
+						className="font-poppins font-semibold text-body-1 text-text"
+					>
+						{visibleTitle}
+					</Text>
+					{supportingCopy ? (
+						<Text
+							numberOfLines={shouldStackInlineContent ? undefined : 2}
+							ellipsizeMode="tail"
+							className="font-poppins text-body-3 text-secondary-text"
+						>
+							{supportingCopy}
+						</Text>
+					) : null}
+				</View>
+				<LearningCardIllustration
+					subject={item ? subject : undefined}
+					backgroundColor={cardEnd}
+				/>
+			</View>
+			<View
+				pointerEvents="none"
+				className={cn(
+					"mt-2 min-h-14 max-w-full flex-row items-center justify-start gap-3 self-start bg-transparent px-0 py-1",
+					shouldStackInlineContent && "mt-6",
+				)}
+				testID="today-learning-action"
+			>
+				<View
+					className="h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-strong"
+					accessible={false}
+					testID="today-learning-action-circle"
+				>
+					<LinearGradient
+						{...DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive}
+						pointerEvents="none"
+						style={StyleSheet.absoluteFill}
+						testID="today-learning-action-gradient"
+					/>
+					{createElement(ActionIcon, {
+						size: 18,
+						color: DAYOVA_DESIGN_SYSTEM.colors.light1,
+						strokeWidth: 2,
+						testID: "today-learning-action-icon",
+						accessible: false,
+					})}
+				</View>
+				<Text className="shrink font-poppins font-semibold text-body-2 text-text dark:text-white">
+					{buttonLabel}
+				</Text>
+			</View>
+		</ActionSurface>
+	);
+}

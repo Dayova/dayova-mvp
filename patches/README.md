@@ -75,6 +75,45 @@ Recheck this patch whenever `expo-modules-jsi` changes. Remove it when upstream
 stores nested Derived Data outside the package or otherwise prevents extended
 attributes from reaching the framework before signing.
 
+## `react-native-screens@4.26.2.patch`
+
+### Why This Patch Exists
+
+A clean Android launch can crash on the JS thread in
+`MountingCoordinator::pullTransaction` before the welcome screen settles.
+Native smoke on Android 16 / API 36 reproduced a SIGSEGV while trying to execute
+non-executable heap memory. The Expo-compatible 4.26.2 package still initializes
+its screen-removal delegate lazily without synchronization.
+
+### What The Patch Changes
+
+This backports the four C++ changes from upstream
+[react-native-screens#4413](https://github.com/software-mansion/react-native-screens/pull/4413),
+merge `b3badd012f83679b12f4e29f2e28eceaa4830efd`. The only path adaptation is
+`cpp/legacy/RNSScreenRemovalListener.*` to this release's `cpp/` location.
+The listener has process lifetime, synchronized callback ownership, and a token
+that prevents an older proxy's teardown from disarming a newer proxy. Callback
+installation and invalidation are serialized; callbacks retain the Java reference
+instead of a raw proxy pointer. No JavaScript API or package version changes.
+
+### How To Verify
+
+Use a frozen install, then compile new Android and iOS development clients.
+Run all four authentication/onboarding smoke journeys on both platforms and
+repeat Android cold launches with the actual bundle loaded. Inspect system
+`am_crash` events and tombstones as well as the crash log buffer: the observed
+native crash appeared in system events while the dedicated crash buffer was empty.
+Report the number of valid launches and failures; a clean retry alone does not
+prove that a rare race is fixed. This native patch requires a new app binary.
+
+### How To Update Or Remove
+
+Recheck the installed C++ implementation when upgrading `react-native-screens`.
+Remove the patch only when the Expo-compatible release includes upstream #4413;
+then remove its `patchedDependencies` entry, regenerate the lockfile, and repeat
+the native builds, smoke journeys, and cold-launch checks. Upstream first shipped
+this fix in 4.28.0; do not override Expo's compatibility range solely to remove it.
+
 ## `expo-updates@57.0.21.patch`
 
 ### Why This Patch Exists

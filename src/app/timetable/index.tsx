@@ -28,6 +28,8 @@ import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
 import { getUploadFailureMessage } from "~/features/learning-plans/utils";
+import { SubjectPickerSheet } from "~/features/subjects/subject-picker";
+import type { SubjectSelection } from "~/features/subjects/use-subject-options";
 import {
 	createEmptyTimetableLesson,
 	getTimetableLessonError,
@@ -42,6 +44,7 @@ import { ROUTES } from "~/lib/routes";
 import { triggerSuccessHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
 import { validateUploadFile } from "~/lib/upload-policy";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { getUserFacingErrorMessage } from "~/lib/user-facing-errors";
 
 const TIMETABLE_FILE_TYPES = [
@@ -145,6 +148,7 @@ function TimetableStatus({
 }
 
 export default function TimetableScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const { colors } = useDayovaTheme();
 	const insets = useSafeAreaInsets();
@@ -179,6 +183,9 @@ export default function TimetableScreen() {
 	const [dayPickerLessonKey, setDayPickerLessonKey] = useState<string | null>(
 		null,
 	);
+	const [subjectPickerLessonKey, setSubjectPickerLessonKey] = useState<
+		string | null
+	>(null);
 	const [selectedDay, setSelectedDay] = useState(1);
 	const taskInFlightRef = useRef(false);
 	const manualLessonKeyRef = useRef(0);
@@ -189,6 +196,10 @@ export default function TimetableScreen() {
 				key: lesson.id,
 				dayOfWeek: lesson.dayOfWeek,
 				subject: lesson.subject,
+				...(lesson.personalSubjectId
+					? { personalSubjectId: lesson.personalSubjectId }
+					: {}),
+				...(lesson.subjectIsOneTime ? { subjectIsOneTime: true } : {}),
 				startTime: lesson.startTime,
 				endTime: lesson.endTime,
 				room: lesson.room ?? "",
@@ -272,6 +283,7 @@ export default function TimetableScreen() {
 	const addManualLesson = (dayOfWeek = selectedDay) => {
 		void runTask(async () => {
 			const timetableId = selectedTimetable?.id ?? (await ensureDraft());
+			trackFeature("timetable.lesson_added");
 			manualLessonKeyRef.current += 1;
 			const currentLessons =
 				selectedTimetable?.id === timetableId ? lessons : [];
@@ -290,62 +302,69 @@ export default function TimetableScreen() {
 
 	const uploadAndExtract = async (asset: UploadAsset) => {
 		if (!(await requestAiConsent())) return;
-		const file = new File(asset.uri);
-		const fileSizeBytes = asset.size ?? file.info().size ?? 0;
-		const fileType = asset.mimeType || "application/octet-stream";
-		const validation = validateUploadFile({
-			name: asset.name,
-			size: fileSizeBytes,
-		});
-		if (!validation.valid) throw new Error(validation.message);
-
-		const timetableId = await ensureDraft();
-		const uploadData = await generateUploadUrl({ timetableId });
-		const controller = new AbortController();
-		const timeout = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
-		let response: Response;
+		trackFeature("timetable.import", "attempted");
 		try {
-			response = await fetch(uploadData.uploadUrl, {
-				method: uploadData.storageProvider === "r2" ? "PUT" : "POST",
-				headers: { "Content-Type": fileType },
-				body: file,
-				signal: controller.signal,
+			const file = new File(asset.uri);
+			const fileSizeBytes = asset.size ?? file.info().size ?? 0;
+			const fileType = asset.mimeType || "application/octet-stream";
+			const validation = validateUploadFile({
+				name: asset.name,
+				size: fileSizeBytes,
 			});
-		} finally {
-			clearTimeout(timeout);
-		}
-		const responseBody = await response.text();
-		if (!response.ok) {
-			throw new Error(
-				getUploadFailureMessage(
-					uploadData.storageProvider,
-					response,
-					responseBody,
-				),
-			);
-		}
-		let storageId = uploadData.storageId;
-		if (!storageId) {
-			try {
-				storageId =
-					(JSON.parse(responseBody) as { storageId?: string }).storageId ??
-					null;
-			} catch {
-				storageId = null;
-			}
-		}
-		if (!storageId) throw new Error(UPLOAD_COMPLETION_FAILURE_MESSAGE);
+			if (!validation.valid) throw new Error(validation.message);
 
-		await registerUploadedDocument({
-			timetableId,
-			uploadToken: uploadData.uploadToken,
-			storageId,
-			fileName: asset.name,
-			fileType,
-			fileSizeBytes,
-		});
-		await extractTimetable({ timetableId });
-		setEditor(null);
+			const timetableId = await ensureDraft();
+			const uploadData = await generateUploadUrl({ timetableId });
+			const controller = new AbortController();
+			const timeout = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
+			let response: Response;
+			try {
+				response = await fetch(uploadData.uploadUrl, {
+					method: uploadData.storageProvider === "r2" ? "PUT" : "POST",
+					headers: { "Content-Type": fileType },
+					body: file,
+					signal: controller.signal,
+				});
+			} finally {
+				clearTimeout(timeout);
+			}
+			const responseBody = await response.text();
+			if (!response.ok) {
+				throw new Error(
+					getUploadFailureMessage(
+						uploadData.storageProvider,
+						response,
+						responseBody,
+					),
+				);
+			}
+			let storageId = uploadData.storageId;
+			if (!storageId) {
+				try {
+					storageId =
+						(JSON.parse(responseBody) as { storageId?: string }).storageId ??
+						null;
+				} catch {
+					storageId = null;
+				}
+			}
+			if (!storageId) throw new Error(UPLOAD_COMPLETION_FAILURE_MESSAGE);
+
+			await registerUploadedDocument({
+				timetableId,
+				uploadToken: uploadData.uploadToken,
+				storageId,
+				fileName: asset.name,
+				fileType,
+				fileSizeBytes,
+			});
+			await extractTimetable({ timetableId });
+			trackFeature("timetable.import", "succeeded", timetableId);
+			setEditor(null);
+		} catch (error) {
+			trackFeature("timetable.import", "failed");
+			throw error;
+		}
 	};
 
 	const pickFile = () => {
@@ -430,16 +449,25 @@ export default function TimetableScreen() {
 	const save = () => {
 		if (!selectedTimetable || validationError) return;
 		void runTask(async () => {
+			trackFeature("timetable.save", "attempted");
 			await saveAndActivate({
 				timetableId: selectedTimetable.id,
 				lessons: sortTimetableLessons(lessons).map((lesson) => ({
 					dayOfWeek: lesson.dayOfWeek,
 					subject: lesson.subject,
+					...(lesson.personalSubjectId
+						? { personalSubjectId: lesson.personalSubjectId }
+						: {}),
+					...(lesson.subjectIsOneTime ? { subjectIsOneTime: true } : {}),
 					startTime: lesson.startTime,
 					endTime: lesson.endTime,
 					...(lesson.room.trim() ? { room: lesson.room.trim() } : {}),
 				})),
+			}).catch((error: unknown) => {
+				trackFeature("timetable.save", "failed", selectedTimetable.id);
+				throw error;
 			});
+			trackFeature("timetable.save", "succeeded", selectedTimetable.id);
 			setEditor(null);
 			router.replace(ROUTES.home);
 			void triggerSuccessHaptic({ platform: Platform.OS });
@@ -455,6 +483,9 @@ export default function TimetableScreen() {
 			: "08:00";
 	const activeDayPickerLesson = dayPickerLessonKey
 		? lessons.find((lesson) => lesson.key === dayPickerLessonKey)
+		: null;
+	const activeSubjectPickerLesson = subjectPickerLessonKey
+		? lessons.find((lesson) => lesson.key === subjectPickerLessonKey)
 		: null;
 	const isAddDisabled =
 		isImportDisabled || lessons.length >= MAX_TIMETABLE_LESSONS;
@@ -568,10 +599,14 @@ export default function TimetableScreen() {
 								lessons={lessons}
 								selectedDay={selectedDay}
 								isAddDisabled={isAddDisabled}
-								onSelectedDayChange={setSelectedDay}
+								onSelectedDayChange={(day) => {
+									trackFeature("timetable.day_selected");
+									setSelectedDay(day);
+								}}
 								onAddLesson={addManualLesson}
 								onChangeLesson={updateLesson}
 								onRemoveLesson={(lessonKey) => {
+									trackFeature("timetable.lesson_removed");
 									if (!selectedTimetable) return;
 									updateLessons(selectedTimetable.id, (current) =>
 										current.filter((lesson) => lesson.key !== lessonKey),
@@ -581,6 +616,7 @@ export default function TimetableScreen() {
 									setTimePickerTarget({ lessonKey, field })
 								}
 								onOpenDayPicker={setDayPickerLessonKey}
+								onOpenSubjectPicker={setSubjectPickerLessonKey}
 							/>
 
 							<View className="border-border border-t pt-5">
@@ -664,6 +700,30 @@ export default function TimetableScreen() {
 					setSelectedDay(dayOfWeek);
 				}}
 				onClose={() => setDayPickerLessonKey(null)}
+			/>
+
+			<SubjectPickerSheet
+				visible={Boolean(activeSubjectPickerLesson)}
+				selected={{
+					name: activeSubjectPickerLesson?.subject ?? "",
+					...(activeSubjectPickerLesson?.personalSubjectId
+						? {
+								personalSubjectId: activeSubjectPickerLesson.personalSubjectId,
+							}
+						: {}),
+					...(activeSubjectPickerLesson?.subjectIsOneTime
+						? { isOneTime: true }
+						: {}),
+				}}
+				onSelect={(selection: SubjectSelection) => {
+					if (!activeSubjectPickerLesson) return;
+					updateLesson(activeSubjectPickerLesson.key, {
+						subject: selection.name,
+						personalSubjectId: selection.personalSubjectId,
+						subjectIsOneTime: selection.isOneTime,
+					});
+				}}
+				onClose={() => setSubjectPickerLessonKey(null)}
 			/>
 		</Screen>
 	);

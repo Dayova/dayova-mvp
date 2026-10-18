@@ -18,6 +18,7 @@ patchedDependencies:
   nativewind@4.2.3: patches/nativewind@4.2.3.patch
   oxc-parser@0.130.0: patches/oxc-parser@0.130.0.patch
   react-native-keyboard-controller@1.21.9: patches/react-native-keyboard-controller@1.21.9.patch
+  react-native-screens@4.26.2: patches/react-native-screens@4.26.2.patch
 
 minimumReleaseAgeExclude:
   - '@expo/cli@57.0.10'
