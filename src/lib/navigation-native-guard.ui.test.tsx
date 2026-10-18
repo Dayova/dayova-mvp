@@ -1,6 +1,7 @@
 import { describe, expect, test } from "@jest/globals";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import {
+	createNavigationContainerRef,
 	createNavigatorFactory,
 	NavigationContainer,
 	StackActions,
@@ -54,6 +55,7 @@ function TestNavigator({
 
 const Stack = createNavigatorFactory(TestNavigator)();
 const Home = () => <Text>Home destination</Text>;
+const rootNavigation = createNavigationContainerRef();
 
 function Exam() {
 	const navigation = useNavigation();
@@ -71,6 +73,26 @@ function Exam() {
 		<View>
 			<Text>{step === 2 ? "Subject step" : "Exam type step"}</Text>
 			<Button title="Header back" onPress={back} />
+			<Button
+				title="Close flow"
+				onPress={() => {
+					// Expo Router dispatches dismissTo from the root ref: a target,
+					// but no source identifying the protected child route.
+					rootNavigation.dispatch({
+						...StackActions.popTo("Home"),
+						target: navigation.getParent()?.getState().key,
+					});
+				}}
+			/>
+			<Button
+				title="Root replacement"
+				onPress={() =>
+					rootNavigation.dispatch({
+						...StackActions.replace("Home"),
+						target: navigation.getParent()?.getState().key,
+					})
+				}
+			/>
 			<Button
 				title="Replace flow"
 				onPress={() =>
@@ -96,6 +118,7 @@ function Creation() {
 function App() {
 	return (
 		<NavigationContainer
+			ref={rootNavigation}
 			initialState={{
 				index: 1,
 				routes: [{ name: "Home" }, { name: "Creation" }],
@@ -110,6 +133,28 @@ function App() {
 }
 
 describe("native back protection across nested stacks", () => {
+	test("closes the whole flow while an internal step is protected", async () => {
+		await render(<App />);
+		await fireEvent.press(screen.getByText("Close flow"));
+		expect(screen.getByText("Home destination")).toBeTruthy();
+		expect(screen.queryByText("Subject step")).toBeNull();
+	});
+
+	test("permits a root-targeted replacement without injecting the child source", async () => {
+		await render(<App />);
+		await fireEvent.press(screen.getByText("Root replacement"));
+		expect(screen.getByText("Home destination")).toBeTruthy();
+		expect(screen.queryByText("Subject step")).toBeNull();
+	});
+
+	test("still closes after navigating back to the first step", async () => {
+		await render(<App />);
+		await fireEvent.press(screen.getByText("Header back"));
+		expect(screen.getByText("Exam type step")).toBeTruthy();
+		await fireEvent.press(screen.getByText("Close flow"));
+		expect(screen.getByText("Home destination")).toBeTruthy();
+	});
+
 	test("permits a deliberate replacement while native back is protected", async () => {
 		await render(<App />);
 		await fireEvent.press(screen.getByText("Replace flow"));
