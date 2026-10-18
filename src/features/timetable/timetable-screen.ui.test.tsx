@@ -18,8 +18,17 @@ jest.mock("react-native-safe-area-context", () => ({
 }));
 
 jest.mock("convex/react", () => ({
-	useConvexAuth: () => ({ isAuthenticated: mockAuthenticated }),
+	useConvexAuth: () => ({
+		isAuthenticated: mockAuthenticated,
+		isLoading: false,
+	}),
 	useQuery: () => mockState,
+	useQueries: () => ({
+		subjects: {
+			personal: [],
+			reusableTimetableSubjects: [],
+		},
+	}),
 	useMutation: () => mockMutation,
 	useAction: () => jest.fn(),
 }));
@@ -115,7 +124,7 @@ jest.mock("~/components/ui/dayova-sheet-frame", () => {
 			children: ReactNode;
 			contentClassName: string;
 		}) => {
-			mockDismiss = onDismiss;
+			if (visible) mockDismiss = onDismiss;
 			return visible
 				? React.createElement(
 						View,
@@ -279,3 +288,7 @@ describe("Timetable import entry", () => {
 		expect(screen.getByRole("button", { name: "Dateien" })).toBeEnabled();
 	});
 });
+
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+);

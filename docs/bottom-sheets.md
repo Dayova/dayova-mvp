@@ -16,6 +16,14 @@ subject and exam-type selector.
   At font scales of 1.5 or more, the close control gets its own row so long
   headings retain the full text width. Only the native date/time wheel opts out
   of the surrounding scroll view.
+- Shared `Input` fields automatically use Gorhom's keyboard-aware input while
+  they are inside `DayovaSheetFrame`. Use `onOpening` to focus
+  the first field as the native opening animation starts.
+- Android sheets use Gorhom's `adjustPan` keyboard calculation because the root
+  `KeyboardProvider` keeps the edge-to-edge container at full height. Gorhom's
+  `adjustResize` path assumes the container shrinks and skips the keyboard offset;
+  that combination hides focused fields underneath the IME. Keep input registration
+  and keyboard positioning in the shared frame.
 - Actions use Gorhom's measured footer and content inset, keeping the last row
   clear of the buttons. At font scales of 1.5 or more, viewports below 480 points,
   or measured action areas exceeding 40% of the maximum sheet height, actions
@@ -29,6 +37,10 @@ subject and exam-type selector.
   It supersedes DAY-392's fixed `medium` sizing while retaining long-content access.
 - `visible` is controlled state. A close followed immediately by a reopen is a
   valid transition; a stale native `onDismiss` must not close the new request.
+- A controlled replacement may opt into `dismissDurationMs` to shorten the
+  outgoing animation. Learning-time editing uses 120 ms before opening the time
+  picker. The replacement still waits for native `onDismiss`, never a timer;
+  ordinary close actions retain the default animation and reduced-motion handling.
 - Android date/time selection closes in the shared adapter. Callers do not add
   platform-specific close branches.
 - `dayova-ui/no-direct-overlay-primitives` rejects direct Gorhom primitives and

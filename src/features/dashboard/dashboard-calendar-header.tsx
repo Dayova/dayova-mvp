@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { View } from "react-native";
 import { Button } from "~/components/ui/button";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
@@ -9,9 +10,11 @@ import { cn } from "~/lib/utils";
 export function DashboardCalendarHeader({
 	selectedDate,
 	onToday,
+	createAction,
 }: {
 	selectedDate: Date;
 	onToday: () => void;
+	createAction?: ReactNode;
 }) {
 	const { shouldStackInlineContent } = useContentSizeLayout();
 	return (
@@ -34,19 +37,22 @@ export function DashboardCalendarHeader({
 					year: "numeric",
 				}).format(selectedDate)}
 			</Text>
-			<Button
-				variant="ghost"
-				className="min-h-9 border border-border bg-card px-3 py-1"
-				size="sm"
-				hitSlop={6}
-				onPress={onToday}
-				accessibilityLabel="Heute"
-				accessibilityHint="Zeigt den heutigen Tag und die aktuelle Woche an."
-			>
-				<Text className="font-normal text-body-3 text-text group-active:text-text dark:text-white dark:group-active:text-white">
-					Heute
-				</Text>
-			</Button>
+			<View className="shrink-0 flex-row items-center gap-2">
+				<Button
+					variant="ghost"
+					className="min-h-9 border border-border bg-card px-3 py-1"
+					size="sm"
+					hitSlop={6}
+					onPress={onToday}
+					accessibilityLabel="Heute"
+					accessibilityHint="Zeigt den heutigen Tag und die aktuelle Woche an."
+				>
+					<Text className="font-normal text-body-3 text-text group-active:text-text dark:text-white dark:group-active:text-white">
+						Heute
+					</Text>
+				</Button>
+				{createAction}
+			</View>
 		</View>
 	);
 }

@@ -71,7 +71,7 @@ test("subtracts active timetable lessons from learning-plan availability", async
 	});
 });
 
-test("does not report a learning window that has already started today", async () => {
+test("uses the remaining portion of a learning window today", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	await t.mutation(api.learningTimes.upsertMine, {
 		dayOfWeek: 2,
@@ -86,7 +86,7 @@ test("does not report a learning window that has already started today", async (
 			examDateKey: "2026-06-03",
 		}),
 	).resolves.toEqual({
-		availableStudyMinutes: 0,
-		status: "missing",
+		availableStudyMinutes: 59,
+		status: "available",
 	});
 });
