@@ -1,3 +1,4 @@
+import { LinearGradient } from "expo-linear-gradient";
 import {
 	type ComponentProps,
 	createContext,
@@ -5,7 +6,7 @@ import {
 	use,
 	useEffect,
 } from "react";
-import { Pressable, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import Animated, {
 	Easing,
 	interpolateColor,
@@ -24,7 +25,7 @@ import { cn } from "~/lib/utils";
 
 const SETTLE = { duration: 240, dampingRatio: 0.8 };
 const AnimatedText = Animated.createAnimatedComponent(Text);
-type Appearance = "card" | "pill" | "payment";
+type Appearance = "card" | "pill";
 type SelectionColors = {
 	background: string;
 	selectedBackground: string;
@@ -51,22 +52,6 @@ function useSelection() {
 	return selection;
 }
 
-// The branded payment surface deliberately stays light in both app themes.
-const PAYMENT_COLORS: SelectionColors = {
-	background: "rgba(255, 255, 255, 0.8)",
-	selectedBackground: "rgba(255, 255, 255, 0.8)",
-	border: "rgba(255, 255, 255, 0.6)",
-	selectedBorder: DAYOVA_DESIGN_SYSTEM.colors.text,
-	text: DAYOVA_DESIGN_SYSTEM.colors.text,
-	selectedText: DAYOVA_DESIGN_SYSTEM.colors.text,
-	indicator: DAYOVA_DESIGN_SYSTEM.colors.text,
-	onIndicator: DAYOVA_DESIGN_SYSTEM.colors.light1,
-	emptyIndicator: DAYOVA_DESIGN_SYSTEM.colors.light1,
-	indicatorBorder: DAYOVA_DESIGN_SYSTEM.colors.border,
-	badge: DAYOVA_DESIGN_SYSTEM.colors.light2,
-	badgeText: DAYOVA_DESIGN_SYSTEM.colors.secondaryText,
-};
-
 type SelectionControlProps = Omit<
 	ComponentProps<typeof Pressable>,
 	"children" | "style" | "accessibilityRole" | "onPressIn" | "onPressOut"
@@ -92,25 +77,20 @@ export function SelectionControl({
 }: SelectionControlProps) {
 	const disabled = Boolean(disabledProp);
 	const { colors: theme } = useDayovaTheme();
-	const colors: SelectionColors =
-		appearance === "payment"
-			? PAYMENT_COLORS
-			: {
-					background:
-						appearance === "pill" ? theme.systemSubtle : theme.surface,
-					selectedBackground:
-						appearance === "pill" ? theme.primary : theme.systemSubtle,
-					border: theme.border,
-					selectedBorder: theme.primary,
-					text: theme.text,
-					selectedText: appearance === "pill" ? theme.onPrimary : theme.text,
-					indicator: theme.primary,
-					onIndicator: theme.onPrimary,
-					emptyIndicator: "transparent",
-					indicatorBorder: theme.secondaryText,
-					badge: theme.light2,
-					badgeText: theme.secondaryText,
-				};
+	const colors: SelectionColors = {
+		background: appearance === "pill" ? theme.systemSubtle : theme.surface,
+		selectedBackground: appearance === "pill" ? theme.primary : theme.surface,
+		border: theme.border,
+		selectedBorder: theme.primary,
+		text: theme.text,
+		selectedText: appearance === "pill" ? theme.onPrimary : theme.text,
+		indicator: theme.primary,
+		onIndicator: theme.onPrimary,
+		emptyIndicator: "transparent",
+		indicatorBorder: theme.secondaryText,
+		badge: theme.light2,
+		badgeText: theme.secondaryText,
+	};
 	const reduceMotion = useReducedMotion();
 	const progress = useSharedValue(Number(selected));
 	const checkScale = useSharedValue(selected ? 1 : 0.6);
@@ -129,6 +109,7 @@ export function SelectionControl({
 	useEffect(() => {
 		if (disabled || reduceMotion) pressScale.set(1);
 	}, [disabled, pressScale, reduceMotion]);
+	const gradientStyle = useAnimatedStyle(() => ({ opacity: progress.get() }));
 	const surfaceStyle = useAnimatedStyle(() => ({
 		transform: [{ scale: pressScale.get() }],
 		backgroundColor: interpolateColor(
@@ -142,15 +123,6 @@ export function SelectionControl({
 			[colors.border, colors.selectedBorder],
 		),
 	}));
-	// Preserve the branded card's existing native inset highlight and selection shadow.
-	const paymentShadowStyle =
-		appearance === "payment"
-			? {
-					boxShadow: selected
-						? "inset 0 1px 0 rgba(255, 255, 255, 0.64), 0 8px 20px rgba(9, 54, 78, 0.1)"
-						: "inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 6px 16px rgba(9, 54, 78, 0.08)",
-				}
-			: undefined;
 	return (
 		<SelectionContext value={{ progress, checkScale, colors }}>
 			<Pressable
@@ -173,15 +145,33 @@ export function SelectionControl({
 			>
 				{/* Only the presentation scales; its outer native hit area stays fixed. */}
 				<Animated.View
-					style={[paymentShadowStyle, surfaceStyle]}
+					style={surfaceStyle}
 					className={cn(
-						"min-h-12 border",
+						"min-h-12 overflow-hidden border",
 						appearance === "pill"
 							? "items-center justify-center rounded-full"
 							: "rounded-[24px]",
 						contentClassName,
 					)}
 				>
+					{appearance === "pill" ? (
+						<Animated.View
+							pointerEvents="none"
+							style={[StyleSheet.absoluteFill, gradientStyle]}
+						>
+							<LinearGradient
+								testID="selection-gradient"
+								{...DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive}
+								style={StyleSheet.absoluteFill}
+							/>
+						</Animated.View>
+					) : (
+						<Animated.View
+							pointerEvents="none"
+							className="absolute inset-0 bg-accent"
+							style={gradientStyle}
+						/>
+					)}
 					{children}
 				</Animated.View>
 			</Pressable>
@@ -202,7 +192,8 @@ export function SelectionIndicator({
 	testID?: string;
 }) {
 	const { progress, checkScale, colors } = useSelection();
-	const resolvedCheckColor = checkColor ?? colors.onIndicator;
+	const resolvedCheckColor =
+		checkColor ?? (plain ? colors.onIndicator : "#FFFFFF");
 	const checkStyle = useAnimatedStyle(() => ({
 		opacity: progress.get(),
 		transform: [{ scale: checkScale.get() }],
@@ -242,9 +233,14 @@ export function SelectionIndicator({
 						style={ringStyle}
 					/>
 					<Animated.View
-						className="absolute h-6 w-6 items-center justify-center rounded-full"
+						className="absolute h-6 w-6 items-center justify-center overflow-hidden rounded-full"
 						style={[fillStyle, checkStyle]}
 					>
+						<LinearGradient
+							testID="selection-gradient"
+							{...DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive}
+							style={StyleSheet.absoluteFill}
+						/>
 						<Check size={14} color={resolvedCheckColor} strokeWidth={2.8} />
 					</Animated.View>
 				</>
@@ -271,12 +267,9 @@ export function SelectionText({
 
 export function SelectionBadge({ children }: { children: string }) {
 	const { progress, colors } = useSelection();
+	const gradientStyle = useAnimatedStyle(() => ({ opacity: progress.get() }));
 	const badgeStyle = useAnimatedStyle(() => ({
-		backgroundColor: interpolateColor(
-			progress.get(),
-			[0, 1],
-			[colors.badge, colors.indicator],
-		),
+		backgroundColor: colors.badge,
 	}));
 	const textStyle = useAnimatedStyle(() => ({
 		color: interpolateColor(
@@ -288,9 +281,19 @@ export function SelectionBadge({ children }: { children: string }) {
 	return (
 		<Animated.View
 			accessible={false}
-			className="h-8 w-8 shrink-0 items-center justify-center rounded-xl"
+			className="min-h-9 min-w-9 shrink-0 items-center justify-center overflow-hidden rounded-full px-2 py-1"
 			style={badgeStyle}
 		>
+			<Animated.View
+				pointerEvents="none"
+				style={[StyleSheet.absoluteFill, gradientStyle]}
+			>
+				<LinearGradient
+					testID="selection-gradient"
+					{...DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive}
+					style={StyleSheet.absoluteFill}
+				/>
+			</Animated.View>
 			<AnimatedText
 				className="font-poppins font-semibold text-body-4"
 				style={textStyle}

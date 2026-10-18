@@ -42,8 +42,8 @@ export default function AppLayout() {
 				disableAutomaticContentInsets
 			>
 				<NativeTabs.Trigger.Icon
-					md={{ default: "home", selected: "home" }}
-					sf={{ default: "house", selected: "house.fill" }}
+					md="event_available"
+					sf="calendar.badge.checkmark"
 				/>
 				<NativeTabs.Trigger.Label>Heute</NativeTabs.Trigger.Label>
 			</NativeTabs.Trigger>

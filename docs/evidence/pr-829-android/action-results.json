@@ -1,0 +1,37 @@
+[
+  {
+    "seconds": 4.773,
+    "scenario": "Edit opens only editor",
+    "pass": true,
+    "state": {
+      "events": [
+        {
+          "route": "learning-plans/new",
+          "time": 1791300195042
+        }
+      ],
+      "pathname": "/learning-plans/new",
+      "route": "learning-plans/new"
+    }
+  },
+  {
+    "seconds": 13.092,
+    "scenario": "Delete opens confirmation without navigation",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  },
+  {
+    "seconds": 21.668,
+    "scenario": "Cancel retains overview",
+    "pass": true,
+    "state": {
+      "events": [],
+      "pathname": "/learning-plans",
+      "route": "learning-plans"
+    }
+  }
+]

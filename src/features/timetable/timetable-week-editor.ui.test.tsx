@@ -9,7 +9,9 @@ jest.mock("~/components/ui/icon", () => {
 
 	return {
 		ArrowLeft: Icon,
+		BookOpen: Icon,
 		CalendarDays: Icon,
+		ChevronDown: Icon,
 		Clock3: Icon,
 		Trash2: Icon,
 	};
@@ -59,6 +61,7 @@ const renderEditor = async (selectedDay = 1) => {
 		onRemoveLesson: jest.fn(),
 		onOpenTime: jest.fn(),
 		onOpenDayPicker: jest.fn(),
+		onOpenSubjectPicker: jest.fn(),
 	};
 	const screen = await render(
 		<TimetableWeekEditor
@@ -80,8 +83,8 @@ describe("TimetableWeekEditor", () => {
 			name: "Dienstag, 1 Stunde",
 		});
 
-		expect(monday).toBeChecked();
-		expect(tuesday).not.toBeChecked();
+		expect(monday.props.accessibilityState).toMatchObject({ checked: true });
+		expect(tuesday.props.accessibilityState).toMatchObject({ checked: false });
 
 		await fireEvent.press(tuesday);
 		expect(callbacks.onSelectedDayChange).toHaveBeenCalledWith(2);

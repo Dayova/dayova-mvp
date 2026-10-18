@@ -19,7 +19,7 @@ export function ChoiceList({
 	disabled: boolean;
 }) {
 	return (
-		<View className="mt-5 gap-2" accessibilityRole="radiogroup">
+		<View className="mt-5 gap-3" accessibilityRole="radiogroup">
 			{item.choices.map((choice, index) => (
 				<ChoiceCard
 					key={`${item.id}:${choice.id}`}
@@ -53,10 +53,10 @@ function ChoiceCard({
 			disabled={disabled}
 			accessibilityLabel={`${label}. ${text}`}
 			onPress={onSelect}
-			contentClassName="min-h-14 flex-row items-center gap-3 border-hairline px-4 py-3 shadow-black/5 shadow-sm"
+			contentClassName="min-h-16 flex-row items-center gap-4 rounded-3xl px-5 py-3"
 		>
 			<SelectionBadge>{label}</SelectionBadge>
-			<Text className="flex-1 font-poppins text-body-3 text-text">{text}</Text>
+			<Text className="flex-1 font-poppins text-body-2 text-text">{text}</Text>
 			<SelectionIndicator />
 		</SelectionControl>
 	);

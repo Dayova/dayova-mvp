@@ -1,3 +1,4 @@
+import migrations from "@convex-dev/migrations/convex.config";
 import convexFilesControl from "@gilhrpenner/convex-files-control/convex.config";
 import { defineApp } from "convex/server";
 import { v } from "convex/values";
@@ -15,5 +16,6 @@ const app = defineApp({
 });
 
 app.use(convexFilesControl);
+app.use(migrations);
 
 export default app;

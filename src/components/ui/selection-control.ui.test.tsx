@@ -41,7 +41,7 @@ jest.mock("~/lib/theme", () => ({
 	}),
 }));
 
-type Appearance = "card" | "pill" | "payment";
+type Appearance = "card" | "pill";
 function Choices({
 	appearance,
 	disabled = false,
@@ -79,11 +79,11 @@ beforeEach(() => {
 	jest.clearAllMocks();
 });
 
-test("renders a white check on the selected primary indicator", async () => {
+test("renders a white check inside the selected blue circle", async () => {
 	const screen = await render(
 		<SelectionControl selected accessibilityLabel="Test" onPress={jest.fn()}>
 			<SelectionText>Test</SelectionText>
-			<SelectionIndicator checkColor="#FFFFFF" />
+			<SelectionIndicator />
 		</SelectionControl>,
 	);
 	expect(
@@ -92,11 +92,7 @@ test("renders a white check on the selected primary indicator", async () => {
 	).toBe("#FFFFFF");
 });
 
-describe.each<Appearance>([
-	"card",
-	"pill",
-	"payment",
-])("%s selection", (appearance) => {
+describe.each<Appearance>(["card", "pill"])("%s selection", (appearance) => {
 	test("keeps one checked choice during rapid changes without waiting for motion", async () => {
 		const onSelect = jest.fn();
 		const screen = await render(

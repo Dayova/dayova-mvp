@@ -3,12 +3,20 @@ import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import { SubscriptionScreen } from "./subscription-screen";
 
+jest.mock("~/lib/theme", () => ({
+	useDayovaTheme: () => ({ colors: { text: "#1A1A1A" } }),
+}));
+
 jest.mock("~/components/ui/icon", () => ({
 	ArrowLeft: () => null,
 	Check: () => null,
 }));
 
 const mockBack = jest.fn();
+const mockTrackFeature = jest.fn();
+jest.mock("~/lib/use-feature-analytics", () => ({
+	useFeatureAnalytics: () => mockTrackFeature,
+}));
 const mockOpenExternalUrl = jest.fn(async (_url?: string) => true);
 
 jest.mock("~/lib/open-external-url", () => ({
@@ -41,7 +49,9 @@ const storePlans = [
 	},
 ];
 const mockGetPlans = jest.fn(async () => storePlans);
-const mockPurchase = jest.fn(async () => ({ status: "purchased" as const }));
+const mockPurchase = jest.fn<
+	() => Promise<{ status: "purchased" | "cancelled" | "notEntitled" }>
+>(async () => ({ status: "purchased" }));
 const mockRestore = jest.fn(async () => ({ status: "purchased" as const }));
 const mockRefreshPaidAccess = jest.fn(async () => true);
 let mockCanGoBack = true;
@@ -120,6 +130,46 @@ jest.mock("~/lib/runtime-config", () => ({
 }));
 
 describe("SubscriptionScreen", () => {
+	test("keeps all footer destinations actionable with the shared link layout", async () => {
+		const screen = await render(<SubscriptionScreen />);
+		await waitFor(() => expect(mockGetPlans).toHaveBeenCalledTimes(1));
+		for (const [name, url] of [
+			["Datenschutz", "https://dayova.com/privacy"],
+			["Nutzungsbedingungen", "https://dayova.com/terms"],
+			["Abo-Bedingungen", "https://dayova.com/subscription-terms"],
+		]) {
+			await fireEvent.press(screen.getByRole("link", { name }));
+			expect(mockOpenExternalUrl).toHaveBeenLastCalledWith(url);
+		}
+		await fireEvent.press(screen.getByRole("button", { name: "Support" }));
+		expect(mockOpenExternalUrl).toHaveBeenLastCalledWith(
+			expect.stringContaining("mailto:kontakt@dayova.de?"),
+		);
+	});
+
+	test("keeps footer Support locked while opening contact", async () => {
+		let finish!: (opened: boolean) => void;
+		mockOpenExternalUrl.mockImplementationOnce(
+			() =>
+				new Promise<boolean>((resolve) => {
+					finish = resolve;
+				}),
+		);
+		const screen = await render(<SubscriptionScreen />);
+		await waitFor(() => expect(mockGetPlans).toHaveBeenCalledTimes(1));
+		await fireEvent.press(screen.getByRole("button", { name: "Support" }));
+		const support = screen.getByRole("button", { name: "Support" });
+		expect(support).toBeDisabled();
+		expect(support).toHaveProp(
+			"accessibilityState",
+			expect.objectContaining({ busy: true }),
+		);
+		await fireEvent.press(support);
+		expect(mockOpenExternalUrl).toHaveBeenCalledTimes(1);
+		await act(() => finish(true));
+		await waitFor(() => expect(support).not.toBeDisabled());
+	});
+
 	test.each([
 		"failed",
 		"empty",
@@ -139,23 +189,6 @@ describe("SubscriptionScreen", () => {
 		expect(
 			decodeURIComponent(mockOpenExternalUrl.mock.calls[0][0] ?? ""),
 		).toContain("Bereich: Abonnement");
-	});
-
-	test("keeps every footer destination actionable after layout changes", async () => {
-		const screen = await render(<SubscriptionScreen />);
-		await waitFor(() => expect(mockGetPlans).toHaveBeenCalledTimes(1));
-		for (const [name, url] of [
-			["Datenschutz", "https://dayova.com/privacy"],
-			["Nutzungsbedingungen", "https://dayova.com/terms"],
-			["Abo-Bedingungen", "https://dayova.com/subscription-terms"],
-		]) {
-			await fireEvent.press(screen.getByRole("link", { name }));
-			expect(mockOpenExternalUrl).toHaveBeenLastCalledWith(url);
-		}
-		await fireEvent.press(screen.getByRole("button", { name: "Support" }));
-		expect(mockOpenExternalUrl).toHaveBeenLastCalledWith(
-			expect.stringContaining("mailto:kontakt@dayova.de?"),
-		);
 	});
 
 	test("shows only localized Store plans and complete billing amounts", async () => {
@@ -195,9 +228,50 @@ describe("SubscriptionScreen", () => {
 
 		await waitFor(() => {
 			expect(mockPurchase).toHaveBeenCalledWith("annual");
+			expect(mockTrackFeature).toHaveBeenCalledWith(
+				"subscription.checkout",
+				"attempted",
+				undefined,
+				"annual",
+			);
+			expect(mockTrackFeature).toHaveBeenCalledWith(
+				"subscription.checkout",
+				"succeeded",
+				undefined,
+				"annual",
+			);
 			expect(mockRefreshPaidAccess).toHaveBeenCalledTimes(1);
 			expect(mockReplace).toHaveBeenCalledWith("/subscription-success");
 		});
+	});
+
+	test("records cancellation without reporting a successful purchase", async () => {
+		mockPurchase.mockResolvedValue({ status: "cancelled" });
+		const screen = await render(<SubscriptionScreen />);
+		await screen.findByRole("radio", { name: /Jährlich, 155,88 €/ });
+		await act(async () =>
+			fireEvent.press(screen.getByTestId("subscription-checkout-button")),
+		);
+		expect(mockTrackFeature.mock.calls).toEqual([
+			["subscription.checkout", "attempted", undefined, "monthly"],
+			["subscription.checkout", "cancelled", undefined, "monthly"],
+		]);
+		expect(mockRefreshPaidAccess).not.toHaveBeenCalled();
+	});
+	test("keeps unconfirmed access pending instead of claiming paid conversion", async () => {
+		mockRefreshPaidAccess.mockResolvedValue(false);
+		const screen = await render(<SubscriptionScreen />);
+		await screen.findByRole("radio", { name: /Jährlich, 155,88 €/ });
+		await act(async () =>
+			fireEvent.press(screen.getByTestId("subscription-checkout-button")),
+		);
+		expect(mockTrackFeature).toHaveBeenLastCalledWith(
+			"subscription.checkout",
+			"pending",
+			undefined,
+			"monthly",
+		);
+		expect(mockReplace).not.toHaveBeenCalled();
 	});
 
 	test("restores existing purchases without replaying the welcome screen", async () => {
@@ -262,15 +336,3 @@ describe("SubscriptionScreen", () => {
 		).toBeOnTheScreen();
 	});
 });
-
-jest.mock("react-native-reanimated", () =>
-	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
-);
-
-jest.mock("~/lib/theme", () => ({
-	useDayovaTheme: () => ({
-		colors: jest.requireActual<typeof import("~/lib/design-system")>(
-			"~/lib/design-system",
-		).DAYOVA_DESIGN_SYSTEM.colors,
-	}),
-}));

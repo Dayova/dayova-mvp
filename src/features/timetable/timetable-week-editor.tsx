@@ -2,14 +2,20 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
 	type NativeScrollEvent,
 	type NativeSyntheticEvent,
-	Pressable,
 	ScrollView,
 	type TextStyle,
 	View,
 	type ViewStyle,
 } from "react-native";
 import { Button } from "~/components/ui/button";
-import { CalendarDays, Clock3, Trash2 } from "~/components/ui/icon";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
+import {
+	BookOpen,
+	CalendarDays,
+	ChevronDown,
+	Clock3,
+	Trash2,
+} from "~/components/ui/icon";
 import { Input } from "~/components/ui/input";
 import {
 	SelectionControl,
@@ -22,6 +28,7 @@ import {
 	type TimetableLessonDraft,
 } from "~/features/timetable/timetable-editor";
 import { useDayovaTheme } from "~/lib/theme";
+import { cn } from "~/lib/utils";
 
 // These are native rendering controls with no NativeWind equivalent.
 const continuousBorderStyle = {
@@ -44,6 +51,7 @@ type TimetableWeekEditorProps = {
 	onRemoveLesson: (lessonKey: string) => void;
 	onOpenTime: (lessonKey: string, field: "startTime" | "endTime") => void;
 	onOpenDayPicker: (lessonKey: string) => void;
+	onOpenSubjectPicker: (lessonKey: string) => void;
 };
 
 function TimeButton({
@@ -62,7 +70,7 @@ function TimeButton({
 			<Text className="mb-1 font-poppins text-body-5 text-secondary-text">
 				{label}
 			</Text>
-			<Pressable
+			<FeedbackPressable
 				accessibilityLabel={`${label}: ${value}`}
 				accessibilityRole="button"
 				className="h-12 flex-row items-center justify-between rounded-2xl bg-muted px-4 active:opacity-75"
@@ -75,7 +83,7 @@ function TimeButton({
 					{value}
 				</Text>
 				<Clock3 size={17} color={colors.secondaryText} strokeWidth={2} />
-			</Pressable>
+			</FeedbackPressable>
 		</View>
 	);
 }
@@ -87,6 +95,7 @@ function LessonEditorCard({
 	onRemove,
 	onOpenTime,
 	onOpenDayPicker,
+	onOpenSubjectPicker,
 }: {
 	lesson: TimetableLessonDraft;
 	position: number;
@@ -94,6 +103,7 @@ function LessonEditorCard({
 	onRemove: () => void;
 	onOpenTime: (field: "startTime" | "endTime") => void;
 	onOpenDayPicker: () => void;
+	onOpenSubjectPicker: () => void;
 }) {
 	const { colors } = useDayovaTheme();
 	const weekday =
@@ -111,7 +121,7 @@ function LessonEditorCard({
 					{position}. Stunde
 				</Text>
 				<View className="flex-row gap-2">
-					<Pressable
+					<FeedbackPressable
 						accessibilityLabel={`Wochentag für ${lessonLabel} ändern. Aktuell ${weekday.label}`}
 						accessibilityRole="button"
 						hitSlop={4}
@@ -126,8 +136,8 @@ function LessonEditorCard({
 						<Text className="font-poppins font-semibold text-body-4 text-secondary-text">
 							{weekday.shortLabel}
 						</Text>
-					</Pressable>
-					<Pressable
+					</FeedbackPressable>
+					<FeedbackPressable
 						accessibilityLabel={`${lessonLabel} entfernen`}
 						accessibilityRole="button"
 						hitSlop={4}
@@ -135,20 +145,32 @@ function LessonEditorCard({
 						onPress={onRemove}
 					>
 						<Trash2 size={18} color={colors.wrong} strokeWidth={2} />
-					</Pressable>
+					</FeedbackPressable>
 				</View>
 			</View>
 
-			<View className="mt-4 h-14 justify-center rounded-2xl bg-muted px-4">
-				<Input
-					accessibilityLabel="Unterrichtsfach"
-					autoCapitalize="words"
-					maxLength={80}
-					placeholder="Fach, z. B. Mathematik"
-					value={lesson.subject}
-					onChangeText={(subject) => onChange({ subject })}
-				/>
-			</View>
+			<FeedbackPressable
+				accessibilityLabel={
+					lesson.subject
+						? `Unterrichtsfach ändern. Aktuell ${lesson.subject}`
+						: "Unterrichtsfach auswählen"
+				}
+				accessibilityRole="button"
+				className="mt-4 h-14 flex-row items-center rounded-2xl bg-muted px-4 active:opacity-75"
+				onPress={onOpenSubjectPicker}
+			>
+				<BookOpen size={19} color={colors.secondaryText} strokeWidth={2} />
+				<Text
+					className={cn(
+						"ml-3 flex-1 font-poppins text-body-2",
+						lesson.subject ? "text-text" : "text-secondary-text",
+					)}
+					numberOfLines={1}
+				>
+					{lesson.subject || "Fach auswählen"}
+				</Text>
+				<ChevronDown size={18} color={colors.secondaryText} strokeWidth={2} />
+			</FeedbackPressable>
 			<View className="mt-3 h-14 justify-center rounded-2xl bg-muted px-4">
 				<Input
 					accessibilityLabel="Raum, optional"
@@ -185,6 +207,7 @@ function TimetableWeekEditor({
 	onRemoveLesson,
 	onOpenTime,
 	onOpenDayPicker,
+	onOpenSubjectPicker,
 }: TimetableWeekEditorProps) {
 	const lessonPagerRef = useRef<ScrollView>(null);
 	const shouldAnimateLessonScrollRef = useRef(false);
@@ -255,7 +278,7 @@ function TimetableWeekEditor({
 		<View className="gap-4">
 			<View
 				accessibilityLabel="Wochentag auswählen"
-				className="flex-row justify-between gap-1"
+				className="flex-row flex-wrap justify-between gap-1"
 			>
 				{lessonsByDay.map((day) => {
 					const selected = day.value === selectedDay;
@@ -267,7 +290,7 @@ function TimetableWeekEditor({
 							selected={selected}
 							appearance="pill"
 							accessibilityLabel={`${day.label}, ${lessonCount} ${lessonCount === 1 ? "Stunde" : "Stunden"}`}
-							contentClassName="min-h-11 min-w-11 border-0"
+							contentClassName="min-h-11 min-w-11 px-2 py-3"
 							onPress={() => onSelectedDayChange(day.value)}
 						>
 							<SelectionText className="font-poppins font-semibold text-body-4">
@@ -338,6 +361,7 @@ function TimetableWeekEditor({
 									onRemove={() => onRemoveLesson(lesson.key)}
 									onOpenTime={(field) => onOpenTime(lesson.key, field)}
 									onOpenDayPicker={() => onOpenDayPicker(lesson.key)}
+									onOpenSubjectPicker={() => onOpenSubjectPicker(lesson.key)}
 								/>
 							</View>
 						))}
