@@ -1,9 +1,9 @@
-export const GOVERNANCE_SCHEMA_VERSION = 1;
-export const GOVERNANCE_REVIEW_DATE = "2026-08-09";
+const GOVERNANCE_SCHEMA_VERSION = 1;
+const GOVERNANCE_REVIEW_DATE = "2026-08-09";
 export const DAYOVA_REPOSITORY_SOURCE = "dayova/dayova-mvp";
-export const AGENT_SYSTEM_OWNER = "Jakob Rössner";
+const AGENT_SYSTEM_OWNER = "Jakob Rössner";
 
-export const canonicalSurfaces = {
+const canonicalSurfaces = {
 	knowledge: {
 		name: "Notion",
 		url: "https://app.notion.com/p/3b42e87228bf816e9343c3fc33fa73ca",
