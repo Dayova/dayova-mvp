@@ -176,6 +176,9 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 						{/* Native sessions persist by default; there is no per-login opt-out.
 						    Decision: https://app.notion.com/p/3a02e87228bf81bf9f65f6214759a770 */}
 						<ClerkProvider
+							// Dayova renders custom JS auth screens. Clerk 4 exposes this
+							// switch instead of the old TurboModule startup workaround.
+							__experimental_disableNativeClientSync
 							publishableKey={
 								env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? ""
 							}

@@ -17,11 +17,10 @@ appId: ${APP_ID}
           visible: Development Build
           timeout: 60000
       - openLink:
-          # iOS reads the inner server URL; keep the outer flag for Android compatibility.
+          # SDK 58's launch contract disables developer onboarding and overlays.
           link: >-
-            ${'exp+dayova://expo-development-client/?url=' +
-            encodeURIComponent(DEV_SERVER_URL + (DEV_SERVER_URL.indexOf('?') == -1 ? '?' : '&') +
-            'disableOnboarding=1') + '&disableOnboarding=1'}
+            ${'exp+dayova://?__expo_url=' + encodeURIComponent(DEV_SERVER_URL) +
+            '&__expo_disable_onboarding=1&__expo_disable_fab=1&__expo_disable_auto_launch=1'}
       # iOS can require confirmation on the first custom-scheme launch.
       - runFlow:
           when:
@@ -29,9 +28,9 @@ appId: ${APP_ID}
           commands:
             - tapOn: Open
       - extendedWaitUntil:
-          visible: 'Login|Reload'
+          visible: "Login|Reload"
           timeout: 60000
-      # SDK 57 can show the developer menu even with onboarding disabled.
+      # Dismiss a developer menu if the client still presents one.
       # Android dismisses this modal with Back; iOS exposes a Close control.
       - runFlow:
           when:
@@ -59,11 +58,33 @@ appId: ${APP_ID}
 - runFlow:
     when:
       true: ${typeof DEV_SERVER_URL != 'undefined' && DEV_SERVER_URL != ''}
-      visible: "(!, )?You must pass your PostHog project's api key[.] The client will be disabled[.]"
+      visible: "(?s)(!, )?You must pass your PostHog project's api key[.]\\s*The client will be disabled[.]"
     commands:
-      - tapOn: "(!, )?You must pass your PostHog project's api key[.] The client will be disabled[.]"
-      - assertVisible: "(!, )?You must pass your PostHog project's api key[.] The client will be disabled[.]"
-      - tapOn: Dismiss
+      - runFlow:
+          when:
+            platform: Android
+          commands:
+            - tapOn:
+                containsChild:
+                  text: "(?s)(!, )?You must pass your PostHog project's api key[.]\\s*The client will be disabled[.]"
+                # Close this notification directly; the Android SDK 58 LogBox
+                # details screen can be blank. The close control is at its end.
+                point: "99%,50%"
+      - runFlow:
+          when:
+            platform: iOS
+          commands:
+            - runFlow:
+                when:
+                  notVisible: Dismiss
+                commands:
+                  - tapOn: "(?s)(!, )?You must pass your PostHog project's api key[.]\\s*The client will be disabled[.]"
+            - assertVisible: Dismiss
+            # Keep the hit inside the label's upper area, above the safe area.
+            - tapOn:
+                text: Dismiss
+                point: "50%,10%"
+      - assertNotVisible: "(?s)(!, )?You must pass your PostHog project's api key[.]\\s*The client will be disabled[.]"
 # The welcome controls become accessible before their entrance animation settles.
 - waitForAnimationToEnd:
     timeout: 5000

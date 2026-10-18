@@ -2,7 +2,13 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { type RefObject, useRef, useState } from "react";
-import { Keyboard, ScrollView, StyleSheet, View } from "react-native";
+import {
+	Keyboard,
+	ScrollView,
+	StyleSheet,
+	View,
+	type ViewInstance,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AccountDeletionPasswordField } from "~/components/ui/account-deletion-password-field";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
@@ -47,7 +53,7 @@ export function PaywallScreen() {
 	const [error, setError] = useState<string | null>(null);
 	const [showSubscriptionManagement, setShowSubscriptionManagement] =
 		useState(false);
-	const subscriptionManagementLinkRef = useRef<View>(null);
+	const subscriptionManagementLinkRef = useRef<ViewInstance>(null);
 	const pendingManagementActionRef = useRef<"delete" | "switch" | null>(null);
 	const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 	const [isDeletingAccount, setIsDeletingAccount] = useState(false);
@@ -383,7 +389,7 @@ function LegalLink({
 	onPress,
 	url,
 }: {
-	buttonRef?: RefObject<View | null>;
+	buttonRef?: RefObject<ViewInstance | null>;
 	label: string;
 	onOpen?: (url?: string) => Promise<void>;
 	onPress?: () => void;
