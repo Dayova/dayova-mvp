@@ -1,4 +1,5 @@
-import { View } from "react-native";
+import * as Haptics from "expo-haptics";
+import { Platform, View } from "react-native";
 import type { Check } from "~/components/ui/icon";
 import {
 	SelectionControl,
@@ -6,6 +7,7 @@ import {
 	SelectionText,
 } from "~/components/ui/selection-control";
 import { Text } from "~/components/ui/text";
+import { triggerSelectionHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
@@ -44,7 +46,15 @@ export function SelectionOptionRow({
 			disabled={disabled}
 			className={className}
 			contentClassName="min-h-16 flex-row items-center gap-4 rounded-3xl px-5 py-3"
-			onPress={onPress}
+			onPress={() => {
+				if (!selected) {
+					void triggerSelectionHaptic({
+						platform: Platform.OS,
+						selectionAsync: Haptics.selectionAsync,
+					});
+				}
+				onPress();
+			}}
 		>
 			{Icon ? (
 				<View

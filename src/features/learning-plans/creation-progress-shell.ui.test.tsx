@@ -60,6 +60,7 @@ jest.mock("~/lib/theme", () => ({
 }));
 
 function Step(props: {
+	active?: boolean;
 	onBack: () => void;
 	onClose: () => void;
 	closeDisabled?: boolean;
@@ -104,4 +105,31 @@ test("routes the visible back and close controls to the current step and retains
 	expect(screen.getByRole("button", { name: "Schließen" })).toBeDisabled();
 	await fireEvent.press(screen.getByRole("button", { name: "Schließen" }));
 	expect(nextClose).toHaveBeenCalledTimes(1);
+});
+
+test("hides the creation header for preparation and restores it for the next form step", async () => {
+	const onBack = jest.fn();
+	const onClose = jest.fn();
+	const screen = await render(
+		<LearningPlanCreationProgressShell>
+			<Step onBack={onBack} onClose={onClose} />
+		</LearningPlanCreationProgressShell>,
+	);
+	expect(screen.getByRole("progressbar")).toBeTruthy();
+	await screen.rerender(
+		<LearningPlanCreationProgressShell>
+			<Step active={false} onBack={onBack} onClose={onClose} />
+		</LearningPlanCreationProgressShell>,
+	);
+	expect(screen.queryByRole("progressbar")).toBeNull();
+	expect(screen.queryByRole("button", { name: "Zurück" })).toBeNull();
+	expect(screen.queryByRole("button", { name: "Schließen" })).toBeNull();
+	await screen.rerender(
+		<LearningPlanCreationProgressShell>
+			<Step onBack={onBack} onClose={onClose} />
+		</LearningPlanCreationProgressShell>,
+	);
+	expect(screen.getByRole("progressbar")).toBeTruthy();
+	expect(screen.getByRole("button", { name: "Zurück" })).toBeTruthy();
+	expect(screen.getByRole("button", { name: "Schließen" })).toBeTruthy();
 });

@@ -5,7 +5,7 @@ describe("learning plan creation overview", () => {
 	test.each([
 		["draft", true, undefined, "Schulmaterial fehlt"],
 		["draft", false, undefined, "Schulmaterial gespeichert"],
-		["questionsReady", false, undefined, "Prüfungsstoff bestätigen"],
+		["questionsReady", false, undefined, "Lernweg wird vorbereitet"],
 		["questionsReady", false, 1, "Lernweg wird vorbereitet"],
 		["generated", false, 1, "Lernweg prüfen"],
 	] as const)("presents %s plans as resumable creation work", (status, needsSchoolMaterial, scopeConfirmedAt, progressLabel) => {
