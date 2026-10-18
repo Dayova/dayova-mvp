@@ -23,6 +23,11 @@ _Avoid_: User-facing message, learner error text
 
 ## CI Quality Gate
 
+Decision rationale, acceptance, and the associated cleanup/verification scope
+live in the [canonical Notion decision record](https://app.notion.com/p/3fd2e87228bf81f98b45f94017f0079d).
+The [code-facing reference](adr/0001-enforce-repository-checks-and-limit-typed-linting.md)
+links the historical stacked-PR CI evidence.
+
 `.eas/workflows/ci.yml` uses one `checks` job, displayed as
 `Lint, typecheck, and test`, for trusted pull requests, manual runs, and pushes
 to `main`. Formatting, lint, unused code/dependencies, repository skill validation,
