@@ -71,7 +71,15 @@ describe("dashboard agenda", () => {
 			selectedDayKey: "2026-08-12",
 			todayKey: "2026-09-29",
 		});
-		for (const key of getDashboardWeekDayKeys("2026-08-12"))
+		for (const key of [
+			"2026-08-10",
+			"2026-08-11",
+			"2026-08-12",
+			"2026-08-13",
+			"2026-08-14",
+			"2026-08-15",
+			"2026-08-16",
+		])
 			expect(keys).toContain(key);
 		expect(keys.length).toBeLessThanOrEqual(31);
 	});

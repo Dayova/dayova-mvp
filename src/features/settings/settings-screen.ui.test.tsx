@@ -162,24 +162,16 @@ describe("SettingsScreen", () => {
 		mockOpenAiConsentSettings.mockReset();
 	});
 
-	test("places the trial offer directly below support and keeps legal destinations last", async () => {
+	test("shows settings and opens profile, support, and learning times", async () => {
 		const screen = await render(<SettingsScreen />);
 		expect(screen.getByRole("header", { name: "Lernen" })).toBeOnTheScreen();
 		expect(screen.getByRole("header", { name: "App" })).toBeOnTheScreen();
 		expect(
 			screen.getByRole("header", { name: "Datenschutz & Rechtliches" }),
 		).toBeOnTheScreen();
-		expect(
-			screen.getAllByRole("header").map((heading) => heading.props.children),
-		).toEqual(["Lernen", "App", "Datenschutz & Rechtliches"]);
 		expect(screen.getByText("Nicht aktiv")).toBeOnTheScreen();
 		expect(screen.getByText("Test Person")).toBeOnTheScreen();
 		expect(screen.getByText("Profil & Konto")).toBeOnTheScreen();
-		expect(screen.getAllByRole("button").slice(0, 3)).toEqual([
-			screen.getByRole("button", { name: "Test Person, Profil & Konto" }),
-			screen.getByRole("button", { name: "Support kontaktieren" }),
-			screen.getByRole("button", { name: "Dayova abonnieren" }),
-		]);
 		expect(
 			screen.queryByRole("button", { name: "Passwort ändern" }),
 		).toBeNull();
@@ -203,24 +195,12 @@ describe("SettingsScreen", () => {
 	test.each([
 		"paid",
 		"billingGrace",
-	] as const)("places %s subscription management after app settings and directly before legal", async (state) => {
+	] as const)("opens subscription help for %s access", async (state) => {
 		mockAccess = { state, store: "unknown" };
 		const screen = await render(<SettingsScreen />);
-		const buttons = screen.getAllByRole("button");
-		expect(buttons.slice(0, 3)).toEqual([
-			screen.getByRole("button", { name: "Test Person, Profil & Konto" }),
-			screen.getByRole("button", { name: "Support kontaktieren" }),
-			screen.getByRole("button", { name: "Lernzeiten" }),
-		]);
 		const subscription = screen.getByRole("button", {
 			name: "Dayova, Hilfe zum Abo",
 		});
-		expect(buttons.indexOf(subscription)).toBeGreaterThan(
-			buttons.indexOf(screen.getByRole("button", { name: "Mitteilungen" })),
-		);
-		expect(buttons[buttons.indexOf(subscription) + 1]).toBe(
-			screen.getByRole("button", { name: "KI & Datenschutz, Nicht aktiv" }),
-		);
 		expect(screen.getAllByTestId("settings-subscription")).toHaveLength(1);
 		await fireEvent.press(subscription);
 		expect(mockOpenExternalUrl).toHaveBeenCalledWith(

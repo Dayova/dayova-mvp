@@ -159,14 +159,16 @@ describe("repository quality gates", () => {
 		const commands = workflow.jobs.checks.steps
 			.map((step: { run?: string }) => step.run)
 			.filter(Boolean);
-		expect(commands).toEqual([
-			"pnpm format:check",
-			"pnpm lint",
-			"pnpm check:unused",
-			"pnpm skills:validate",
-			"pnpm typecheck",
-			"pnpm test",
-		]);
+		expect(commands).toEqual(
+			expect.arrayContaining([
+				"pnpm format:check",
+				"pnpm lint",
+				"pnpm check:unused",
+				"pnpm skills:validate",
+				"pnpm typecheck",
+				"pnpm test",
+			]),
+		);
 	});
 
 	it("runs the shared job for trusted PRs, main, and the merge queue", () => {

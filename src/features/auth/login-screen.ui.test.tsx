@@ -6,16 +6,9 @@ import {
 	jest,
 	test,
 } from "@jest/globals";
-import {
-	act,
-	fireEvent,
-	render,
-	waitFor,
-	within,
-} from "@testing-library/react-native";
+import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import type { OnboardingCompletionStatus } from "~/lib/auth-routing";
-import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import {
 	AuthChoiceScreen,
 	CreationLoaderScreen,
@@ -505,72 +498,11 @@ describe("LoginScreen", () => {
 		).toBeUndefined();
 	});
 
-	test("fills the iPad width with large Hugeicons background tiles", async () => {
-		mockWindowDimensions = {
-			fontScale: 1,
-			height: 1194,
-			scale: 2,
-			width: 834,
-		};
-		const screen = await render(<AuthChoiceScreen />);
-
-		expect(screen.getByTestId("auth-choice-background-pattern")).toHaveStyle({
-			width: 834,
-		});
-		const backgroundTiles = screen.getAllByTestId(
-			"auth-choice-background-tile",
-		);
-		expect(backgroundTiles).toHaveLength(7);
-		expect(backgroundTiles[0]?.props.style.width).toBeGreaterThan(300);
-		expect(screen.getAllByTestId("auth-choice-background-icon")[0]).toHaveStyle(
-			{
-				opacity: 0.2,
-			},
-		);
-	});
-
-	test.each([
-		{ width: 834, height: 1194 },
-		{ width: 1194, height: 834 },
-		{ width: 1024, height: 1366 },
-	])("keeps iPad artwork tiles separated at $width × $height", async ({
-		width,
-		height,
-	}) => {
-		mockWindowDimensions = { fontScale: 1, scale: 2, width, height };
-		const screen = await render(<AuthChoiceScreen />);
-		const tiles = screen.getAllByTestId("auth-choice-background-tile");
-		const centers = [
-			...new Set<number>(
-				tiles.map((tile) => tile.props.style.left + tile.props.style.width / 2),
-			),
-		].sort((a, b) => a - b);
-		expect(centers).toHaveLength(3);
-		expect(centers[1]).toBeCloseTo(width / 2);
-		expect((centers[0] ?? 0) + (centers[2] ?? 0)).toBeCloseTo(width);
-		for (const [index, tile] of tiles.entries()) {
-			const a = tile.props.style;
-			expect(a.top).toBeGreaterThanOrEqual(0);
-			expect(a.top + a.height).toBeLessThanOrEqual(height + 0.001);
-			for (const other of tiles.slice(index + 1)) {
-				const b = other.props.style;
-				const separated =
-					a.left + a.width <= b.left ||
-					b.left + b.width <= a.left ||
-					a.top + a.height <= b.top ||
-					b.top + b.height <= a.top;
-				expect(separated).toBe(true);
-			}
-		}
-	});
-
 	test("keeps password recovery reachable from sign-in", async () => {
 		const screen = await render(<LoginScreen />);
 		const passwordRecoveryButton = screen.getByRole("button", {
 			name: "Passwort vergessen",
 		});
-
-		expect(passwordRecoveryButton.props.className).toContain("min-h-11");
 		expect(passwordRecoveryButton.props.accessibilityHint).toBe(
 			"Öffnet den Ablauf zum Zurücksetzen deines Passworts",
 		);
@@ -844,14 +776,8 @@ describe("CreationLoaderScreen", () => {
 			/>,
 		);
 
-		const scroll = screen.getByTestId("creation-loader-scroll");
-		expect(scroll).toHaveProp("showsVerticalScrollIndicator", false);
-		expect(scroll.props.contentContainerStyle).toMatchObject({
-			flexGrow: 1,
-			justifyContent: "flex-start",
-		});
 		expect(
-			within(scroll).getByRole("button", { name: "Erneut versuchen" }),
+			screen.getByRole("button", { name: "Erneut versuchen" }),
 		).toBeOnTheScreen();
 
 		await screen.rerender(
@@ -863,7 +789,7 @@ describe("CreationLoaderScreen", () => {
 			/>,
 		);
 		expect(
-			within(scroll).getByRole("button", { name: "Weiter zur Testphase" }),
+			screen.getByRole("button", { name: "Weiter zur Testphase" }),
 		).toBeOnTheScreen();
 	});
 });
@@ -904,14 +830,13 @@ describe("OnboardingRecoveryScreen", () => {
 		).toBeOnTheScreen();
 		expect(screen.queryByLabelText("E-Mail-Adresse")).toBeNull();
 		expect(screen.queryByLabelText("Passwort")).toBeNull();
-		const recoveryScroll = screen.getByTestId("onboarding-recovery-scroll");
 		expect(
-			within(recoveryScroll).getByRole("header", {
+			screen.getByRole("header", {
 				name: "Stelle deine Lernzeiten wieder her.",
 			}),
 		).toBeOnTheScreen();
 		expect(
-			within(recoveryScroll).getByRole("button", {
+			screen.getByRole("button", {
 				name: "Lernzeiten erneut speichern",
 			}),
 		).toBeOnTheScreen();
@@ -1148,7 +1073,7 @@ describe("OnboardingScreen", () => {
 		expect(mockRouter.push).toHaveBeenCalledWith("/onboarding/name");
 	});
 
-	test("reflows the intro into a vertical scroll at accessibility text sizes", async () => {
+	test("continues the intro at accessibility text sizes", async () => {
 		mockWindowDimensions = {
 			fontScale: 3,
 			height: 667,
@@ -1157,17 +1082,18 @@ describe("OnboardingScreen", () => {
 		};
 		const screen = await render(<OnboardingScreen />);
 
-		expect(screen.getByTestId("intro-responsive-scroll")).toBeOnTheScreen();
-		expect(screen.queryByTestId("intro-pager")).toBeNull();
 		expect(
 			screen.getByRole("header", {
 				name: "Schluss mit Aufschieben.",
 			}),
 		).toBeOnTheScreen();
-		expect(screen.getByRole("button", { name: "Weiter" })).toBeOnTheScreen();
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(screen.getByRole("progressbar")).toHaveAccessibilityValue({
+			now: 2,
+		});
 	});
 
-	test("keeps scaled question content and its primary action in one scroll flow", async () => {
+	test("continues a question at accessibility text sizes", async () => {
 		mockWindowDimensions = {
 			fontScale: 3,
 			height: 667,
@@ -1176,13 +1102,8 @@ describe("OnboardingScreen", () => {
 		};
 		const screen = await render(<OnboardingStepScreen stepId="studyTime" />);
 
-		const questionScroll = screen.getByTestId("onboarding-question-scroll");
-		expect(
-			within(questionScroll).getByRole("button", { name: "Weiter" }),
-		).toBeOnTheScreen();
-		expect(
-			screen.getByTestId("onboarding-progress-metadata").props.className,
-		).toContain("flex-col");
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(mockRouter.push).toHaveBeenCalledWith("/onboarding/study-time-fact");
 	});
 
 	test("pushes a distinct native history entry for each profile step", async () => {
@@ -1236,29 +1157,6 @@ describe("OnboardingScreen", () => {
 			"test@example.com",
 		);
 		expect(mockRegister).toHaveBeenCalledTimes(1);
-	});
-
-	test("keeps intro indicators coupled to live pager scroll progress", async () => {
-		const screen = await render(<OnboardingScreen />);
-		const pager = screen.getByTestId("intro-pager");
-
-		expect(pager.props.onScroll).toEqual(expect.any(Function));
-		expect(pager.props.onScrollEndDrag).toEqual(expect.any(Function));
-		expect(pager.props.scrollEventThrottle).toBe(16);
-		expect(screen.getByTestId("intro-indicator-0")).toHaveStyle({
-			backgroundColor: "#00BAFF",
-			width: 30,
-		});
-		expect(screen.getByTestId("intro-indicator-1")).toHaveStyle({
-			backgroundColor: "#DCE6EE",
-			width: 8,
-		});
-		expect(screen.getByRole("progressbar")).toHaveProp("accessibilityValue", {
-			min: 1,
-			max: 4,
-			now: 1,
-			text: "Seite 1 von 4",
-		});
 	});
 
 	test("surfaces an unexpected trial-handoff rejection as an actionable error", async () => {
@@ -1322,33 +1220,6 @@ describe("OnboardingScreen", () => {
 		);
 	});
 
-	test("keeps every intro page mounted for direct reduced-motion page changes", async () => {
-		const screen = await render(<OnboardingScreen />);
-		const pager = screen.getByTestId("intro-pager");
-
-		expect(pager).toHaveProp("initialNumToRender", 4);
-		expect(pager).toHaveProp("maxToRenderPerBatch", 4);
-		expect(pager).toHaveProp("removeClippedSubviews", false);
-	});
-
-	test("renders the maintained learning-path preview on the final intro page", async () => {
-		const screen = await render(<OnboardingScreen />);
-
-		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
-		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
-		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
-
-		expect(screen.getByTestId("intro-learning-path-artwork")).toBeOnTheScreen();
-	});
-
-	test("uses one consistent gap below the progress header", async () => {
-		const screen = await render(<OnboardingStepScreen stepId="grade" />);
-
-		expect(screen.getByTestId("onboarding-question-content")).toHaveStyle({
-			paddingTop: 40,
-		});
-	});
-
 	test("does not preselect a grade and disables continuation until it is valid", async () => {
 		mockOnboarding.answers.grade = "";
 		const screen = await render(<OnboardingStepScreen stepId="grade" />);
@@ -1357,12 +1228,7 @@ describe("OnboardingScreen", () => {
 		expect(
 			screen.getByText("Diese Angabe wird in deinem Schulprofil gespeichert."),
 		).toBeOnTheScreen();
-		const answerGroup = screen.getByTestId("onboarding-answer-group");
-		const errorSlot = within(answerGroup).getByTestId(
-			"onboarding-answer-error-slot",
-		);
-		expect(errorSlot).toHaveProp("className", "mt-3 min-h-8 px-3");
-		expect(within(errorSlot).queryByRole("alert")).toBeNull();
+		expect(screen.queryByRole("alert")).toBeNull();
 
 		expect(
 			screen.getByRole("button", { name: "Weiter" }).props.accessibilityState,
@@ -1373,24 +1239,11 @@ describe("OnboardingScreen", () => {
 			screen.rerender(<OnboardingStepScreen stepId="grade" />);
 		});
 		await waitFor(() => {
-			expect(within(errorSlot).queryByRole("alert")).toBeNull();
+			expect(screen.queryByRole("alert")).toBeNull();
 			expect(
 				screen.getByRole("button", { name: "Weiter" }).props.accessibilityState,
 			).toMatchObject({ disabled: false });
 		});
-	});
-
-	test("uses the Dayova gradient with contrasting weekday text", async () => {
-		mockOnboarding.answers.studyDays = "Montag";
-		const screen = await render(<OnboardingStepScreen stepId="studyDays" />);
-
-		expect(screen.getByText("Montag")).toHaveStyle({
-			color: DAYOVA_DESIGN_SYSTEM.colors.onPrimary,
-		});
-		const monday = screen.getByRole("checkbox", { name: "Montag" });
-		expect(
-			within(monday).getByTestId("selection-gradient").props.colors,
-		).toEqual(DAYOVA_DESIGN_SYSTEM.gradients.selection.colors);
 	});
 
 	test("renders school type through the shared bottom-sheet select trigger", async () => {

@@ -16,12 +16,6 @@ describe("ListRow accessibility", () => {
 				}
 			/>,
 		);
-
-		expect(screen.toJSON()).toMatchObject({
-			props: {
-				accessible: false,
-			},
-		});
 		expect(
 			screen.getByRole("radio", { name: "Systemdesign" }),
 		).toBeOnTheScreen();

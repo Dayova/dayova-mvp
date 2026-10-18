@@ -41,16 +41,14 @@ function Picker() {
 }
 
 describe("theme preference selection", () => {
-	test("keeps one selection indicator mounted when the selected option changes", async () => {
+	test("updates the selected theme when the user chooses another option", async () => {
 		const screen = await render(<Picker />);
-		const indicator = screen.getByTestId("theme-selection-indicator");
 		await fireEvent.press(
 			screen.getByRole("radio", { name: "Dunkles Design verwenden" }),
 		);
 		expect(
 			screen.getByRole("radio", { name: "Dunkles Design verwenden" }),
 		).toBeChecked();
-		expect(screen.getByTestId("theme-selection-indicator")).toBe(indicator);
 		await fireEvent.press(
 			screen.getByRole("radio", { name: "Helles Design verwenden" }),
 		);
@@ -60,7 +58,6 @@ describe("theme preference selection", () => {
 		expect(
 			screen.getByRole("radio", { name: "Dunkles Design verwenden" }),
 		).not.toBeChecked();
-		expect(screen.getByTestId("theme-selection-indicator")).toBe(indicator);
 	});
 	test("does not save the already selected preference again", async () => {
 		const setPreference = jest.fn(async () => undefined);

@@ -176,6 +176,7 @@ test("opening duration keeps the editor surface mounted without waiting for a di
 	await fireEvent.press(
 		screen.getByRole("button", { name: "Lerndauer: 30 Min." }),
 	);
+	expect(mockSheetVisibility.length).toBeGreaterThan(0);
 	expect(mockSheetVisibility).not.toContain(false);
 });
 

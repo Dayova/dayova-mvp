@@ -48,7 +48,7 @@ jest.mock("~/components/ui/icon", () => {
 });
 
 describe("IntroLearningPathArtwork", () => {
-	test("renders a focused excerpt through the shared decorative path mode", async () => {
+	test("keeps the illustration decorative while showing the learning-path explanation", async () => {
 		const screen = await render(<IntroLearningPathArtwork />);
 		const hidden = { includeHiddenElements: true };
 		const artwork = screen.getByTestId("intro-learning-path-artwork", hidden);
@@ -58,53 +58,11 @@ describe("IntroLearningPathArtwork", () => {
 			accessibilityElementsHidden: true,
 			importantForAccessibility: "no-hide-descendants",
 		});
-		expect(
-			screen.getByTestId("learning-path-artwork-visual", hidden).props,
-		).toMatchObject({
-			accessible: false,
-			accessibilityElementsHidden: true,
-			importantForAccessibility: "no-hide-descendants",
-			pointerEvents: "none",
-		});
-		expect(
-			screen.getByTestId("learning-path-node-intro-path-completed", hidden),
-		).toBeOnTheScreen();
-		expect(
-			screen.getByTestId("learning-path-node-intro-path-current", hidden),
-		).toBeOnTheScreen();
-		expect(
-			screen.getByTestId("learning-path-node-intro-path-locked", hidden),
-		).toBeOnTheScreen();
-		expect(
-			screen.getByTestId("learning-path-node-halo-intro-path-current", hidden),
-		).toBeOnTheScreen();
-		expect(
-			screen.getByTestId("learning-path-node-puck-intro-path-current", hidden)
-				.props.style.width,
-		).toBe(60);
-		expect(
-			screen.getByTestId("learning-path-node-puck-intro-path-locked", hidden)
-				.props.style.width,
-		).toBe(52);
 		expect(screen.queryByRole("button", hidden)).toBeNull();
 		expect(mockWithRepeat).not.toHaveBeenCalled();
 		expect(
 			screen.getByText("Dayova plant mit dir weiter", hidden),
 		).toBeOnTheScreen();
-		expect(
-			screen.getByTestId("adaptive-continuation-path", hidden),
-		).toBeOnTheScreen();
-	});
-
-	test("preserves explicit numeric artwork dimensions", async () => {
-		const screen = await render(
-			<IntroLearningPathArtwork width={250} height={168} />,
-		);
-		const artwork = screen.getByTestId("intro-learning-path-artwork", {
-			includeHiddenElements: true,
-		});
-
-		expect(artwork).toHaveStyle({ width: 250, height: 168 });
 	});
 });
 

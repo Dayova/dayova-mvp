@@ -1,5 +1,5 @@
 import { describe, expect, jest, test } from "@jest/globals";
-import { render } from "@testing-library/react-native";
+import { fireEvent, render } from "@testing-library/react-native";
 import { CategoryTabs } from "./category-tabs";
 
 const DARK_SECONDARY_TEXT = "#A8ACB7";
@@ -49,17 +49,26 @@ jest.mock("~/lib/theme", () => ({
 }));
 
 describe("notification category tabs", () => {
-	test("uses the current theme's secondary text color for inactive labels", async () => {
+	test("selects the requested notification category and reflects controlled updates", async () => {
+		const onChange = jest.fn();
 		const screen = await render(
-			<CategoryTabs value="all" onChange={jest.fn()} />,
+			<CategoryTabs value="all" onChange={onChange} />,
 		);
-
-		expect(screen.getByText("Alle")).toHaveStyle({ color: "#FFFFFF" });
-		expect(screen.getByText("Lernpläne")).toHaveStyle({
-			color: DARK_SECONDARY_TEXT,
-		});
-		expect(screen.getByText("Aufgaben")).toHaveStyle({
-			color: DARK_SECONDARY_TEXT,
-		});
+		expect(
+			screen.getByRole("tab", { name: "Alle", selected: true }),
+		).toBeOnTheScreen();
+		await fireEvent.press(screen.getByRole("tab", { name: "Lernpläne" }));
+		expect(onChange).toHaveBeenCalledWith("learningPlan");
+		await screen.rerender(
+			<CategoryTabs value="learningPlan" onChange={onChange} />,
+		);
+		expect(
+			screen.getByRole("tab", { name: "Lernpläne", selected: true }),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByRole("tab", { name: "Alle", selected: false }),
+		).toBeOnTheScreen();
+		await fireEvent.press(screen.getByRole("tab", { name: "Aufgaben" }));
+		expect(onChange).toHaveBeenLastCalledWith("task");
 	});
 });
