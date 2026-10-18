@@ -121,7 +121,11 @@ export function ReleaseInformationSheet({
 							<Text className="font-poppins text-body-4 text-secondary-text">
 								{label}
 							</Text>
-							<Text selectable className="font-poppins text-body-3 text-text">
+							<Text
+								selectable
+								textBreakStrategy="balanced"
+								className="font-poppins text-body-3 text-text"
+							>
 								{value}
 							</Text>
 							{description ? (
