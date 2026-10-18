@@ -1,4 +1,5 @@
-import { Pressable, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import { Field, FieldLabel } from "~/components/ui/field";
 import { Timer } from "~/components/ui/icon";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
@@ -29,7 +30,7 @@ function TimeControl({ label, value, onPress, disabled }: TimeControlProps) {
 			<Text className="font-poppins text-body-4 text-secondary-text">
 				{label}
 			</Text>
-			<Pressable
+			<FeedbackPressable
 				accessibilityLabel={`${label}: ${value}`}
 				accessibilityRole="button"
 				disabled={disabled}
@@ -46,7 +47,7 @@ function TimeControl({ label, value, onPress, disabled }: TimeControlProps) {
 					{value}
 				</Text>
 				<Timer size={19} color={colors.secondaryText} strokeWidth={1.9} />
-			</Pressable>
+			</FeedbackPressable>
 		</View>
 	);
 }
