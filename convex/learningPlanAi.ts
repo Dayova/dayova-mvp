@@ -5,6 +5,7 @@ import {
 	generateText,
 	type LanguageModelUsage,
 	NoObjectGeneratedError,
+	NoOutputGeneratedError,
 	Output,
 } from "ai";
 import { v } from "convex/values";
@@ -32,6 +33,7 @@ import {
 	type LearningQuestionBlueprint,
 	type LearningTopic,
 } from "./learningContentPlan";
+import { getLearningMaterialFileLimit } from "./learningMaterialPolicy";
 import { estimateGeminiCostUsdMicros } from "./learningPlanAiCost";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 import {
@@ -67,7 +69,6 @@ import {
 } from "./learningTopicMap";
 import { areSemanticallyDuplicateQuestions } from "./questionNovelty";
 
-const MAX_UPLOAD_FILE_BYTES = 7 * 1024 * 1024;
 const MAX_EXTRACTED_TEXT_CHARS = 90_000;
 const MAX_PROMPT_CONTEXT_CHARS = 70_000;
 const MAX_SESSION_TITLE_CHARS = 28;
@@ -755,10 +756,18 @@ const withGeneratedTextRetry = async <TResult>(
 				if (
 					(isInvalidGeneratedGermanTextError(error) ||
 						isDuplicatePrompt ||
-						NoObjectGeneratedError.isInstance(error)) &&
+						NoObjectGeneratedError.isInstance(error) ||
+						NoOutputGeneratedError.isInstance(error)) &&
 					attempt < MAX_GENERATED_TEXT_ATTEMPTS - 1
 				) {
 					continue;
+				}
+
+				if (NoOutputGeneratedError.isInstance(error)) {
+					logDiagnosticError("learningPlanAi.emptyOutput", error, {
+						attempts: MAX_GENERATED_TEXT_ATTEMPTS,
+					});
+					throwUserFacingError(fallbackMessage);
 				}
 
 				if (isInvalidGeneratedGermanTextError(error)) {
@@ -912,10 +921,13 @@ const buildModelInputFromDocuments = async (
 	const textSections: string[] = [];
 
 	for (const document of documents) {
-		if (document.fileSizeBytes > MAX_UPLOAD_FILE_BYTES) {
-			throwUserFacingError(
-				`Die Datei "${document.fileName}" ist zu groß für die KI-Verarbeitung.`,
-			);
+		const limit = getLearningMaterialFileLimit(
+			document.fileName,
+			document.fileType,
+		);
+		const sizeError = `Die Datei "${document.fileName}" ist zu groß für die KI-Verarbeitung (maximal ${limit.label}). Lade bitte eine kleinere Datei hoch.`;
+		if (document.fileSizeBytes > limit.bytes) {
+			throwUserFacingError(sizeError);
 		}
 
 		const downloadUrl = await createManagedReadUrl(
@@ -948,10 +960,8 @@ const buildModelInputFromDocuments = async (
 		}
 
 		const arrayBuffer = await response.arrayBuffer();
-		if (arrayBuffer.byteLength > MAX_UPLOAD_FILE_BYTES) {
-			throwUserFacingError(
-				`Die Datei "${document.fileName}" ist zu groß für die KI-Verarbeitung.`,
-			);
+		if (arrayBuffer.byteLength > limit.bytes) {
+			throwUserFacingError(sizeError);
 		}
 
 		const mediaType = resolveMediaType(document.fileType, document.fileName);
@@ -1696,6 +1706,7 @@ const normalizeSessions = (
 };
 
 export const __testOnlyLearningPlanAi = {
+	buildModelInputFromDocuments,
 	withGeneratedTextRetry,
 	DuplicateGeneratedPromptError,
 	normalizeSessions,
@@ -3169,7 +3180,7 @@ Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzei
 					result.output.sourceSummary,
 				),
 			};
-		}, "Der Wissenscheck konnte nicht zuverlässig erstellt werden. Prüfe deine Schulunterlagen und versuche es erneut.");
+		}, "Der Wissenscheck konnte gerade nicht erstellt werden. Deine Schulunterlagen bleiben gespeichert. Versuche es erneut.");
 
 		await ctx.runMutation(internal.learningPlans.storeKnowledgeQuestions, {
 			learningPlanId: args.learningPlanId,

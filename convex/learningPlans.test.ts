@@ -1,5 +1,7 @@
 /// <reference types="vite/client" />
 
+import { defineSchema, mutationGeneric } from "convex/server";
+import { v } from "convex/values";
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api, internal } from "./_generated/api";
@@ -15,6 +17,50 @@ const user = {
 	tokenIdentifier: "test:user",
 };
 const originalTimeZone = process.env.TZ;
+
+test.each([
+	7_000_000, 7_000_001,
+])("registers an image only when finalized bytes (%i) fit the provider limit", async (actualSize) => {
+	const backend = convexTest(schema, modules);
+	backend.registerComponent("convexFilesControl", defineSchema({}), {
+		"./_generated/server.ts": async () => ({}),
+		"./upload.ts": async () => ({
+			finalizeUpload: mutationGeneric({
+				args: {
+					uploadToken: v.string(),
+					storageId: v.string(),
+					accessKeys: v.array(v.string()),
+				},
+				handler: async (_ctx, args) => ({
+					storageId: args.storageId,
+					storageProvider: "convex",
+					metadata: { size: actualSize },
+				}),
+			}),
+		}),
+	});
+	const t = backend.withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	const register = t.action(api.learningPlans.registerUploadedDocument, {
+		learningPlanId,
+		uploadToken: "test-token",
+		storageId: "test-image",
+		fileName: "photo.jpg",
+		fileType: "image/jpeg",
+		fileSizeBytes: 1_024,
+		sourceKind: "school",
+	});
+	if (actualSize > 7_000_000) {
+		await expect(register).rejects.toThrow("maximal 7 MB");
+	} else {
+		await expect(register).resolves.toBeTypeOf("string");
+	}
+	const saved = await t.run((ctx) =>
+		ctx.db.query("learningPlanDocuments").take(2),
+	);
+	expect(saved).toHaveLength(actualSize > 7_000_000 ? 0 : 1);
+	if (saved[0]) expect(saved[0].fileSizeBytes).toBe(actualSize);
+});
 
 const createKnowledgeQuestions = () =>
 	Array.from({ length: 5 }, (_, index) => ({

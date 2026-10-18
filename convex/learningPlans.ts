@@ -25,6 +25,10 @@ import {
 	getR2ConfigOrThrow,
 } from "./fileStorage";
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
+import {
+	getLearningMaterialFileLimit,
+	isValidLearningMaterialSize,
+} from "./learningMaterialPolicy";
 import { calculateAvailableStudyMinutes } from "./learningPlanAvailability";
 import {
 	clearSessionDayEntry,
@@ -1307,6 +1311,19 @@ export const registerUploadedDocument = action({
 			},
 		);
 
+		const limit = getLearningMaterialFileLimit(args.fileName, args.fileType);
+		if (
+			!isValidLearningMaterialSize(
+				args.fileSizeBytes,
+				args.fileName,
+				args.fileType,
+			)
+		) {
+			throwUserFacingError(
+				`Die Datei ist leer oder zu groß (maximal ${limit.label}).`,
+			);
+		}
+
 		const finalizedUpload = await ctx.runMutation(
 			components.convexFilesControl.upload.finalizeUpload,
 			{
@@ -1320,6 +1337,15 @@ export const registerUploadedDocument = action({
 			throwUserFacingError("Upload konnte nicht verifiziert werden.");
 		}
 
+		const fileSizeBytes = finalizedUpload.metadata?.size ?? args.fileSizeBytes;
+		if (
+			!isValidLearningMaterialSize(fileSizeBytes, args.fileName, args.fileType)
+		) {
+			throwUserFacingError(
+				`Die Datei ist leer oder zu groß (maximal ${limit.label}).`,
+			);
+		}
+
 		return await ctx.runMutation(internal.learningPlans.storeUploadedDocument, {
 			ownerTokenIdentifier: context.ownerTokenIdentifier,
 			learningPlanId: args.learningPlanId,
@@ -1327,7 +1353,7 @@ export const registerUploadedDocument = action({
 			storageProvider: finalizedUpload.storageProvider,
 			fileName: args.fileName,
 			fileType: args.fileType || "application/octet-stream",
-			fileSizeBytes: finalizedUpload.metadata?.size ?? args.fileSizeBytes,
+			fileSizeBytes,
 			sourceKind: args.sourceKind,
 		});
 	},

@@ -30,6 +30,18 @@ const mockUpdateEntry = jest.fn<() => Promise<void>>();
 const mockUpdateRequiredTopics = jest.fn<() => Promise<void>>();
 const mockGenerateUploadUrl = jest.fn<() => Promise<Record<string, unknown>>>();
 const mockRegisterUploadedDocument = jest.fn<() => Promise<void>>();
+const mockGetDocument =
+	jest.fn<
+		() => Promise<{
+			canceled: boolean;
+			assets: Array<{
+				uri: string;
+				name: string;
+				mimeType: string;
+				size: number;
+			}>;
+		}>
+	>();
 const mockCapture = jest.fn();
 const mockFetch =
 	jest.fn<
@@ -162,7 +174,9 @@ jest.mock("expo-file-system", () => ({
 	},
 	FileMode: { ReadOnly: "r" },
 }));
-jest.mock("expo-document-picker", () => ({}));
+jest.mock("expo-document-picker", () => ({
+	getDocumentAsync: () => mockGetDocument(),
+}));
 jest.mock("expo-image-picker", () => ({
 	requestMediaLibraryPermissionsAsync: () =>
 		mockRequestMediaLibraryPermissions(),
@@ -355,6 +369,46 @@ async function selectGalleryPhotos(
 }
 
 describe("exam creation across the topics boundary", () => {
+	test.each([
+		["material.pdf", "application/pdf", 10 * 1024 * 1024, true],
+		["photo.jpg", "image/jpeg", 7_000_000, true],
+		["photo.jpg", "image/jpeg", 7_000_001, false],
+		["photo.pdf", "image/jpeg", 8 * 1024 * 1024, false],
+	])("checks document-picker %s (%s, %s bytes) before uploading", async (name, mimeType, size, accepted) => {
+		mockParams = { learningPlanId: "plan-1", step: "material" };
+		mockSnapshot = {
+			plan: { topicDescription: "Zellteilung und Mitose" },
+			documents: [],
+		};
+		mockGetDocument.mockResolvedValue({
+			canceled: false,
+			assets: [{ uri: "file:///material", name, mimeType, size }],
+		});
+		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Schulmaterial hinzufügen" }),
+		);
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: "Dateien",
+			}),
+		);
+		if (accepted) {
+			await waitFor(() =>
+				expect(mockRegisterUploadedDocument).toHaveBeenCalledWith(
+					expect.objectContaining({ fileSizeBytes: size, fileType: mimeType }),
+				),
+			);
+		} else {
+			await waitFor(() =>
+				expect(screen.getByText(/maximal 7 MB/)).toBeOnTheScreen(),
+			);
+			expect(mockGenerateUploadUrl).not.toHaveBeenCalled();
+			expect(mockFetch).not.toHaveBeenCalled();
+			expect(mockRegisterUploadedDocument).not.toHaveBeenCalled();
+		}
+	});
+
 	test.each([
 		{
 			platform: "ios" as const,
@@ -920,8 +974,7 @@ describe("exam creation across the topics boundary", () => {
 	});
 
 	test.each([
-		6_247_134,
-		7 * 1024 * 1024,
+		6_247_134, 7_000_000,
 	])("accepts a %s-byte export even when the original exceeds the limit", async (size) => {
 		mockFiles["file:///compressed.jpg"] = { size, header: JPEG_HEADER };
 		await selectGalleryPhotos([
@@ -941,10 +994,7 @@ describe("exam creation across the topics boundary", () => {
 	});
 
 	test.each([
-		[
-			7 * 1024 * 1024 + 1,
-			"Die Datei ist mit 7.00 MiB zu groß (maximal 7 MiB).",
-		],
+		[7_000_001, "Die Datei ist mit 6.68 MiB zu groß (maximal 7 MB)."],
 		[0, "Die Datei ist leer oder konnte nicht gelesen werden."],
 	])("rejects the entire batch when the actual export size is %s", async (size, message) => {
 		mockFiles["file:///invalid.jpg"] = { size, header: JPEG_HEADER };
