@@ -6,10 +6,11 @@ import {
 	useRouter,
 } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, AppState, View } from "react-native";
+import { ActivityIndicator, AppState, Platform, View } from "react-native";
 import {
 	KeyboardAvoidingView,
 	type KeyboardAwareScrollViewRef,
+	KeyboardStickyView,
 } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
@@ -29,6 +30,7 @@ import { LearningSessionCompletion } from "~/features/learning-plans/learning-se
 import { learningSessionAnalyticsProperties } from "~/features/learning-plans/session-analytics";
 import { getLearningSessionCompletionDestination } from "~/features/learning-plans/session-completion-navigation";
 import { FeedbackView } from "~/features/learning-plans/session-feedback";
+import { getLearningSessionKeyboardLayout } from "~/features/learning-plans/session-keyboard-layout";
 import { getLearningSessionBackTarget } from "~/features/learning-plans/session-navigation";
 import {
 	CONTINUE_LEARNING_MINUTES,
@@ -118,6 +120,9 @@ function ActionRow({
 	);
 }
 
+const QuestionActionContainer =
+	Platform.OS === "ios" ? KeyboardStickyView : KeyboardAvoidingView;
+
 export default function LearningSessionContentScreen() {
 	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
@@ -166,6 +171,9 @@ export default function LearningSessionContentScreen() {
 	const [repeatingItemId, setRepeatingItemId] = useState<string | null>(null);
 	const [retryStartedAt, setRetryStartedAt] = useState<number | null>(null);
 	const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+	const [questionActionFooterHeight, setQuestionActionFooterHeight] = useState<
+		number | null
+	>(null);
 	const remainingSecondsRef = useRef<number | null>(null);
 	const [isContinuation, setIsContinuation] = useState(false);
 	const didAutoFinishRef = useRef(false);
@@ -795,6 +803,11 @@ export default function LearningSessionContentScreen() {
 		content && currentItem && !completionPhase && !visibleAttempt,
 	);
 	const showFeedbackAction = Boolean(visibleAttempt && !completionPhase);
+	const questionKeyboardLayout = getLearningSessionKeyboardLayout(
+		Platform.OS,
+		insets.bottom,
+		questionActionFooterHeight,
+	);
 
 	if (
 		content?.session.phase === "theory" &&
@@ -937,6 +950,11 @@ export default function LearningSessionContentScreen() {
 			<KeyboardSafeScrollView
 				ref={contentScrollRef}
 				className="flex-1"
+				bottomOffset={
+					showQuestionActions
+						? questionKeyboardLayout.scrollBottomOffset
+						: undefined
+				}
 				bounces={
 					currentItem?.kind !== "multipleChoice" || Boolean(visibleAttempt)
 				}
@@ -1049,10 +1067,24 @@ export default function LearningSessionContentScreen() {
 				) : null}
 			</KeyboardSafeScrollView>
 			{showQuestionActions && content ? (
-				<KeyboardAvoidingView behavior="padding">
+				<QuestionActionContainer
+					{...(Platform.OS === "ios"
+						? { enabled: questionKeyboardLayout.stickyActionsEnabled }
+						: { behavior: "padding" as const })}
+				>
 					<View
 						className="border-border border-t-hairline bg-background px-8 pt-4"
-						style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+						onLayout={({ nativeEvent }) => {
+							const measuredHeight = Math.ceil(nativeEvent.layout.height);
+							setQuestionActionFooterHeight((currentHeight) =>
+								currentHeight === measuredHeight
+									? currentHeight
+									: measuredHeight,
+							);
+						}}
+						style={{
+							paddingBottom: questionKeyboardLayout.footerBottomPadding,
+						}}
 					>
 						<ActionRow
 							className="mt-0"
@@ -1077,7 +1109,7 @@ export default function LearningSessionContentScreen() {
 							}
 						/>
 					</View>
-				</KeyboardAvoidingView>
+				</QuestionActionContainer>
 			) : showFeedbackAction ? (
 				<View
 					className="border-border border-t-hairline bg-background px-8 pt-4"
