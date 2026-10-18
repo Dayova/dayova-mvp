@@ -1,9 +1,17 @@
 # Account deletion runbook
 
 This runbook covers the server-authoritative deletion pipeline introduced for
-DAY-358. The retention policy identifier is currently
-`DAY-357-draft-2026-09-18`; production enablement remains gated on the
-accountable-human approval tracked in DAY-357.
+DAY-358. Jakob approved the
+[DAY-357 decision record](https://app.notion.com/p/3c82e87228bf81e1b3efe45d3e8e7d07)
+on 18 October 2026. New requests use `DAY-357-approved-2026-10-18`;
+existing requests retain the version under which they were accepted.
+Completed operational audits expire automatically after 30 days. Queued,
+processing, retrying and manual-review requests retain their sanitized error
+codes and recovery context until resolved; only successful completion starts
+the retention clock. Detailed investigation of completed requests has a 30-day
+window. This does not retain learner content for debugging.
+The dependent lifecycle layer expires its minimal replay barriers after 90 days
+and rejects older lifecycle events independently of those barriers.
 
 ## Required Convex environment
 
@@ -76,10 +84,8 @@ relevant store separately.
 
 ## Production gate
 
-Before enabling this pipeline in production, DAY-357 must approve the final
-retention/deletion matrix and its version. Replace the draft policy identifier,
-implement the approved expiry of completed operational audit records and the
-approved Notion/Loops contact handling,
+Before enabling this pipeline in production, include the dependent lifecycle
+layer's approved Notion contact handling and 90-day replay safeguards,
 verify every production secret, execute a sandbox deletion for Clerk,
 RevenueCat, PostHog, and any enabled CRM processor, and attach evidence to
 DAY-358.
