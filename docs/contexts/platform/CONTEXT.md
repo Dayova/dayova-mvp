@@ -63,6 +63,9 @@ checks add coverage and usage; stage speedups alone do not establish net savings
 Maestro and the real-service auth probe use sensitive development environment
 variables `MAESTRO_CI_EMAIL` and `MAESTRO_CI_PASSWORD` for a synthetic Clerk test
 identity. The auth probe checks both authenticated access and anonymous denial.
+It also checks the signed-in notification query contract before native build
+work starts. The development backend must support the checked app's API; a stale
+deployment fails validation. CI never deploys PR backend code to this shared tenant.
 
 `pnpm test:ci` retains per-stage timings, Vitest JUnit, and Jest JSON under ignored
 `.maestro/artifacts/ci/`. Weekly CI and the manual `test-coverage.yml` collect

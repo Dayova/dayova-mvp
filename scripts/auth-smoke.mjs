@@ -49,15 +49,14 @@ export async function authenticatedSmoke(env = process.env, request = fetch) {
 			);
 		return data.response ?? data;
 	};
-	const me = async (token) => {
-		stage = token ? "authenticated-convex-query" : "anonymous-convex-query";
+	const query = async (path, args, token) => {
 		const response = await request(`${convexUrl}/api/query`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
 				...(token ? { Authorization: `Bearer ${token}` } : {}),
 			},
-			body: JSON.stringify({ path: "users:getMe", args: {}, format: "json" }),
+			body: JSON.stringify({ path, args, format: "json" }),
 			signal: AbortSignal.timeout(30_000),
 		});
 		if (!response.ok && response.status !== 560)
@@ -65,7 +64,8 @@ export async function authenticatedSmoke(env = process.env, request = fetch) {
 		return response.json();
 	};
 	try {
-		const denied = await me();
+		stage = "anonymous-convex-query";
+		const denied = await query("users:getMe", {});
 		if (denied.status !== "error")
 			throw new Error("Unauthenticated Convex access was not denied");
 		let signIn = await clerk("client/sign_ins", {
@@ -107,7 +107,8 @@ export async function authenticatedSmoke(env = process.env, request = fetch) {
 		sessionId = signIn.created_session_id;
 		const token = await clerk(`client/sessions/${sessionId}/tokens/convex`, {});
 		if (!token.jwt) throw new Error("Clerk did not issue the Convex JWT");
-		const result = await me(token.jwt);
+		stage = "authenticated-convex-query";
+		const result = await query("users:getMe", {}, token.jwt);
 		if (
 			result.status !== "success" ||
 			!result.value?._id ||
@@ -116,10 +117,24 @@ export async function authenticatedSmoke(env = process.env, request = fetch) {
 			throw new Error(
 				"The deployed Convex backend did not return the authenticated synthetic user",
 			);
+		// NotificationSync mounts on sign-in, including before trial activation.
+		// A successful users:getMe alone cannot detect a stale deployed validator.
+		stage = "notification-bootstrap-query";
+		const dayKey = new Date().toISOString().slice(0, 10);
+		const entries = await query(
+			"dayEntries:listByDayKeys",
+			{ dayKeys: [dayKey], cacheScope: "notificationPlanning" },
+			token.jwt,
+		);
+		if (entries.status !== "success" || !Array.isArray(entries.value?.[dayKey]))
+			throw new Error(
+				"The deployed Convex backend does not support the app notification bootstrap contract",
+			);
 		outcome = {
 			clerkSignIn: "success",
 			authenticatedConvexQuery: "success",
 			unauthenticatedConvexQuery: "denied",
+			notificationBootstrapQuery: "success",
 		};
 	} catch (error) {
 		primaryError = Object.assign(error, { smokeStage: stage });

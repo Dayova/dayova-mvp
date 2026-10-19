@@ -25,6 +25,22 @@ function serviceResponses(condition = "valid") {
 				});
 			if (condition === "backend-and-cleanup-failure")
 				return Response.json({}, { status: 503 });
+			const body = JSON.parse(String(init.body));
+			if (body.path === "dayEntries:listByDayKeys") {
+				if (condition === "stale-notification-validator")
+					return Response.json({
+						status: "error",
+						errorMessage:
+							"ArgumentValidationError: Object contains extra field cacheScope",
+					});
+				return Response.json({
+					status: "success",
+					value:
+						condition === "malformed-notification-result"
+							? {}
+							: { [body.args.dayKeys[0]]: [] },
+				});
+			}
 			return Response.json({
 				status: "success",
 				value: {
@@ -59,6 +75,7 @@ describe("real-service authentication probe consumer", () => {
 			clerkSignIn: "success",
 			authenticatedConvexQuery: "success",
 			unauthenticatedConvexQuery: "denied",
+			notificationBootstrapQuery: "success",
 		});
 		expect(
 			requests.filter((value) => value.url.includes("/remove?")),
@@ -70,6 +87,20 @@ describe("real-service authentication probe consumer", () => {
 		);
 		expect(authenticatedQuery?.init.headers).toMatchObject({
 			Authorization: "Bearer fixture-jwt",
+		});
+		const notificationQueries = requests.filter(
+			(value) =>
+				value.url.endsWith("/api/query") &&
+				JSON.parse(String(value.init.body)).path === "dayEntries:listByDayKeys",
+		);
+		expect(notificationQueries).toHaveLength(1);
+		expect(JSON.parse(String(notificationQueries[0].init.body))).toEqual({
+			path: "dayEntries:listByDayKeys",
+			args: {
+				dayKeys: [expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)],
+				cacheScope: "notificationPlanning",
+			},
+			format: "json",
 		});
 	});
 	it.each([
@@ -94,6 +125,20 @@ describe("real-service authentication probe consumer", () => {
 			smokeStage: "authenticated-convex-query",
 			cleanupFailed: true,
 		});
+	});
+	it.each([
+		"stale-notification-validator",
+		"malformed-notification-result",
+	])("rejects %s before accepting the signed-in bootstrap", async (condition) => {
+		const { request, requests } = serviceResponses(condition);
+		await expect(authenticatedSmoke(env, request)).rejects.toMatchObject({
+			message:
+				"The deployed Convex backend does not support the app notification bootstrap contract",
+			smokeStage: "notification-bootstrap-query",
+		});
+		expect(
+			requests.filter((value) => value.url.includes("/remove?")),
+		).toHaveLength(1);
 	});
 	it("rejects production configuration before contacting any service", async () => {
 		const { request } = serviceResponses();

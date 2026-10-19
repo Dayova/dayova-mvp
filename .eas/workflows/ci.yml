@@ -306,6 +306,7 @@ jobs:
     environment: development
     needs:
       - quality
+      - authenticated_smoke
     if: ${{ needs.quality.outputs.native_required == 'true' }}
     env:
       APP_VARIANT: preview
