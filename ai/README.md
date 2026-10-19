@@ -15,7 +15,8 @@ for Dayova's implementation contracts.
 Source: [langfuse/skills at 127253d0](https://github.com/langfuse/skills/tree/127253d0e26dfa77fb6d732d1b70c36625581eb4/skills/langfuse).
 Local changes add Dayova's production contract and correct automatic-capture
 and Python OpenAI wrapper guidance in `references/instrumentation.md`, normalize
-Codex frontmatter to `name` and `description`, prefer
+Codex frontmatter to `name` and `description`, restrict content-based error
+analysis in `references/error-analysis.md` to approved synthetic evaluations, prefer
 stable evaluator APIs in `references/setting-up-evals.md`, and clean up trailing
 whitespace. The upstream MIT license is included.
 `skills-lock.json` records the upstream source path and content hash.

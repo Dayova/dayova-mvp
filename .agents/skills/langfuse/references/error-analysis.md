@@ -10,6 +10,18 @@ description: Deep-dive error analysis of an LLM pipeline or AI application using
 
 # Error Analysis
 
+## Dayova production contract
+
+Read `ai/README.md` before following this workflow. Dayova excludes prompts,
+outputs, answers, and uploaded material from every production observation,
+including GENERATION observations. Production traces support analysis of
+operational metadata such as errors, retries, latency, usage, and cost.
+For content-based open coding, use approved synthetic evaluation data in the
+separate evaluation project. Do not enable production content capture, copy
+learner content into annotations, or create a content-review queue from empty
+production observations. Verify that the permitted synthetic content is present
+before creating the queue, and leave human labels to the reviewer.
+
 ## Primary Guide
 
 **1. Fetch the guide in this blogpost**
@@ -44,7 +56,7 @@ Verify you can actually reach the user's project before proceeding. If access fa
 
 ### Annotation target: OBSERVATION versus TRACE
 
-> **CRITICAL:** In OpenTelemetry-instrumented apps, trace-level `input`/`output` can be null — content often lives in a GENERATION observation. In that case, add the GENERATION observation (not the trace) to the annotation queue, so the content being reviewed is actually visible.
+> **CRITICAL:** Null trace-level `input`/`output` does not imply that another observation contains content. Check the Dayova production contract first. Only where content capture is permitted, such as approved synthetic evaluations, inspect the GENERATION observation and queue it instead of the trace if it actually contains the material being reviewed. Empty production generations cannot support content-based review.
 
 ### Annotation queues
 
@@ -59,7 +71,10 @@ Verify you can actually reach the user's project before proceeding. If access fa
 | US cloud | `https://us.cloud.langfuse.com/project/<projectId>/annotation-queues/<queueId>` |
 | Self-hosted | `<LANGFUSE_BASE_URL>/project/<projectId>/annotation-queues/<queueId>` |
 
-Instruction to give: *"Please open code the first ~50 examples. For each trace, write what you observe in the `open_coding` field (describe behaviour, don't diagnose root causes), then set `pass_fail_assessment` to Pass or Fail."*
+For an approved synthetic content-review queue, ask the user to open code the
+selected examples: describe the observed behavior in `open_coding`, then set
+`pass_fail_assessment` to Pass or Fail. Do not ask for semantic judgments on
+metadata-only production observations.
 
 
 ### Prompt fixes
@@ -77,7 +92,8 @@ When a category warrants an evaluator, build it following `references/setting-up
 
 | Mistake | Fix |
 |---------|-----|
-| Annotating the trace instead of the observation | Target the GENERATION observation, not the trace, when content lives there |
+| Expecting production generations to reveal content | Use operational metadata for production analysis; use approved synthetic evaluations for content review |
+| Annotating an empty trace when approved synthetic content lives in an observation | Verify the content is present, then target that GENERATION observation |
 | Creating a score config without checking existing ones | Check existing score configs first; they can't be deleted |
 | Queue created before score configs | Create configs → collect IDs → create queue |
 | Requesting too many traces at once | Page size is capped (max 100); paginate to get more |

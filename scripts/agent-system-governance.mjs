@@ -206,7 +206,7 @@ const sourceDefaults = {
 		skillRationale:
 			"Dayova uses Langfuse for metadata-only AI tracing, cost attribution, and synthetic model evaluations",
 		overrideRationale:
-			"Preserve the upstream pin and MIT license, normalize Codex frontmatter, and apply ai/README.md privacy and current-API corrections to the referenced guides.",
+			"Preserve the upstream pin and MIT license, normalize Codex frontmatter, and apply ai/README.md privacy and current-API corrections, including synthetic-only content review in the error-analysis guide.",
 		evalSuite: ["catalog-contract", "langfuse-instrumentation"],
 		lastReviewed: "2026-10-19",
 	},
