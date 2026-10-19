@@ -70,7 +70,9 @@ export function NotificationSync() {
 	);
 	const entriesByDay = (useQuery(
 		api.dayEntries.listByDayKeys,
-		user && isConvexAuthenticated ? { dayKeys } : "skip",
+		user && isConvexAuthenticated
+			? { dayKeys, cacheScope: "notificationPlanning" }
+			: "skip",
 	) ?? null) as Record<string, DayEntry[]> | null;
 	const latestSyncKeyRef = useRef<string | null>(null);
 	const recordSystemNotification = useCallback(

@@ -108,6 +108,11 @@ The product is always **Dayova**, including paid access. Never introduce "Dayova
 
 ### Skill maintenance
 
+For Langfuse tracing, cost tracking, datasets, and evaluations, use
+`.agents/skills/langfuse/SKILL.md` together with `ai/README.md`. Dayova's
+metadata-only production tracing, separate evaluation project, explicit paid
+runs, and reviewed-corpus requirements take precedence over generic examples.
+
 Matt Pocock skill updates require the repo's Codex and Linear compatibility overlay to be revalidated. See `docs/agents/matt-pocock-skills.md`.
 
 Expo skill updates must use the repository's composition command so Dayova's
