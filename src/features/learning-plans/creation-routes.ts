@@ -16,6 +16,8 @@ export const examEntryResumePath = (params: {
 	examDateKey: string;
 	durationMinutes: number;
 	topicDescription: string;
+	topicItems?: string[];
+	topicAdditionalInfo?: string;
 }) =>
 	`${ROUTES.createExam}&${buildRouteQuery([
 		["step", "basics"],
@@ -27,6 +29,13 @@ export const examEntryResumePath = (params: {
 		["dayKey", params.examDateKey],
 		["durationMinutes", String(params.durationMinutes)],
 		["topicDescription", params.topicDescription],
+		[
+			"topicItems",
+			params.topicItems === undefined
+				? undefined
+				: JSON.stringify(params.topicItems),
+		],
+		["topicAdditionalInfo", params.topicAdditionalInfo],
 	])}` as const;
 
 export const examEntrySuccessPath = ({

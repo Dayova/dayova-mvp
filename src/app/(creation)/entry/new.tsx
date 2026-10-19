@@ -14,10 +14,7 @@ import {
 	Platform,
 	View,
 } from "react-native";
-import {
-	type KeyboardAwareScrollViewRef,
-	KeyboardStickyView,
-} from "react-native-keyboard-controller";
+import type { KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
@@ -38,11 +35,11 @@ import {
 	FieldTrigger,
 } from "~/components/ui/field";
 import { CalendarDays, ChevronDown, Clock3 } from "~/components/ui/icon";
-import { shouldUseKeyboardStickyActions } from "~/components/ui/keyboard-safe-scroll";
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { useAuthSession } from "~/context/AuthContext";
+import { CreationActionFooter } from "~/features/learning-plans/creation-action-footer";
 import { getExamEntryCreationProgress } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { getErrorMessage } from "~/features/learning-plans/utils";
@@ -197,24 +194,6 @@ function HomeworkScreenHeader({
 	);
 }
 
-function StickyActionFooter({
-	bottomInset,
-	children,
-}: {
-	bottomInset: number;
-	children: ReactNode;
-}) {
-	return (
-		<View
-			className="px-6"
-			// The bottom padding must include the device's runtime safe-area inset.
-			style={{ paddingBottom: Math.max(bottomInset + 10, 24) }}
-		>
-			{children}
-		</View>
-	);
-}
-
 export default function NewEntryScreen() {
 	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
@@ -239,6 +218,8 @@ export default function NewEntryScreen() {
 		examDayEntryId?: string;
 		durationMinutes?: string;
 		topicDescription?: string;
+		topicItems?: string;
+		topicAdditionalInfo?: string;
 	}>();
 	const entryType: EntryType = params.type === "exam" ? "exam" : "homework";
 	const isHomework = entryType === "homework";
@@ -595,6 +576,12 @@ export default function NewEntryScreen() {
 					["examDateLabel", formatDate(plannedDate)],
 					["durationMinutes", `${scheduledDurationMinutes}`],
 					["topicDescription", params.topicDescription ?? ""],
+					...(params.topicItems !== undefined
+						? [["topicItems", params.topicItems] as const]
+						: []),
+					...(params.topicAdditionalInfo !== undefined
+						? [["topicAdditionalInfo", params.topicAdditionalInfo] as const]
+						: []),
 				]
 					.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
 					.join("&");
@@ -898,9 +885,9 @@ export default function NewEntryScreen() {
 					</>
 				)}
 			</KeyboardSafeScrollView>
-			<KeyboardStickyView enabled={shouldUseKeyboardStickyActions(Platform.OS)}>
+			<CreationActionFooter>
 				{isHomework ? (
-					<StickyActionFooter bottomInset={insets.bottom}>
+					<>
 						{errorMessage ? (
 							<Text
 								accessibilityRole="alert"
@@ -935,9 +922,9 @@ export default function NewEntryScreen() {
 								<Text>Weiter</Text>
 							)}
 						</Button>
-					</StickyActionFooter>
+					</>
 				) : (
-					<StickyActionFooter bottomInset={insets.bottom}>
+					<>
 						{errorMessage ? (
 							<Text
 								accessibilityRole="alert"
@@ -982,9 +969,9 @@ export default function NewEntryScreen() {
 								</Text>
 							)}
 						</Button>
-					</StickyActionFooter>
+					</>
 				)}
-			</KeyboardStickyView>
+			</CreationActionFooter>
 			{renderPicker()}
 			{renderSelectSheet()}
 		</View>

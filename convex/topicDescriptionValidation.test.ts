@@ -3,6 +3,8 @@ import { isMeaningfulTopicDescription } from "./topicDescriptionValidation";
 
 describe("isMeaningfulTopicDescription", () => {
 	test("accepts concrete exam topics", () => {
+		expect(isMeaningfulTopicDescription("Evolution")).toBe(true);
+		expect(isMeaningfulTopicDescription("Analysis")).toBe(true);
 		expect(
 			isMeaningfulTopicDescription("Lineare Funktionen und Gleichungen"),
 		).toBe(true);

@@ -6,6 +6,7 @@ import {
 	learningTopicValidator,
 } from "./learningTopicMap";
 import { theoryContentValidator } from "./theoryContent";
+import { wloTopicResult } from "./wloTopicContract";
 
 const planQuestionValidator = v.object({
 	id: v.string(),
@@ -142,6 +143,12 @@ export default defineSchema({
 	})
 		.index("by_tokenIdentifier", ["tokenIdentifier"])
 		.index("by_deletionCompletedAt", ["deletionCompletedAt"]),
+	wloTopicCache: defineTable({
+		slot: v.string(),
+		key: v.string(),
+		result: wloTopicResult,
+		expiresAt: v.number(),
+	}).index("by_slot", ["slot"]),
 	accountDeletionRequests: defineTable({
 		requestId: v.string(),
 		ownerTokenIdentifier: v.optional(v.string()),
@@ -531,6 +538,8 @@ export default defineSchema({
 			),
 		),
 		topicDescription: v.string(),
+		topicItems: v.optional(v.array(v.string())),
+		topicAdditionalInfo: v.optional(v.string()),
 		teacherGuidance: v.optional(v.string()),
 		notes: v.optional(v.string()),
 		status: v.union(

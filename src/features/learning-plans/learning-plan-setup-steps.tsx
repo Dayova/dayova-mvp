@@ -1,13 +1,19 @@
+import type { ReactNode } from "react";
 import { ActivityIndicator, View } from "react-native";
+import { useKeyboardState } from "react-native-keyboard-controller";
 import type { Id } from "#convex/_generated/dataModel";
 import { Button } from "~/components/ui/button";
-import { GraduationCap, Plus } from "~/components/ui/icon";
-import { ActionSurface, Surface } from "~/components/ui/surface";
+import { ScreenScroll } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
-import { Textarea } from "~/components/ui/textarea";
-import { MaterialCard } from "~/features/learning-plans/learning-plan-ui";
+import {
+	type LoadMaterialPreview,
+	MaterialUploadGrid,
+} from "~/features/learning-plans/material-upload-grid";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { useDayovaTheme } from "~/lib/theme";
+import { CreationActionFooter } from "./creation-action-footer";
+import { ExamHintsEditor } from "./exam-hints-editor";
+import { type SearchTopics, TopicSearch } from "./topic-search";
 
 type PendingUploadAction = "camera" | "library" | "files";
 
@@ -85,6 +91,7 @@ export function MaterialUploadStepLead({
 		<>
 			<Text
 				allowFontScaling={!fixedTextScale}
+				accessibilityRole="header"
 				className="font-poppins font-semibold text-body-1 text-text"
 			>
 				Schulmaterial hinzufügen
@@ -93,92 +100,9 @@ export function MaterialUploadStepLead({
 				allowFontScaling={!fixedTextScale}
 				className="mt-2 font-poppins text-body-3 text-secondary-text"
 			>
-				Deine Unterlagen bilden die Grundlage für deinen Lernplan.
+				Lade PDFs, Fotos oder andere Dokumente hoch.
 			</Text>
 		</>
-	);
-}
-
-type MaterialUploadActionCardProps =
-	| {
-			canUpload: boolean;
-			hasSchoolMaterial: boolean;
-			mode?: "screen";
-			onPress: () => void;
-	  }
-	| {
-			canUpload?: never;
-			hasSchoolMaterial: boolean;
-			mode: "artwork";
-			onPress?: never;
-	  };
-
-export function MaterialUploadActionCard(props: MaterialUploadActionCardProps) {
-	const { hasSchoolMaterial } = props;
-	const mode = props.mode ?? "screen";
-	const { colors } = useDayovaTheme();
-	const fixedTextScale = mode === "artwork";
-	const content = (
-		<>
-			<View className="h-12 w-12 items-center justify-center rounded-[18px] bg-system-subtle">
-				<GraduationCap
-					size={24}
-					color={colors.primaryStrong}
-					strokeWidth={2.1}
-				/>
-			</View>
-			<View className="min-w-0 flex-1 px-4">
-				<Text
-					allowFontScaling={!fixedTextScale}
-					className="font-poppins font-semibold text-body-2 text-text"
-				>
-					{hasSchoolMaterial
-						? "Weiteres Schulmaterial"
-						: "Schulmaterial hochladen"}
-				</Text>
-				<Text
-					allowFontScaling={!fixedTextScale}
-					className="mt-1 font-poppins text-body-4 text-secondary-text"
-				>
-					Themenblatt, Arbeitsblätter oder Mitschriften
-				</Text>
-			</View>
-			<Plus size={22} color={colors.primaryStrong} strokeWidth={2.2} />
-		</>
-	);
-	const className =
-		"mt-7 min-h-[112px] flex-row items-center rounded-[32px] border border-border px-5 py-5";
-
-	if (props.mode === "artwork") {
-		return (
-			<Surface
-				accessible={false}
-				accessibilityElementsHidden
-				importantForAccessibility="no-hide-descendants"
-				className={className}
-				variant="soft"
-			>
-				{content}
-			</Surface>
-		);
-	}
-
-	return (
-		<ActionSurface
-			accessibilityHint="Öffnet die Auswahl zum Scannen oder Hochladen von Schulmaterial."
-			accessibilityLabel={
-				hasSchoolMaterial
-					? "Weiteres Schulmaterial hinzufügen"
-					: "Schulmaterial hinzufügen"
-			}
-			accessibilityRole="button"
-			disabled={!props.canUpload}
-			onPress={() => props.onPress()}
-			className={className}
-			variant="soft"
-		>
-			{content}
-		</ActionSurface>
 	);
 }
 
@@ -189,6 +113,7 @@ export function MaterialUploadStep({
 	errorMessage,
 	isBusy,
 	isUploading,
+	loadPreview,
 	onContinue,
 	onOpenUpload,
 	onRemoveDocument,
@@ -202,6 +127,7 @@ export function MaterialUploadStep({
 	errorMessage: string | null;
 	isBusy: boolean;
 	isUploading: boolean;
+	loadPreview?: LoadMaterialPreview;
 	onContinue: () => void;
 	onOpenUpload: () => void;
 	onRemoveDocument: (id: Id<"learningPlanDocuments">) => void;
@@ -217,39 +143,18 @@ export function MaterialUploadStep({
 	return (
 		<View className="flex-1">
 			<MaterialUploadStepLead />
-			<MaterialUploadActionCard
+			<MaterialUploadGrid
 				canUpload={canUpload}
-				hasSchoolMaterial={hasSchoolMaterial}
-				onPress={onOpenUpload}
+				documents={schoolDocuments}
+				onOpenUpload={onOpenUpload}
+				onRemoveDocument={onRemoveDocument}
+				loadPreview={loadPreview}
 			/>
-
-			{showSkip && !hasSchoolMaterial ? (
-				<Text className="mt-3 font-poppins text-body-4 text-secondary-text">
-					Dein Lernplan-Entwurf bleibt gespeichert. Schulmaterial kannst du
-					später ergänzen.
-				</Text>
-			) : null}
 
 			<UploadActivity
 				isUploading={isUploading}
 				openingUploadAction={openingUploadAction}
 			/>
-
-			{hasSchoolMaterial ? (
-				<View className="mt-7">
-					<Text className="mb-3 font-poppins font-semibold text-body-4 text-secondary-text">
-						Hochgeladen
-					</Text>
-					{schoolDocuments.map((document) => (
-						<MaterialCard
-							key={document.id}
-							name={document.fileName}
-							size={document.fileSizeBytes}
-							onRemove={() => onRemoveDocument(document.id)}
-						/>
-					))}
-				</View>
-			) : null}
 
 			<SetupError message={errorMessage} />
 			<View className="mt-auto w-full gap-3 pt-8">
@@ -274,45 +179,125 @@ export function MaterialUploadStep({
 	);
 }
 
-export function RequiredTopicsStep({
+function SearchSetupPage({
+	children,
 	canContinue,
 	errorMessage,
 	isBusy,
-	onChangeTopics,
 	onContinue,
-	topics,
+}: {
+	children: ReactNode;
+	canContinue: boolean;
+	errorMessage: string | null;
+	isBusy: boolean;
+	onContinue: () => void;
+}) {
+	const isKeyboardVisible = useKeyboardState((state) => state.isVisible);
+	return (
+		<View className="flex-1">
+			<ScreenScroll
+				includeTopSafeArea={false}
+				topPadding={0}
+				contentContainerStyle={{ paddingBottom: 24 }}
+			>
+				{children}
+				<SetupError message={errorMessage} />
+			</ScreenScroll>
+			{!isKeyboardVisible ? (
+				<CreationActionFooter>
+					<SetupContinueButton
+						canContinue={canContinue}
+						isBusy={isBusy}
+						onPress={onContinue}
+					/>
+				</CreationActionFooter>
+			) : null}
+		</View>
+	);
+}
+
+export function RequiredTopicsStep({
+	subject,
+	searchTopics,
+	canContinue,
+	errorMessage,
+	isBusy,
+	onContinue,
+	selectedTopics,
+	onChangeSelectedTopics,
 }: {
 	canContinue: boolean;
 	errorMessage: string | null;
 	isBusy: boolean;
-	onChangeTopics: (value: string) => void;
+	onChangeSelectedTopics: (value: string[]) => void;
 	onContinue: () => void;
-	topics: string;
+	selectedTopics: string[];
+	subject: string;
+	searchTopics: SearchTopics;
 }) {
 	return (
-		<View className="flex-1">
-			<Text className="font-poppins font-semibold text-body-1 text-text">
+		<SearchSetupPage
+			canContinue={canContinue}
+			errorMessage={errorMessage}
+			isBusy={isBusy}
+			onContinue={onContinue}
+		>
+			<Text
+				accessibilityRole="header"
+				className="font-poppins font-semibold text-body-1 text-text"
+			>
 				Welche Themen kommen in der Prüfung dran?
 			</Text>
-			<Text className="mt-3 font-poppins text-body-3 text-secondary-text">
-				Nenne alle Themen, die du für diese Prüfung lernen musst.
-			</Text>
-			<Textarea
-				accessibilityLabel="Prüfungsthemen"
-				className="mt-6 h-48 flex-none rounded-[24px] border border-border bg-card px-4 py-4"
-				value={topics}
-				onChangeText={onChangeTopics}
-				placeholder="Zum Beispiel: Lineare Funktionen, Steigung berechnen und den y-Achsenabschnitt bestimmen."
+			<TopicSearch
+				selectedTopics={selectedTopics}
+				subject={subject}
+				onChangeSelectedTopics={onChangeSelectedTopics}
+				searchTopics={searchTopics}
+				disabled={isBusy}
 			/>
+		</SearchSetupPage>
+	);
+}
 
-			<SetupError message={errorMessage} />
-			<View className="mt-auto pt-8">
-				<SetupContinueButton
-					canContinue={canContinue}
-					isBusy={isBusy}
-					onPress={onContinue}
-				/>
-			</View>
-		</View>
+export function ExamHintsStep({
+	subject,
+	selectedTopics,
+	additionalInfo,
+	onChange,
+	onContinue,
+	isBusy,
+	canContinue,
+	errorMessage,
+}: {
+	subject: string;
+	selectedTopics: string[];
+	additionalInfo: string;
+	onChange: (value: string) => void;
+	onContinue: () => void;
+	isBusy: boolean;
+	canContinue: boolean;
+	errorMessage: string | null;
+}) {
+	return (
+		<SearchSetupPage
+			canContinue={canContinue}
+			errorMessage={errorMessage}
+			isBusy={isBusy}
+			onContinue={onContinue}
+		>
+			<Text
+				accessibilityRole="header"
+				className="font-poppins font-semibold text-body-1 text-text"
+			>
+				Welche Hinweise gibt es zur Prüfung?
+			</Text>
+			<ExamHintsEditor
+				subject={subject}
+				selectedTopics={selectedTopics}
+				value={additionalInfo}
+				onChange={onChange}
+				disabled={isBusy}
+			/>
+		</SearchSetupPage>
 	);
 }

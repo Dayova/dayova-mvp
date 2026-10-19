@@ -35,6 +35,39 @@
 				"APP_VARIANT": "preview"
 			}
 		},
+		"validation": {
+			"extends": "base",
+			"developmentClient": false,
+			"distribution": "internal",
+			"environment": "development",
+			"channel": "validation",
+			"env": {
+				"APP_VARIANT": "preview",
+				"DAYOVA_INTERNAL_VALIDATION": "true",
+				"EXPO_PUBLIC_CONVEX_URL": "https://kindred-canary-599.eu-west-1.convex.cloud",
+				"EXPO_NO_DOTENV": "1"
+			},
+			"android": {
+				"withoutCredentials": true,
+				"gradleCommand": ":app:assembleValidation -PreactNativeArchitectures=arm64-v8a,x86_64",
+				"applicationArchivePath": "android/app/build/outputs/apk/validation/*.apk"
+			}
+		},
+		"validation-testflight": {
+			"extends": "base",
+			"developmentClient": false,
+			"distribution": "store",
+			"environment": "preview",
+			"autoIncrement": true,
+			"channel": "validation-testflight",
+			"env": {
+				"APP_VARIANT": "preview",
+				"DAYOVA_INTERNAL_VALIDATION": "true",
+				"DAYOVA_VALIDATION_DISTRIBUTION": "testflight",
+				"EXPO_PUBLIC_CONVEX_URL": "https://kindred-canary-599.eu-west-1.convex.cloud",
+				"EXPO_NO_DOTENV": "1"
+			}
+		},
 		"production": {
 			"extends": "base",
 			"autoIncrement": true,

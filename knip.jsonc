@@ -6,6 +6,8 @@
 		"scripts/check-clerk-lifecycle-local.mjs",
 		// Invoked manually or by the validation-only EAS benchmark.
 		"scripts/benchmark-checks.mjs",
+		// Manually invoked topic-search probes and native evidence harness.
+		"scripts/evidence/pr884/*.{cjs,mjs,tsx}",
 		// Checked by TypeScript, never executed by a runtime test runner.
 		"tests/**/*.types.ts",
 		// Maintained standalone native QA and release helpers.
@@ -16,6 +18,10 @@
 	],
 	// Installed outside npm; required for the optional native smoke suite.
 	"ignoreBinaries": ["maestro"],
+	// prepare.cjs materializes this pinned historical baseline for the harness.
+	"ignoreUnresolved": [
+		"../../../src/features/learning-plans/pr884-baseline.generated"
+	],
 	"ignore": [".agents/**"],
 	// Required by the EAS/Xcode iOS build path even though app source does not
 	// import it directly. Removing it can fail Babel startup with:

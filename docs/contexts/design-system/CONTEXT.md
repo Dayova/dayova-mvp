@@ -30,6 +30,22 @@ unless the team explicitly supersedes this temporary model.
 
 ## Native controls
 
+`SearchField` in `src/components/ui/search-field.tsx` composes the existing
+`FieldControl` and `Input` with a decorative Hugeicons search glyph. It retains
+native input props, system text scaling and a named accessibility label. In
+exam-topic setup, search results use reversible `SelectionControl` checkboxes.
+Selected topics and hints use one horizontally scrollable row of removable chips
+with named remove actions and minimum 44pt targets. Newly appended choices slide
+into view after layout; reduced motion reveals them without animation. Removal
+and resizing do not force a scroll. Long chip labels wrap within the row width
+so the full text and remove action remain reachable. The entered nonblank title is immediately
+selectable below the input using the same checkbox row, merging exact catalog
+matches without duplicate choices. The subsequent hint page uses the same search and removable-choice pattern,
+with six topic-ranked suggestions and a quiet “Weitere Hinweise” action.
+Existing hint lines remain removable; custom text can be added through search.
+Changing topics never changes the selected hints. See the
+[topic-input contract](../product/adr/inline-topic-search-with-free-scope.md).
+
 All app switches must use `Switch` from `src/components/ui/switch`. Do not
 import or use `Switch` from `react-native`, and do not render Expo UI switches
 directly from app screens.
@@ -290,6 +306,16 @@ offers one forward-only action into the app. Show it after a newly completed
 purchase, not after restoring an existing subscription, so the celebration
 acknowledges a real transition without becoming recurring friction.
 
+The learning-plan material step uses the shared `MaterialUploadGrid`: two
+columns of dashed plus tiles, with uploaded materials occupying those same
+slots. It starts with four slots and always retains an add tile; every empty
+tile opens the existing camera/gallery/files sheet. Large text and compact
+viewports use one column. Photos use protected image previews with retry;
+PDF/Office files show type, filename and size without simulated page content.
+The same grid renders its first row decoratively in the bounded onboarding
+phone artwork. See
+[DAY-543](https://linear.app/dayova/issue/DAY-543/show-learning-plan-materials-in-a-preview-upload-grid).
+
 ## Product-surface previews
 
 ### Personal-subject action appearance
@@ -356,6 +382,15 @@ Keep native glass scoped to the creation header. The creation progress
 bar is 16pt tall, centered beside the 48pt button hosts. This keeps the bar
 compact while preserving comfortable button tap areas.
 
+Exam type, subject, date, topic and hint pages share `CreationActionFooter`.
+The action is a sibling of the scroll content, with 24pt side padding and bottom
+padding `max(safeArea.bottom + 10, 24)`. Retain the existing iOS keyboard-sticky
+behavior on the other creation steps. On topic and hint pages, remove the entire
+footer while the software keyboard is visible and restore it after dismissal,
+without resetting search or selections. Topic/hint content scrolls above the
+footer when shown; do not place Continue inside a growing result list or a
+scroll container.
+
 ## Notes
 
 - Use `SupportContact` for contacting the team from Settings, access screens,
@@ -407,6 +442,11 @@ are empty; example selections belong only in historical screenshot evidence.
 The duration explanation adapts to the chosen value; an additional explanation
 between weekdays and start time brings the profile flow to twelve steps.
 
+## Search selections in exam setup
+
+Topic and hint suggestions reuse `SelectionOptionRow`, the same rounded card used by exam-type and subject selection. Search choices use checkbox semantics for multiple selections; existing subject/exam choices retain radio semantics. The optional leading icon, wrapping label, subject metadata, selected accent surface and indicator are owned by the shared row. `SearchSuggestion` supplies the custom-entry wording and a concise accessible title; it does not clone the visual treatment.
+
+Keep neutral removable `SearchSelectionChip` controls below the input, one question and one search per page, and topics → optional hints → material navigation. Show four catalog topic alternatives and six contextual hints initially. Additional hints are revealed with “Weitere Hinweise”. Preserve disabled semantics and explicit remove labels. Existing hint lines remain removable and custom hints can be added through search. This supersedes DAY-530's earlier transparent plus-row treatment following the user's PR #884 feedback on 18 October 2026. See https://linear.app/dayova/issue/DAY-530 and the [decision record](https://app.notion.com/p/3fb2e87228bf817a880dde6127a1996a).
 ## Press feedback
 
 Shared Buttons (including icons and links) and custom actions use
