@@ -1,4 +1,4 @@
-import { describe, expect, jest, test } from "@jest/globals";
+import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render } from "@testing-library/react-native";
 import { useState } from "react";
 import type { Id } from "#convex/_generated/dataModel";
@@ -9,13 +9,22 @@ import {
 	RequiredTopicsStep,
 } from "./learning-plan-setup-steps";
 
+let mockKeyboardVisible = false;
+beforeEach(() => {
+	mockKeyboardVisible = false;
+});
+
 jest.mock("react-native-safe-area-context", () => ({
 	useSafeAreaInsets: () => ({ top: 0, bottom: 34, left: 0, right: 0 }),
 }));
 jest.mock("react-native-keyboard-controller", () => {
 	const { View, ScrollView } =
 		jest.requireActual<typeof import("react-native")>("react-native");
-	return { KeyboardStickyView: View, KeyboardAwareScrollView: ScrollView };
+	return {
+		KeyboardStickyView: View,
+		KeyboardAwareScrollView: ScrollView,
+		useKeyboardState: () => mockKeyboardVisible,
+	};
 });
 
 jest.mock("react-native-reanimated", () =>
@@ -72,6 +81,45 @@ describe("learning-plan setup steps", () => {
 		).toBeNull();
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		expect(next).toHaveBeenCalledTimes(1);
+	});
+
+	test.each([
+		"topics",
+		"hints",
+	] as const)("%s hides Continue while typing and restores it without losing the query", async (page) => {
+		const props = {
+			subject: "Deutsch",
+			selectedTopics: ["Gedichtanalyse"],
+			canContinue: true,
+			isBusy: false,
+			errorMessage: null,
+			onContinue: jest.fn(),
+		};
+		const step = () =>
+			page === "topics" ? (
+				<RequiredTopicsStep
+					{...props}
+					searchTopics={async () => ({ topics: [], truncated: false })}
+					onChangeSelectedTopics={jest.fn()}
+				/>
+			) : (
+				<ExamHintsStep {...props} additionalInfo="" onChange={jest.fn()} />
+			);
+		const searchLabel = page === "topics" ? "Themen suchen" : "Hinweise suchen";
+		const screen = await render(step());
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
+		await fireEvent.changeText(screen.getByLabelText(searchLabel), "Text");
+
+		mockKeyboardVisible = true;
+		await screen.rerender(step());
+		expect(screen.queryByRole("button", { name: "Weiter" })).toBeNull();
+		expect(screen.getByLabelText(searchLabel)).toHaveDisplayValue("Text");
+
+		mockKeyboardVisible = false;
+		await screen.rerender(step());
+		expect(screen.getByLabelText(searchLabel)).toHaveDisplayValue("Text");
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(props.onContinue).toHaveBeenCalledTimes(1);
 	});
 
 	test("hint search adds, selects and removes multiple suggestions and a custom condition", async () => {

@@ -287,8 +287,11 @@ compact while preserving comfortable button tap areas.
 Exam type, subject, date, topic and hint pages share `CreationActionFooter`.
 The action is a sibling of the scroll content, with 24pt side padding and bottom
 padding `max(safeArea.bottom + 10, 24)`. Retain the existing iOS keyboard-sticky
-behavior. Topic/hint content scrolls above this footer; do not place Continue
-inside a growing result list or a scroll container.
+behavior on the other creation steps. On topic and hint pages, remove the entire
+footer while the software keyboard is visible and restore it after dismissal,
+without resetting search or selections. Topic/hint content scrolls above the
+footer when shown; do not place Continue inside a growing result list or a
+scroll container.
 
 ## Notes
 
