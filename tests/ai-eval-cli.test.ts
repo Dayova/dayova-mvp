@@ -159,5 +159,7 @@ globalThis.fetch = async (url, options) => {
 			[...args.slice(0, -2), "--output", directory, "--max-calls", "1"],
 			{ env, timeout: 20_000 },
 		),
-	).rejects.toThrow();
+	).rejects.toMatchObject({
+		stderr: expect.stringContaining("Planned calls exceed --max-calls"),
+	});
 });
