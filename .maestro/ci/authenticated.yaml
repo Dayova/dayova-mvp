@@ -23,7 +23,7 @@ env:
     timeout: 10000
 - tapOn: LOGIN
 - extendedWaitUntil:
-    visible: 'Sicherheitscode|Anmeldecode|So läuft deine Testphase'
+    visible: 'Bestätigungscode|So läuft deine Testphase'
     timeout: 60000
 - runFlow:
     when:

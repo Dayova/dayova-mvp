@@ -24,7 +24,12 @@ export default defineConfig({
 		coverage: {
 			provider: "v8",
 			include: ["src/**/*.ts", "convex/**/*.ts"],
-			exclude: ["**/*.test.ts", "**/*.types.ts", "convex/_generated/**"],
+			exclude: [
+				"**/*.test.ts",
+				"**/*.types.ts",
+				"**/*.d.ts",
+				"convex/_generated/**",
+			],
 			reporter: ["text-summary", "json-summary", "lcov", "html"],
 			reportsDirectory: ".maestro/artifacts/ci/coverage/vitest",
 		},
