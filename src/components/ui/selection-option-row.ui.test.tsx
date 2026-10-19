@@ -56,6 +56,27 @@ jest.mock("react-native-reanimated", () =>
 	),
 );
 
+test("supports disabled multi-select search choices with a separate spoken title", async () => {
+	const onPress = jest.fn();
+	const screen = await render(
+		<SelectionOptionRow
+			label="Als eigenes Thema hinzufügen"
+			accessibilityLabel="Gedichts"
+			accessibilityRole="checkbox"
+			selected
+			disabled
+			onPress={onPress}
+		/>,
+	);
+	const choice = screen.getByRole("checkbox", { name: "Gedichts" });
+	expect(choice.props.accessibilityState).toMatchObject({
+		checked: true,
+		disabled: true,
+	});
+	await fireEvent.press(choice);
+	expect(onPress).not.toHaveBeenCalled();
+});
+
 test("exam and subject rows do not commit a canceled selection", async () => {
 	const onPress = jest.fn();
 	const screen = await render(

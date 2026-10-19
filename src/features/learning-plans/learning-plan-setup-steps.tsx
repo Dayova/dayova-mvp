@@ -1,14 +1,19 @@
+import type { ReactNode } from "react";
 import { ActivityIndicator, View } from "react-native";
+import { useKeyboardState } from "react-native-keyboard-controller";
 import type { Id } from "#convex/_generated/dataModel";
 import { Button } from "~/components/ui/button";
+import { ScreenScroll } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
-import { Textarea } from "~/components/ui/textarea";
 import {
 	type LoadMaterialPreview,
 	MaterialUploadGrid,
 } from "~/features/learning-plans/material-upload-grid";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { useDayovaTheme } from "~/lib/theme";
+import { CreationActionFooter } from "./creation-action-footer";
+import { ExamHintsEditor } from "./exam-hints-editor";
+import { type SearchTopics, TopicSearch } from "./topic-search";
 
 type PendingUploadAction = "camera" | "library" | "files";
 
@@ -174,45 +179,125 @@ export function MaterialUploadStep({
 	);
 }
 
-export function RequiredTopicsStep({
+function SearchSetupPage({
+	children,
 	canContinue,
 	errorMessage,
 	isBusy,
-	onChangeTopics,
 	onContinue,
-	topics,
+}: {
+	children: ReactNode;
+	canContinue: boolean;
+	errorMessage: string | null;
+	isBusy: boolean;
+	onContinue: () => void;
+}) {
+	const isKeyboardVisible = useKeyboardState((state) => state.isVisible);
+	return (
+		<View className="flex-1">
+			<ScreenScroll
+				includeTopSafeArea={false}
+				topPadding={0}
+				contentContainerStyle={{ paddingBottom: 24 }}
+			>
+				{children}
+				<SetupError message={errorMessage} />
+			</ScreenScroll>
+			{!isKeyboardVisible ? (
+				<CreationActionFooter>
+					<SetupContinueButton
+						canContinue={canContinue}
+						isBusy={isBusy}
+						onPress={onContinue}
+					/>
+				</CreationActionFooter>
+			) : null}
+		</View>
+	);
+}
+
+export function RequiredTopicsStep({
+	subject,
+	searchTopics,
+	canContinue,
+	errorMessage,
+	isBusy,
+	onContinue,
+	selectedTopics,
+	onChangeSelectedTopics,
 }: {
 	canContinue: boolean;
 	errorMessage: string | null;
 	isBusy: boolean;
-	onChangeTopics: (value: string) => void;
+	onChangeSelectedTopics: (value: string[]) => void;
 	onContinue: () => void;
-	topics: string;
+	selectedTopics: string[];
+	subject: string;
+	searchTopics: SearchTopics;
 }) {
 	return (
-		<View className="flex-1">
-			<Text className="font-poppins font-semibold text-body-1 text-text">
+		<SearchSetupPage
+			canContinue={canContinue}
+			errorMessage={errorMessage}
+			isBusy={isBusy}
+			onContinue={onContinue}
+		>
+			<Text
+				accessibilityRole="header"
+				className="font-poppins font-semibold text-body-1 text-text"
+			>
 				Welche Themen kommen in der Prüfung dran?
 			</Text>
-			<Text className="mt-3 font-poppins text-body-3 text-secondary-text">
-				Nenne alle Themen, die du für diese Prüfung lernen musst.
-			</Text>
-			<Textarea
-				accessibilityLabel="Prüfungsthemen"
-				className="mt-6 h-48 flex-none rounded-[24px] border border-border bg-card px-4 py-4"
-				value={topics}
-				onChangeText={onChangeTopics}
-				placeholder="Zum Beispiel: Lineare Funktionen, Steigung berechnen und den y-Achsenabschnitt bestimmen."
+			<TopicSearch
+				selectedTopics={selectedTopics}
+				subject={subject}
+				onChangeSelectedTopics={onChangeSelectedTopics}
+				searchTopics={searchTopics}
+				disabled={isBusy}
 			/>
+		</SearchSetupPage>
+	);
+}
 
-			<SetupError message={errorMessage} />
-			<View className="mt-auto pt-8">
-				<SetupContinueButton
-					canContinue={canContinue}
-					isBusy={isBusy}
-					onPress={onContinue}
-				/>
-			</View>
-		</View>
+export function ExamHintsStep({
+	subject,
+	selectedTopics,
+	additionalInfo,
+	onChange,
+	onContinue,
+	isBusy,
+	canContinue,
+	errorMessage,
+}: {
+	subject: string;
+	selectedTopics: string[];
+	additionalInfo: string;
+	onChange: (value: string) => void;
+	onContinue: () => void;
+	isBusy: boolean;
+	canContinue: boolean;
+	errorMessage: string | null;
+}) {
+	return (
+		<SearchSetupPage
+			canContinue={canContinue}
+			errorMessage={errorMessage}
+			isBusy={isBusy}
+			onContinue={onContinue}
+		>
+			<Text
+				accessibilityRole="header"
+				className="font-poppins font-semibold text-body-1 text-text"
+			>
+				Welche Hinweise gibt es zur Prüfung?
+			</Text>
+			<ExamHintsEditor
+				subject={subject}
+				selectedTopics={selectedTopics}
+				value={additionalInfo}
+				onChange={onChange}
+				disabled={isBusy}
+			/>
+		</SearchSetupPage>
 	);
 }

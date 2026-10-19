@@ -198,6 +198,8 @@ export type LearningPlanSnapshot = {
 		preparationRevision?: number;
 		preparationDepth: "compact" | "thorough" | "intensive";
 		topicDescription: string;
+		topicItems?: string[];
+		topicAdditionalInfo?: string;
 		teacherGuidance?: string;
 		notes?: string;
 		status: "draft" | "questionsReady" | "generated" | "accepted";

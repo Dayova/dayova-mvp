@@ -2170,3 +2170,67 @@ test("generated plan sessions reject malformed control characters without replac
 		expectedOutcome: "Schüler kennt Lösungsansätze.",
 	});
 });
+
+test("persists separate selections and notes, restores them, and synchronizes the calendar projection", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const id = await createPlan(t);
+	const input = {
+		topicItems: ["Bilanz", "Inventur"],
+		topicAdditionalInfo: "Ohne Hilfsmittel\nBelege nach Datum ordnen",
+		topicDescription:
+			"Bilanz\nInventur\nOhne Hilfsmittel\nBelege nach Datum ordnen",
+	};
+	await t.mutation(api.learningPlans.updateRequiredTopics, { id, ...input });
+	const snapshot = await t.query(api.learningPlans.getSnapshot, { id });
+	expect(snapshot?.plan).toMatchObject(input);
+	await t.run(async (ctx) => {
+		const plan = await ctx.db.get("learningPlans", id);
+		expect(plan).toMatchObject(input);
+		if (!plan?.examDayEntryId) throw new Error("Expected linked exam");
+		expect(
+			(await ctx.db.get("dayEntries", plan.examDayEntryId))?.topicDescription,
+		).toBe(input.topicDescription);
+	});
+	await expect(
+		t.mutation(api.learningPlans.updateRequiredTopics, {
+			id,
+			...input,
+			topicDescription: "Unpassender Text",
+		}),
+	).rejects.toThrow("stimmen nicht überein");
+	expect(
+		(await t.query(api.learningPlans.getSnapshot, { id }))?.plan,
+	).toMatchObject(input);
+	await t.mutation(api.learningPlans.updateRequiredTopics, {
+		id,
+		topicItems: [],
+		topicAdditionalInfo: input.topicAdditionalInfo,
+		topicDescription: input.topicAdditionalInfo,
+	});
+	expect(
+		(await t.query(api.learningPlans.getSnapshot, { id }))?.plan,
+	).toMatchObject({
+		topicItems: [],
+		topicAdditionalInfo: input.topicAdditionalInfo,
+		topicDescription: input.topicAdditionalInfo,
+	});
+});
+
+test("changing scope through a legacy client removes stale selection metadata", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const id = await createPlan(t);
+	await t.mutation(api.learningPlans.updateRequiredTopics, {
+		id,
+		topicItems: ["Bilanz"],
+		topicAdditionalInfo: "Ohne Hilfsmittel",
+		topicDescription: "Bilanz\nOhne Hilfsmittel",
+	});
+	await t.mutation(api.learningPlans.updateRequiredTopics, {
+		id,
+		topicDescription: "Nur Inventur",
+	});
+	const plan = (await t.query(api.learningPlans.getSnapshot, { id }))?.plan;
+	expect(plan?.topicDescription).toBe("Nur Inventur");
+	expect(plan?.topicItems).toBeUndefined();
+	expect(plan?.topicAdditionalInfo).toBeUndefined();
+});

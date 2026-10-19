@@ -33,6 +33,7 @@ import type * as diagnosticReadiness from "../diagnosticReadiness.js";
 import type * as entitlements from "../entitlements.js";
 import type * as env from "../env.js";
 import type * as errors from "../errors.js";
+import type * as examTopicInput from "../examTopicInput.js";
 import type * as fileStorage from "../fileStorage.js";
 import type * as generatedGermanText from "../generatedGermanText.js";
 import type * as generatedGermanTextRepair from "../generatedGermanTextRepair.js";
@@ -75,6 +76,10 @@ import type * as topicDescriptionValidation from "../topicDescriptionValidation.
 import type * as userAnalytics from "../userAnalytics.js";
 import type * as users from "../users.js";
 import type * as validationAnalytics from "../validationAnalytics.js";
+import type * as wloSubjectContext from "../wloSubjectContext.js";
+import type * as wloTopicCache from "../wloTopicCache.js";
+import type * as wloTopicContract from "../wloTopicContract.js";
+import type * as wloTopics from "../wloTopics.js";
 
 import type {
   ApiFromModules,
@@ -108,6 +113,7 @@ declare const fullApi: ApiFromModules<{
   entitlements: typeof entitlements;
   env: typeof env;
   errors: typeof errors;
+  examTopicInput: typeof examTopicInput;
   fileStorage: typeof fileStorage;
   generatedGermanText: typeof generatedGermanText;
   generatedGermanTextRepair: typeof generatedGermanTextRepair;
@@ -150,6 +156,10 @@ declare const fullApi: ApiFromModules<{
   userAnalytics: typeof userAnalytics;
   users: typeof users;
   validationAnalytics: typeof validationAnalytics;
+  wloSubjectContext: typeof wloSubjectContext;
+  wloTopicCache: typeof wloTopicCache;
+  wloTopicContract: typeof wloTopicContract;
+  wloTopics: typeof wloTopics;
 }>;
 
 /**
