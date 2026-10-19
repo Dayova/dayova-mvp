@@ -347,14 +347,9 @@ jobs:
       embed_bundle_assets: true
   android_smoke:
     name: android embedded app smoke
-    type: maestro
+    type: custom
     environment: development
-    hooks: &redact_maestro
-      before_maestro_tests:
-        - run: node scripts/ci-prepare-maestro.mjs
-      after_maestro_tests:
-        - if: ${{ always() }}
-          run: node scripts/ci-sanitize-maestro.mjs
+    runs_on: linux-medium-nested-virtualization
     after:
       - native_fingerprint
       - android_build
@@ -362,15 +357,12 @@ jobs:
     if: ${{ after.native_fingerprint.status == 'success' }}
     env:
       MAESTRO_APP_ID: com.dayova.dev
-    runs_on: linux-medium-nested-virtualization
-    params:
-      build_id: ${{ after.android_repack.outputs.build_id || after.android_build.outputs.build_id }}
-      flow_path:
-        - .maestro/ci/unauthenticated.yaml
-        - .maestro/ci/authenticated.yaml
-      maestro_version: 2.10.0
-      retries: 0
-      output_format: junit
+    steps:
+      - uses: eas/checkout
+      - uses: ./.eas/functions/device-smoke
+        with:
+          platform: android
+          build_id: ${{ after.android_repack.outputs.build_id || after.android_build.outputs.build_id }}
   ios_get_build:
     name: ios matching native artifact
     type: get-build
@@ -407,9 +399,9 @@ jobs:
       embed_bundle_assets: true
   ios_smoke:
     name: ios embedded app smoke
-    type: maestro
+    type: custom
     environment: development
-    hooks: *redact_maestro
+    runs_on: macos-medium
     after:
       - native_fingerprint
       - ios_build
@@ -417,14 +409,12 @@ jobs:
     if: ${{ after.native_fingerprint.status == 'success' }}
     env:
       MAESTRO_APP_ID: de.dayova.app-dev
-    params:
-      build_id: ${{ after.ios_repack.outputs.build_id || after.ios_build.outputs.build_id }}
-      flow_path:
-        - .maestro/ci/unauthenticated.yaml
-        - .maestro/ci/authenticated.yaml
-      maestro_version: 2.10.0
-      retries: 0
-      output_format: junit
+    steps:
+      - uses: eas/checkout
+      - uses: ./.eas/functions/device-smoke
+        with:
+          platform: ios
+          build_id: ${{ after.ios_repack.outputs.build_id || after.ios_build.outputs.build_id }}
   authenticated_smoke:
     name: Clerk and deployed Convex smoke
     type: custom

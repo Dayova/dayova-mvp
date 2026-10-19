@@ -13,18 +13,15 @@ on:
 
 jobs:
   probe:
-    type: maestro
+    type: custom
     environment: development
     runs_on: ${{ inputs.platform == 'android' && 'linux-medium-nested-virtualization' || 'macos-medium' }}
     env:
       MAESTRO_APP_ID: ${{ inputs.platform == 'android' && 'com.dayova.dev' || 'de.dayova.app-dev' }}
-    hooks:
-      after_maestro_tests:
-        - if: ${{ always() }}
-          run: node scripts/ci-sanitize-maestro.mjs
-    params:
-      build_id: ${{ inputs.build_id }}
-      flow_path: .maestro/ci/failure-probe.yaml
-      maestro_version: 2.10.0
-      retries: 0
-      output_format: junit
+    steps:
+      - uses: eas/checkout
+      - uses: ./.eas/functions/device-smoke
+        with:
+          platform: ${{ inputs.platform }}
+          build_id: ${{ inputs.build_id }}
+          flow: failure

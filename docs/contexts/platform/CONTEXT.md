@@ -57,8 +57,9 @@ set `native_checks=true`. Profile `ci` builds embedded non-production apps again
 the reviewed development Clerk/Convex tenant, with updates and analytics disabled.
 Matching native builds are reused only with a freshly repacked JavaScript bundle.
 Native compile misses use EAS Build credits and flat build fees; fingerprints,
-repacks, and device checks consume workflow VM time, with an additional fee per
-Maestro job. See [current Expo pricing](https://expo.dev/pricing). These targeted
+repacks, and device checks consume workflow VM time. Prepackaged Maestro jobs
+also carry a per-job fee; these checks use custom VM jobs. See
+[current Expo pricing](https://expo.dev/pricing). These targeted
 checks add coverage and usage; stage speedups alone do not establish net savings.
 Maestro and the real-service auth probe use sensitive development environment
 variables `MAESTRO_CI_EMAIL` and `MAESTRO_CI_PASSWORD` for a synthetic Clerk test
@@ -80,9 +81,14 @@ before treating a run as a matched comparison.
 platform and verified CI build ID. It launches the test app and deliberately fails
 an impossible UI assertion so the failed status and retained diagnostics can be
 checked. It must never be included in normal smoke execution.
-Maestro debug files include expanded environment values. The post-test hook
-redacts synthetic credentials before artifact upload, including failed runs;
-redaction failure removes the unsanitized artifact tree and fails the hook.
+Maestro debug files include expanded environment values. Device checks use the
+shared `.eas/functions/device-smoke` custom function so `ci-run-maestro.mjs`
+collects diagnostic text before credential redaction and the single upload,
+including failed runs. Redaction failure removes the unsanitized artifact tree
+and fails the job. The prepackaged Maestro job captures raw iOS system archives
+after its last hook; that later capture can contain synthetic identifiers, so
+it cannot provide this upload boundary. JUnit, screenshots and sanitized app
+logs remain under ignored `.maestro/artifacts/device/`.
 `device-smoke.yml` manually checks a verified CI build on either platform; select
 the authenticated flow to diagnose login without repeating exports and repacks.
 Its full suite excludes the tagged negative control. Disposable iOS simulators
