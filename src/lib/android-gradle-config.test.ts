@@ -50,7 +50,7 @@ describe("Android Gradle build configuration", () => {
 		]);
 	});
 
-	test("registers the memory plugin in the Expo config", () => {
+	test("registers the Android Gradle plugins in the Expo config", () => {
 		const previousAppVariant = process.env.APP_VARIANT;
 		process.env.APP_VARIANT = "development";
 
@@ -71,5 +71,6 @@ describe("Android Gradle build configuration", () => {
 		);
 
 		expect(pluginNames).toContain("./plugins/withAndroidGradleJvmMemory");
+		expect(pluginNames).toContain("./plugins/withAndroidGradleDaemonJvm");
 	});
 });
