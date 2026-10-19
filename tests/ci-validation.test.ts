@@ -64,6 +64,8 @@ describe("native validation scope over real Git history", () => {
 		["metro.config.js", true],
 		["babel.config.js", true],
 		["index.ts", true],
+		["scripts/ci-prepare-maestro.mjs", true],
+		["scripts/ci-sanitize-maestro.mjs", true],
 	])("routes a change to %s", (path, expected) => {
 		const directory = mkdtempSync(join(tmpdir(), "dayova-ci-scope-"));
 		const git = (...args: string[]) =>

@@ -56,6 +56,10 @@ through `scripts/ci-native-changes.mjs`. The weekly run forces it; manual CI can
 set `native_checks=true`. Profile `ci` builds embedded non-production apps against
 the reviewed development Clerk/Convex tenant, with updates and analytics disabled.
 Matching native builds are reused only with a freshly repacked JavaScript bundle.
+Native compile misses use EAS Build credits and flat build fees; fingerprints,
+repacks, and device checks consume workflow VM time, with an additional fee per
+Maestro job. See [current Expo pricing](https://expo.dev/pricing). These targeted
+checks add coverage and usage; stage speedups alone do not establish net savings.
 Maestro and the real-service auth probe use sensitive development environment
 variables `MAESTRO_CI_EMAIL` and `MAESTRO_CI_PASSWORD` for a synthetic Clerk test
 identity. The auth probe checks both authenticated access and anonymous denial.
