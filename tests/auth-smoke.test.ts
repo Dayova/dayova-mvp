@@ -14,7 +14,9 @@ const env = {
 
 function serviceResponses(condition = "valid") {
 	const requests: { url: string; init: RequestInit }[] = [];
-	const request = vi.fn(async (url: string, init: RequestInit) => {
+	const request = vi.fn<typeof fetch>(async (url, init) => {
+		if (typeof url !== "string" || !init)
+			throw new Error("The probe must send an explicit service request");
 		requests.push({ url, init });
 		if (url.endsWith("/api/query")) {
 			if (!(init.headers as Record<string, string>).Authorization)

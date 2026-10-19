@@ -1,0 +1,8 @@
+appId: ${MAESTRO_APP_ID}
+name: Deliberate failure validates the automation status and diagnostics
+env:
+  APP_ID: ${MAESTRO_APP_ID}
+---
+- runFlow: ../flows/app-launch.yaml
+# This flow runs only through the manual failure-probe workflow.
+- assertVisible: __DAYOVA_INTENTIONAL_CI_ASSERTION_FAILURE__

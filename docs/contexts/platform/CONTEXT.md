@@ -62,12 +62,17 @@ identity. The auth probe checks both authenticated access and anonymous denial.
 
 `pnpm test:ci` retains per-stage timings, Vitest JUnit, and Jest JSON under ignored
 `.maestro/artifacts/ci/`. Weekly CI and the manual `test-coverage.yml` collect
-Vitest/Jest coverage there. Upload steps run even on failure. Manual
+Vitest/Jest coverage there. Upload steps run even on failure.
 CI uses two Jest workers on `linux-medium`, selected by the matched benchmark.
 Manual
 `test-benchmark.yml` and `export-benchmark.yml` compare worker counts and separate
 versus combined exports on the same commit and runner; inspect resolved inputs
 before treating a run as a matched comparison.
+
+`smoke-failure-probe.yml` is an explicitly manual negative control: provide the
+verified CI Android/iOS build IDs. It launches the test app and deliberately fails
+an impossible UI assertion so the failed status and retained diagnostics can be
+checked. It must never be included in normal smoke execution.
 
 `Automated review coverage` reports a completed CodeRabbit review separately
 from its provider status. A skipped, rate-limited, missing, or unknown result

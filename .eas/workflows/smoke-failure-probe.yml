@@ -1,0 +1,36 @@
+name: Deliberate device smoke failure probe
+
+on:
+  workflow_dispatch:
+    inputs:
+      android_build_id:
+        type: string
+        required: true
+      ios_build_id:
+        type: string
+        required: true
+
+jobs:
+  android:
+    type: maestro
+    environment: development
+    runs_on: linux-medium-nested-virtualization
+    env:
+      MAESTRO_APP_ID: com.dayova.dev
+    params:
+      build_id: ${{ inputs.android_build_id }}
+      flow_path: .maestro/ci/failure-probe.yaml
+      maestro_version: 2.10.0
+      retries: 0
+      output_format: junit
+  ios:
+    type: maestro
+    environment: development
+    env:
+      MAESTRO_APP_ID: de.dayova.app-dev
+    params:
+      build_id: ${{ inputs.ios_build_id }}
+      flow_path: .maestro/ci/failure-probe.yaml
+      maestro_version: 2.10.0
+      retries: 0
+      output_format: junit

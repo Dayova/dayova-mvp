@@ -63,7 +63,7 @@ jobs:
       - contributor_gate
     env:
       CI_EVENT_NAME: ${{ github.event_name }}
-      CI_REF_NAME: ${{ github.ref_name }}
+      CI_REF_NAME: ${{ github.ref_name || 'manual' }}
       CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || 'unavailable' }}
       CI_NATIVE_FORCE: ${{ inputs.native_checks && 'true' || 'false' }}
       CI_COVERAGE: ${{ github.event_name == 'schedule' && 'true' || 'false' }}
@@ -161,7 +161,7 @@ jobs:
       IOS_STATUS: ${{ after.ios_smoke.status }}
       AUTH_STATUS: ${{ after.authenticated_smoke.status }}
       APP_VARIANT: production
-      CI_SOURCE_SHA: ${{ github.sha }}
+      CI_SOURCE_SHA: ${{ github.sha || 'unavailable' }}
       OTA_IOS_FINGERPRINT: ${{ after.production_fingerprint.outputs.ios_fingerprint_hash || 'unavailable' }}
       OTA_ANDROID_FINGERPRINT: ${{ after.production_fingerprint.outputs.android_fingerprint_hash || 'unavailable' }}
     steps:
