@@ -19,6 +19,19 @@ const canonicalSurfaces = {
 };
 
 export const authorizationClasses = {
+	"ai-observability-conditional": {
+		mutationClass: "read-only-by-default-authorized-ai-observability-write",
+		authorization:
+			"Read task-scoped metadata and documentation. Instrumentation and development trace checks require the user's requested change. Paid evaluations and synthetic dataset publication require explicit opt-in; production deployment and learner-content capture require separate authority.",
+		systems: {
+			read: ["repository", "Langfuse", "official model-provider documentation"],
+			write: [
+				"repository and GitHub PR for requested implementation",
+				"development Convex and Langfuse for requested trace verification",
+				"model providers and evaluation Langfuse project only for explicitly authorized runs",
+			],
+		},
+	},
 	"read-only": {
 		mutationClass: "read-only-or-ephemeral",
 		authorization:
@@ -144,6 +157,13 @@ export const authorizationClasses = {
 };
 
 export const evalSuites = {
+	"langfuse-instrumentation": {
+		kind: "behavioral",
+		command:
+			"pnpm exec vitest run tests/ai-observability.test.ts tests/ai-eval.test.ts tests/ai-eval-review.test.ts",
+		owner:
+			"DAY-219 and DAY-293; ai/README.md also requires a live trace audit for instrumentation changes",
+	},
 	"catalog-contract": {
 		kind: "structural",
 		command: "pnpm skills:validate",
@@ -182,6 +202,14 @@ export const evalSuites = {
 };
 
 const sourceDefaults = {
+	"langfuse/skills": {
+		skillRationale:
+			"Dayova uses Langfuse for metadata-only AI tracing, cost attribution, and synthetic model evaluations",
+		overrideRationale:
+			"Preserve the upstream pin and MIT license, normalize Codex frontmatter, and apply ai/README.md privacy and current-API corrections to the referenced guides.",
+		evalSuite: ["catalog-contract", "langfuse-instrumentation"],
+		lastReviewed: "2026-10-19",
+	},
 	"mattpocock/skills": {
 		skillRationale:
 			"its curated engineering workflow materially improves repeatable repository work",
@@ -244,12 +272,28 @@ function defineSource({
 		authorizationClass: "agent-system-governance",
 		overrideRationale: sourceDefaults[name].overrideRationale,
 		evalSuite: [...sourceDefaults[name].evalSuite],
-		lastReviewed: GOVERNANCE_REVIEW_DATE,
+		lastReviewed: sourceDefaults[name].lastReviewed ?? GOVERNANCE_REVIEW_DATE,
 		retirementCriteria,
 	};
 }
 
 export const sourceGovernance = {
+	"langfuse/skills": defineSource({
+		name: "langfuse/skills",
+		pin: {
+			kind: "per-skill-content-sha256",
+			location: "skills-lock.json; upstream revision in ai/README.md",
+		},
+		inclusionRationale:
+			"Official tracing, cost, dataset, and evaluation guidance for DAY-219 and DAY-293.",
+		positiveTrigger:
+			"An authorized adoption or refresh of the Langfuse skill and its Dayova privacy adaptations.",
+		negativeTrigger:
+			"Ordinary application work or an unreviewed overwrite from the upstream installer.",
+		artifacts: [".agents/skills/langfuse", "skills-lock.json", "ai/README.md"],
+		retirementCriteria:
+			"Retire when Dayova no longer uses Langfuse or a governed replacement covers its tracing and evaluation workflows.",
+	}),
 	"mattpocock/skills": defineSource({
 		name: "mattpocock/skills",
 		pin: {
@@ -341,6 +385,14 @@ const explicitSkills = new Set([
 ]);
 
 const skillDefinitions = {
+	"langfuse/skills": [
+		[
+			"langfuse",
+			"Use Langfuse for AI tracing, cost attribution, datasets, model experiments, evaluation, or related documentation.",
+			"Ordinary non-AI product analytics, UI work, or unrelated backend changes.",
+			"ai-observability-conditional",
+		],
+	],
 	"mattpocock/skills": [
 		[
 			"ask-matt",
@@ -708,7 +760,7 @@ function defineSkill(source, [name, positive, negative, authorizationClass]) {
 		authorizationClass,
 		overrideRationale: defaults.overrideRationale,
 		evalSuite,
-		lastReviewed: GOVERNANCE_REVIEW_DATE,
+		lastReviewed: defaults.lastReviewed ?? GOVERNANCE_REVIEW_DATE,
 		retirementCriteria:
 			"Retire or merge when the positive boundary disappears, another governed workflow owns it, or evaluation evidence no longer justifies its maintenance cost.",
 	};

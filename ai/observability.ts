@@ -3,6 +3,7 @@ import { createHmac } from "node:crypto";
 import { LangfuseOtelSpanAttributes as LF } from "@langfuse/core";
 import { LangfuseSpanProcessor } from "@langfuse/otel";
 import {
+	type Attributes,
 	type Context,
 	ROOT_CONTEXT,
 	type Span,
@@ -37,6 +38,13 @@ type Runtime = {
 type OperationContext = {
 	runtime: Runtime;
 	span: Span;
+	attributes: Attributes;
+	metadata: {
+		workflow: string;
+		entityId?: string;
+		contentCapture: string;
+		instrumentationVersion: string;
+	};
 	stats: { attempts: number; validationFailures: number };
 };
 const operations = new AsyncLocalStorage<OperationContext>();
@@ -128,7 +136,11 @@ const childSpan = (
 		ctx.runtime.tracer.startSpan(
 			name,
 			{
-				attributes: { [LF.OBSERVATION_TYPE]: type },
+				attributes: {
+					...ctx.attributes,
+					[LF.OBSERVATION_TYPE]: type,
+					[LF.OBSERVATION_METADATA]: JSON.stringify(ctx.metadata),
+				},
 			},
 			trace.setSpan(ROOT_CONTEXT, ctx.span),
 		),
@@ -142,32 +154,40 @@ export const withAiOperation = async <T>(
 	const activeRuntime = injectedRuntime ?? getRuntime();
 	if (!activeRuntime) return await task();
 	let span: Span;
+	let attributes: Attributes;
+	let metadata: OperationContext["metadata"];
 	try {
 		const operation = safeLabel(context.operation) ?? "ai-operation";
+		metadata = {
+			workflow: operation,
+			entityId: safeLabel(context.entityId),
+			contentCapture: "disabled",
+			instrumentationVersion: "2",
+		};
+		const salt = process.env.LANGFUSE_USER_HASH_SECRET;
+		attributes = {
+			[LF.TRACE_NAME]: operation,
+			[LF.TRACE_PUBLIC]: false,
+			[LF.TRACE_TAGS]: ["dayova", "metadata-only", operation],
+			[LF.ENVIRONMENT]: safeLabel(process.env.LANGFUSE_TRACING_ENVIRONMENT),
+			[LF.RELEASE]: safeLabel(process.env.LANGFUSE_RELEASE),
+			[LF.TRACE_USER_ID]:
+				context.actorId && salt
+					? createHmac("sha256", salt).update(context.actorId).digest("hex")
+					: undefined,
+		};
 		span = activeRuntime.tracer.startSpan(
 			operation,
 			{
 				attributes: {
+					...attributes,
 					[LF.OBSERVATION_TYPE]: "span",
-					[LF.TRACE_NAME]: operation,
-					[LF.TRACE_PUBLIC]: false,
-					[LF.TRACE_TAGS]: ["dayova", "metadata-only"],
-					[LF.TRACE_METADATA]: JSON.stringify({
-						operation,
-						entityId: safeLabel(context.entityId),
-						contentCapture: "disabled",
-						instrumentationVersion: "1",
-					}),
+					[LF.TRACE_METADATA]: JSON.stringify({ ...metadata, operation }),
+					[LF.OBSERVATION_METADATA]: JSON.stringify(metadata),
 				},
 			},
 			context.parentContext ?? ROOT_CONTEXT,
 		);
-		const salt = process.env.LANGFUSE_USER_HASH_SECRET;
-		if (context.actorId && salt)
-			span.setAttribute(
-				LF.TRACE_USER_ID,
-				createHmac("sha256", salt).update(context.actorId).digest("hex"),
-			);
 	} catch {
 		diagnostic();
 		return await task();
@@ -175,6 +195,8 @@ export const withAiOperation = async <T>(
 	const ctx: OperationContext = {
 		runtime: activeRuntime,
 		span,
+		attributes,
+		metadata,
 		stats: { attempts: 0, validationFailures: 0 },
 	};
 	try {
@@ -187,6 +209,7 @@ export const withAiOperation = async <T>(
 			span.setAttribute(
 				LF.OBSERVATION_METADATA,
 				JSON.stringify({
+					...ctx.metadata,
 					providerAttempts: ctx.stats.attempts,
 					validationFailures: ctx.stats.validationFailures,
 				}),
@@ -201,6 +224,18 @@ export const withAiOperation = async <T>(
 	}
 };
 
+// Bind after the application's existing ownership check and before starting
+// child work. Sessions group related actions without combining their traces.
+export const setAiTraceSession = (sessionId: string): void => {
+	const ctx = operations.getStore();
+	const id = safeLabel(sessionId);
+	if (!ctx || !id) return;
+	safely(() => {
+		ctx.attributes[LF.TRACE_SESSION_ID] = id;
+		ctx.span.setAttribute(LF.TRACE_SESSION_ID, id);
+	});
+};
+
 export const withAiValidationAttempt = async <T>(
 	attempt: number,
 	task: () => Promise<T>,
@@ -212,7 +247,7 @@ export const withAiValidationAttempt = async <T>(
 	safely(() =>
 		span.setAttribute(
 			LF.OBSERVATION_METADATA,
-			JSON.stringify({ attempt: attempt + 1 }),
+			JSON.stringify({ ...ctx.metadata, attempt: attempt + 1 }),
 		),
 	);
 	try {
@@ -278,6 +313,7 @@ export const observeAiModel = (
 						? (process.env.GOOGLE_VERTEX_LOCATION ?? "global")
 						: undefined);
 				const metadata = {
+					...ctx.metadata,
 					operation,
 					provider: model.provider,
 					attempt: ctx.stats.attempts,

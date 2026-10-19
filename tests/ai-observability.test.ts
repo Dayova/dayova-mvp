@@ -9,8 +9,10 @@ import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import { APICallError, generateText } from "ai";
 import { MockLanguageModelV3 } from "ai/test";
 import { afterEach, expect, test, vi } from "vitest";
+import { z } from "zod";
 import {
 	observeAiModel,
+	setAiTraceSession,
 	withAiOperation,
 	withAiValidationAttempt,
 } from "../ai/observability";
@@ -88,6 +90,50 @@ test("traces usage and cost without capturing any prompt, output, or raw identit
 		),
 	).not.toContain("SECRET");
 	expect(spans[1].attributes["user.id"]).toMatch(/^[a-f0-9]{64}$/);
+	expect(spans[0].attributes["user.id"]).toBe(spans[1].attributes["user.id"]);
+});
+
+test("propagates workflow attribution to every validation and generation observation", async () => {
+	vi.stubEnv("LANGFUSE_USER_HASH_SECRET", "test-only-salt");
+	vi.stubEnv("LANGFUSE_TRACING_ENVIRONMENT", "development");
+	vi.stubEnv("LANGFUSE_RELEASE", "test-release");
+	const { exporter, runtime } = setup();
+	await withAiOperation(
+		{
+			operation: "generatePlan",
+			actorId: "SECRET identity",
+			entityId: "plan-id",
+		},
+		async () => {
+			setAiTraceSession("learning-plan:plan-id");
+			await withAiValidationAttempt(0, () =>
+				generateText({
+					model: observeAiModel(model(), "plan"),
+					prompt: "SECRET",
+				}),
+			);
+		},
+		runtime,
+	);
+	const spans = exporter.getFinishedSpans();
+	expect(spans).toHaveLength(3);
+	for (const span of spans) {
+		expect(span.attributes["session.id"]).toBe("learning-plan:plan-id");
+		expect(span.attributes["user.id"]).toBe(spans[2].attributes["user.id"]);
+		expect(span.attributes["langfuse.environment"]).toBe("development");
+		expect(span.attributes["langfuse.release"]).toBe("test-release");
+		expect(span.attributes["langfuse.trace.tags"]).toContain("generatePlan");
+		expect(
+			JSON.parse(span.attributes["langfuse.observation.metadata"] as string),
+		).toMatchObject({
+			workflow: "generatePlan",
+			entityId: "plan-id",
+			contentCapture: "disabled",
+		});
+	}
+	expect(JSON.stringify(spans.map((span) => span.attributes))).not.toContain(
+		"SECRET",
+	);
 });
 
 test("actual SDK retries produce separate generations in one trace", async () => {
@@ -158,7 +204,7 @@ test("validation retries preserve nesting and aggregate attempt counters", async
 	expect(spans).toHaveLength(5);
 	expect(
 		JSON.parse(spans[4].attributes["langfuse.observation.metadata"] as string),
-	).toEqual({ providerAttempts: 2, validationFailures: 1 });
+	).toMatchObject({ providerAttempts: 2, validationFailures: 1 });
 	expect(spans[0].parentSpanContext?.spanId).toBe(
 		spans[1].spanContext().spanId,
 	);
@@ -171,6 +217,7 @@ test("concurrent operations cannot inherit each other's trace", async () => {
 			withAiOperation(
 				{ operation },
 				async () => {
+					setAiTraceSession(`learning-plan:${operation}`);
 					await Promise.resolve();
 					await generateText({
 						model: observeAiModel(model(), "plan"),
@@ -183,12 +230,25 @@ test("concurrent operations cannot inherit each other's trace", async () => {
 	);
 	const spans = exporter.getFinishedSpans();
 	expect(new Set(spans.map((span) => span.spanContext().traceId)).size).toBe(2);
-	for (const root of spans.filter((span) => !span.parentSpanContext))
+	const roots = spans.filter((span) => !span.parentSpanContext);
+	expect(roots).toHaveLength(2);
+	for (const root of roots)
 		expect(
 			spans.filter(
 				(span) => span.parentSpanContext?.spanId === root.spanContext().spanId,
 			),
 		).toHaveLength(1);
+	for (const root of roots) {
+		const related = spans.filter(
+			(span) => span.spanContext().traceId === root.spanContext().traceId,
+		);
+		expect(
+			related.every(
+				(span) =>
+					span.attributes["session.id"] === `learning-plan:${root.name}`,
+			),
+		).toBe(true);
+	}
 });
 
 test("flush failure preserves the result and the original application error", async () => {
@@ -224,6 +284,27 @@ test("disabled telemetry calls the task exactly once without requiring credentia
 	expect(task).toHaveBeenCalledTimes(1);
 });
 
+test("invalid session labels and absent hashing secrets do not expose identity", async () => {
+	vi.stubEnv("LANGFUSE_USER_HASH_SECRET", "");
+	const { exporter, runtime } = setup();
+	await withAiOperation(
+		{ operation: "plan", actorId: "SECRET raw identity" },
+		async () => {
+			setAiTraceSession("SECRET learner text");
+			await generateText({
+				model: observeAiModel(model(), "plan"),
+				prompt: "SECRET",
+			});
+		},
+		runtime,
+	);
+	for (const span of exporter.getFinishedSpans()) {
+		expect(span.attributes["session.id"]).toBeUndefined();
+		expect(span.attributes["user.id"]).toBeUndefined();
+		expect(JSON.stringify(span.attributes)).not.toContain("SECRET");
+	}
+});
+
 test("the real Langfuse processor exports metadata-only OTLP over HTTP", async () => {
 	const bodies: string[] = [];
 	const server = createServer((request, response) => {
@@ -249,19 +330,65 @@ test("the real Langfuse processor exports metadata-only OTLP over HTTP", async (
 	vi.stubEnv("LANGFUSE_PUBLIC_KEY", "pk-test");
 	vi.stubEnv("LANGFUSE_SECRET_KEY", "sk-test");
 	vi.stubEnv("LANGFUSE_TRACING_ENVIRONMENT", "development");
+	vi.stubEnv("LANGFUSE_USER_HASH_SECRET", "test-only-salt");
 	vi.stubEnv("LANGFUSE_BASE_URL", `http://127.0.0.1:${address.port}`);
 	try {
-		await withAiOperation({ operation: "plan" }, () =>
-			generateText({
-				model: observeAiModel(model(), "plan"),
-				prompt: "SECRET PROMPT",
-				maxRetries: 0,
-			}),
+		await withAiOperation(
+			{ operation: "plan", actorId: "SECRET identity" },
+			() => {
+				setAiTraceSession("learning-plan:otlp-test");
+				return generateText({
+					model: observeAiModel(model(), "plan"),
+					prompt: "SECRET PROMPT",
+					maxRetries: 0,
+				});
+			},
 		);
 		expect(bodies.length).toBeGreaterThan(0);
 		expect(bodies.join("")).toContain("gemini-3.5-flash-lite");
 		expect(bodies.join("")).not.toContain("SECRET");
 		expect(bodies.join("")).toContain("langfuse.observation.cost_details");
+		const payloadSchema = z.object({
+			resourceSpans: z.array(
+				z.object({
+					scopeSpans: z.array(
+						z.object({
+							spans: z.array(
+								z.object({
+									attributes: z.array(
+										z.object({
+											key: z.string(),
+											value: z
+												.object({ stringValue: z.string().optional() })
+												.passthrough(),
+										}),
+									),
+								}),
+							),
+						}),
+					),
+				}),
+			),
+		});
+		const exportedSpans = bodies.flatMap((body) =>
+			payloadSchema
+				.parse(JSON.parse(body))
+				.resourceSpans.flatMap((resource) =>
+					resource.scopeSpans.flatMap((scope) => scope.spans),
+				),
+		);
+		expect(exportedSpans).toHaveLength(2);
+		for (const span of exportedSpans) {
+			const attributes = Object.fromEntries(
+				span.attributes.map((attribute) => [
+					attribute.key,
+					attribute.value.stringValue,
+				]),
+			);
+			expect(attributes["session.id"]).toBe("learning-plan:otlp-test");
+			expect(attributes["user.id"]).toMatch(/^[a-f0-9]{64}$/);
+			expect(attributes["langfuse.environment"]).toBe("development");
+		}
 	} finally {
 		await new Promise<void>((resolve, reject) =>
 			server.close((error) => (error ? reject(error) : resolve())),

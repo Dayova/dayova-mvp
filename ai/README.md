@@ -14,14 +14,17 @@ for Dayova's implementation contracts.
 
 Source: [langfuse/skills at 127253d0](https://github.com/langfuse/skills/tree/127253d0e26dfa77fb6d732d1b70c36625581eb4/skills/langfuse).
 Local changes add Dayova's production contract and correct automatic-capture
-and Python OpenAI wrapper guidance in `references/instrumentation.md`, prefer
+and Python OpenAI wrapper guidance in `references/instrumentation.md`, normalize
+Codex frontmatter to `name` and `description`, prefer
 stable evaluator APIs in `references/setting-up-evals.md`, and clean up trailing
 whitespace. The upstream MIT license is included.
 `skills-lock.json` records the upstream source path and content hash.
-To refresh only this skill, run
-`pnpm exec skills add langfuse/skills --skill langfuse --agent codex --copy --yes`,
-review the upstream changes, reapply those local corrections where still needed,
-retain the license, update the source revision above, and run `pnpm skills:validate`.
+The source and skill are registered in `scripts/agent-system-governance.mjs`.
+Keep the current source pinned; do not run an upstream installer over the repository.
+For a requested refresh, use `$maintain-dayova-agent-system`, stage the proposed
+source in a temporary workspace, review its diff, preserve these local corrections
+and license, update the lock/source revision and governance review, and run
+`pnpm skills:validate` before replacing the installed skill.
 Consult the [current CLI documentation](https://langfuse.com/docs/api-and-data-platform/features/cli)
 before running the upstream CLI examples; new installs use `@langfuse/cli`.
 
@@ -45,6 +48,17 @@ leaves the app operational. Each action creates an independent operation trace;
 every provider request (including AI SDK retries) has a generation observation.
 Application validation attempts are nested spans. Parallel actions use isolated
 async contexts, while parallel generations within one action share its trace.
+Related learning-plan actions use the Langfuse session `learning-plan:<planId>`.
+The ID is bound after the existing ownership check, before child work starts;
+it groups diagnostics, planning, content generation and answer grading across
+requests. Each action still has its own trace. Timetable extraction remains a
+standalone trace.
+
+User HMAC, session ID, workflow tag, environment and release propagate to every
+observation, including retries, so observation-based user/session cost totals
+include the generations. Workflow/entity metadata is also present directly on
+observations. Names remain stable when models change; dynamic IDs and attempt
+numbers belong in attributes rather than names.
 The exporter is awaited at action completion and has a bounded flush timeout.
 Telemetry setup/export failures do not change the learner result or error.
 
@@ -97,6 +111,10 @@ the provider invoice. Its Cloud subscription is a separate cost.
    attempt/retry. Open the latest operation in the correct Langfuse project.
 2. Confirm all attempts share the operation trace, usage/cost is present when
    reported, and the release/environment match the deployed backend.
+   Inspect generation observations directly: each must carry the user HMAC
+   (when configured), workflow tag and learning-plan session ID. Generate
+   content and grade an answer for the same plan; verify separate traces share
+   that session and its costs include all generation attempts.
 3. Inspect attributes and confirm no source text, answer, file URL or raw error
    appears. Compare a known request's tokens with the provider response.
 4. Verify a disabled/invalid exporter leaves the learner flow working.

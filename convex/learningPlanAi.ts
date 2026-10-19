@@ -30,7 +30,11 @@ import {
 	writtenAnswerEvaluationSchema,
 	writtenAnswerSystemInstruction,
 } from "../ai/learningContracts";
-import { observeAiModel, withAiValidationAttempt } from "../ai/observability";
+import {
+	observeAiModel,
+	setAiTraceSession,
+	withAiValidationAttempt,
+} from "../ai/observability";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { type ActionCtx, action } from "./_generated/server";
@@ -2475,6 +2479,7 @@ export const evaluateWrittenAnswer = action({
 					internal.learningSessionContent.getWrittenAnswerEvaluationContext,
 					{ itemId: args.itemId },
 				);
+				setAiTraceSession(`learning-plan:${context.learningPlanId}`);
 
 				let evaluation: z.infer<typeof writtenAnswerEvaluationSchema>;
 				if (isUnknownWrittenAnswer(answerText)) {
@@ -2561,6 +2566,7 @@ export const ensureSessionContent = action({
 					internal.learningSessionContent.getSessionGenerationContext,
 					{ sessionId: args.sessionId },
 				);
+				setAiTraceSession(`learning-plan:${context.session.learningPlanId}`);
 				if (context.session.planningStatus === "provisional") {
 					throwUserFacingError(
 						"Dieser Lernblock ist nur eine Vorschau und kann sich noch ändern.",
@@ -2652,6 +2658,7 @@ export const retryFailedSessionContent = action({
 						internal.learningPlans.getAiContext,
 						{ learningPlanId: args.learningPlanId },
 					);
+					setAiTraceSession(`learning-plan:${args.learningPlanId}`);
 					const { economyMode } = await getMonthlyCostMode(
 						ctx,
 						sessionIds.length,
@@ -2731,6 +2738,7 @@ export const addSessionWithContent = action({
 					api.learningPlans.addSession,
 					{ learningPlanId: args.learningPlanId },
 				);
+				setAiTraceSession(`learning-plan:${args.learningPlanId}`);
 				const generated = await generateTrackedSessionContent(ctx, sessionId);
 				if (generated.error || !generated.result) {
 					await ctx.runMutation(api.learningPlans.removeSession, {
@@ -2774,6 +2782,7 @@ export const generateKnowledgeQuestions = action({
 					internal.learningPlans.getAiContext,
 					{ learningPlanId: args.learningPlanId },
 				);
+				setAiTraceSession(`learning-plan:${args.learningPlanId}`);
 				const schoolDocuments = context.documents.filter(
 					(document) => (document.sourceKind ?? "school") === "school",
 				);
@@ -2955,6 +2964,7 @@ export const generatePlan = action({
 						internal.learningPlans.getAiContext,
 						{ learningPlanId: args.learningPlanId },
 					);
+					setAiTraceSession(`learning-plan:${args.learningPlanId}`);
 					if (context.plan.diagnosticPlacement !== "firstSession") {
 						throwUserFacingError(
 							"Erstelle zuerst den Wissenscheck neu. Er ist der erste Block jedes Lernplans.",
