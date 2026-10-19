@@ -16,7 +16,7 @@ on:
         type: boolean
         default: false
   schedule:
-    - cron: "23 3 * * 1"
+    - cron: '23 3 * * 1'
 
 concurrency:
   cancel_in_progress: true
@@ -24,8 +24,8 @@ concurrency:
 
 defaults:
   tools:
-    node: "24.18.0"
-    pnpm: "11.15.1"
+    node: '24.18.0'
+    pnpm: '11.15.1'
 
 jobs:
   source_gate:
@@ -34,7 +34,7 @@ jobs:
     # Keep the repository boundary separate to fit EAS's 250-character conditions.
     if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.id && github.event.pull_request.head.repo.id == github.event.pull_request.base.repo.id) }}
     params:
-      md: "CI source is eligible: pull requests must originate from this repository."
+      md: 'CI source is eligible: pull requests must originate from this repository.'
 
   contributor_gate:
     name: CI contributor eligibility
@@ -44,7 +44,7 @@ jobs:
     # Separate contributor trust from branch routing to fit EAS's condition limit.
     if: ${{ github.event_name != 'pull_request' || contains('OWNER,MEMBER,COLLABORATOR', github.event.pull_request.author_association) }}
     params:
-      md: "CI contributor is eligible: pull requests must come from trusted contributors."
+      md: 'CI contributor is eligible: pull requests must come from trusted contributors.'
 
   production_fingerprint:
     name: Production native fingerprints
@@ -61,6 +61,12 @@ jobs:
     runs_on: linux-medium
     needs:
       - contributor_gate
+    env:
+      CI_EVENT_NAME: ${{ github.event_name }}
+      CI_REF_NAME: ${{ github.ref_name }}
+      CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || 'unavailable' }}
+      CI_NATIVE_FORCE: ${{ inputs.native_checks && 'true' || 'false' }}
+      CI_COVERAGE: ${{ github.event_name == 'schedule' && 'true' || 'false' }}
     outputs:
       native_required: ${{ steps.native_scope.outputs.required }}
     # This custom job uses production scope; fork code must not reach checkout.
@@ -70,11 +76,6 @@ jobs:
       - uses: eas/install_node_modules
       - id: native_scope
         name: Determine native validation scope
-        env:
-          CI_EVENT_NAME: ${{ github.event_name }}
-          CI_REF_NAME: ${{ github.ref_name }}
-          CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-          CI_NATIVE_FORCE: ${{ inputs.native_checks || false }}
         run: |
           mkdir -p .maestro/artifacts/ci
           node scripts/ci-native-changes.mjs > .maestro/artifacts/ci/native-scope.json
@@ -92,8 +93,7 @@ jobs:
         run: pnpm typecheck
       - name: Run tests
         env:
-          EAS_BUILD: "false"
-          CI_COVERAGE: ${{ github.event_name == 'schedule' }}
+          EAS_BUILD: 'false'
         run: pnpm test:ci
       - uses: eas/upload_artifact
         if: ${{ always() }}
@@ -154,15 +154,15 @@ jobs:
       QUALITY_STATUS: ${{ after.quality.status }}
       FINGERPRINT_STATUS: ${{ after.production_fingerprint.status }}
       OTA_STATUS: ${{ after.ota_checks.status }}
-      REQUIRE_OTA: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_name == 'main') }}
-      REQUIRE_NATIVE: ${{ after.quality.outputs.native_required }}
+      REQUIRE_OTA: ${{ (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_name == 'main')) && 'true' || 'false' }}
+      REQUIRE_NATIVE: ${{ after.quality.outputs.native_required || 'false' }}
       ANDROID_STATUS: ${{ after.android_smoke.status }}
       IOS_STATUS: ${{ after.ios_smoke.status }}
       AUTH_STATUS: ${{ after.authenticated_smoke.status }}
       APP_VARIANT: production
       CI_SOURCE_SHA: ${{ github.sha }}
-      OTA_IOS_FINGERPRINT: ${{ after.production_fingerprint.outputs.ios_fingerprint_hash }}
-      OTA_ANDROID_FINGERPRINT: ${{ after.production_fingerprint.outputs.android_fingerprint_hash }}
+      OTA_IOS_FINGERPRINT: ${{ after.production_fingerprint.outputs.ios_fingerprint_hash || 'unavailable' }}
+      OTA_ANDROID_FINGERPRINT: ${{ after.production_fingerprint.outputs.android_fingerprint_hash || 'unavailable' }}
     steps:
       - name: Require successful validation
         run: |
@@ -186,9 +186,7 @@ jobs:
           name: production-export
       - name: Verify artifact transfer and provenance
         if: ${{ success() && env.REQUIRE_OTA == 'true' }}
-        env:
-          EXPORT_DIRECTORY: ${{ steps.verified_export.outputs.artifact_path }}
-        run: node scripts/ci-verify-export.mjs "$EXPORT_DIRECTORY"
+        run: node scripts/ci-verify-export.mjs "${{ steps.verified_export.outputs.artifact_path }}"
 
   pr_ota_report:
     name: PR OTA compatibility report
@@ -284,9 +282,9 @@ jobs:
       - name: Verify production manifest and distributed-binary compatibility
         run: node scripts/ota-safety.mjs
       - name: Publish the verified production export
-        run: node scripts/publish-production-ota.mjs
-        env:
-          OTA_EXPORT_DIRECTORY: ${{ steps.verified_export.outputs.artifact_path }}
+        run: |
+          export OTA_EXPORT_DIRECTORY="${{ steps.verified_export.outputs.artifact_path }}"
+          node scripts/publish-production-ota.mjs
 
   ota_skipped:
     name: OTA update skipped
@@ -316,8 +314,8 @@ jobs:
     if: ${{ needs.quality.outputs.native_required == 'true' }}
     env:
       APP_VARIANT: preview
-      DAYOVA_CI_VALIDATION: "true"
-      EXPO_NO_DOTENV: "1"
+      DAYOVA_CI_VALIDATION: 'true'
+      EXPO_NO_DOTENV: '1'
   android_get_build:
     name: android matching native artifact
     type: get-build
@@ -343,8 +341,8 @@ jobs:
     environment: development
     env:
       APP_VARIANT: preview
-      DAYOVA_CI_VALIDATION: "true"
-      EXPO_NO_DOTENV: "1"
+      DAYOVA_CI_VALIDATION: 'true'
+      EXPO_NO_DOTENV: '1'
     needs:
       - android_get_build
     if: ${{ needs.android_get_build.outputs.build_id }}
@@ -397,8 +395,8 @@ jobs:
     environment: development
     env:
       APP_VARIANT: preview
-      DAYOVA_CI_VALIDATION: "true"
-      EXPO_NO_DOTENV: "1"
+      DAYOVA_CI_VALIDATION: 'true'
+      EXPO_NO_DOTENV: '1'
     needs:
       - ios_get_build
     if: ${{ needs.ios_get_build.outputs.build_id }}
