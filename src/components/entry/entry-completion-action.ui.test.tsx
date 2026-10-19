@@ -106,6 +106,8 @@ test("waits for mutation and persisted state, confirms inside the button, then r
 	expect(screen.queryByText("Als erledigt markiert.")).toBeNull();
 	expect(mockContentMotion.entering).toBeDefined();
 	expect(mockContentMotion.exiting).toBeDefined();
+	await act(() => jest.advanceTimersByTime(10_000));
+	expect(screen.queryByRole("alert")).toBeNull();
 });
 
 test("does not confirm an early persisted update until the mutation succeeds", async () => {
@@ -126,6 +128,50 @@ test("does not confirm an early persisted update until the mutation succeeds", a
 	expect(
 		screen.getByRole("button", { name: "Als erledigt markiert." }),
 	).toBeTruthy();
+});
+
+test("allows retry when a successful mutation never receives the matching persisted state", async () => {
+	const change = jest
+		.fn<(completed: boolean) => Promise<void>>()
+		.mockResolvedValue();
+	const screen = await render(
+		<EntryCompletionAction completed={false} onChange={change} />,
+	);
+	await fireEvent.press(screen.getByRole("button"));
+	await act(() => jest.advanceTimersByTime(10_000));
+	expect(screen.getByRole("alert").props.children).toBe(
+		"Der Status konnte noch nicht bestätigt werden. Bitte versuche es erneut.",
+	);
+	expect(screen.queryByText("Als erledigt markiert.")).toBeNull();
+	expect(screen.getByRole("button").props.accessibilityState.disabled).toBe(
+		false,
+	);
+	await fireEvent.press(screen.getByRole("button"));
+	expect(change).toHaveBeenCalledTimes(2);
+	expect(screen.queryByRole("alert")).toBeNull();
+	await screen.rerender(<EntryCompletionAction completed onChange={change} />);
+	expect(
+		screen.getByRole("button", { name: "Als erledigt markiert." }),
+	).toBeTruthy();
+});
+
+test("clears an expired confirmation notice when the persisted state arrives late without replaying success", async () => {
+	const change = jest
+		.fn<(completed: boolean) => Promise<void>>()
+		.mockResolvedValue();
+	const screen = await render(
+		<EntryCompletionAction completed={false} onChange={change} />,
+	);
+	await fireEvent.press(screen.getByRole("button"));
+	await act(() => jest.advanceTimersByTime(10_000));
+	expect(screen.getByRole("alert")).toBeTruthy();
+	await screen.rerender(<EntryCompletionAction completed onChange={change} />);
+	expect(screen.queryByRole("alert")).toBeNull();
+	expect(screen.queryByText("Als erledigt markiert.")).toBeNull();
+	expect(
+		screen.getByRole("button", { name: "Als offen markieren" }).props
+			.accessibilityState.disabled,
+	).toBe(false);
 });
 
 test("preserves the recoverable error and runs a successful retry through the same confirmation", async () => {

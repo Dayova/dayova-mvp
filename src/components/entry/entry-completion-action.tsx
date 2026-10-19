@@ -14,6 +14,7 @@ import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { useDayovaTheme } from "~/lib/theme";
 
 const CONFIRMATION_DURATION_MS = 1_400;
+const PERSISTENCE_WAIT_TIMEOUT_MS = 10_000;
 const COMPLETE_ACTION_LABEL = "Als erledigt markieren";
 const contentEntering = FadeInDown.duration(240)
 	.delay(90)
@@ -37,10 +38,11 @@ export function EntryCompletionAction({
 	const iconColor = completed ? colors.background : "#FFFFFF";
 	const gate = useRef(createAsyncActionGate());
 	const [busy, setBusy] = useState(false);
-	const [error, setError] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 	const [saved, setSaved] = useState<boolean | null>(null);
 	const [hasSubmitted, setHasSubmitted] = useState(false);
 	const confirmationShown = useRef(false);
+	const previousCompleted = useRef(completed);
 	const reducedMotion = useReducedMotion();
 	const confirming = saved !== null && saved === completed;
 	const saving = busy || (saved !== null && !confirming);
@@ -56,14 +58,27 @@ export function EntryCompletionAction({
 			: actionLabel;
 
 	useEffect(() => {
+		if (previousCompleted.current !== completed) {
+			previousCompleted.current = completed;
+			setError(null);
+		}
 		if (saved === null) {
 			confirmationShown.current = false;
 			return;
 		}
 		if (saved !== completed) {
 			// A later external update must not replay this acknowledgement.
-			if (confirmationShown.current) setSaved(null);
-			return;
+			if (confirmationShown.current) {
+				setSaved(null);
+				return;
+			}
+			const timeout = setTimeout(() => {
+				setSaved(null);
+				setError(
+					"Der Status konnte noch nicht bestätigt werden. Bitte versuche es erneut.",
+				);
+			}, PERSISTENCE_WAIT_TIMEOUT_MS);
+			return () => clearTimeout(timeout);
 		}
 		confirmationShown.current = true;
 		const timeout = setTimeout(() => setSaved(null), CONFIRMATION_DURATION_MS);
@@ -77,13 +92,15 @@ export function EntryCompletionAction({
 			confirmationShown.current = false;
 			setHasSubmitted(true);
 			setBusy(true);
-			setError(false);
+			setError(null);
 			setSaved(null);
 			try {
 				await onChange(next);
 				setSaved(next);
 			} catch {
-				setError(true);
+				setError(
+					"Der Status konnte nicht gespeichert werden. Bitte versuche es erneut.",
+				);
 			} finally {
 				setBusy(false);
 			}
@@ -128,11 +145,7 @@ export function EntryCompletionAction({
 					</Animated.View>
 				</View>
 			</Button>
-			{error ? (
-				<ErrorMessage>
-					Der Status konnte nicht gespeichert werden. Bitte versuche es erneut.
-				</ErrorMessage>
-			) : null}
+			{error ? <ErrorMessage>{error}</ErrorMessage> : null}
 		</View>
 	);
 }

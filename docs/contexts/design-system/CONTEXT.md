@@ -453,6 +453,9 @@ state, the button briefly replaces its content with “Als erledigt markiert.”
 Both replacements use the same upward fade/slide transition inside the existing
 button; no success line is added below it. The action stays disabled while saving
 or confirming, and reduced motion uses static replacements with the same timing.
+If a successful mutation receives no matching persisted state within ten seconds,
+the action becomes retryable with an unconfirmed-status message instead of
+remaining busy indefinitely; it does not claim that the mutation failed.
 Mounting an already completed entry does not celebrate it again. The route keys
 the action by entry ID to isolate feedback between entries. Processing flowers,
 existing creation-success screens, and navigation remain unchanged. See
