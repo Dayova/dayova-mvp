@@ -363,6 +363,22 @@ describe("PR OTA workflow routing", () => {
 
 describe("required CI acceptance", () => {
 	it.each([
+		[{ ...event("push"), event: {} }, "workflow_dispatch"],
+		[
+			{ ...event("push"), ref_name: event("push").sha, event: {} },
+			"workflow_dispatch",
+		],
+		[event("push"), "push"],
+		[
+			{ ...event("push"), ref_name: "gh-readonly-queue/main/pr-1", event: {} },
+			"push",
+		],
+	])("resolves the native-scope event from observed run context (%j)", (github, expected) => {
+		expect(evaluate(workflow.jobs.quality.env.CI_EVENT_NAME, { github })).toBe(
+			expected,
+		);
+	});
+	it.each([
 		["success", "success", "success", 0],
 		["failure", "success", "success", 1],
 		["success", "skipped", "success", 1],
