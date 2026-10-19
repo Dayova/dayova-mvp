@@ -95,7 +95,7 @@ export function MaterialUploadStepLead({
 				allowFontScaling={!fixedTextScale}
 				className="mt-2 font-poppins text-body-3 text-secondary-text"
 			>
-				Deine Unterlagen bilden die Grundlage für deinen Lernplan.
+				Lade PDFs, Fotos oder andere Dokumente hoch.
 			</Text>
 		</>
 	);
@@ -145,13 +145,6 @@ export function MaterialUploadStep({
 				onRemoveDocument={onRemoveDocument}
 				loadPreview={loadPreview}
 			/>
-
-			{showSkip && !hasSchoolMaterial ? (
-				<Text className="mt-3 font-poppins text-body-4 text-secondary-text">
-					Dein Lernplan-Entwurf bleibt gespeichert. Schulmaterial kannst du
-					später ergänzen.
-				</Text>
-			) : null}
 
 			<UploadActivity
 				isUploading={isUploading}

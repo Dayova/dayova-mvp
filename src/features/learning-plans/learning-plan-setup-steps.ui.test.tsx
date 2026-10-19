@@ -92,11 +92,6 @@ describe("learning-plan setup steps", () => {
 			})[0],
 		).toBeEnabled();
 		expect(
-			screen.getByText(
-				"Dein Lernplan-Entwurf bleibt gespeichert. Schulmaterial kannst du später ergänzen.",
-			),
-		).toBeOnTheScreen();
-		expect(
 			screen.queryByRole("button", {
 				name: "Zusätzliche Lernhilfe hinzufügen",
 			}),
@@ -214,9 +209,7 @@ describe("learning-plan setup steps", () => {
 		);
 
 		expect(
-			screen.getByText(
-				"Deine Unterlagen bilden die Grundlage für deinen Lernplan.",
-			),
+			screen.getByText("Lade PDFs, Fotos oder andere Dokumente hoch."),
 		).toBeOnTheScreen();
 		expect(
 			screen.queryByRole("button", { name: "Ohne Lernmaterial erstellen" }),

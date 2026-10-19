@@ -37,13 +37,6 @@ export function IntroUploadArtwork({
 			</View>
 			<MaterialUploadStepLead mode="artwork" />
 			<MaterialUploadGrid mode="artwork" />
-			<Text
-				allowFontScaling={false}
-				className="mt-4 font-poppins text-body-4 text-secondary-text"
-			>
-				Dein Lernplan-Entwurf bleibt gespeichert. Schulmaterial kannst du später
-				ergänzen.
-			</Text>
 		</IntroPhoneFrame>
 	);
 }

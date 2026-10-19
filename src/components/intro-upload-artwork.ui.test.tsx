@@ -35,13 +35,7 @@ describe("IntroUploadArtwork", () => {
 			screen.getByText("Schulmaterial hinzufügen", hidden),
 		).toBeOnTheScreen();
 		expect(
-			screen.getByText(
-				"Deine Unterlagen bilden die Grundlage für deinen Lernplan.",
-				hidden,
-			),
-		).toBeOnTheScreen();
-		expect(
-			screen.getByText("Themenblatt, Arbeitsblätter oder Mitschriften", hidden),
+			screen.getByText("Lade PDFs, Fotos oder andere Dokumente hoch.", hidden),
 		).toBeOnTheScreen();
 		expect(screen.queryByRole("button", hidden)).toBeNull();
 	});

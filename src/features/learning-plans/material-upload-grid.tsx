@@ -214,12 +214,6 @@ export function MaterialUploadGrid({
 						);
 					})}
 			</View>
-			<Text
-				allowFontScaling={!artwork}
-				className="text-body-4 text-secondary-text"
-			>
-				Themenblatt, Arbeitsblätter oder Mitschriften
-			</Text>
 		</View>
 	);
 }
