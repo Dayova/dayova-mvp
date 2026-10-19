@@ -2,6 +2,8 @@
 	"$schema": "https://unpkg.com/knip@6/schema.json",
 	"entry": [
 		"plugins/*.js",
+		// Standalone verification and release helpers documented beside their artifacts.
+		"scripts/check-clerk-lifecycle-local.mjs",
 		// Invoked manually or by the validation-only EAS benchmark.
 		"scripts/benchmark-checks.mjs",
 		// Manually invoked topic-search probes and native evidence harness.

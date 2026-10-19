@@ -12,6 +12,12 @@ const app = defineApp({
 		LANGFUSE_TRACING_ENVIRONMENT: v.optional(v.string()),
 		LANGFUSE_RELEASE: v.optional(v.string()),
 		LANGFUSE_USER_HASH_SECRET: v.optional(v.string()),
+		CLERK_WEBHOOK_SIGNING_SECRET: v.optional(v.string()),
+		CLERK_WEBHOOK_INSTANCE_ID: v.optional(v.string()),
+		CLERK_JWT_ISSUER_DOMAIN: v.optional(v.string()),
+		NOTION_CRM_DELETION_MODE: v.optional(
+			v.union(v.literal("off"), v.literal("live")),
+		),
 		CLERK_SECRET_KEY: v.optional(v.string()),
 		POSTHOG_API_HOST: v.optional(v.string()),
 		POSTHOG_PERSONAL_API_KEY: v.optional(v.string()),

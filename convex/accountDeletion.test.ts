@@ -168,6 +168,45 @@ test("accepts one idempotent verified internal deletion request", async () => {
 	expect(first.requestId).not.toBe(userIdentity.subject);
 });
 
+test("repeated acceptance preserves a legacy request's original deletion barrier time", async () => {
+	const backend = convexTest(schema, modules);
+	await backend.run((ctx) =>
+		ctx.db.insert("accountDeletionRequests", {
+			requestId: "legacy-acceptance",
+			ownerTokenIdentifier: userIdentity.tokenIdentifier,
+			clerkUserId: userIdentity.subject,
+			status: "manualReview",
+			stage: "deleteNotion",
+			attemptCount: 3,
+			deletedRecords: 5,
+			policyVersion: "legacy-policy",
+			requestedAt: 1000,
+			updatedAt: 2000,
+		}),
+	);
+	expect(
+		await backend
+			.withIdentity(userIdentity)
+			.mutation(internal.accountDeletion.enqueueVerifiedDeletion, {}),
+	).toEqual({ status: "accepted", requestId: "legacy-acceptance" });
+	expect(
+		await backend.run((ctx) => ctx.db.query("clerkIdentities").unique()),
+	).toMatchObject({
+		tokenIdentifier: userIdentity.tokenIdentifier,
+		clerkId: userIdentity.subject,
+		deletedAt: 1000,
+	});
+	expect(
+		await backend.query(internal.accountDeletion.getRequestForProcessing, {
+			requestId: "legacy-acceptance",
+		}),
+	).toMatchObject({
+		status: "manualReview",
+		policyVersion: "legacy-policy",
+		requestedAt: 1000,
+	});
+});
+
 test("keeps a completed request opaque when no user row existed", async () => {
 	const backend = convexTest(schema, modules);
 	const user = backend.withIdentity(userIdentity);
@@ -195,6 +234,18 @@ test("keeps a completed request opaque when no user row existed", async () => {
 			requestId: accepted.requestId,
 		}),
 	).toMatchObject({ done: true });
+	await backend.mutation(internal.accountDeletion.advanceRequestStage, {
+		requestId: accepted.requestId,
+		expectedStage: "deleteData",
+		nextStage: "deleteNotion",
+	});
+	await backend.run(async (ctx) => {
+		const request = await ctx.db.query("accountDeletionRequests").unique();
+		if (request)
+			await ctx.db.patch("accountDeletionRequests", request._id, {
+				crmDeletionVerified: true,
+			});
+	});
 	expect(
 		await backend.mutation(internal.accountDeletion.completeRequest, {
 			requestId: accepted.requestId,
@@ -347,6 +398,18 @@ test("deletes account data in bounded internal batches and preserves other users
 		done = result.done;
 		batches += 1;
 	}
+	await backend.mutation(internal.accountDeletion.advanceRequestStage, {
+		requestId: accepted.requestId,
+		expectedStage: "deleteData",
+		nextStage: "deleteNotion",
+	});
+	await backend.run(async (ctx) => {
+		const request = await ctx.db.query("accountDeletionRequests").unique();
+		if (request)
+			await ctx.db.patch("accountDeletionRequests", request._id, {
+				crmDeletionVerified: true,
+			});
+	});
 	await backend.mutation(internal.accountDeletion.completeRequest, {
 		requestId: accepted.requestId,
 	});
