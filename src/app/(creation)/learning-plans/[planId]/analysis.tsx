@@ -12,14 +12,21 @@ import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
-import { learningPlanMaterialPath } from "~/features/learning-plans/creation-routes";
+import {
+	learningPlanMaterialPath,
+	learningPlanTopicsPath,
+} from "~/features/learning-plans/creation-routes";
+import {
+	getLearningPlanGenerationFailure,
+	type LearningPlanGenerationFailure,
+} from "~/features/learning-plans/generation-recovery";
 import { PlanPreparationProgress } from "~/features/learning-plans/plan-preparation-progress";
 import {
 	type PreparationStage,
 	runPlanPreparation,
 } from "~/features/learning-plans/run-plan-preparation";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
-import { getErrorMessage } from "~/features/learning-plans/utils";
+import { logDiagnosticError } from "~/lib/diagnostics";
 import {
 	dismissToOrReplace,
 	goBackOrReplace,
@@ -46,7 +53,9 @@ export default function LearningPlanAnalysisScreen() {
 	const prepareDiagnostic = useMutation(api.learningPlans.prepareDiagnostic);
 	const [stage, setStage] = useState<PreparationStage>(0);
 	const [isBusy, setIsBusy] = useState(false);
-	const [errorMessage, setErrorMessage] = useState<string | null>(null);
+	const [failure, setFailure] = useState<LearningPlanGenerationFailure | null>(
+		null,
+	);
 	const [retryAttempt, setRetryAttempt] = useState(0);
 	const didStartRef = useRef(false);
 	const didCloseRef = useRef(false);
@@ -74,7 +83,7 @@ export default function LearningPlanAnalysisScreen() {
 		didStartRef.current = true;
 		queueMicrotask(() => {
 			setIsBusy(true);
-			setErrorMessage(null);
+			setFailure(null);
 			void runPlanPreparation({
 				questionsReady:
 					snapshot.plan.diagnosticPlacement === "firstSession" &&
@@ -111,11 +120,15 @@ export default function LearningPlanAnalysisScreen() {
 				})
 				.catch((error: unknown) => {
 					if (didCloseRef.current) return;
-					const message = getErrorMessage(
-						error,
-						"Dein Lernplan konnte nicht vorbereitet werden. Bitte versuche es erneut.",
-					);
-					setErrorMessage(message);
+					const nextFailure = getLearningPlanGenerationFailure(error);
+					logDiagnosticError("Learning plan preparation failed.", error, {
+						source: "learning-plans.analysis",
+						metadata: {
+							learningPlanId: planId,
+							failureReason: nextFailure.reason,
+						},
+					});
+					setFailure(nextFailure);
 				})
 				.finally(() => setIsBusy(false));
 		});
@@ -146,6 +159,20 @@ export default function LearningPlanAnalysisScreen() {
 		);
 		return true;
 	};
+	const reviewTopics = () => {
+		if (!planId || !snapshot) return;
+		didCloseRef.current = true;
+		router.replace(
+			learningPlanTopicsPath(planId, {
+				topicDescription: snapshot.plan.topicDescription,
+			}),
+		);
+	};
+	const editMaterial = () => {
+		if (!planId) return;
+		didCloseRef.current = true;
+		dismissToOrReplace(router, learningPlanMaterialPath(planId));
+	};
 	const leavePreparation = () => {
 		didCloseRef.current = true;
 		dismissToOrReplace(router, "/learning-plans");
@@ -175,21 +202,33 @@ export default function LearningPlanAnalysisScreen() {
 				showsVerticalScrollIndicator={false}
 			>
 				<View className="w-full max-w-[480px] self-center py-8">
-					<PlanPreparationProgress
-						stage={stage}
-						failed={Boolean(errorMessage)}
-					/>
-					{errorMessage ? (
+					<PlanPreparationProgress stage={stage} failed={Boolean(failure)} />
+					{failure ? (
 						<>
 							<ErrorMessage className="mt-6 text-center">
-								{errorMessage}
+								{failure.message}
 							</ErrorMessage>
+							{failure.canReviewTopics ? (
+								<Button className="mt-6" onPress={reviewTopics}>
+									<Text>Prüfungsstoff prüfen</Text>
+								</Button>
+							) : null}
+							{failure.canEditMaterial ? (
+								<Button
+									className={failure.canReviewTopics ? "mt-3" : "mt-6"}
+									variant={failure.canReviewTopics ? "neutral" : "default"}
+									onPress={editMaterial}
+								>
+									<Text>Material ergänzen oder ersetzen</Text>
+								</Button>
+							) : null}
 							<Button
-								className="mt-6"
+								className="mt-3"
 								disabled={isBusy}
+								accessibilityState={{ busy: isBusy }}
 								onPress={() => {
 									didStartRef.current = false;
-									setErrorMessage(null);
+									setFailure(null);
 									setRetryAttempt((value) => value + 1);
 								}}
 							>

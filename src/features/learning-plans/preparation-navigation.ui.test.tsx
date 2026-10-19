@@ -164,7 +164,12 @@ test("tracks scope confirmation failure and stops before preparing the diagnosti
 	]);
 	expect(mockWork).toHaveBeenCalledTimes(2);
 	expect(mockRouter.replace).not.toHaveBeenCalled();
-	expect(screen.getByText("Scope confirmation failed")).toBeTruthy();
+	expect(
+		screen.getByText(
+			"Die Ursache konnte nicht sicher erkannt werden. Deine Angaben bleiben gespeichert; du kannst es erneut versuchen oder dein Material prüfen.",
+		),
+	).toBeTruthy();
+	expect(screen.queryByText("Scope confirmation failed")).toBeNull();
 	await fireEvent.press(screen.getByText("Später fortsetzen"));
 	expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans");
 });

@@ -40,6 +40,7 @@ import {
 	type StoredKnowledgeQuestion,
 	validateFirstSessionDiagnosticQuestions,
 } from "./learningPlanDiagnostic";
+import { contentGenerationFailureReasonValidator } from "./learningPlanGenerationFailure";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 import * as preparation from "./learningPreparation";
 import {
@@ -974,6 +975,8 @@ export const getSnapshot = query({
 					? {
 							stage: plan.contentGenerationStage,
 							startedAt: plan.contentGenerationStartedAt,
+							failureReason: plan.contentGenerationFailureReason,
+							failureMessage: plan.contentGenerationFailureMessage,
 							totalSessionCount: committedSessionCount,
 							readySessionCount,
 							failedSessionCount,
@@ -1671,6 +1674,8 @@ export const storeKnowledgeQuestions = internalMutation({
 			contentGenerationStage: undefined,
 			contentGenerationId: undefined,
 			contentGenerationStartedAt: undefined,
+			contentGenerationFailureReason: undefined,
+			contentGenerationFailureMessage: undefined,
 			status: "questionsReady",
 			updatedAt: Date.now(),
 		});
@@ -1706,12 +1711,21 @@ export const beginContentGeneration = internalMutation({
 		) {
 			throwUserFacingError("Dieser Lernplan wird bereits erstellt.");
 		}
+		// Material reanalysis clears the claim and invalidates legacy derived sessions.
+		if (
+			plan.status === "questionsReady" &&
+			!plan.preparationState &&
+			!plan.contentGenerationStage
+		)
+			await preparation.clearLegacyDraftSessions(ctx, plan);
 
 		await ctx.db.patch("learningPlans", args.learningPlanId, {
 			status: "questionsReady",
 			contentGenerationStage: "content",
 			contentGenerationId: args.generationId,
 			contentGenerationStartedAt: now,
+			contentGenerationFailureReason: undefined,
+			contentGenerationFailureMessage: undefined,
 			updatedAt: now,
 		});
 		return now;
@@ -1722,6 +1736,8 @@ export const clearEmptyContentGeneration = internalMutation({
 	args: {
 		learningPlanId: v.id("learningPlans"),
 		generationId: v.string(),
+		failureReason: contentGenerationFailureReasonValidator,
+		failureMessage: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier =
@@ -1746,6 +1762,8 @@ export const clearEmptyContentGeneration = internalMutation({
 			contentGenerationStage: "failed",
 			contentGenerationId: undefined,
 			contentGenerationStartedAt: Date.now(),
+			contentGenerationFailureReason: args.failureReason,
+			contentGenerationFailureMessage: args.failureMessage,
 			updatedAt: Date.now(),
 		});
 		return true;
@@ -2013,6 +2031,8 @@ export const replaceGeneratedSessions = internalMutation({
 			contentGenerationStage: args.deferReadyUntilContent
 				? "content"
 				: undefined,
+			contentGenerationFailureReason: undefined,
+			contentGenerationFailureMessage: undefined,
 			updatedAt: now,
 		});
 
@@ -2129,6 +2149,15 @@ export const finalizeContentGeneration = internalMutation({
 				: failedSessionCount > 0
 					? "failed"
 					: "content",
+			contentGenerationFailureReason: isReady
+				? undefined
+				: failedSessionCount > 0
+					? "generationProcessing"
+					: plan.contentGenerationFailureReason,
+			contentGenerationFailureMessage:
+				isReady || failedSessionCount > 0
+					? undefined
+					: plan.contentGenerationFailureMessage,
 			...(isReady
 				? {
 						contentGenerationId: undefined,
@@ -2180,6 +2209,8 @@ export const claimIncompleteContentGenerationSessions = internalMutation({
 			contentGenerationStage: "content",
 			contentGenerationId: args.generationId,
 			contentGenerationStartedAt: now,
+			contentGenerationFailureReason: undefined,
+			contentGenerationFailureMessage: undefined,
 			updatedAt: now,
 		});
 		return sessionIds;
@@ -2190,6 +2221,8 @@ export const markContentGenerationClaimFailed = internalMutation({
 	args: {
 		learningPlanId: v.id("learningPlans"),
 		generationId: v.string(),
+		failureReason: contentGenerationFailureReasonValidator,
+		failureMessage: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier =
@@ -2205,6 +2238,8 @@ export const markContentGenerationClaimFailed = internalMutation({
 			contentGenerationStage: "failed",
 			contentGenerationId: undefined,
 			contentGenerationStartedAt: undefined,
+			contentGenerationFailureReason: args.failureReason,
+			contentGenerationFailureMessage: args.failureMessage,
 			updatedAt: Date.now(),
 		});
 		return true;
