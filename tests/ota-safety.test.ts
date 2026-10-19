@@ -528,18 +528,18 @@ describe("production release configuration", () => {
 		}
 	});
 
-	it("isolates the SDK 58 production binary behind runtime 1.0.6", () => {
+	it("isolates the symbols-complete SDK 58 binary behind runtime 1.0.8", () => {
 		const resolvedConfig = readExpoConfigSnapshot("production", "public");
 		const packageJson = JSON.parse(
 			readFileSync(new URL("../package.json", import.meta.url), "utf8"),
 		);
 
 		expect(resolvedConfig).toMatchObject({
-			version: "1.0.6",
+			version: "1.0.8",
 			sdkVersion: "58.0.0",
 			ios: {
 				bundleIdentifier: "de.dayova.app",
-				runtimeVersion: "1.0.6",
+				runtimeVersion: "1.0.8",
 			},
 			android: {
 				package: "com.dayova",
@@ -547,6 +547,33 @@ describe("production release configuration", () => {
 			},
 		});
 		expect(packageJson.version).toBe(resolvedConfig.version);
+	});
+
+	it("keeps publication blocked against the verified baseline during release preparation", () => {
+		const distributedBaseline = JSON.parse(
+			readFileSync(
+				new URL("../release/production-ota-baseline.json", import.meta.url),
+				"utf8",
+			),
+		);
+		const result = evaluateProductionOta({
+			appVariant: "production",
+			baseline: distributedBaseline,
+			config: readExpoConfigSnapshot("production", "public"),
+			fingerprints: {
+				ios: distributedBaseline.platforms.ios.fingerprint,
+				android: distributedBaseline.platforms.android.fingerprint,
+			},
+			sourceSha: "e239f25d671b073aae6b631c74022a0290d9cbfb",
+		});
+
+		expect(result.safe).toBe(false);
+		expect(result.errors).toEqual(
+			expect.arrayContaining([
+				"ios runtime 1.0.8 does not match baseline runtime 1.0.5",
+				"android runtime 1.0.8 does not match baseline runtime 1.0.5",
+			]),
+		);
 	});
 
 	it("uses the EAS production fingerprint job as the gate input", () => {

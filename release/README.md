@@ -29,6 +29,14 @@ CI and compatibility checks must still succeed before production publication.
 
 ## Runtime boundary
 
+The symbols-complete SDK 58 release candidate uses app/runtime **1.0.8** on
+both platforms. The earlier 1.0.6 binaries predate the iOS `SymbolModule` added
+by `expo-symbols`, and 1.0.7 has already been used by earlier test builds.
+Neither runtime identifies this new native graph. Keep the verified 1.0.5
+baseline unchanged until both exact 1.0.8 store artifacts and their staging OTA
+launches satisfy the activation requirements below. Android 1.0.6/code 31 is
+the separate immediate native-tab hotfix; it does not activate two-platform OTA.
+
 The SDK 58 upgrade introduces app/runtime **1.0.6** on both platforms with
 React Native 0.88 and React 19.3. SDK 57 binaries on 1.0.5 cannot load this graph.
 The distributed-binary baseline remains unchanged until replacement artifacts
@@ -222,7 +230,7 @@ it in the internal testing group; never select a staging build for App Store
 distribution. `ota-staging-simulator` provides an unsigned iOS simulator build
 for automated OTA checks without consuming a new store build number. All three
 profiles use production app config and EAS environment. Publish the candidate
-to that channel, verify the result reports runtime `1.0.6`, and record
+to that channel, verify the result reports runtime `1.0.8`, and record
 the update ID actually downloaded by each QA binary. Do not remap the production
 channel or publish/republish to it for staging.
 
@@ -335,7 +343,7 @@ Automatic publication may resume only after all of the following are true:
   baseline change;
 - the final-source EAS production fingerprint job matches each exact build's
   original hash or its exact, independently reviewed native-equivalence record;
-- a runtime `1.0.6` update is downloaded and launched after a cold restart on
+- a runtime `1.0.8` update is downloaded and launched after a cold restart on
   dedicated QA builds targeting the `ota-staging` channel: Android uses the
   `ota-staging` profile; a physical iPhone uses `ota-staging-testflight` or the
   ad-hoc `ota-staging` profile. Record the downloaded and running update UUIDs
