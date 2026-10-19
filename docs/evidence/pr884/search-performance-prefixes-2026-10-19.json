@@ -1,0 +1,553 @@
+{
+  "phase": "latency-review",
+  "capturedAt": "2026-10-19T00:06:53.850Z",
+  "environment": "darwin direct provider adapter, synthetic inputs; excludes debounce, app rendering and Convex round trip",
+  "results": [
+    {
+      "query": "Lin",
+      "subject": "Mathematik",
+      "ms": 3154,
+      "requests": [
+        {
+          "page": 0,
+          "ms": 3146,
+          "bytes": 201908,
+          "status": 200
+        }
+      ],
+      "result": {
+        "topics": [
+          {
+            "id": "027cfa46-ab03-4850-98b7-31bdc918f097",
+            "title": "Lineare Abhängigkeit",
+            "subjects": [
+              "Mathematik"
+            ],
+            "isAdditional": false
+          },
+          {
+            "id": "c9fa4417-f7b9-4874-b37b-e8c9f5583d1e",
+            "title": "Lineare Funktionen",
+            "subjects": [
+              "Mathematik"
+            ],
+            "isAdditional": false
+          },
+          {
+            "id": "f14774b2-3dbb-464d-b9e4-70f4ddc919c6",
+            "title": "Lineares Gleichungssystem",
+            "subjects": [
+              "Mathematik"
+            ],
+            "isAdditional": false
+          },
+          {
+            "id": "e9a3fb9d-b141-440d-ba71-a1618d09367c",
+            "title": "Bilingualer Matheunterricht",
+            "subjects": [
+              "Mathematik"
+            ],
+            "isAdditional": false
+          },
+          {
+            "id": "b9451767-96d7-4eaa-9aa1-dd3b3ffa43fa",
+            "title": "Zylinder",
+            "subjects": [
+              "Mathematik"
+            ],
+            "isAdditional": false
+          },
+          {
+            "id": "809f997c-55f7-4023-b7f6-0dba7290e890",
+            "title": "Linguistik - Fachportalseite",
+            "subjects": [],
+            "isAdditional": true
+          },
+          {
+            "id": "9e2ecea3-f6e1-4e87-a154-d4fd7c0bf6d0",
+            "title": "Linsen und optische Geräte",
+            "subjects": [
+              "Physik"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "d0031907-072e-413a-b1f2-d5a67c28a578",
+            "title": "Barcelona - capital de una comunidad bilingüe",
+            "subjects": [
+              "Spanisch"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "64f5116a-17e4-43f0-b511-6a17e4b3f010",
+            "title": "BerlinerOER",
+            "subjects": [],
+            "isAdditional": true
+          },
+          {
+            "id": "9b51e6c3-9f5b-49af-8270-dbd27d87aa22",
+            "title": "Bilingualer Geschichtsunterricht",
+            "subjects": [
+              "Geschichte"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "087fcc96-f7be-4de3-9835-63fadf79e90f",
+            "title": "Bilingualismus und Mehrsprachigkeit",
+            "subjects": [
+              "Spanisch"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "16b5398a-6b8f-4a50-b074-24136dc2ad5b",
+            "title": "Friedrich Wilhelm Joseph Schelling",
+            "subjects": [
+              "Ethik",
+              "Philosophie"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "8dfb199e-af0c-46df-9798-a6755603cab7",
+            "title": "Frühling",
+            "subjects": [
+              "Deutsch"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "c2c39602-a727-4263-a5e9-c20f79a7b8bf",
+            "title": "Interdisziplinäres",
+            "subjects": [
+              "Kunst"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "97a0e24e-139a-4cf6-9945-975059e8c911",
+            "title": "Kontrollierte klinische Studie",
+            "subjects": [
+              "Zeitgemäße Bildung"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "24e43053-980a-4cca-a75b-fd87e19e4c6c",
+            "title": "Korpuslinguistik mit Sketchengine",
+            "subjects": [
+              "Deutsch"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "e275a79f-4529-4deb-aa28-5f49c7eda307",
+            "title": "Leitlinien",
+            "subjects": [
+              "Zeitgemäße Bildung"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "56de1d2a-d6bf-4c25-bcfa-d4e6dc916e54",
+            "title": "Müll und Recycling",
+            "subjects": [
+              "Biologie",
+              "Nachhaltigkeit"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "638cbf92-c4e8-422c-8cbf-92c4e8822c02",
+            "title": "MultiPM Links",
+            "subjects": [
+              "Projektmanagement"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "1417820b-a149-47b4-9738-2b151b35b321",
+            "title": "N-Deklination",
+            "subjects": [
+              "Deutsch als Zweitsprache"
+            ],
+            "isAdditional": true
+          }
+        ],
+        "truncated": true
+      }
+    },
+    {
+      "query": "Bil",
+      "subject": "Mathematik",
+      "ms": 7983,
+      "requests": [
+        {
+          "page": 0,
+          "ms": 4259,
+          "bytes": 291059,
+          "status": 200
+        },
+        {
+          "page": 200,
+          "ms": 2003,
+          "bytes": 135196,
+          "status": 200
+        },
+        {
+          "page": 100,
+          "ms": 3718,
+          "bytes": 305051,
+          "status": 200
+        }
+      ],
+      "result": {
+        "topics": [
+          {
+            "id": "e9a3fb9d-b141-440d-ba71-a1618d09367c",
+            "title": "Bilingualer Matheunterricht",
+            "subjects": [
+              "Mathematik"
+            ],
+            "isAdditional": false
+          },
+          {
+            "id": "1703edd6-950e-4762-bbc2-9df8db21abbd",
+            "title": "Bilanz",
+            "subjects": [
+              "Wirtschaftskunde"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "194f7e45-45e8-4e9f-aaba-e1d02bbb37fa",
+            "title": "Bildbearbeitung",
+            "subjects": [
+              "Informatik",
+              "Kunst"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "6b7211b5-2eac-48e4-9b15-3a90917c205e",
+            "title": "Bilder im Religionsunterricht",
+            "subjects": [
+              "Religion"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "987e95f2-7f0a-4884-98a0-3562ad6fb26d",
+            "title": "Bilderbuch betrachten und Lesen",
+            "subjects": [
+              "Medienbildung"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "cf3b3f80-a20f-46bc-9659-997e0480e483",
+            "title": "Bilderbücher dialogisch betrachten",
+            "subjects": [],
+            "isAdditional": true
+          },
+          {
+            "id": "8b6b1cbc-b2ca-411a-9432-fe3cfc9bd7d5",
+            "title": "Bildformate",
+            "subjects": [
+              "Informatik"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "85863f71-cb77-4afb-ad26-4f3a078c7224",
+            "title": "Bildgattungen",
+            "subjects": [
+              "Kunst"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "13feaafe-10e3-4819-b53d-63b30a875168",
+            "title": "Bildquelle",
+            "subjects": [
+              "Geschichte"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "48ab6901-702c-43df-8ab5-a68100eaae01",
+            "title": "Bildschirm",
+            "subjects": [
+              "Informatik"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "b78fb220-0932-4f4d-a959-25568adf55d1",
+            "title": "Bildsprache als Ausdruck von Wahrheit",
+            "subjects": [
+              "Religion"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "dad254d3-0a29-424d-8a3e-3db71cedb112",
+            "title": "Bildung der Adjektive",
+            "subjects": [
+              "Deutsch als Zweitsprache",
+              "Spanisch"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "39b75c5f-0eff-45dd-85e2-1cd75d76feae",
+            "title": "Bildung der Nomen",
+            "subjects": [
+              "Deutsch als Zweitsprache"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "d4d67713-5848-4c89-93e0-cde4ca5b5171",
+            "title": "Bildung der Substantive",
+            "subjects": [
+              "Spanisch"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "d69c2a64-531a-4566-917e-6db14ede42c7",
+            "title": "Bildung des Individuums",
+            "subjects": [
+              "Pädagogik"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "57c22171-ad90-4e73-8696-fcaf8b8d6608",
+            "title": "Bildung für nachhaltige Entwicklung",
+            "subjects": [
+              "Geografie",
+              "Nachhaltigkeit"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "b49e838b-17d9-4b9c-83e7-ec68be3a4aa0",
+            "title": "Bildung für nachhaltige Entwicklung (BNE) im Kontext des Musikunterrichts",
+            "subjects": [
+              "Musik"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "21243fc8-c464-459b-bbe7-277d738271ca",
+            "title": "Bildung und Kultur",
+            "subjects": [
+              "Politik"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "c738e8f8-2e58-400a-b991-3467453873ee",
+            "title": "Bildung und Schulsystem",
+            "subjects": [
+              "Französisch"
+            ],
+            "isAdditional": true
+          },
+          {
+            "id": "f3d020c6-69e5-4e98-a379-4358b40399fa",
+            "title": "Bildung von Adverbien",
+            "subjects": [
+              "Englisch",
+              "Türkisch"
+            ],
+            "isAdditional": true
+          }
+        ],
+        "truncated": true
+      }
+    },
+    {
+      "query": "Funk",
+      "subject": "Mathematik",
+      "ms": 2139,
+      "requests": [
+        {
+          "page": 0,
+          "ms": 2138,
+          "bytes": 146713,
+          "status": 200
+        }
+      ],
+      "result": {
+        "topics": [
+          {
+            "id": "bd85676b-8660-400b-9521-330b5b09cad1",
+            "title": "Funktionsbegriff",
+            "subjects": [
+              "Mathematik"
+            ],
+            "isAdditional": false
+          },
+          {
+            "id": "25ec3458-96ec-4a6b-baf4-c17de14b38c9",
+            "title": "Funktionsgleichung",
+            "subjects": [
+              "Mathematik"
+            ],
+            "isAdditional": false
+          },
+          {
+            "id": "a9b063b0-bb81-4576-8368-1bc8b6150673",
+            "title": "Ableitung der Sinus- und Kosinusfunktion",
+            "subjects": [
+              "Mathematik"
+            ],
+            "isAdditional": false
+          },
+          {
+            "id": "022645ad-c2fa-421e-b925-4b75dd31cb55",
+            "title": "Ableitung der Umkehrfunktion",
+            "subjects": [
+              "Mathematik"
+            ],
+            "isAdditional": false
+          },
+          {
+            "id": "70971763-d271-4ea3-9a50-4ea406ab8736",
+            "title": "Ableitung und Stammfunktionen von Exponentiafunktionen",
+            "subjects": [
+              "Mathematik"
+            ],
+            "isAdditional": false
+          },
+          {
+            "id": "906a330f-0171-4656-a290-7fdc39cadad6",
+            "title": "Exponential- und Logarithmusfunktion",
+            "subjects": [
+              "Mathematik"
+            ],
+            "isAdditional": false
+          },
+          {
+            "id": "e6b5ba75-0fb0-443d-9ce6-145a97f52b89",
+            "title": "Ganzrationale Funktionen",
+            "subjects": [
+              "Mathematik"
+            ],
+            "isAdditional": false
+          },
+          {
+            "id": "8fef32ea-3378-4736-9f79-7a6c33538ba9",
+            "title": "Gebrochenrationale Funktionen",
+            "subjects": [
+              "Mathematik"
+            ],
+            "isAdditional": false
+          },
+          {
+            "id": "52b9e724-d1bd-4123-b69c-73b985b3d712",
+            "title": "Grenzwerte von Funktionen",
+            "subjects": [
+              "Mathematik"
+            ],
+            "isAdditional": false
+          },
+          {
+            "id": "c9fa4417-f7b9-4874-b37b-e8c9f5583d1e",
+            "title": "Lineare Funktionen",
+            "subjects": [
+              "Mathematik"
+            ],
+            "isAdditional": false
+          },
+          {
+            "id": "9f58e63b-1fe9-4dc9-b6cc-3dbcecdbac0a",
+            "title": "Nullstellen von ganzrationalen Funktionen",
+            "subjects": [
+              "Mathematik"
+            ],
+            "isAdditional": false
+          },
+          {
+            "id": "e5b98357-a31b-4c5e-9870-c72a9a2a538d",
+            "title": "Nullstellenberechnung bei quadratischen Funktionen",
+            "subjects": [
+              "Mathematik"
+            ],
+            "isAdditional": false
+          },
+          {
+            "id": "d4034967-a4b5-4e92-b9d6-dbcba47237e5",
+            "title": "Potenzfunktionen",
+            "subjects": [
+              "Mathematik"
+            ],
+            "isAdditional": false
+          },
+          {
+            "id": "3976774a-b3fb-4bc3-91f9-0475b70a6de1",
+            "title": "Quadratische Funktionen",
+            "subjects": [
+              "Mathematik"
+            ],
+            "isAdditional": false
+          },
+          {
+            "id": "ae67fc1c-895c-4de6-979c-47a068ceba0b",
+            "title": "Sinus- und Cosinusfunktion",
+            "subjects": [
+              "Mathematik"
+            ],
+            "isAdditional": false
+          },
+          {
+            "id": "213d037b-6cf2-4704-9386-f05c6eaac3e4",
+            "title": "Skizzieren ganzrationaler Funktionen",
+            "subjects": [
+              "Mathematik"
+            ],
+            "isAdditional": false
+          },
+          {
+            "id": "3a387bbd-dd2c-44cf-8f7e-46f10f9e4368",
+            "title": "Stammfunktionen",
+            "subjects": [
+              "Mathematik"
+            ],
+            "isAdditional": false
+          },
+          {
+            "id": "8a0c5e16-3fdf-4f0f-93d1-c17024f3ab58",
+            "title": "Veränderungen am Funktionsgraphen",
+            "subjects": [
+              "Mathematik"
+            ],
+            "isAdditional": false
+          },
+          {
+            "id": "eabd1c50-886f-4937-a242-1d10bb8c71a2",
+            "title": "Winkelfunktionen am Einheitskreis",
+            "subjects": [
+              "Mathematik"
+            ],
+            "isAdditional": false
+          },
+          {
+            "id": "1ab711ea-181c-4daf-aa83-4e1382d52e4e",
+            "title": "Winkelfunktionen im rechtwinkligen Dreieck",
+            "subjects": [
+              "Mathematik"
+            ],
+            "isAdditional": false
+          }
+        ],
+        "truncated": true
+      }
+    }
+  ]
+}

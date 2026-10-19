@@ -1,5 +1,10 @@
 # Topic search performance — 17 October 2026
 
+**19 October follow-up:** first-time search is still slow. The live prefix
+probe measured Lin at 3.15 s, Bil at 7.98 s and Funk at 2.14 s, excluding app
+overhead. The earlier improvements below do not establish consistently fast
+search. See the [current latency investigation](topic-search-latency-2026-10-19.md).
+
 Follow-up to PR #884 at `863613aa`, requested after the native acceptance run.
 The interaction remains checkbox selection, persistent removable chips and an
 independent optional additional-information field. This is a technical latency

@@ -23,7 +23,11 @@ jest.mock("react-native-safe-area-context", () => ({
 jest.mock("react-native-keyboard-controller", () => {
 	const { View, ScrollView } =
 		jest.requireActual<typeof import("react-native")>("react-native");
-	return { KeyboardStickyView: View, KeyboardAwareScrollView: ScrollView };
+	return {
+		KeyboardStickyView: View,
+		KeyboardAwareScrollView: ScrollView,
+		useKeyboardState: () => false,
+	};
 });
 
 jest.mock("react-native-reanimated", () =>

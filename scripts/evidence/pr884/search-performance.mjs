@@ -1,9 +1,19 @@
 import assert from "node:assert/strict";
 import { writeFileSync } from "node:fs";
+import { platform } from "node:os";
 import { createServer } from "vite";
 
 const phase = process.argv[2] ?? "baseline";
 const output = process.argv[3];
+const prefixes = process.argv.includes("--prefixes");
+const budgetArgument = process.argv.find((arg) => arg.startsWith("--max-ms="));
+const budget = budgetArgument
+	? Number(budgetArgument.split("=")[1])
+	: undefined;
+assert.ok(
+	budget === undefined || (Number.isFinite(budget) && budget > 0),
+	"--max-ms must be a positive number",
+);
 const vite = await createServer({
 	server: { middlewareMode: true },
 	appType: "custom",
@@ -29,14 +39,21 @@ globalThis.fetch = async (...args) => {
 try {
 	const { searchWloTopics } = await vite.ssrLoadModule("/convex/wloTopics.ts");
 	const results = [];
-	for (const [query, subject] of [
-		["Bilanz", "Rechnungswesen"],
-		["Gedicht", "Deutsch"],
-		["Vektor", "Mathe LK"],
-		["Klima", "Erdkunde"],
-		["Zelle", "Biologie"],
-		["Demokr", "Sozialkunde"],
-	]) {
+	const cases = prefixes
+		? [
+				["Lin", "Mathematik"],
+				["Bil", "Mathematik"],
+				["Funk", "Mathematik"],
+			]
+		: [
+				["Bilanz", "Rechnungswesen"],
+				["Gedicht", "Deutsch"],
+				["Vektor", "Mathe LK"],
+				["Klima", "Erdkunde"],
+				["Zelle", "Biologie"],
+				["Demokr", "Sozialkunde"],
+			];
+	for (const [query, subject] of cases) {
 		requests = [];
 		const start = performance.now();
 		try {
@@ -59,18 +76,29 @@ try {
 				}),
 			);
 		} catch (e) {
-			results.push({ query, subject, error: e.name, requests: [...requests] });
+			results.push({
+				query,
+				subject,
+				ms: Math.round(performance.now() - start),
+				error: e.name,
+				requests: [...requests],
+			});
 			console.log(JSON.stringify({ query, error: e.name }));
 		}
 	}
 	const report = {
 		phase,
 		capturedAt: new Date().toISOString(),
-		environment:
-			"Windows direct provider adapter, synthetic inputs; excludes app/Convex round trip",
+		environment: `${platform()} direct provider adapter, synthetic inputs; excludes debounce, app rendering and Convex round trip`,
 		results,
 	};
 	if (output) writeFileSync(output, `${JSON.stringify(report, null, 2)}\n`);
+	if (budget !== undefined) {
+		assert.ok(
+			results.every((row) => !row.error && row.ms <= budget),
+			`Provider searches failed or exceeded ${budget} ms; inspect the saved report`,
+		);
+	}
 } finally {
 	globalThis.fetch = originalFetch;
 	await vite.close();
