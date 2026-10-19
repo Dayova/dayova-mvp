@@ -21,6 +21,7 @@ import { getBerlinDayKey } from "./dayKeyVariants";
 import { deriveTopicReadiness } from "./diagnosticReadiness";
 import { throwUserFacingError } from "./errors";
 import {
+	createManagedReadUrl,
 	deleteManagedFile,
 	getConfiguredStorageProvider,
 	getR2ConfigOrThrow,
@@ -1334,6 +1335,27 @@ export const registerUploadedDocument = action({
 			fileSizeBytes: finalizedUpload.metadata?.size ?? args.fileSizeBytes,
 			sourceKind: args.sourceKind,
 		});
+	},
+});
+
+/** Mint a preview URL only after checking ownership; storage identifiers stay private. */
+export const getDocumentPreviewUrl = mutation({
+	args: { id: v.id("learningPlanDocuments") },
+	returns: v.union(v.string(), v.null()),
+	handler: async (ctx, { id }) => {
+		const owner = await requireOwnerTokenIdentifierForMutation(ctx);
+		const document = await ctx.db.get("learningPlanDocuments", id);
+		if (!document || document.ownerTokenIdentifier !== owner) return null;
+		if (!document.fileType.startsWith("image/")) return null;
+		return await createManagedReadUrl(
+			ctx,
+			document,
+			buildPlanAccessKey(document.learningPlanId),
+			{
+				userFacingMessage:
+					"Die Vorschau konnte nicht geladen werden. Versuche es erneut.",
+			},
+		);
 	},
 });
 

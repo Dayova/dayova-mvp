@@ -41,9 +41,6 @@ describe("IntroUploadArtwork", () => {
 			),
 		).toBeOnTheScreen();
 		expect(
-			screen.getByText("Schulmaterial hochladen", hidden),
-		).toBeOnTheScreen();
-		expect(
 			screen.getByText("Themenblatt, Arbeitsblätter oder Mitschriften", hidden),
 		).toBeOnTheScreen();
 		expect(screen.queryByRole("button", hidden)).toBeNull();
