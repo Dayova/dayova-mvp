@@ -50,10 +50,10 @@ jobs:
     name: Production native fingerprints
     type: fingerprint
     environment: production
-    # checks supplies the contributor trust gate; production inputs stay off forks.
+    # quality supplies contributor trust; production inputs stay off forks.
     needs:
       - quality
-    if: ${{ (github.event_name == 'push' && github.ref_name == 'main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.id && github.event.pull_request.head.repo.id == github.event.pull_request.base.repo.id) }}
+    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_name == 'main' && github.event.before) }}
 
   quality:
     name: Quality checks
@@ -110,7 +110,7 @@ jobs:
     needs:
       - quality
       - production_fingerprint
-    if: ${{ (github.event_name == 'push' && github.ref_name == 'main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.id && github.event.pull_request.head.repo.id == github.event.pull_request.base.repo.id) }}
+    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_name == 'main' && github.event.before) }}
     environment: production
     env:
       APP_VARIANT: production
@@ -155,7 +155,7 @@ jobs:
       QUALITY_STATUS: ${{ after.quality.status }}
       FINGERPRINT_STATUS: ${{ after.production_fingerprint.status }}
       OTA_STATUS: ${{ after.ota_checks.status }}
-      REQUIRE_OTA: ${{ (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_name == 'main')) && 'true' || 'false' }}
+      REQUIRE_OTA: ${{ (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_name == 'main' && github.event.before)) && 'true' || 'false' }}
       REQUIRE_NATIVE: ${{ after.quality.outputs.native_required || 'false' }}
       ANDROID_STATUS: ${{ after.android_smoke.status }}
       IOS_STATUS: ${{ after.ios_smoke.status }}
@@ -229,12 +229,6 @@ jobs:
         | iOS | `${{ after.production_fingerprint.outputs.ios_fingerprint_hash || 'Not assessed' }}` |
         | Android | `${{ after.production_fingerprint.outputs.android_fingerprint_hash || 'Not assessed' }}` |
 
-        **📂 Repositories**
-
-        | Source | Target |
-        | --- | --- |
-        | `${{ github.event.pull_request.head.repo.full_name || 'Unavailable' }}` | `${{ github.event.pull_request.base.repo.full_name || 'Unavailable' }}` |
-
         </details>
 
   pr_ota_comment:
@@ -251,7 +245,7 @@ jobs:
     runs_on: linux-medium
     needs:
       - checks
-    if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+    if: ${{ github.event_name == 'push' && github.ref_name == 'main' && github.event.before }}
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules
@@ -266,7 +260,7 @@ jobs:
       - ota_checks
       - production_fingerprint
       - deploy_convex
-    if: ${{ github.event_name == 'push' && github.ref_name == 'main' && needs.ota_checks.outputs.ota_safe == 'true' }}
+    if: ${{ github.event_name == 'push' && github.ref_name == 'main' && github.event.before && needs.ota_checks.outputs.ota_safe == 'true' }}
     environment: production
     env:
       APP_VARIANT: production
@@ -292,7 +286,7 @@ jobs:
     type: doc
     needs:
       - ota_checks
-    if: ${{ github.event_name == 'push' && github.ref_name == 'main' && needs.ota_checks.outputs.ota_safe != 'true' }}
+    if: ${{ github.event_name == 'push' && github.ref_name == 'main' && github.event.before && needs.ota_checks.outputs.ota_safe != 'true' }}
     params:
       md: |
         ## OTA update skipped

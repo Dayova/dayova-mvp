@@ -597,7 +597,7 @@ describe("production release configuration", () => {
 		expect(sendUpdates.needs).toContain("deploy_convex");
 		expect(workflow.jobs.deploy_convex.needs).toContain("checks");
 		expect(sendUpdates.if).toBe(
-			`\${{ github.event_name == 'push' && github.ref_name == 'main' && needs.ota_checks.outputs.ota_safe == 'true' }}`,
+			`\${{ github.event_name == 'push' && github.ref_name == 'main' && github.event.before && needs.ota_checks.outputs.ota_safe == 'true' }}`,
 		);
 	});
 

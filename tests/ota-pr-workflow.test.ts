@@ -142,6 +142,7 @@ const event = (eventName: string, association = "MEMBER", fork = false) => ({
 	// Do not assume EAS's convenience field uses GitHub's owner/name format.
 	repository: "dayova-mvp",
 	event: {
+		before: eventName === "push" ? "a".repeat(40) : undefined,
 		pull_request: {
 			author_association: association,
 			head: {
@@ -248,7 +249,13 @@ describe("PR OTA workflow routing", () => {
 		["manual CI", event("workflow_dispatch"), false],
 		[
 			"manual CLI ref resolved to its commit SHA",
-			{ ...event("push"), ref_name: event("push").sha },
+			{ ...event("push"), ref_name: event("push").sha, event: {} },
+			false,
+			true,
+		],
+		[
+			"manual main without a push predecessor",
+			{ ...event("push"), event: {} },
 			false,
 			true,
 		],
@@ -271,7 +278,10 @@ describe("PR OTA workflow routing", () => {
 			needs: { ota_checks: { outputs: { ota_safe: "true" } } },
 		};
 		const isMainPush =
-			github.event_name === "push" && github.ref_name === "main";
+			github.event_name === "push" &&
+			github.ref_name === "main" &&
+			"before" in github.event &&
+			Boolean(github.event.before);
 		expect(
 			Boolean(evaluate(workflow.jobs.send_updates.if, publicationContext)),
 		).toBe(isMainPush);
