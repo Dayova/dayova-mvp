@@ -3,38 +3,27 @@ name: Deliberate device smoke failure probe
 on:
   workflow_dispatch:
     inputs:
-      android_build_id:
-        type: string
+      platform:
+        type: choice
         required: true
-      ios_build_id:
+        options: [android, ios]
+      build_id:
         type: string
         required: true
 
 jobs:
-  android:
+  probe:
     type: maestro
     environment: development
-    hooks: &redact_maestro
+    runs_on: ${{ inputs.platform == 'android' && 'linux-medium-nested-virtualization' || 'macos-medium' }}
+    env:
+      MAESTRO_APP_ID: ${{ inputs.platform == 'android' && 'com.dayova.dev' || 'de.dayova.app-dev' }}
+    hooks:
       after_maestro_tests:
         - if: ${{ always() }}
           run: node scripts/ci-sanitize-maestro.mjs
-    runs_on: linux-medium-nested-virtualization
-    env:
-      MAESTRO_APP_ID: com.dayova.dev
     params:
-      build_id: ${{ inputs.android_build_id }}
-      flow_path: .maestro/ci/failure-probe.yaml
-      maestro_version: 2.10.0
-      retries: 0
-      output_format: junit
-  ios:
-    type: maestro
-    environment: development
-    hooks: *redact_maestro
-    env:
-      MAESTRO_APP_ID: de.dayova.app-dev
-    params:
-      build_id: ${{ inputs.ios_build_id }}
+      build_id: ${{ inputs.build_id }}
       flow_path: .maestro/ci/failure-probe.yaml
       maestro_version: 2.10.0
       retries: 0

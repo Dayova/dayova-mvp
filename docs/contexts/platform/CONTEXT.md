@@ -70,9 +70,12 @@ versus combined exports on the same commit and runner; inspect resolved inputs
 before treating a run as a matched comparison.
 
 `smoke-failure-probe.yml` is an explicitly manual negative control: provide the
-verified CI Android/iOS build IDs. It launches the test app and deliberately fails
+platform and verified CI build ID. It launches the test app and deliberately fails
 an impossible UI assertion so the failed status and retained diagnostics can be
 checked. It must never be included in normal smoke execution.
+Maestro debug files include expanded environment values. The post-test hook
+redacts synthetic credentials before artifact upload, including failed runs;
+redaction failure removes the unsanitized artifact tree and fails the hook.
 
 `Automated review coverage` reports a completed CodeRabbit review separately
 from its provider status. A skipped, rate-limited, missing, or unknown result
