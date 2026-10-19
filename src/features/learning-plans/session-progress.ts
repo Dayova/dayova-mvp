@@ -2,7 +2,7 @@ import type { SessionPhase } from "./types";
 
 export const CONTINUE_LEARNING_MINUTES = 10;
 // Keep the persisted suffix stable for sessions created by earlier app versions.
-export const PAIRED_THEORY_QUESTION_SUFFIX = ":paired-practice";
+const PAIRED_THEORY_QUESTION_SUFFIX = ":paired-practice";
 
 export function getLearningSessionTimerDurationSeconds({
 	phase,
@@ -115,11 +115,4 @@ export function getLearningSessionCompletionPhase(
 	_compositionVariant: "control" | "split",
 ): SessionPhase {
 	return phase;
-}
-
-export function isQualifiedSessionCompletion(
-	durationMinutes: number,
-	activeStudySeconds: number,
-) {
-	return activeStudySeconds >= Math.ceil(durationMinutes * 60 * 0.8);
 }

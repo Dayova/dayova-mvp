@@ -3,6 +3,18 @@ import { internal } from "./_generated/api";
 
 const crons = cronJobs();
 crons.interval(
+	"Expire completed account-deletion replay barriers",
+	{ hours: 1 },
+	internal.clerkLifecycle.purgeExpiredDeletionBarriers,
+	{},
+);
+crons.interval(
+	"Expire completed account-deletion audits",
+	{ hours: 1 },
+	internal.accountDeletion.purgeCompletedAudits,
+	{},
+);
+crons.interval(
 	"Reconcile student CRM",
 	{ hours: 1 },
 	internal.crmSync.reconcile,

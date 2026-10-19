@@ -13,8 +13,12 @@ subject and exam-type selector.
   Short information, confirmation and option sheets must not reserve empty space.
 - Content scrolls by default, including the heading, so long titles and large
   system text cannot consume a fixed header and make the body unreachable.
-  At font scales of 1.5 or more, the close control gets its own row so long
-  headings retain the full text width. Only the native date/time wheel opts out
+  Titles and the 48pt close control share a compact row, with 16pt between them.
+  One- and two-line titles remain inline. Native text layout exceeding two lines
+  moves the close control above the full-width title with 12pt between them;
+  the fit is rechecked when title, sheet width, system text size or close visibility
+  changes. Supporting copy follows at 12pt, content at 24pt. Hidden close
+  controls reserve no empty space. Only the native date/time wheel opts out
   of the surrounding scroll view.
 - Shared `Input` fields automatically use Gorhom's keyboard-aware input while
   they are inside `DayovaSheetFrame`. Use `onOpening` to focus
@@ -33,6 +37,9 @@ subject and exam-type selector.
 - Action descriptions wrap completely; compact widths and enlarged text stack
   tile menus and confirmation buttons. Theme tokens and existing button semantics
   remain shared with the app.
+- Confirmation actions follow the [general popup rule](contexts/design-system/CONTEXT.md#general-popup-and-destructive-action-rule):
+  outlined Cancel on the left, equal-size red outlined/tinted Delete on the right;
+  primary confirmations retain the primary gradient. Large text may stack.
 - This contract is tracked in [DAY-470](https://linear.app/dayova/issue/DAY-470).
   It supersedes DAY-392's fixed `medium` sizing while retaining long-content access.
 - `visible` is controlled state. A close followed immediately by a reopen is a
@@ -48,6 +55,12 @@ subject and exam-type selector.
   `RuleTester` regression coverage.
 - Lifecycle and close-control behavior use React Native Testing Library rather
   than source-text assertions.
+- The compact-header decision was made by Jakob Rössner on 18 October 2026,
+  superseding DAY-501's unconditional separate close row. See the
+  [canonical decision](https://app.notion.com/p/3fd2e87228bf81588539c6e23c17abfe).
+  App-owned sheets share this structure on iOS and Android; native pickers retain
+  their platform chrome. This is a product decision informed by platform guidance,
+  not a claim that every OS sheet must use the same button placement.
 - Screen-reader modal behavior, focus, escape, and background isolation follow
   the shared contract in `docs/accessibility.md`.
 

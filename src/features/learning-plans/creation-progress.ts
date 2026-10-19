@@ -3,6 +3,7 @@ export const LEARNING_PLAN_CREATION_STEPS = {
 	examSubject: 1.5,
 	examDate: 2,
 	examTopics: 3,
+	examHints: 3.25,
 	materialUpload: 3.5,
 	materialAnalysis: 4,
 	scopeConfirmation: 4.5,
@@ -42,11 +43,4 @@ export const getExamEntryCreationProgress = (
 		default:
 			return LEARNING_PLAN_CREATION_STEPS.examDate;
 	}
-};
-
-export const getLearningPlanCreationProgressPercentage = (progress: number) => {
-	const { currentStep: safeProgress } = getSafeLearningPlanCreationProgress({
-		currentStep: progress,
-	});
-	return Math.round((safeProgress / LEARNING_PLAN_CREATION_TOTAL_STEPS) * 100);
 };

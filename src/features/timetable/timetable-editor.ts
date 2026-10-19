@@ -23,7 +23,7 @@ export const TIMETABLE_WEEKDAYS = [
 	{ value: 7, shortLabel: "So", label: "Sonntag" },
 ] as const;
 
-export const timetableTimeToMinutes = (time: string) => {
+const timetableTimeToMinutes = (time: string) => {
 	const match = /^(\d{2}):(\d{2})$/.exec(time);
 	if (!match) return null;
 	const hours = Number(match[1]);

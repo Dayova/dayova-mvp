@@ -45,7 +45,7 @@ export function prepareGalleryUploadAsset(
 	const handle = file.open(FileMode.ReadOnly);
 	let mimeType: keyof typeof imageExtensions;
 	try {
-		mimeType = getImageMimeType(handle.readBytes(12));
+		mimeType = getImageMimeType(handle.readBytesSync(12));
 	} finally {
 		handle.close();
 	}

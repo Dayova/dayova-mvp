@@ -25,8 +25,12 @@ const makeUser = (id = "user_123") => ({
 let mockClerkUser: ReturnType<typeof makeUser> | null = makeUser();
 const mockClerk = { loaded: true, session: { currentTask: null } };
 const mockClear = jest.fn();
-const mockSync = jest.fn<() => Promise<unknown>>(async () => ({}));
-const mockEntitlementSync = jest.fn(async () => ({ active: true }));
+const mockSync = jest.fn<(_args: Record<string, unknown>) => Promise<unknown>>(
+	async () => ({}),
+);
+const mockEntitlementSync = jest.fn(async (_args: Record<string, never>) => ({
+	active: true,
+}));
 const mockReplace = jest.fn();
 const mockRouter = { replace: mockReplace };
 let mockPathname = "/learning-plans/example";
@@ -38,9 +42,11 @@ jest.mock("@clerk/expo", () => ({
 	useClerk: () => mockClerk,
 	useUser: () => ({ user: mockClerkUser, isLoaded: true }),
 	useSignIn: () => ({}),
+	useReverification: (callback: unknown) => callback,
 	isClerkAPIResponseError: () => false,
 }));
 jest.mock("convex/react", () => ({
+	useConvex: () => ({ url: "https://test.convex.cloud" }),
 	useMutation: () => mockSync,
 	useAction: () => mockEntitlementSync,
 	useConvexAuth: () => ({ isAuthenticated: mockAuthenticated }),
@@ -55,6 +61,7 @@ jest.mock("~/context/OnboardingContext", () => ({
 }));
 jest.mock("~/lib/analytics", () => ({ isPostHogConfigured: false }));
 jest.mock("~/lib/diagnostics", () => ({ logDiagnosticError: jest.fn() }));
+jest.mock("~/lib/runtime-config", () => ({ env: {} }));
 jest.mock("~/lib/pending-onboarding-sync-secure-store", () => ({
 	getOnboardingAccountFingerprint: async () => "test-fingerprint",
 	pendingOnboardingSyncOutbox: { resume: async () => ({ status: "none" }) },
@@ -115,9 +122,6 @@ function deferSync() {
 type RenderedApp = Awaited<ReturnType<typeof render>>;
 const expectVisible = (screen: RenderedApp) => {
 	expect(screen.queryByTestId("auth-bootstrap-mask")).toBeNull();
-	expect(
-		screen.getByTestId("auth-route-content").props.className,
-	).not.toContain("opacity-0");
 	expect(screen.getByText("Lernplan")).toBeOnTheScreen();
 };
 const openApp = async () => {

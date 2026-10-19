@@ -86,6 +86,7 @@ export function LearningPlanCardFooter({
 				</View>
 			</View>
 			<View
+				accessible
 				accessibilityLabel={`${progress} Prozent abgeschlossen`}
 				accessibilityValue={{
 					max: 100,

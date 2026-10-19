@@ -15,18 +15,20 @@ let mockBeforeRemoveListener: BeforeRemoveListener | undefined;
 const mockDispatch = jest.fn();
 let mockIsFocused = true;
 
-jest.mock("expo-router/react-navigation", () => ({
+jest.mock("expo-router", () => ({
 	useFocusEffect: (effect: () => undefined | (() => void)) => effect(),
 	useIsFocused: () => mockIsFocused,
-	useNavigation: () => ({ dispatch: mockDispatch }),
+	useNavigationContainerRef: () => ({ dispatch: mockDispatch }),
 	usePreventRemove: (
 		prevent: boolean,
-		callback: (event: Pick<BeforeRemoveEvent, "data">) => void,
+		callback: (
+			event: Pick<BeforeRemoveEvent, "data"> & { repeat: () => void },
+		) => void,
 	) => {
 		mockBeforeRemoveListener = (event) => {
 			if (!prevent) return;
 			event.preventDefault();
-			callback({ data: event.data });
+			callback({ data: event.data, repeat: jest.fn() });
 		};
 	},
 }));
@@ -107,10 +109,10 @@ describe("useBackIntent", () => {
 		const event = createBeforeRemoveEvent();
 		await act(async () => mockBeforeRemoveListener?.(event));
 		expect(onBack).toHaveBeenCalledTimes(1);
-		expect(mockDispatch).toHaveBeenCalledWith({
-			source: undefined,
-			...event.data.action,
-		});
+		expect(mockDispatch).toHaveBeenCalledWith(event.data.action);
+		const next = createBeforeRemoveEvent();
+		await act(async () => mockBeforeRemoveListener?.(next));
+		expect(next.preventDefault).not.toHaveBeenCalled();
 	});
 
 	test("allows replacements without invoking the back intent", async () => {
@@ -143,6 +145,21 @@ describe("useBackIntent", () => {
 		);
 		expect(onBack).not.toHaveBeenCalled();
 		expect(mockDispatch).toHaveBeenCalledWith(action);
+	});
+
+	test("restores protection when a resumed removal leaves the route mounted", async () => {
+		const onBack = jest.fn(() => false);
+		await renderHook(() => useBackIntent(true, onBack));
+		await act(async () =>
+			mockBeforeRemoveListener?.(createBeforeRemoveEvent()),
+		);
+		const restore = jest.mocked(requestAnimationFrame).mock.calls.at(-1)?.[0];
+		expect(restore).toBeDefined();
+		await act(async () => restore?.(0));
+		const next = createBeforeRemoveEvent();
+		await act(async () => mockBeforeRemoveListener?.(next));
+		expect(next.preventDefault).toHaveBeenCalledTimes(1);
+		expect(onBack).toHaveBeenCalledTimes(2);
 	});
 
 	test("does not intercept removal while the screen is unfocused", async () => {

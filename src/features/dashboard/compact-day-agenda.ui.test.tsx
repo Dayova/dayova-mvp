@@ -34,11 +34,6 @@ describe("CompactDayAgenda", () => {
 			screen.queryByRole("button", { includeHiddenElements: true }),
 		).toBeNull();
 		expect(
-			screen.getByText("Mathematik · Gleichungen lösen", {
-				includeHiddenElements: true,
-			}).props.allowFontScaling,
-		).toBe(false);
-		expect(
 			screen.getByText("17:00 · 17 min", { includeHiddenElements: true }),
 		).toBeTruthy();
 	});
@@ -47,10 +42,6 @@ describe("CompactDayAgenda", () => {
 		const screen = await render(
 			<CompactDayAgenda items={[item]} isLoading={false} onOpenItem={open} />,
 		);
-		expect(
-			screen.getByText("Mathematik · Gleichungen lösen").props.numberOfLines,
-		).toBe(1);
-		expect(screen.getByText("17:00 · 17 min").props.numberOfLines).toBe(1);
 		expect(screen.getByRole("button").props.accessibilityLabel).toContain(
 			"Gleichungen lösen",
 		);

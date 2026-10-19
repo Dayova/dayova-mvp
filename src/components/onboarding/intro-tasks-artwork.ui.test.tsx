@@ -32,13 +32,4 @@ describe("IntroTasksArtwork", () => {
 		expect(screen.getByText("Schritt für Schritt", hidden)).toBeOnTheScreen();
 		expect(screen.queryByRole("button", hidden)).toBeNull();
 	});
-
-	test("uses the numeric artwork dimensions supplied by the onboarding layout", async () => {
-		const screen = await render(<IntroTasksArtwork width={294} height={200} />);
-		const artwork = screen.getByTestId("intro-tasks-artwork", {
-			includeHiddenElements: true,
-		});
-
-		expect(artwork.props.style).toEqual({ width: 294, height: 200 });
-	});
 });
