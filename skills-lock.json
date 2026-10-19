@@ -235,6 +235,12 @@
       "skillPath": "skills/engineering/improve-codebase-architecture/SKILL.md",
       "computedHash": "569299a60c8e93880f3b3c1eca55578f58f7e1a4155876edb4cb814da3d6b3ea"
     },
+    "langfuse": {
+      "source": "langfuse/skills",
+      "sourceType": "github",
+      "skillPath": "skills/langfuse/SKILL.md",
+      "computedHash": "fa0cd84e21e17dd502f6cd01b0a288ed88966a5f030c787a47ab522ba5c67cee"
+    },
     "prototype": {
       "source": "mattpocock/skills",
       "sourceType": "github",

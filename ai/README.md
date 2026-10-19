@@ -5,6 +5,26 @@ evaluation foundation in [DAY-293](https://linear.app/dayova/issue/DAY-293).
 Product quality invariants and the rollout decision live in the canonical
 [AI model strategy](https://app.notion.com/p/3ae2e87228bf81ccb1ccdbbc83c7709c).
 
+## Agent skill
+
+The official [Langfuse skill](../.agents/skills/langfuse/SKILL.md) and its
+reference guides are installed in the repository for Codex. Invoke `$langfuse`
+for tracing, costs, datasets, and evaluations; read this runbook alongside it
+for Dayova's implementation contracts.
+
+Source: [langfuse/skills at 127253d0](https://github.com/langfuse/skills/tree/127253d0e26dfa77fb6d732d1b70c36625581eb4/skills/langfuse).
+Local changes add Dayova's production contract and correct automatic-capture
+and Python OpenAI wrapper guidance in `references/instrumentation.md`, prefer
+stable evaluator APIs in `references/setting-up-evals.md`, and clean up trailing
+whitespace. The upstream MIT license is included.
+`skills-lock.json` records the upstream source path and content hash.
+To refresh only this skill, run
+`pnpm exec skills add langfuse/skills --skill langfuse --agent codex --copy --yes`,
+review the upstream changes, reapply those local corrections where still needed,
+retain the license, update the source revision above, and run `pnpm skills:validate`.
+Consult the [current CLI documentation](https://langfuse.com/docs/api-and-data-platform/features/cli)
+before running the upstream CLI examples; new installs use `@langfuse/cli`.
+
 ## Backend tracing
 
 Create EU Langfuse Cloud projects for development, staging and production.
