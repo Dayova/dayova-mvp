@@ -348,7 +348,7 @@ async function selectGalleryPhotos(
 	mockLaunchImageLibrary.mockResolvedValue({ canceled: false, assets });
 	const screen = await render(<NewLearningPlanScreen />);
 	await fireEvent.press(
-		screen.getByRole("button", { name: "Schulmaterial hinzufügen" }),
+		screen.getAllByRole("button", { name: "Schulmaterial hinzufügen" })[0],
 	);
 	await fireEvent.press(
 		screen.getByRole("button", {
@@ -808,7 +808,7 @@ describe("exam creation across the topics boundary", () => {
 
 		const screen = await render(<NewLearningPlanScreen />);
 		await fireEvent.press(
-			screen.getByRole("button", { name: "Schulmaterial hinzufügen" }),
+			screen.getAllByRole("button", { name: "Schulmaterial hinzufügen" })[0],
 		);
 		await fireEvent.press(
 			screen.getByRole("button", {
@@ -889,7 +889,7 @@ describe("exam creation across the topics boundary", () => {
 
 		const screen = await render(<NewLearningPlanScreen />);
 		await fireEvent.press(
-			screen.getByRole("button", { name: "Schulmaterial hinzufügen" }),
+			screen.getAllByRole("button", { name: "Schulmaterial hinzufügen" })[0],
 		);
 		await fireEvent.press(
 			screen.getByRole("button", {
@@ -1079,7 +1079,7 @@ describe("exam creation across the topics boundary", () => {
 		expect(mockFetch).not.toHaveBeenCalled();
 		mockFiles["file:///unreadable.jpg"].readError = undefined;
 		await fireEvent.press(
-			screen.getByRole("button", { name: "Schulmaterial hinzufügen" }),
+			screen.getAllByRole("button", { name: "Schulmaterial hinzufügen" })[0],
 		);
 		await fireEvent.press(
 			screen.getByRole("button", {

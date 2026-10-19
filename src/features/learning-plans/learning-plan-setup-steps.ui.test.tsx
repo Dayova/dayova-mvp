@@ -68,7 +68,7 @@ describe("learning-plan setup steps", () => {
 		expect(onContinue).toHaveBeenCalledTimes(1);
 	});
 
-	test("keeps the empty school-material page focused on one upload action", async () => {
+	test("keeps school-material upload and saving without material available", async () => {
 		const onOpenUpload = jest.fn();
 		const screen = await render(
 			<MaterialUploadStep
@@ -87,15 +87,10 @@ describe("learning-plan setup steps", () => {
 		);
 
 		expect(
-			screen.getByRole("button", {
+			screen.getAllByRole("button", {
 				name: "Schulmaterial hinzufügen",
-			}),
+			})[0],
 		).toBeEnabled();
-		expect(
-			screen.getByText(
-				"Dein Lernplan-Entwurf bleibt gespeichert. Schulmaterial kannst du später ergänzen.",
-			),
-		).toBeOnTheScreen();
 		expect(
 			screen.queryByRole("button", {
 				name: "Zusätzliche Lernhilfe hinzufügen",
@@ -109,7 +104,7 @@ describe("learning-plan setup steps", () => {
 		).toBeOnTheScreen();
 
 		await fireEvent.press(
-			screen.getByRole("button", { name: "Schulmaterial hinzufügen" }),
+			screen.getAllByRole("button", { name: "Schulmaterial hinzufügen" })[0],
 		);
 		expect(onOpenUpload).toHaveBeenCalledWith();
 	});
@@ -141,9 +136,9 @@ describe("learning-plan setup steps", () => {
 		);
 
 		expect(
-			screen.getByRole("button", {
+			screen.getAllByRole("button", {
 				name: "Weiteres Schulmaterial hinzufügen",
-			}),
+			})[0],
 		).toBeEnabled();
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
 		expect(
@@ -214,9 +209,7 @@ describe("learning-plan setup steps", () => {
 		);
 
 		expect(
-			screen.getByText(
-				"Deine Unterlagen bilden die Grundlage für deinen Lernplan.",
-			),
+			screen.getByText("Lade PDFs, Fotos oder andere Dokumente hoch."),
 		).toBeOnTheScreen();
 		expect(
 			screen.queryByRole("button", { name: "Ohne Lernmaterial erstellen" }),

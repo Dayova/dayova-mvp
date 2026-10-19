@@ -290,6 +290,16 @@ offers one forward-only action into the app. Show it after a newly completed
 purchase, not after restoring an existing subscription, so the celebration
 acknowledges a real transition without becoming recurring friction.
 
+The learning-plan material step uses the shared `MaterialUploadGrid`: two
+columns of dashed plus tiles, with uploaded materials occupying those same
+slots. It starts with four slots and always retains an add tile; every empty
+tile opens the existing camera/gallery/files sheet. Large text and compact
+viewports use one column. Photos use protected image previews with retry;
+PDF/Office files show type, filename and size without simulated page content.
+The same grid renders its first row decoratively in the bounded onboarding
+phone artwork. See
+[DAY-543](https://linear.app/dayova/issue/DAY-543/show-learning-plan-materials-in-a-preview-upload-grid).
+
 ## Product-surface previews
 
 ### Personal-subject action appearance

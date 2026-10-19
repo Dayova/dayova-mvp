@@ -1,11 +1,12 @@
 import { ActivityIndicator, View } from "react-native";
 import type { Id } from "#convex/_generated/dataModel";
 import { Button } from "~/components/ui/button";
-import { GraduationCap, Plus } from "~/components/ui/icon";
-import { ActionSurface, Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
-import { MaterialCard } from "~/features/learning-plans/learning-plan-ui";
+import {
+	type LoadMaterialPreview,
+	MaterialUploadGrid,
+} from "~/features/learning-plans/material-upload-grid";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { useDayovaTheme } from "~/lib/theme";
 
@@ -85,6 +86,7 @@ export function MaterialUploadStepLead({
 		<>
 			<Text
 				allowFontScaling={!fixedTextScale}
+				accessibilityRole="header"
 				className="font-poppins font-semibold text-body-1 text-text"
 			>
 				Schulmaterial hinzufügen
@@ -93,92 +95,9 @@ export function MaterialUploadStepLead({
 				allowFontScaling={!fixedTextScale}
 				className="mt-2 font-poppins text-body-3 text-secondary-text"
 			>
-				Deine Unterlagen bilden die Grundlage für deinen Lernplan.
+				Lade PDFs, Fotos oder andere Dokumente hoch.
 			</Text>
 		</>
-	);
-}
-
-type MaterialUploadActionCardProps =
-	| {
-			canUpload: boolean;
-			hasSchoolMaterial: boolean;
-			mode?: "screen";
-			onPress: () => void;
-	  }
-	| {
-			canUpload?: never;
-			hasSchoolMaterial: boolean;
-			mode: "artwork";
-			onPress?: never;
-	  };
-
-export function MaterialUploadActionCard(props: MaterialUploadActionCardProps) {
-	const { hasSchoolMaterial } = props;
-	const mode = props.mode ?? "screen";
-	const { colors } = useDayovaTheme();
-	const fixedTextScale = mode === "artwork";
-	const content = (
-		<>
-			<View className="h-12 w-12 items-center justify-center rounded-[18px] bg-system-subtle">
-				<GraduationCap
-					size={24}
-					color={colors.primaryStrong}
-					strokeWidth={2.1}
-				/>
-			</View>
-			<View className="min-w-0 flex-1 px-4">
-				<Text
-					allowFontScaling={!fixedTextScale}
-					className="font-poppins font-semibold text-body-2 text-text"
-				>
-					{hasSchoolMaterial
-						? "Weiteres Schulmaterial"
-						: "Schulmaterial hochladen"}
-				</Text>
-				<Text
-					allowFontScaling={!fixedTextScale}
-					className="mt-1 font-poppins text-body-4 text-secondary-text"
-				>
-					Themenblatt, Arbeitsblätter oder Mitschriften
-				</Text>
-			</View>
-			<Plus size={22} color={colors.primaryStrong} strokeWidth={2.2} />
-		</>
-	);
-	const className =
-		"mt-7 min-h-[112px] flex-row items-center rounded-[32px] border border-border px-5 py-5";
-
-	if (props.mode === "artwork") {
-		return (
-			<Surface
-				accessible={false}
-				accessibilityElementsHidden
-				importantForAccessibility="no-hide-descendants"
-				className={className}
-				variant="soft"
-			>
-				{content}
-			</Surface>
-		);
-	}
-
-	return (
-		<ActionSurface
-			accessibilityHint="Öffnet die Auswahl zum Scannen oder Hochladen von Schulmaterial."
-			accessibilityLabel={
-				hasSchoolMaterial
-					? "Weiteres Schulmaterial hinzufügen"
-					: "Schulmaterial hinzufügen"
-			}
-			accessibilityRole="button"
-			disabled={!props.canUpload}
-			onPress={() => props.onPress()}
-			className={className}
-			variant="soft"
-		>
-			{content}
-		</ActionSurface>
 	);
 }
 
@@ -189,6 +108,7 @@ export function MaterialUploadStep({
 	errorMessage,
 	isBusy,
 	isUploading,
+	loadPreview,
 	onContinue,
 	onOpenUpload,
 	onRemoveDocument,
@@ -202,6 +122,7 @@ export function MaterialUploadStep({
 	errorMessage: string | null;
 	isBusy: boolean;
 	isUploading: boolean;
+	loadPreview?: LoadMaterialPreview;
 	onContinue: () => void;
 	onOpenUpload: () => void;
 	onRemoveDocument: (id: Id<"learningPlanDocuments">) => void;
@@ -217,39 +138,18 @@ export function MaterialUploadStep({
 	return (
 		<View className="flex-1">
 			<MaterialUploadStepLead />
-			<MaterialUploadActionCard
+			<MaterialUploadGrid
 				canUpload={canUpload}
-				hasSchoolMaterial={hasSchoolMaterial}
-				onPress={onOpenUpload}
+				documents={schoolDocuments}
+				onOpenUpload={onOpenUpload}
+				onRemoveDocument={onRemoveDocument}
+				loadPreview={loadPreview}
 			/>
-
-			{showSkip && !hasSchoolMaterial ? (
-				<Text className="mt-3 font-poppins text-body-4 text-secondary-text">
-					Dein Lernplan-Entwurf bleibt gespeichert. Schulmaterial kannst du
-					später ergänzen.
-				</Text>
-			) : null}
 
 			<UploadActivity
 				isUploading={isUploading}
 				openingUploadAction={openingUploadAction}
 			/>
-
-			{hasSchoolMaterial ? (
-				<View className="mt-7">
-					<Text className="mb-3 font-poppins font-semibold text-body-4 text-secondary-text">
-						Hochgeladen
-					</Text>
-					{schoolDocuments.map((document) => (
-						<MaterialCard
-							key={document.id}
-							name={document.fileName}
-							size={document.fileSizeBytes}
-							onRemove={() => onRemoveDocument(document.id)}
-						/>
-					))}
-				</View>
-			) : null}
 
 			<SetupError message={errorMessage} />
 			<View className="mt-auto w-full gap-3 pt-8">
