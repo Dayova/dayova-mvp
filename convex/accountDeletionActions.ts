@@ -1,6 +1,6 @@
 "use node";
 
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
 import { readOptionalEnv } from "./env";
@@ -15,6 +15,7 @@ type DeletionStage =
 	| "deleteRevenueCat"
 	| "deletePostHog"
 	| "deleteData"
+	| "deleteNotion"
 	| "complete";
 
 class ProcessorError extends Error {
@@ -128,19 +129,43 @@ const deletePostHogPerson = async (
 };
 
 const errorCodeFor = (stage: DeletionStage, error: unknown) =>
-	`${stage}_${error instanceof ProcessorError ? error.code : "unexpected"}`;
+	`${stage}_${
+		error instanceof ProcessorError
+			? error.code
+			: error instanceof ConvexError &&
+					error.data &&
+					typeof error.data === "object" &&
+					"code" in error.data &&
+					typeof error.data.code === "string" &&
+					[
+						"configuration",
+						"schema",
+						"unauthorized",
+						"unavailable",
+						"rate_limited",
+						"identity_changed",
+						"capacity",
+						"timeout",
+						"internal",
+					].includes(error.data.code)
+				? error.data.code
+				: "unexpected"
+	}`;
 
 export const processDeletionRequest = internalAction({
 	args: { requestId: v.string() },
 	returns: v.null(),
 	handler: async (ctx, args) => {
-		const request = await ctx.runQuery(
-			internal.accountDeletion.getRequestForProcessing,
+		const request = await ctx.runMutation(
+			internal.accountDeletion.prepareRequestForProcessing,
 			args,
 		);
 		if (
 			!request ||
 			request.status === "completed" ||
+			request.status === "manualReview" ||
+			(request.nextAttemptAt !== undefined &&
+				request.nextAttemptAt > Date.now()) ||
 			request.stage === "complete"
 		) {
 			return null;
@@ -226,7 +251,21 @@ export const processDeletionRequest = internalAction({
 					args,
 				);
 				if (result.done) {
-					await ctx.runMutation(internal.accountDeletion.completeRequest, args);
+					const advanced = await ctx.runMutation(
+						internal.accountDeletion.advanceRequestStage,
+						{
+							requestId: args.requestId,
+							expectedStage: stage,
+							nextStage: "deleteNotion",
+						},
+					);
+					if (advanced) {
+						await ctx.scheduler.runAfter(
+							0,
+							internal.accountDeletionActions.processDeletionRequest,
+							args,
+						);
+					}
 				} else {
 					await ctx.scheduler.runAfter(
 						0,
@@ -235,9 +274,28 @@ export const processDeletionRequest = internalAction({
 					);
 					return null;
 				}
+			} else if (stage === "deleteNotion") {
+				const result = await ctx.runAction(
+					internal.crmAccountDeletion.reconcile,
+					args,
+				);
+				if (result === "busy") {
+					await ctx.scheduler.runAfter(
+						60_000,
+						internal.accountDeletionActions.processDeletionRequest,
+						args,
+					);
+					return null;
+				}
+				if (
+					!(await ctx.runMutation(
+						internal.accountDeletion.completeRequest,
+						args,
+					))
+				)
+					throw new ProcessorError("completion_unverified");
 			}
-
-			if (stage !== "deleteData" && advanced) {
+			if (stage !== "deleteData" && stage !== "deleteNotion" && advanced) {
 				await ctx.scheduler.runAfter(
 					0,
 					internal.accountDeletionActions.processDeletionRequest,

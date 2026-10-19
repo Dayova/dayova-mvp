@@ -1288,7 +1288,7 @@ test("account deletion removes the new integration mapping", async () => {
 	expect(done).toBe(true);
 	expect(
 		await t.mutation(internal.accountDeletion.completeRequest, { requestId }),
-	).toBe(true);
+	).toBe(false);
 	expect(
 		await t.run((ctx) => ctx.db.query("crmStudentLinks").take(10)),
 	).toEqual([]);

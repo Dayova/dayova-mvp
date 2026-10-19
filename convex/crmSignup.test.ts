@@ -432,7 +432,7 @@ test("account deletion removes queued CRM creation before it can run", async () 
 	expect(done).toBe(true);
 	expect(
 		await t.mutation(internal.accountDeletion.completeRequest, { requestId }),
-	).toBe(true);
+	).toBe(false);
 	expect(await t.query(internal.crmSignupState.pending, {})).toEqual([]);
 	await t.action(internal.crmSync.reconcile, { dryRun: true });
 	vi.stubEnv("NOTION_CRM_MODE", "live");

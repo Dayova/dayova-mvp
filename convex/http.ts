@@ -1,12 +1,13 @@
 import { httpRouter } from "convex/server";
 import { internal } from "./_generated/api";
 import { env, httpAction } from "./_generated/server";
+import { clerkWebhook } from "./clerkWebhook";
 import { handleDeletionPasswordRequest } from "./deletionPasswordHttp";
 import { readOptionalEnv } from "./env";
 import { logDiagnosticError } from "./errors";
 
 const http = httpRouter();
-
+http.route({ path: "/clerk-webhook", method: "POST", handler: clerkWebhook });
 http.route({
 	path: "/account-deletion",
 	method: "POST",
