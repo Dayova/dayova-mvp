@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { performance } from "node:perf_hooks";
@@ -35,6 +35,9 @@ const stages = [
 	],
 ];
 const results = [];
+const sourceSha = execFileSync("git", ["rev-parse", "HEAD"], {
+	encoding: "utf8",
+}).trim();
 for (const [stage, args] of stages) {
 	const start = performance.now();
 	const exitCode = await new Promise((resolve, reject) => {
@@ -60,10 +63,7 @@ for (const [stage, args] of stages) {
 		`${directory}/timings.json`,
 		JSON.stringify(
 			{
-				sourceSha:
-					process.env.EAS_BUILD_GIT_COMMIT_HASH ??
-					process.env.GITHUB_SHA ??
-					null,
+				sourceSha,
 				node: process.version,
 				coverage,
 				results,

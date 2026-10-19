@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { authenticatedSmoke } from "../scripts/auth-smoke.mjs";
 
 const env = {
+	NODE_ENV: "test" as const,
 	EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: `pk_test_${Buffer.from(
 		"warm-parrot-13.clerk.accounts.dev$",
 	).toString("base64")}`,

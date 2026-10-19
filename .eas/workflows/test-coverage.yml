@@ -17,6 +17,8 @@ jobs:
     name: Vitest and Jest behavior coverage
     type: custom
     runs_on: linux-medium
+    env:
+      CI_JEST_WORKERS: "2"
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules
@@ -27,4 +29,4 @@ jobs:
         with:
           type: other
           name: coverage-and-test-results
-          path: .maestro/artifacts/ci/**/*
+          path: .maestro/artifacts/ci

@@ -63,6 +63,8 @@ identity. The auth probe checks both authenticated access and anonymous denial.
 `pnpm test:ci` retains per-stage timings, Vitest JUnit, and Jest JSON under ignored
 `.maestro/artifacts/ci/`. Weekly CI and the manual `test-coverage.yml` collect
 Vitest/Jest coverage there. Upload steps run even on failure. Manual
+CI uses two Jest workers on `linux-medium`, selected by the matched benchmark.
+Manual
 `test-benchmark.yml` and `export-benchmark.yml` compare worker counts and separate
 versus combined exports on the same commit and runner; inspect resolved inputs
 before treating a run as a matched comparison.

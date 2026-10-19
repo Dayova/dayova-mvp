@@ -67,6 +67,7 @@ jobs:
       CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || 'unavailable' }}
       CI_NATIVE_FORCE: ${{ inputs.native_checks && 'true' || 'false' }}
       CI_COVERAGE: ${{ github.event_name == 'schedule' && 'true' || 'false' }}
+      CI_JEST_WORKERS: "2"
     outputs:
       native_required: ${{ steps.native_scope.outputs.required }}
     # This custom job uses production scope; fork code must not reach checkout.
@@ -100,7 +101,7 @@ jobs:
         with:
           type: other
           name: quality-test-results
-          path: .maestro/artifacts/ci/**/*
+          path: .maestro/artifacts/ci
 
   ota_checks:
     name: Production OTA gates
