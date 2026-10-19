@@ -21,6 +21,13 @@ export default defineConfig({
 		},
 	},
 	test: {
+		coverage: {
+			provider: "v8",
+			include: ["src/**/*.ts", "convex/**/*.ts"],
+			exclude: ["**/*.test.ts", "**/*.types.ts", "convex/_generated/**"],
+			reporter: ["text-summary", "json-summary", "lcov", "html"],
+			reportsDirectory: ".maestro/artifacts/ci/coverage/vitest",
+		},
 		// Several suites spawn Expo/Node processes. Keep them from exhausting the
 		// worker's CPU and memory when the whole repository runs in CI.
 		maxWorkers: 2,

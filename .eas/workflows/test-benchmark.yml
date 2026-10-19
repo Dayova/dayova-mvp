@@ -1,7 +1,12 @@
 name: Test quality benchmark
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      jest_workers:
+        type: choice
+        default: "1"
+        options: ["1", "2"]
 
 defaults:
   tools:
@@ -19,4 +24,5 @@ jobs:
       - name: Measure quality checks
         env:
           EAS_BUILD: "false"
+          CI_JEST_WORKERS: ${{ inputs.jest_workers || '1' }}
         run: node scripts/benchmark-checks.mjs

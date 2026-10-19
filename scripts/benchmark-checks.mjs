@@ -22,6 +22,7 @@ for (const [stage, repetitions] of [
 				exitCode: result.status,
 				node: process.version,
 				platform: process.platform,
+				jestWorkers: process.env.CI_JEST_WORKERS ?? "1",
 			})}`,
 		);
 		if (result.error) throw result.error;

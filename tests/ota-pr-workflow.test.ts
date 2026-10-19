@@ -156,7 +156,7 @@ describe("repository quality gates", () => {
 	});
 
 	it("keeps every check in the shared CI job", () => {
-		const commands = workflow.jobs.checks.steps
+		const commands = workflow.jobs.quality.steps
 			.map((step: { run?: string }) => step.run)
 			.filter(Boolean);
 		expect(commands).toEqual(
@@ -166,7 +166,7 @@ describe("repository quality gates", () => {
 				"pnpm check:unused",
 				"pnpm skills:validate",
 				"pnpm typecheck",
-				"pnpm test",
+				"pnpm test:ci",
 			]),
 		);
 	});
@@ -177,7 +177,7 @@ describe("repository quality gates", () => {
 			event("push"),
 			{ ...event("push"), ref_name: "gh-readonly-queue/main/pr-846" },
 		]) {
-			expect(evaluate(workflow.jobs.checks.if, { github })).toBe(true);
+			expect(evaluate(workflow.jobs.quality.if, { github })).toBe(true);
 		}
 	});
 });
@@ -248,7 +248,7 @@ describe("PR OTA workflow routing", () => {
 				(job.needs ?? []).every(canRun)
 			);
 		};
-		expect(canRun("checks")).toBe(
+		expect(canRun("quality")).toBe(
 			expected || queueChecks || github.event_name === "workflow_dispatch",
 		);
 		expect(canRun("production_fingerprint")).toBe(expected);
@@ -277,10 +277,9 @@ describe("PR OTA workflow routing", () => {
 	])("handles a %s assessment result", (failureKind, expected) => {
 		const step = workflow.jobs.ota_checks.steps.find(
 			(value: { name?: string }) =>
-				value.name === "Require a completed PR OTA assessment",
+				value.name === "Require a completed OTA assessment",
 		);
-		expect(evaluate(step.if, { github: event("pull_request") })).toBe(true);
-		expect(evaluate(step.if, { github: event("push") })).toBe(false);
+		expect(step.if).toBeUndefined();
 		const context = {
 			steps: { ota_guard: { outputs: { ota_failure_kind: failureKind } } },
 		};
@@ -336,5 +335,30 @@ describe("PR OTA workflow routing", () => {
 			(expression: string) => String(evaluate(expression, context)),
 		);
 		expect(commentBody).toBe(rendered);
+	});
+});
+
+describe("required CI acceptance", () => {
+	it.each([
+		["success", "success", "success", true, 0],
+		["success", "success", "failure", true, 1],
+		["success", "skipped", "skipped", true, 1],
+		["failure", "skipped", "skipped", true, 1],
+		["canceled", "skipped", "skipped", false, 1],
+		["success", "skipped", "skipped", false, 0],
+	])("requires completed prerequisites (%s, %s, %s, OTA %s)", (quality, fingerprint, ota, requireOta, expected) => {
+		const result = spawnSync(bash, ["-c", workflow.jobs.checks.steps[0].run], {
+			encoding: "utf8",
+			env: {
+				...process.env,
+				QUALITY_STATUS: quality,
+				FINGERPRINT_STATUS: fingerprint,
+				OTA_STATUS: ota,
+				REQUIRE_OTA: String(requireOta),
+				REQUIRE_NATIVE: "false",
+			},
+		});
+		expect(result.error).toBeUndefined();
+		expect(result.status).toBe(expected);
 	});
 });

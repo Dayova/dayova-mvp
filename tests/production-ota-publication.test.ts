@@ -1,4 +1,17 @@
+import {
+	mkdirSync,
+	mkdtempSync,
+	rmSync,
+	unlinkSync,
+	writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
+import {
+	productionExportContext,
+	recordProductionExport,
+} from "../scripts/production-export.mjs";
 import {
 	publicationLockBranch,
 	publishProductionOta,
@@ -74,6 +87,96 @@ function harness(fail?: string, server = { locked: false }) {
 }
 
 describe("production publication boundary", () => {
+	it.each([
+		"valid",
+		"tampered",
+		"missing",
+		"stale",
+		"environment",
+		"runtime",
+		"fingerprint",
+	])("validates a %s prepared artifact before contacting EAS", (condition) => {
+		const directory = mkdtempSync(join(tmpdir(), "dayova-export-"));
+		try {
+			mkdirSync(join(directory, "bundles"));
+			writeFileSync(join(directory, "bundles/ios.hbc"), "iOS bundle");
+			writeFileSync(join(directory, "bundles/android.hbc"), "Android bundle");
+			writeFileSync(
+				join(directory, "metadata.json"),
+				JSON.stringify({
+					fileMetadata: {
+						ios: { bundle: "bundles/ios.hbc" },
+						android: { bundle: "bundles/android.hbc" },
+					},
+				}),
+			);
+			const context = productionExportContext({
+				sourceSha: sha,
+				runtimeVersion: "1.0.5",
+				env: {
+					APP_VARIANT: "production",
+					EXPO_PUBLIC_CONVEX_URL: "https://example.convex.cloud",
+					OTA_IOS_FINGERPRINT: "1".repeat(40),
+					OTA_ANDROID_FINGERPRINT: "2".repeat(40),
+				},
+			});
+			recordProductionExport(directory, context);
+			if (condition === "tampered")
+				writeFileSync(join(directory, "bundles/android.hbc"), "changed");
+			if (condition === "missing")
+				unlinkSync(join(directory, "bundles/ios.hbc"));
+			const expected = { ...context };
+			if (condition === "stale") expected.sourceSha = "b".repeat(40);
+			if (condition === "environment") expected.environmentDigest = "different";
+			if (condition === "runtime") expected.runtimeVersion = "1.0.6";
+			if (condition === "fingerprint") expected.iosFingerprint = "3".repeat(40);
+			const h = harness();
+			const publish = () =>
+				publishProductionOta({
+					sourceSha: sha,
+					runtimeVersion: "1.0.5",
+					...h,
+					preparedExport: { directory, context: expected },
+				});
+			if (condition === "valid") {
+				expect(publish()).toHaveLength(2);
+				expect(h.run.mock.calls.some(([command]) => command === "expo")).toBe(
+					false,
+				);
+				expect(
+					h.run.mock.calls.find(([, args]) => args[0] === "update")?.[1],
+				).toEqual(
+					expect.arrayContaining(["--input-dir", directory, "--skip-bundler"]),
+				);
+			} else {
+				expect(publish).toThrow();
+				expect(h.run.mock.calls.some(([command]) => command === "eas")).toBe(
+					false,
+				);
+			}
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+	it("rejects an export missing either platform bundle", () => {
+		const directory = mkdtempSync(join(tmpdir(), "dayova-export-"));
+		try {
+			writeFileSync(
+				join(directory, "metadata.json"),
+				JSON.stringify({ fileMetadata: { ios: { bundle: "ios.hbc" } } }),
+			);
+			expect(() =>
+				recordProductionExport(directory, {
+					sourceSha: sha,
+					runtimeVersion: "1.0.5",
+					iosFingerprint: "1".repeat(40),
+					androidFingerprint: "2".repeat(40),
+				}),
+			).toThrow("both platform bundles");
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
 	it.each([
 		{
 			phase: "before-export",
