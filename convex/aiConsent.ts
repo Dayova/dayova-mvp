@@ -7,6 +7,7 @@ import {
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { internalQuery, mutation, query } from "./_generated/server";
+import { assertAccountActive } from "./accountDeletion";
 import { throwUserFacingError } from "./errors";
 
 const aiConsentStatusValidator = v.union(
@@ -27,6 +28,7 @@ const aiConsentSnapshotValidator = v.object({
 const requireIdentity = async (ctx: QueryCtx | MutationCtx) => {
 	const identity = await ctx.auth.getUserIdentity();
 	if (!identity) throwUserFacingError("Nicht authentifiziert.");
+	await assertAccountActive(ctx, identity.tokenIdentifier);
 	return identity;
 };
 

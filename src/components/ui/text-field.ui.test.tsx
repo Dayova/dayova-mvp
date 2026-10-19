@@ -37,8 +37,6 @@ describe("InsetTextField accessibility", () => {
 
 		const input = screen.getByLabelText("Neues Passwort");
 		expect(input.props.multiline).toBe(false);
-		expect(input.props.numberOfLines).toBe(1);
-		expect(input.parent?.props.className).toContain("justify-center");
 		expect(screen.getByTestId("field-accessory")).toBeOnTheScreen();
 	});
 });

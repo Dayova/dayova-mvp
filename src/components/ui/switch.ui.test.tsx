@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
 import { describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render } from "@testing-library/react-native";
+import type { ReactNode } from "react";
 import { Switch } from "./switch";
 
 jest.mock("@expo/ui", () => {

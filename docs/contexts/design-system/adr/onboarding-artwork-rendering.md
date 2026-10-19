@@ -68,7 +68,8 @@ This trades some embedded text size for recognizable product context. Short
 accessible copy outside the device explains each page. Reconsider the frame
 if its scaling prevents recognition of the relevant feature; do not replace
 shared product modules with copied screenshot UIs. Native evidence is in
-`docs/evidence/onboarding-intro/`; the README records the preview scope.
+[PR #825's archived intro evidence](https://github.com/Dayova/dayova-mvp/pull/825#issuecomment-6252199275);
+the report records the preview scope.
 
 The final intro's learner job is to understand that Dayova turns material into
 an ordered route, not to inspect the metadata of a single plan. Its artwork mode

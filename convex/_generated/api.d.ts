@@ -9,10 +9,16 @@
  */
 
 import type * as accountDeletion from "../accountDeletion.js";
+import type * as accountDeletionActions from "../accountDeletionActions.js";
 import type * as adaptiveLearningPlan from "../adaptiveLearningPlan.js";
 import type * as adaptiveLearningPlanPolicy from "../adaptiveLearningPlanPolicy.js";
 import type * as aiConsent from "../aiConsent.js";
 import type * as answerEvaluation from "../answerEvaluation.js";
+import type * as clerkIdentity from "../clerkIdentity.js";
+import type * as clerkLifecycle from "../clerkLifecycle.js";
+import type * as clerkReconciliation from "../clerkReconciliation.js";
+import type * as clerkWebhook from "../clerkWebhook.js";
+import type * as crmAccountDeletion from "../crmAccountDeletion.js";
 import type * as crmBilling from "../crmBilling.js";
 import type * as crmContract from "../crmContract.js";
 import type * as crmNotion from "../crmNotion.js";
@@ -28,10 +34,12 @@ import type * as dashboardMigrations from "../dashboardMigrations.js";
 import type * as dashboardNextStep from "../dashboardNextStep.js";
 import type * as dayEntries from "../dayEntries.js";
 import type * as dayKeyVariants from "../dayKeyVariants.js";
+import type * as deletionPasswordHttp from "../deletionPasswordHttp.js";
 import type * as diagnosticReadiness from "../diagnosticReadiness.js";
 import type * as entitlements from "../entitlements.js";
 import type * as env from "../env.js";
 import type * as errors from "../errors.js";
+import type * as examTopicInput from "../examTopicInput.js";
 import type * as fileStorage from "../fileStorage.js";
 import type * as generatedGermanText from "../generatedGermanText.js";
 import type * as generatedGermanTextRepair from "../generatedGermanTextRepair.js";
@@ -74,6 +82,10 @@ import type * as topicDescriptionValidation from "../topicDescriptionValidation.
 import type * as userAnalytics from "../userAnalytics.js";
 import type * as users from "../users.js";
 import type * as validationAnalytics from "../validationAnalytics.js";
+import type * as wloSubjectContext from "../wloSubjectContext.js";
+import type * as wloTopicCache from "../wloTopicCache.js";
+import type * as wloTopicContract from "../wloTopicContract.js";
+import type * as wloTopics from "../wloTopics.js";
 
 import type {
   ApiFromModules,
@@ -83,10 +95,16 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   accountDeletion: typeof accountDeletion;
+  accountDeletionActions: typeof accountDeletionActions;
   adaptiveLearningPlan: typeof adaptiveLearningPlan;
   adaptiveLearningPlanPolicy: typeof adaptiveLearningPlanPolicy;
   aiConsent: typeof aiConsent;
   answerEvaluation: typeof answerEvaluation;
+  clerkIdentity: typeof clerkIdentity;
+  clerkLifecycle: typeof clerkLifecycle;
+  clerkReconciliation: typeof clerkReconciliation;
+  clerkWebhook: typeof clerkWebhook;
+  crmAccountDeletion: typeof crmAccountDeletion;
   crmBilling: typeof crmBilling;
   crmContract: typeof crmContract;
   crmNotion: typeof crmNotion;
@@ -102,10 +120,12 @@ declare const fullApi: ApiFromModules<{
   dashboardNextStep: typeof dashboardNextStep;
   dayEntries: typeof dayEntries;
   dayKeyVariants: typeof dayKeyVariants;
+  deletionPasswordHttp: typeof deletionPasswordHttp;
   diagnosticReadiness: typeof diagnosticReadiness;
   entitlements: typeof entitlements;
   env: typeof env;
   errors: typeof errors;
+  examTopicInput: typeof examTopicInput;
   fileStorage: typeof fileStorage;
   generatedGermanText: typeof generatedGermanText;
   generatedGermanTextRepair: typeof generatedGermanTextRepair;
@@ -148,6 +168,10 @@ declare const fullApi: ApiFromModules<{
   userAnalytics: typeof userAnalytics;
   users: typeof users;
   validationAnalytics: typeof validationAnalytics;
+  wloSubjectContext: typeof wloSubjectContext;
+  wloTopicCache: typeof wloTopicCache;
+  wloTopicContract: typeof wloTopicContract;
+  wloTopics: typeof wloTopics;
 }>;
 
 /**

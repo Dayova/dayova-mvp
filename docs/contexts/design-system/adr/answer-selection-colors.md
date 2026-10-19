@@ -50,7 +50,7 @@ supplementary to the contrasting check shape and checked radio state.
 The [canonical decision and alternatives](https://app.notion.com/p/3da2e87228bf8173b2adddaab6e3f5e6)
 record why white on a darker blue is viable but not preferred, the native
 comparison, limitations, and reversal conditions. Implementation evidence lives
-in [PR #586's color comparison](../../../evidence/pr-586/color-decision/README.md);
+in [PR #586's color comparison](https://github.com/Dayova/dayova-mvp/pull/586#issuecomment-6252189996);
 [DAY-408](https://linear.app/dayova/issue/DAY-408/polish-answer-selection-motion-and-document-the-selected-color)
 tracks review. This retains the PR implementation; it does not assert app-wide
 accessibility conformance or release readiness.

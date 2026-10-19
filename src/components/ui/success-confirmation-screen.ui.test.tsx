@@ -1,5 +1,5 @@
 import { describe, expect, jest, test } from "@jest/globals";
-import { render } from "@testing-library/react-native";
+import { fireEvent, render } from "@testing-library/react-native";
 import { SuccessConfirmationScreen } from "./success-confirmation-screen";
 
 jest.mock("react-native/Libraries/Utilities/useWindowDimensions", () => ({
@@ -20,21 +20,24 @@ jest.mock("~/components/ui/icon", () => {
 });
 
 describe("SuccessConfirmationScreen", () => {
-	test("keeps compact portrait content scrollable above the finish action", async () => {
+	test("shows the saved result and lets the learner finish", async () => {
+		const onFinish = jest.fn();
 		const screen = await render(
 			<SuccessConfirmationScreen
 				title="Dein Lernplan wurde erfolgreich aktualisiert"
 				detailLabel="Die Änderungen sind gespeichert."
 				detailValue="Mathematik · Lineare Funktionen"
 				description="Du kannst jetzt mit deinem aktualisierten Lernplan fortfahren."
-				onFinish={jest.fn()}
+				onFinish={onFinish}
 			/>,
 		);
-
-		const scroll = screen.getByTestId("success-confirmation-scroll");
-		expect(scroll.props.contentContainerStyle).toMatchObject({
-			paddingBottom: 160,
-		});
-		expect(screen.getByRole("button", { name: "Fertig" })).toBeOnTheScreen();
+		expect(
+			screen.getByText("Die Änderungen sind gespeichert."),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByText("Mathematik · Lineare Funktionen"),
+		).toBeOnTheScreen();
+		await fireEvent.press(screen.getByRole("button", { name: "Fertig" }));
+		expect(onFinish).toHaveBeenCalledTimes(1);
 	});
 });

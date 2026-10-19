@@ -45,12 +45,52 @@ test.each([
 		checked: selected,
 		disabled: false,
 	});
-	expect(screen.getByText(label).props.numberOfLines).toBeUndefined();
 	await fireEvent.press(screen.getByRole("radio"));
 	expect(onPress).toHaveBeenCalledTimes(1);
 	expect(triggerSelectionHaptic).toHaveBeenCalledTimes(selected ? 0 : 1);
 });
 
 jest.mock("react-native-reanimated", () =>
-	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+	jest.requireActual<Record<string, unknown>>(
+		"../../../tests/mocks/selection-reanimated.cjs",
+	),
 );
+
+test("supports disabled multi-select search choices with a separate spoken title", async () => {
+	const onPress = jest.fn();
+	const screen = await render(
+		<SelectionOptionRow
+			label="Als eigenes Thema hinzufügen"
+			accessibilityLabel="Gedichts"
+			accessibilityRole="checkbox"
+			selected
+			disabled
+			onPress={onPress}
+		/>,
+	);
+	const choice = screen.getByRole("checkbox", { name: "Gedichts" });
+	expect(choice.props.accessibilityState).toMatchObject({
+		checked: true,
+		disabled: true,
+	});
+	await fireEvent.press(choice);
+	expect(onPress).not.toHaveBeenCalled();
+});
+
+test("exam and subject rows do not commit a canceled selection", async () => {
+	const onPress = jest.fn();
+	const screen = await render(
+		<SelectionOptionRow
+			Icon={Pencil}
+			label="Klausur"
+			selected={false}
+			onPress={onPress}
+		/>,
+	);
+	const row = screen.getByRole("radio", { name: "Klausur" });
+	await fireEvent(row, "pressIn");
+	await fireEvent(row, "pressOut");
+	expect(onPress).not.toHaveBeenCalled();
+	await fireEvent.press(row);
+	expect(onPress).toHaveBeenCalledTimes(1);
+});

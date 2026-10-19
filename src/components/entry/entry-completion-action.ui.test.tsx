@@ -62,7 +62,7 @@ afterEach(() => {
 
 test("waits for mutation and persisted state, confirms inside the button, then restores its next action", async () => {
 	let finish!: () => void;
-	const change = jest.fn(
+	const change = jest.fn<(completed: boolean) => Promise<void>>(
 		() =>
 			new Promise<void>((resolve) => {
 				finish = resolve;
@@ -110,7 +110,7 @@ test("waits for mutation and persisted state, confirms inside the button, then r
 
 test("does not confirm an early persisted update until the mutation succeeds", async () => {
 	let finish!: () => void;
-	const change = jest.fn(
+	const change = jest.fn<(completed: boolean) => Promise<void>>(
 		() =>
 			new Promise<void>((resolve) => {
 				finish = resolve;
@@ -130,7 +130,7 @@ test("does not confirm an early persisted update until the mutation succeeds", a
 
 test("preserves the recoverable error and runs a successful retry through the same confirmation", async () => {
 	const change = jest
-		.fn<() => Promise<void>>()
+		.fn<(completed: boolean) => Promise<void>>()
 		.mockRejectedValueOnce(new Error("offline"))
 		.mockResolvedValueOnce();
 	const screen = await render(
@@ -159,7 +159,9 @@ test("preserves the recoverable error and runs a successful retry through the sa
 
 test("does not celebrate historical completion and confirms reopening without motion", async () => {
 	mockReducedMotion = true;
-	const change = jest.fn<() => Promise<void>>().mockResolvedValue();
+	const change = jest
+		.fn<(completed: boolean) => Promise<void>>()
+		.mockResolvedValue();
 	const screen = await render(
 		<EntryCompletionAction completed onChange={change} />,
 	);
@@ -179,7 +181,9 @@ test("does not celebrate historical completion and confirms reopening without mo
 });
 
 test("clears a confirmation after a conflicting update instead of replaying it later", async () => {
-	const change = jest.fn<() => Promise<void>>().mockResolvedValue();
+	const change = jest
+		.fn<(completed: boolean) => Promise<void>>()
+		.mockResolvedValue();
 	const screen = await render(
 		<EntryCompletionAction completed={false} onChange={change} />,
 	);
@@ -202,7 +206,9 @@ test("clears a confirmation after a conflicting update instead of replaying it l
 test("removes the confirmation timer on unmount", async () => {
 	const schedule = jest.spyOn(global, "setTimeout");
 	const cancel = jest.spyOn(global, "clearTimeout");
-	const change = jest.fn<() => Promise<void>>().mockResolvedValue();
+	const change = jest
+		.fn<(completed: boolean) => Promise<void>>()
+		.mockResolvedValue();
 	const screen = await render(
 		<EntryCompletionAction completed={false} onChange={change} />,
 	);
@@ -213,11 +219,13 @@ test("removes the confirmation timer on unmount", async () => {
 			schedule.mock.calls.findIndex(([, delay]) => delay === 1_400)
 		].value;
 	await screen.unmount();
-	expect(cancel).toHaveBeenCalledWith(confirmationTimer);
+	expect(cancel.mock.calls.map(([timer]) => timer)).toContain(
+		confirmationTimer,
+	);
 });
 
 test("unavailable actions never save", async () => {
-	const change = jest.fn<() => Promise<void>>();
+	const change = jest.fn<(completed: boolean) => Promise<void>>();
 	await render(
 		<EntryCompletionAction completed={false} disabled onChange={change} />,
 	);

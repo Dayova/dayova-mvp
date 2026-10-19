@@ -1,6 +1,10 @@
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
-import { ActivityIndicator, Keyboard, type TextInput } from "react-native";
+import {
+	ActivityIndicator,
+	Keyboard,
+	type TextInputInstance,
+} from "react-native";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
 import { ErrorMessage } from "~/components/ui/error-message";
@@ -24,7 +28,7 @@ export default function ForcedPasswordResetScreen() {
 	const [confirmationVisible, setConfirmationVisible] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
-	const confirmationRef = useRef<TextInput | null>(null);
+	const confirmationRef = useRef<TextInputInstance | null>(null);
 	const actionGateRef = useRef(createAsyncActionGate());
 	const isBusy = isLoading || isSubmitting;
 

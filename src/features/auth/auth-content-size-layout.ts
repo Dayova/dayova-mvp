@@ -3,11 +3,6 @@ type AuthContentSizeLayoutInput = {
 	shouldStackInlineContent: boolean;
 };
 
-type OtpCellLayout = {
-	height: number;
-	width?: number;
-};
-
 type ResponsiveAuthChoiceLayout = {
 	brandFontSize: number;
 	brandLineHeight: number;
@@ -23,20 +18,6 @@ type RangeValueContentLayout = {
 	unitMarginTop: number;
 	verticalOffset: number;
 };
-
-function getOtpCellLayout({
-	fontScale,
-	shouldStackInlineContent,
-}: AuthContentSizeLayoutInput): OtpCellLayout {
-	if (!shouldStackInlineContent) {
-		return { height: 42 };
-	}
-
-	return {
-		height: Math.max(42, 28 * fontScale + 14),
-		width: Math.max(42, 22 * fontScale + 16),
-	};
-}
 
 function getRangeValueBadgeSize({
 	fontScale,
@@ -81,7 +62,6 @@ function getResponsiveAuthChoiceLayout(
 }
 
 export {
-	getOtpCellLayout,
 	getRangeValueBadgeSize,
 	getRangeValueContentLayout,
 	getResponsiveAuthChoiceLayout,

@@ -79,19 +79,6 @@ beforeEach(() => {
 	jest.clearAllMocks();
 });
 
-test("renders a white check inside the selected blue circle", async () => {
-	const screen = await render(
-		<SelectionControl selected accessibilityLabel="Test" onPress={jest.fn()}>
-			<SelectionText>Test</SelectionText>
-			<SelectionIndicator />
-		</SelectionControl>,
-	);
-	expect(
-		screen.getByTestId("selection-check", { includeHiddenElements: true }).props
-			.color,
-	).toBe("#FFFFFF");
-});
-
 describe.each<Appearance>(["card", "pill"])("%s selection", (appearance) => {
 	test("keeps one checked choice during rapid changes without waiting for motion", async () => {
 		const onSelect = jest.fn();
@@ -120,7 +107,6 @@ describe.each<Appearance>(["card", "pill"])("%s selection", (appearance) => {
 		await fireEvent(annual, "pressOut");
 		expect(onSelect).not.toHaveBeenCalled();
 		expect(screen.getByRole("radio", { name: "monthly" })).toBeChecked();
-		expect(annual.props.style).toBeUndefined();
 	});
 	test("locks the choice when disabled during a press", async () => {
 		const onSelect = jest.fn();

@@ -1,0 +1,11 @@
+--- a/settings.gradle.kts
++++ b/settings.gradle.kts
+@@ -13,8 +13,6 @@
+   }
+ }
+ 
+-plugins { id("org.gradle.toolchains.foojay-resolver-convention").version("1.0.0") }
+-
+ include(
+     ":react-native-gradle-plugin",
+     ":settings-plugin",
