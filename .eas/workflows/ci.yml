@@ -349,6 +349,8 @@ jobs:
     type: maestro
     environment: development
     hooks: &redact_maestro
+      before_maestro_tests:
+        - run: node scripts/ci-prepare-maestro.mjs
       after_maestro_tests:
         - if: ${{ always() }}
           run: node scripts/ci-sanitize-maestro.mjs

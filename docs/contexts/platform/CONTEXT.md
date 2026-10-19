@@ -76,6 +76,11 @@ checked. It must never be included in normal smoke execution.
 Maestro debug files include expanded environment values. The post-test hook
 redacts synthetic credentials before artifact upload, including failed runs;
 redaction failure removes the unsanitized artifact tree and fails the hook.
+`device-smoke.yml` manually checks a verified CI build on either platform; select
+the authenticated flow to diagnose login without repeating exports and repacks.
+Its full suite excludes the tagged negative control. Disposable iOS simulators
+disable and verify password AutoFill before testing because Maestro cannot inspect
+the iOS password-save sheet; application password behavior stays unchanged.
 
 `Automated review coverage` reports a completed CodeRabbit review separately
 from its provider status. A skipped, rate-limited, missing, or unknown result

@@ -1,5 +1,7 @@
 appId: ${MAESTRO_APP_ID}
 name: Deliberate failure validates the automation status and diagnostics
+tags:
+  - negative-control
 env:
   APP_ID: ${MAESTRO_APP_ID}
 ---

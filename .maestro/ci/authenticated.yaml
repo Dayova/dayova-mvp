@@ -9,6 +9,14 @@ env:
 - inputText:
     text: ${MAESTRO_CI_EMAIL}
     label: Enter the synthetic test identity
+- runFlow:
+    file: ../shared/dismiss-auth-keyboard.yaml
+    env:
+      AUTH_HEADING: Willkommen
+- scrollUntilVisible:
+    element: Passwort
+    direction: UP
+    timeout: 10000
 - tapOn: Passwort
 - inputText:
     text: ${MAESTRO_CI_PASSWORD}
@@ -25,13 +33,6 @@ env:
 - extendedWaitUntil:
     visible: 'Bestätigungscode|So läuft deine Testphase'
     timeout: 60000
-- runFlow:
-    when:
-      platform: iOS
-    commands:
-      - tapOn:
-          text: 'Not Now|Nicht jetzt'
-          optional: true
 - runFlow:
     when:
       notVisible: So läuft deine Testphase
