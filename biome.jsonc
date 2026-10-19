@@ -8,6 +8,7 @@
 	"files": {
 		"ignoreUnknown": true,
 		"includes": [
+			"ai/**",
 			"src/**",
 			"convex/**",
 			"plugins/**",

@@ -5,6 +5,13 @@ import { v } from "convex/values";
 
 const app = defineApp({
 	env: {
+		LANGFUSE_ENABLED: v.optional(v.string()),
+		LANGFUSE_PUBLIC_KEY: v.optional(v.string()),
+		LANGFUSE_SECRET_KEY: v.optional(v.string()),
+		LANGFUSE_BASE_URL: v.optional(v.string()),
+		LANGFUSE_TRACING_ENVIRONMENT: v.optional(v.string()),
+		LANGFUSE_RELEASE: v.optional(v.string()),
+		LANGFUSE_USER_HASH_SECRET: v.optional(v.string()),
 		CLERK_WEBHOOK_SIGNING_SECRET: v.optional(v.string()),
 		CLERK_WEBHOOK_INSTANCE_ID: v.optional(v.string()),
 		CLERK_JWT_ISSUER_DOMAIN: v.optional(v.string()),
