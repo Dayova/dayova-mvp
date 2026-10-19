@@ -14,6 +14,10 @@ jobs:
   android:
     type: maestro
     environment: development
+    hooks: &redact_maestro
+      after_maestro_tests:
+        - if: ${{ always() }}
+          run: node scripts/ci-sanitize-maestro.mjs
     runs_on: linux-medium-nested-virtualization
     env:
       MAESTRO_APP_ID: com.dayova.dev
@@ -26,6 +30,7 @@ jobs:
   ios:
     type: maestro
     environment: development
+    hooks: *redact_maestro
     env:
       MAESTRO_APP_ID: de.dayova.app-dev
     params:

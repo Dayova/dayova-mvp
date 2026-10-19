@@ -348,6 +348,10 @@ jobs:
     name: android embedded app smoke
     type: maestro
     environment: development
+    hooks: &redact_maestro
+      after_maestro_tests:
+        - if: ${{ always() }}
+          run: node scripts/ci-sanitize-maestro.mjs
     after:
       - native_fingerprint
       - android_build
@@ -402,6 +406,7 @@ jobs:
     name: ios embedded app smoke
     type: maestro
     environment: development
+    hooks: *redact_maestro
     after:
       - native_fingerprint
       - ios_build

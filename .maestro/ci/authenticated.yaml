@@ -27,6 +27,13 @@ env:
     timeout: 60000
 - runFlow:
     when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: 'Not Now|Nicht jetzt'
+          optional: true
+- runFlow:
+    when:
       notVisible: So läuft deine Testphase
     commands:
       - tapOn: Bestätigungscode
