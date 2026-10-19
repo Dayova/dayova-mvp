@@ -29,7 +29,6 @@
 	"ignoreDependencies": [
 		"@babel/plugin-transform-react-jsx",
 		// Expo config plugins are resolved by name in app.config.cts.
-		"expo-font",
 		"expo-splash-screen",
 		// Invoked through an explicit node_modules/.bin path so the updater can
 		// keep its isolated fetch workspace as the CLI working directory.
