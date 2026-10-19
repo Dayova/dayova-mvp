@@ -34,6 +34,7 @@ import {
 	validationAnalyticsBeforeSend,
 } from "~/lib/analytics";
 import { useClerkConvexAuth } from "~/lib/clerk-convex-auth";
+import { getRunningUpdateInstallation } from "~/lib/running-update-installation";
 import { env, missingPublicRuntimeConfig } from "~/lib/runtime-config";
 import { DayovaThemeProvider, NAV_THEMES, useDayovaTheme } from "~/lib/theme";
 import { DARK_THEME_VARIABLES } from "~/lib/theme-variables";
@@ -130,6 +131,10 @@ function MissingConfigurationScreen() {
 }
 
 export default function RootLayout() {
+	useEffect(() => {
+		void getRunningUpdateInstallation();
+	}, []);
+
 	if (missingPublicRuntimeConfig.length > 0 || !convex) {
 		const missingConfigKeys =
 			missingPublicRuntimeConfig.length > 0

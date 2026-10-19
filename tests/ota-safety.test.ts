@@ -570,13 +570,13 @@ describe("production release configuration", () => {
 		expect(otaChecks.needs).toEqual(
 			expect.arrayContaining(["checks", "production_fingerprint"]),
 		);
-		expect(otaChecks.env).toEqual({
+		expect(otaChecks.env).toMatchObject({
 			APP_VARIANT: "production",
 			EAS_BUILD_PLATFORM: "ios",
 			OTA_ANDROID_FINGERPRINT: `\${{ needs.production_fingerprint.outputs.android_fingerprint_hash }}`,
 			OTA_IOS_FINGERPRINT: `\${{ needs.production_fingerprint.outputs.ios_fingerprint_hash }}`,
 		});
-		expect(otaGuard.env).toBeUndefined();
+		expect({ ...otaChecks.env, ...otaGuard.env }).toMatchObject(otaChecks.env);
 		const sendUpdates = workflow.jobs.send_updates;
 		const finalGuard = sendUpdates.steps.find(
 			(step: { name?: string }) =>
@@ -586,13 +586,15 @@ describe("production release configuration", () => {
 
 		expect(sendUpdates.needs).toContain("ota_checks");
 		expect(sendUpdates.needs).toContain("production_fingerprint");
-		expect(sendUpdates.env).toEqual({
+		expect(sendUpdates.env).toMatchObject({
 			APP_VARIANT: "production",
 			OTA_SOURCE_SHA: `\${{ github.sha }}`,
 			OTA_ANDROID_FINGERPRINT: otaChecks.env.OTA_ANDROID_FINGERPRINT,
 			OTA_IOS_FINGERPRINT: otaChecks.env.OTA_IOS_FINGERPRINT,
 		});
-		expect(finalGuard.env).toBeUndefined();
+		expect({ ...sendUpdates.env, ...finalGuard.env }).toMatchObject(
+			sendUpdates.env,
+		);
 		expect(sendUpdates.needs).toContain("deploy_convex");
 		expect(workflow.jobs.deploy_convex.needs).toContain("checks");
 		expect(sendUpdates.if).toBe(

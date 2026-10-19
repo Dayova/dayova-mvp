@@ -3,11 +3,6 @@
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api, internal } from "./_generated/api";
-import {
-	MAX_MULTIPLE_CHOICE_OPTION_CHARS,
-	MAX_MULTIPLE_CHOICE_PROMPT_CHARS,
-	MULTIPLE_CHOICE_OPTION_COUNT,
-} from "./learningSessionContentConstraints";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -235,6 +230,7 @@ test("opening an existing short theory session backfills its pre-check", async (
 	const before = await t.query(api.learningSessionContent.getSessionContent, {
 		sessionId,
 	});
+	expect(before?.items).toHaveLength(3);
 	expect(before?.items.every((item) => item.kind === "learnCard")).toBe(true);
 
 	await t.action(api.learningPlanAi.ensureSessionContent, { sessionId });
@@ -248,9 +244,7 @@ test("opening an existing short theory session backfills its pre-check", async (
 	});
 	expect(
 		after?.items.filter(
-			(item) =>
-				item.phase === "practice" &&
-				item.coverageKey.endsWith(":paired-practice"),
+			(item) => item.phase === "practice" && item.kind === "written",
 		),
 	).toHaveLength(1);
 	expect(
@@ -275,8 +269,8 @@ test("split fallback adds one opening question for the first theory page", async
 	const theoryItems =
 		content?.items.filter((item) => item.kind === "learnCard") ?? [];
 	const pairedPracticeItems =
-		content?.items.filter((item) =>
-			item.coverageKey.endsWith(":paired-practice"),
+		content?.items.filter(
+			(item) => item.phase === "practice" && item.kind === "written",
 		) ?? [];
 	expect(theoryItems).toHaveLength(12);
 	expect(pairedPracticeItems).toHaveLength(1);
@@ -287,7 +281,6 @@ test("split fallback adds one opening question for the first theory page", async
 		title: firstTheoryItem?.title,
 		topicId: firstTheoryItem?.topicId,
 		prompt: firstTheoryItem?.theoryContent?.question ?? firstTheoryItem?.front,
-		coverageKey: `${firstTheoryItem?.coverageKey}:paired-practice`,
 	});
 	expect(
 		content?.items.reduce((total, item) => total + item.estimatedSeconds, 0),
@@ -309,8 +302,8 @@ test("reopening a split theory session upgrades an existing paired task to the g
 		sessionId,
 	});
 	const theoryItem = before?.items.find((item) => item.kind === "learnCard");
-	const pairedQuestion = before?.items.find((item) =>
-		item.coverageKey.endsWith(":paired-practice"),
+	const pairedQuestion = before?.items.find(
+		(item) => item.phase === "practice" && item.kind === "written",
 	);
 	if (!theoryItem || !pairedQuestion) {
 		throw new Error("Expected a paired theory question.");
@@ -356,7 +349,10 @@ test("reopening a theory session replaces demanding fallback questions", async (
 	}
 	const theoryContent = theoryItem.theoryContent;
 	const pairedQuestion = before?.items.find(
-		(item) => item.coverageKey === `${theoryItem.coverageKey}:paired-practice`,
+		(item) =>
+			item.phase === "practice" &&
+			item.kind === "written" &&
+			item.topicId === theoryItem.topicId,
 	);
 	if (!pairedQuestion) throw new Error("Expected a paired theory question.");
 	const legacyQuestion = `Was bedeutet ${theoryItem.title}, und wofür wird das Verfahren gebraucht?`;
@@ -488,6 +484,7 @@ test("continue learning appends a fresh timed block", async () => {
 	expect(
 		after?.items.slice(0, existingItemCount).map((item) => item.id),
 	).toEqual(before?.items.map((item) => item.id));
+	expect(newItems).toHaveLength(2);
 	expect(newItems.every((item) => item.learningBlockIndex === 3)).toBe(true);
 	expect(
 		newItems.some((item) => existingCoverageKeys.includes(item.coverageKey)),
@@ -501,10 +498,14 @@ test("continue learning appends a fresh timed block", async () => {
 		api.learningSessionContent.getSessionContent,
 		{ sessionId },
 	);
-	const allPrompts =
-		twiceExtended?.items
-			.filter((item) => !item.coverageKey.endsWith(":paired-practice"))
-			.map((item) => item.prompt) ?? [];
+	const appendedItems = twiceExtended?.items.slice(existingItemCount) ?? [];
+	expect(appendedItems).toHaveLength(4);
+	const allPrompts = [
+		...(before?.items
+			.filter((item) => item.kind === "learnCard")
+			.map((item) => item.prompt) ?? []),
+		...appendedItems.map((item) => item.prompt),
+	];
 	const duplicatePrompts = allPrompts.filter(
 		(prompt, index) => allPrompts.indexOf(prompt) !== index,
 	);
@@ -579,13 +580,11 @@ test("AI theory content gains one opening question for split sessions", async ()
 
 	expect(content?.items[0]?.phase).toBe("theory");
 	expect(
-		content?.items.filter((item) =>
-			item.coverageKey.endsWith(":paired-practice"),
+		content?.items.filter(
+			(item) => item.phase === "practice" && item.kind === "written",
 		),
 	).toHaveLength(1);
-	expect(
-		content?.items.filter((item) => item.coverageKey.includes(":validation:")),
-	).toHaveLength(0);
+	expect(content?.items).toHaveLength(2);
 });
 
 test("practice fallback creates concrete guided practice tasks", async () => {
@@ -764,15 +763,9 @@ test("multiple-choice tasks stay compact without losing plausible choices", asyn
 
 	expect(multipleChoiceItems.length).toBeGreaterThan(0);
 	for (const item of multipleChoiceItems) {
-		expect(item.prompt.length).toBeLessThanOrEqual(
-			MAX_MULTIPLE_CHOICE_PROMPT_CHARS,
-		);
-		expect(item.choices).toHaveLength(MULTIPLE_CHOICE_OPTION_COUNT);
-		expect(
-			item.choices.every(
-				(choice) => choice.text.length <= MAX_MULTIPLE_CHOICE_OPTION_CHARS,
-			),
-		).toBe(true);
+		expect(item.prompt.length).toBeLessThanOrEqual(200);
+		expect(item.choices).toHaveLength(3);
+		expect(item.choices.every((choice) => choice.text.length <= 72)).toBe(true);
 	}
 });
 
@@ -813,7 +806,11 @@ test("answers produce feedback and finishing creates a Wissensanalyse", async ()
 		api.learningSessionContent.submitAnswer,
 		{
 			itemId: multipleChoice.id,
-			selectedChoiceId: "distractor-fast",
+			selectedChoiceId: multipleChoice.choices.find(
+				(choice) =>
+					choice.text ===
+					"Ergebnis direkt raten und Zwischenschritte auslassen.",
+			)?.id,
 			timeSpentSeconds: 20,
 		},
 	);
@@ -872,12 +869,17 @@ test("finishing analyzes only the latest attempt for each item", async () => {
 
 	await t.mutation(api.learningSessionContent.submitAnswer, {
 		itemId: multipleChoice.id,
-		selectedChoiceId: "distractor-fast",
+		selectedChoiceId: multipleChoice.choices.find(
+			(choice) =>
+				choice.text === "Ergebnis direkt raten und Zwischenschritte auslassen.",
+		)?.id,
 		timeSpentSeconds: 20,
 	});
 	await t.mutation(api.learningSessionContent.submitAnswer, {
 		itemId: multipleChoice.id,
-		selectedChoiceId: "correct",
+		selectedChoiceId: multipleChoice.choices.find((choice) =>
+			choice.text.startsWith("Passenden Schritt"),
+		)?.id,
 		timeSpentSeconds: 15,
 	});
 

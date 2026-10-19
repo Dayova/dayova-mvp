@@ -24,15 +24,18 @@ const mockDeleteAccount = jest.fn<(_password: string) => Promise<void>>(
 	async () => undefined,
 );
 const mockSubscriptionManagementSheet: {
+	onClose: null | (() => void);
 	onDismiss: null | (() => void);
 	returnFocusRef: null | { current: unknown };
 } = {
+	onClose: null,
 	onDismiss: null,
 	returnFocusRef: null,
 };
 
 beforeEach(() => {
 	jest.clearAllMocks();
+	mockSubscriptionManagementSheet.onClose = null;
 	mockSubscriptionManagementSheet.onDismiss = null;
 	mockSubscriptionManagementSheet.returnFocusRef = null;
 });
@@ -119,6 +122,7 @@ jest.mock("~/components/ui/dayova-sheet-frame", () => {
 		DayovaSheetFrame: ({
 			children,
 			description,
+			onClose,
 			onDismiss,
 			returnFocusRef,
 			title,
@@ -126,11 +130,13 @@ jest.mock("~/components/ui/dayova-sheet-frame", () => {
 		}: {
 			children?: ReactNode;
 			description?: ReactNode;
+			onClose: () => void;
 			onDismiss?: () => void;
 			returnFocusRef?: { current: unknown };
 			title?: ReactNode;
 			visible: boolean;
 		}) => {
+			mockSubscriptionManagementSheet.onClose = onClose;
 			mockSubscriptionManagementSheet.onDismiss = onDismiss ?? null;
 			mockSubscriptionManagementSheet.returnFocusRef = returnFocusRef ?? null;
 
@@ -172,12 +178,6 @@ describe("PaywallScreen", () => {
 		expect(screen.getByText("SOFORT STARTEN")).toBeOnTheScreen();
 		expect(screen.queryByText("Meine Eltern zahlen")).toBeNull();
 		expect(screen.queryByText(/QR-Code|Zahlungslink/)).toBeNull();
-		expect(screen.getByTestId("store-subscription-action").props.style).toEqual(
-			expect.objectContaining({
-				backgroundColor: "#FFFFFF",
-				borderColor: "#FFFFFF",
-			}),
-		);
 		expect(
 			screen.getByRole("link", { name: "Konto verwalten" }),
 		).toBeOnTheScreen();
@@ -225,6 +225,20 @@ describe("PaywallScreen", () => {
 		expect(
 			mockSubscriptionManagementSheet.returnFocusRef?.current,
 		).not.toBeNull();
+	});
+
+	test("dismisses account choices without switching or deleting the account", async () => {
+		const screen = await render(<PaywallScreen />);
+		await fireEvent.press(
+			screen.getByRole("link", { name: "Konto verwalten" }),
+		);
+		expect(await screen.findByText("Konto wechseln")).toBeOnTheScreen();
+		await act(() => mockSubscriptionManagementSheet.onClose?.());
+		await act(() => mockSubscriptionManagementSheet.onDismiss?.());
+		expect(screen.queryByText("Konto wechseln")).toBeNull();
+		expect(screen.queryByText("Konto wirklich löschen?")).toBeNull();
+		expect(mockLogout).not.toHaveBeenCalled();
+		expect(mockDeleteAccount).not.toHaveBeenCalled();
 	});
 
 	test("keeps account deletion behind a separate confirmation", async () => {

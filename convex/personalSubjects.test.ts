@@ -169,17 +169,17 @@ test("renaming updates linked records while deleting preserves their labels", as
 		id: created.id,
 		name: "Französisch LK",
 	});
-	const renamed = await backend.run(async (ctx) => ({
-		exam: await ctx.db.get("dayEntries", examDayEntryId),
-		homework: await ctx.db.get("dayEntries", homeworkId),
-		plan: await ctx.db.get("learningPlans", learningPlanId),
-		lessons: await ctx.db
-			.query("timetableLessons")
-			.withIndex("by_timetableId_and_dayOfWeek_and_startTime", (q) =>
-				q.eq("timetableId", timetableId),
-			)
-			.take(10),
-	}));
+
+	const renamed = {
+		exam: await backend.query(api.dayEntries.get, { id: examDayEntryId }),
+		homework: await backend.query(api.dayEntries.get, { id: homeworkId }),
+		plan: (
+			await backend.query(api.learningPlans.getSnapshot, { id: learningPlanId })
+		)?.plan,
+		lessons:
+			(await backend.query(api.timetables.getMine, {})).active?.lessons ?? [],
+	};
+
 	expect(renamed.exam).toMatchObject({
 		subject: "Französisch LK",
 		title: "Französisch LK Klausur",
@@ -198,27 +198,20 @@ test("renaming updates linked records while deleting preserves their labels", as
 	);
 	expect(subjectsAfterRemoval.personal).toEqual([]);
 	expect(subjectsAfterRemoval.reusableTimetableSubjects).toEqual([]);
-	expect(
-		await backend.run((ctx) => ctx.db.get("dayEntries", examDayEntryId)),
-	).toMatchObject({
-		subject: "Französisch LK",
+	const retainedExam = await backend.query(api.dayEntries.get, {
+		id: examDayEntryId,
 	});
-	expect(
-		(await backend.run((ctx) => ctx.db.get("dayEntries", examDayEntryId)))
-			?.personalSubjectId,
-	).toBeUndefined();
-	const lessonsAfterRemoval = await backend.run((ctx) =>
-		ctx.db
-			.query("timetableLessons")
-			.withIndex("by_timetableId_and_dayOfWeek_and_startTime", (q) =>
-				q.eq("timetableId", timetableId),
-			)
-			.take(10),
-	);
-	expect(lessonsAfterRemoval[0]).toMatchObject({
+	expect(retainedExam).toMatchObject({ subject: "Französisch LK" });
+	expect(retainedExam?.personalSubjectId).toBeUndefined();
+	const lessonsAfterRemoval = (await backend.query(api.timetables.getMine, {}))
+		.active?.lessons;
+	expect(lessonsAfterRemoval).toHaveLength(1);
+	expect(lessonsAfterRemoval?.[0]).toMatchObject({
 		subject: "Französisch LK",
 		subjectIsOneTime: true,
+		personalSubjectId: null,
 	});
+
 	await expect(
 		backend.mutation(api.learningPlans.createDraft, {
 			examDayEntryId,
@@ -233,7 +226,7 @@ test("renaming updates linked records while deleting preserves their labels", as
 	).resolves.toEqual(expect.any(String));
 });
 
-test("removing a linked learning plan removes its personal-subject reference", async () => {
+test("removing a linked plan still allows renaming the retained exam", async () => {
 	const backend = convexTest(schema, modules).withIdentity(user);
 	const created = await backend.mutation(api.personalSubjects.create, {
 		name: "Französisch",
@@ -260,20 +253,18 @@ test("removing a linked learning plan removes its personal-subject reference", a
 	});
 
 	await backend.mutation(api.learningPlans.removePlan, { id: learningPlanId });
-	const references = await backend.run((ctx) =>
-		ctx.db
-			.query("personalSubjectReferences")
-			.withIndex("by_ownerTokenIdentifier_and_personalSubjectId", (query) =>
-				query
-					.eq("ownerTokenIdentifier", user.tokenIdentifier)
-					.eq("personalSubjectId", created.id),
-			)
-			.take(10),
-	);
-	expect(references).toHaveLength(1);
-	expect(references[0]).toMatchObject({
-		targetKind: "dayEntry",
-		dayEntryId: examDayEntryId,
+	await backend.mutation(api.personalSubjects.rename, {
+		id: created.id,
+		name: "Französisch LK",
+	});
+	expect(
+		await backend.query(api.learningPlans.getSnapshot, { id: learningPlanId }),
+	).toBeNull();
+	expect(
+		await backend.query(api.dayEntries.get, { id: examDayEntryId }),
+	).toMatchObject({
+		subject: "Französisch LK",
+		title: "Französisch LK Klausur",
 	});
 });
 
@@ -310,10 +301,9 @@ test.each([
 	});
 
 	expect(
-		await backend.run((ctx) => ctx.db.get("learningPlans", planId)),
+		(await backend.query(api.learningPlans.getSnapshot, { id: planId }))?.plan,
 	).toMatchObject({
 		subject: subjectName,
-		personalSubjectId: created.id,
 	});
 });
 

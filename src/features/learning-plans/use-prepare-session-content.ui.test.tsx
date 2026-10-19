@@ -47,6 +47,15 @@ function PreparationProbe({
 }
 
 describe("session content preparation", () => {
+	test("reports preparation failure without retrying on an unchanged render", async () => {
+		const error = new Error("offline");
+		mockEnsureSessionContent.mockRejectedValueOnce(error);
+		const onError = jest.fn();
+		const screen = await render(<PreparationProbe enabled onError={onError} />);
+		await waitFor(() => expect(onError).toHaveBeenCalledWith(error));
+		await screen.rerender(<PreparationProbe enabled onError={onError} />);
+		expect(mockEnsureSessionContent).toHaveBeenCalledTimes(1);
+	});
 	beforeEach(() => {
 		mockEnsureSessionContent.mockClear();
 		mockUseAction.mockClear();

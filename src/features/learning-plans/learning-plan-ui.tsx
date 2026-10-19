@@ -7,15 +7,8 @@ import {
 	FieldLabel,
 	FieldTrigger,
 } from "~/components/ui/field";
-import {
-	Attachment,
-	CalendarDays,
-	ChevronDown,
-	Clock3,
-	X,
-} from "~/components/ui/icon";
+import { CalendarDays, ChevronDown, Clock3 } from "~/components/ui/icon";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
-import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import type {
 	PlanSession,
@@ -23,7 +16,6 @@ import type {
 } from "~/features/learning-plans/types";
 import { formatDate } from "~/features/learning-plans/utils";
 import { useDayovaTheme } from "~/lib/theme";
-import { formatFileSize } from "~/lib/upload-policy";
 import { cn } from "~/lib/utils";
 
 const phaseEditCopy: Record<
@@ -42,53 +34,6 @@ const getSessionPhaseLabel = (phase: SessionPhase) =>
 	phaseEditCopy[phase].fieldLabel;
 
 const sessionPhaseOptions: SessionPhase[] = ["theory", "practice", "rehearsal"];
-
-export function MaterialCard({
-	name,
-	size,
-	onRemove,
-}: {
-	name: string;
-	size: number;
-	onRemove: () => void;
-}) {
-	const { colors } = useDayovaTheme();
-	const { shouldStackInlineContent } = useContentSizeLayout();
-
-	return (
-		<Surface
-			className="mb-3 flex-row items-center rounded-[24px] border border-border px-4 py-4"
-			variant="soft"
-		>
-			<View className="h-11 w-11 items-center justify-center rounded-full bg-primary/12">
-				<Attachment size={21} color="#00BAFF" strokeWidth={2.2} />
-			</View>
-			<View className="ml-3 flex-1">
-				<Text
-					numberOfLines={shouldStackInlineContent ? undefined : 1}
-					className="font-poppins font-semibold text-body-3 text-text"
-				>
-					{name}
-				</Text>
-				<Text className="mt-1 font-poppins text-body-4 text-text/50">
-					{formatFileSize(size)}
-				</Text>
-			</View>
-			<FeedbackTouchableOpacity
-				accessibilityHint="Entfernt dieses hochgeladene Material aus dem Lernplan."
-				accessibilityLabel={`${name} entfernen`}
-				pressScale={0.92}
-				accessibilityRole="button"
-				activeOpacity={0.75}
-				hitSlop={8}
-				onPress={onRemove}
-				className="h-9 w-9 items-center justify-center rounded-full bg-black/5"
-			>
-				<X size={16} color={colors.text} strokeWidth={2.3} />
-			</FeedbackTouchableOpacity>
-		</Surface>
-	);
-}
 
 function SessionEditPill({
 	value,
@@ -124,6 +69,10 @@ function SessionEditPill({
 	);
 }
 
+/**
+ * Displays controlled session fields and responsive save/remove actions.
+ * The parent owns date/time pickers, removal confirmation, and persistence.
+ */
 export function SessionEditForm({
 	session,
 	editDate,
@@ -241,7 +190,7 @@ export function SessionEditForm({
 				)}
 			>
 				<Button
-					variant="neutral"
+					variant="destructive"
 					className={
 						shouldStackInlineContent
 							? "w-full shadow-none"

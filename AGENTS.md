@@ -24,6 +24,30 @@ Convex agent skills for common tasks can be installed by running
 
 ## Agent skills
 
+### Test quality
+
+Before adding or changing a test, name the observable behavior, the public
+interface exercised, and a plausible bug that must make it fail. Use the existing
+behavior tests as seams; do not extract trivial helpers just to test them.
+
+Expected results must come from a worked example or documented contract, not the
+implementation's constants or formula. A mocked response cannot prove the mocked
+behavior works; checking the real consumer's handling of an external response is
+valid. Exercise real app
+logic and mock only external services/native APIs or an explicitly documented
+consumer boundary. Include failure behavior when a mock hides a real failure mode.
+
+Do not test source strings, internal call order, Tailwind classes, component-tree
+shape, or exact layout/animation props. Render and interact for UI behavior;
+check accessibility roles/states directly. Validate visual layout on a device.
+For configuration, test resolved output or execute its decisions rather than
+matching implementation text. Type-only assertions belong to typechecking.
+
+No test may silently return or iterate over an empty result without checking its
+precondition. When improving a weak test, temporarily introduce the claimed bug
+and verify a failure, then restore the implementation. Do not add a test merely
+because a file changed. See `docs/testing.md` for examples and review guidance.
+
 ### Delivery workflow
 
 For explicitly mutating repository work (for example implementation, fixes, refactors, or review-feedback changes), completion normally includes:
@@ -36,9 +60,27 @@ For explicitly mutating repository work (for example implementation, fixes, refa
 
 The user does not need to repeat “commit and push.” Preserve the existing branch, pull request, and stack when the task belongs to one. Push only a branch that already represents the current work item or pull request, or a new branch intentionally created for this work.
 
+Use GitHub native stacks for dependent pull requests. Graphite is retired and is not an adoption option or workflow prerequisite. Preserve each PR's actual parent and branch ownership; stacking does not bypass review, CI, or merge authorization. See the [developer handbook](https://app.notion.com/p/3dc2e87228bf815e890fc5f1397c4940).
+
 For new work, determine the correct integration base from the task, current branch, stack, and repository workflow; create a scoped `codex/` branch from that base. Do not assume the default branch is always the correct base.
 
 Never push directly to the default branch, treat another developer's, release, shared integration, or stack-parent branch as safe merely because it is non-default, stage unrelated user changes, or mix a distinct follow-up into the current branch. Put unrelated follow-up work on a separate branch, commit, and pull request. Read-only review, diagnosis, explanation, research, and status requests remain non-mutating. Stop and surface the blocker when scope or branch ownership is ambiguous, unrelated changes cannot be separated safely, validation has a material failure, authentication is unavailable.
+
+When a concrete unrelated problem is discovered, either fix it completely on a separately owned branch when the outcome is unambiguous, low-risk, independently verifiable, and cheaper than reopening context; reconcile it into existing Linear work when it needs ownership, judgment, or material effort; or discard it when it is speculative or not worth retaining. Search Linear before creating work and never expand the current branch merely because a problem was discovered. See `docs/agents/agent-system.md`.
+
+### Pull-request evidence
+
+Match PR evidence to the change. Static visual changes need before/after screenshots; recordings are useful when motion, interaction, or timing must be demonstrated. For user-visible performance improvements, prefer before/after recordings with a timer alongside comparable measurements. Backend, refactor, tooling, or documentation changes with no observable product effect can use relevant tests, logs, benchmarks, or other checks without screenshots or recordings.
+
+Explain the evidence choice in the PR and attach any selected media directly. When a before/after comparison is useful, capture the baseline before editing; for stacked work, use the PR's actual parent. Keep the PR draft and explain the gap if evidence needed to assess the change is unavailable. See `docs/agents/agent-system.md` for the evidence contract and owning program.
+
+Keep evidence readable at a reasonable scale in PR descriptions and comments. Use compact, aspect-preserving previews with consistent before/after sizing and links to full-resolution originals. Check the rendered result at laptop and narrow viewport sizes; do not rely solely on HTML dimensions that another GitHub client may ignore. See the presentation guidance in `docs/agents/agent-system.md`.
+
+User-facing plans and pull requests also require the distinct Dayova product-quality review linked from `docs/agents/agent-system.md`; generic code review does not replace it.
+
+### Agent-system architecture
+
+Notion owns durable company knowledge and decisions, Linear owns executable work, and GitHub owns code and implementation evidence. Keep `AGENTS.md` to always-on rules and routing; put conditional repeatable workflows in repository skills and detailed code-adjacent contracts in `docs/agents` or `docs/contexts`. Linear Agent and Luma operations are event-scoped reconciliation workflows, not parallel task or skill catalogs. Use `$maintain-dayova-agent-system` for changes to skills, agent instructions, composition, routing, authorization, or evaluations; see `docs/agents/agent-system.md`.
 
 ### Issue tracker
 

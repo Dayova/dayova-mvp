@@ -1,11 +1,11 @@
 import { describe, expect, test, vi } from "vitest";
 import {
 	completePasswordReset,
+	type PasswordResetSignIn,
 	resendPasswordResetCode,
 	startPasswordReset,
 	verifyPasswordResetCode,
 	verifyPasswordResetSecondFactor,
-	type PasswordResetSignIn,
 } from "./password-reset";
 
 function createSignInMock() {

@@ -1,11 +1,11 @@
 import { describe, expect, test } from "vitest";
-import type { SessionContentItem } from "./types";
 import {
 	adaptTheoryTopic,
 	getTheoryPagePresentation,
 	getTheoryTopicNavigation,
 	runTheoryTopicPrimaryAction,
 } from "./theory-topic";
+import type { SessionContentItem } from "./types";
 
 const baseItem: SessionContentItem = {
 	id: "content-item" as SessionContentItem["id"],

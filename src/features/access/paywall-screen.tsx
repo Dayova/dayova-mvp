@@ -12,18 +12,12 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AccountDeletionPasswordField } from "~/components/ui/account-deletion-password-field";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
-import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
 import { FeedbackPressable } from "~/components/ui/feedback-pressable";
-import {
-	ArrowRight,
-	CreditCard,
-	Logout,
-	SquareLock,
-	Trash2,
-} from "~/components/ui/icon";
+import { ArrowRight, CreditCard, SquareLock } from "~/components/ui/icon";
 import { SupportContact } from "~/components/ui/support-contact";
 import { Text } from "~/components/ui/text";
 import { useAccountActions } from "~/context/AuthContext";
+import { AccountManagementSheet } from "~/features/access/account-management-sheet";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { openExternalUrl } from "~/lib/open-external-url";
 import { env } from "~/lib/runtime-config";
@@ -248,31 +242,14 @@ export function PaywallScreen() {
 					</View>
 				</ScrollView>
 			</View>
-			<DayovaSheetFrame
+			<AccountManagementSheet
 				visible={showSubscriptionManagement}
-				title="Konto verwalten"
-				description="Hier kannst du dein Dayova-Konto wechseln oder löschen. Store-Abos verwaltest du direkt in deinem Store."
-				closeAccessibilityLabel="Kontoverwaltung schließen"
 				onClose={() => setShowSubscriptionManagement(false)}
 				onDismiss={finishSubscriptionManagementDismissal}
 				returnFocusRef={subscriptionManagementLinkRef}
-			>
-				<View className="overflow-hidden rounded-card border border-border/45 bg-card">
-					<ManagementAction
-						accessibilityLabel="Abmelden oder Konto wechseln"
-						icon={<Logout size={20} color={BRAND_COLORS.primaryStrong} />}
-						label="Konto wechseln"
-						onPress={switchAccount}
-					/>
-					<View className="mx-4 h-px bg-border" />
-					<ManagementAction
-						destructive
-						icon={<Trash2 size={20} color={BRAND_COLORS.destructive} />}
-						label="Konto löschen"
-						onPress={requestAccountDeletion}
-					/>
-				</View>
-			</DayovaSheetFrame>
+				onSwitchAccount={switchAccount}
+				onDeleteAccount={requestAccountDeletion}
+			/>
 			<ConfirmationSheet
 				visible={showDeleteConfirmation}
 				title="Konto wirklich löschen?"
@@ -335,49 +312,6 @@ function CheckoutButton({ onPress }: { onPress: () => void }) {
 			<View className="h-9 w-9 items-center justify-center rounded-full bg-primary-strong">
 				<ArrowRight size={18} color={WHITE} strokeWidth={2.2} />
 			</View>
-		</FeedbackPressable>
-	);
-}
-
-function ManagementAction({
-	accessibilityLabel,
-	destructive = false,
-	icon,
-	label,
-	onPress,
-}: {
-	accessibilityLabel?: string;
-	destructive?: boolean;
-	icon: React.ReactNode;
-	label: string;
-	onPress: () => void;
-}) {
-	return (
-		<FeedbackPressable
-			accessibilityLabel={accessibilityLabel}
-			accessibilityRole="button"
-			className="min-h-14 flex-row items-center px-4 py-3 active:bg-system-subtle"
-			onPress={onPress}
-		>
-			<View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-system-subtle">
-				{icon}
-			</View>
-			<Text
-				className={
-					destructive
-						? "flex-1 font-semibold text-body-3 text-destructive"
-						: "flex-1 font-semibold text-body-3 text-text"
-				}
-			>
-				{label}
-			</Text>
-			<ArrowRight
-				size={18}
-				color={
-					destructive ? BRAND_COLORS.destructive : BRAND_COLORS.secondaryText
-				}
-				strokeWidth={2}
-			/>
 		</FeedbackPressable>
 	);
 }

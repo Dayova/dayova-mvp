@@ -116,10 +116,3 @@ export function getLearningSessionCompletionPhase(
 ): SessionPhase {
 	return phase;
 }
-
-export function isQualifiedSessionCompletion(
-	durationMinutes: number,
-	activeStudySeconds: number,
-) {
-	return activeStudySeconds >= Math.ceil(durationMinutes * 60 * 0.8);
-}

@@ -116,6 +116,17 @@ internal users.
 
 ## Notes
 
+- Topic suggestions derive WLO search context from the selected subject name in
+  `convex/wloSubjectContext.ts`. Recognized aliases, explicit course markers and
+  combinations of known areas provide ranking hints only. Personal subjects keep
+  their existing identity, ownership and persistence; do not store WLO taxonomy as
+  their identity or add a mandatory mapping step. Unknown names search without an
+  inferred category. Exact title matches remain available across subjects; other
+  contextual matches precede labelled additional suggestions. The catalog never
+  changes the selected subject or expands the exam scope automatically. See the
+  [decision record](https://app.notion.com/p/3fb2e87228bf817a880dde6127a1996a)
+  and [DAY-517](https://linear.app/dayova/issue/DAY-517).
+
 - The student CRM is a read-only projection of Convex effective access, joined
   through Clerk User ID. New authenticated accounts queue creation of a minimal
   CRM contact; collisions require review. See [DAY-366 runtime contract and runbook](crm-sync.md)

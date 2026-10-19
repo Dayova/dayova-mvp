@@ -70,75 +70,9 @@ const props = {
 };
 
 describe("TodayLearningCard", () => {
-	test("groups the smaller play circle before the label in a transparent left-aligned action", async () => {
-		const screen = await render(<TodayLearningCard {...props} />);
-		expect(screen.getAllByRole("button")).toHaveLength(1);
-		expect(screen.getByRole("button").props.testID).toBe("today-learning-card");
-		const action = screen.getByTestId("today-learning-action");
-		expect(action.props.className).toContain("bg-transparent");
-		expect(action.props.className).not.toContain("bg-primary/10");
-		expect(action.props.style?.backgroundColor).toBeUndefined();
-		expect(action.props.className).toContain("self-start");
-		expect(action.props.className).toContain("justify-start");
-		expect(action.props.className).toContain("min-h-14");
-		expect(
-			screen.getByTestId("today-learning-action-circle", {
-				includeHiddenElements: true,
-			}).props.className,
-		).toContain("h-9 w-9");
-		expect(
-			screen.getByTestId("today-learning-action-gradient", {
-				includeHiddenElements: true,
-			}),
-		).toBeTruthy();
-		expect(screen.getByTestId("today-learning-card-gradient")).toBeTruthy();
-	});
 	beforeEach(() => {
 		jest.clearAllMocks();
 		mockStack = false;
-	});
-	test("keeps short, long and loading cards at the same standard height", async () => {
-		const screen = await render(<TodayLearningCard {...props} />);
-		for (const title of ["Wissenscheck", "Gleichungen mit Klammern lösen"]) {
-			await screen.rerender(
-				<TodayLearningCard
-					{...props}
-					item={{ ...item, entry: { ...item.entry, title } }}
-				/>,
-			);
-			const card = screen.getByTestId("today-learning-card");
-			expect(card).toHaveStyle({ minHeight: 240 });
-			expect(card).toHaveStyle({ height: 240 });
-			expect(screen.getByText(title).props.numberOfLines).toBe(2);
-		}
-		await screen.rerender(<TodayLearningCard {...props} isLoading />);
-		expect(screen.getByTestId("today-learning-card")).toHaveStyle({
-			height: 240,
-		});
-	});
-	test("chooses the subject glyph and graduation cap for creation", async () => {
-		const screen = await render(<TodayLearningCard {...props} />);
-		expect(
-			screen.getByTestId("learning-illustration-icon", {
-				includeHiddenElements: true,
-			}).props.name,
-		).toBe("calculator");
-		await screen.rerender(
-			<TodayLearningCard {...props} plan={{ subject: "Deutsch" }} />,
-		);
-		expect(
-			screen.getByTestId("learning-illustration-icon", {
-				includeHiddenElements: true,
-			}).props.name,
-		).toBe("pencil");
-		await screen.rerender(
-			<TodayLearningCard {...props} item={undefined} plan={undefined} />,
-		);
-		expect(
-			screen.getByTestId("learning-illustration-icon", {
-				includeHiddenElements: true,
-			}).props.name,
-		).toBe("graduation-cap");
 	});
 	test("shows topic and description without visible duration, with one action", async () => {
 		const screen = await render(<TodayLearningCard {...props} />);
@@ -149,16 +83,8 @@ describe("TodayLearningCard", () => {
 		expect(screen.queryByText("Lernsession starten")).toBeNull();
 		expect(screen.queryByTestId("today-subject-icon")).toBeNull();
 		expect(
-			screen.getByText("Gleichungen mit Klammern lösen").props.className,
-		).toContain("text-body-1");
-		expect(
 			screen.getByText("Jetzt lernen", { includeHiddenElements: true }),
 		).toBeTruthy();
-		expect(
-			screen.getByTestId("today-learning-action-icon", {
-				includeHiddenElements: true,
-			}).props.name,
-		).toBe("play");
 		expect(screen.queryByText(/ca\./)).toBeNull();
 		expect(screen.getAllByRole("button")).toHaveLength(1);
 		await fireEvent.press(
@@ -281,16 +207,7 @@ describe("TodayLearningCard", () => {
 			),
 		).toBeTruthy();
 		expect(screen.getAllByRole("button")).toHaveLength(1);
-		expect(screen.getByTestId("today-learning-card")).toHaveStyle({
-			height: 240,
-		});
-		if (!hasLearningPlans)
-			expect(
-				screen.getByTestId("today-learning-action-icon", {
-					includeHiddenElements: true,
-				}).props.name,
-			).toBe("plus");
-		expect(screen.queryByText(/Min\./)).toBeNull();
+		if (!hasLearningPlans) expect(screen.queryByText(/Min\./)).toBeNull();
 		expect(screen.queryByTestId("today-learning-progress-ring")).toBeNull();
 		await fireEvent.press(screen.getByRole("button"));
 		expect(
@@ -329,7 +246,7 @@ describe("TodayLearningCard", () => {
 			true,
 		);
 	});
-	test("reflows long content and does not invent missing metadata", async () => {
+	test("shows the complete title without inventing missing metadata", async () => {
 		mockStack = true;
 		const title =
 			"Ein besonders ausführliches Lernthema mit mehreren langen Fachbegriffen";
@@ -343,13 +260,7 @@ describe("TodayLearningCard", () => {
 				}}
 			/>,
 		);
-		expect(screen.getByText(title).props.numberOfLines).toBeUndefined();
-		expect(screen.getByTestId("today-learning-card").props.style).toEqual(
-			expect.objectContaining({ minHeight: 240, height: undefined }),
-		);
-		expect(
-			screen.getByTestId("today-learning-card-context").props.className,
-		).toContain("gap-2");
+		expect(screen.getByText(title)).toBeOnTheScreen();
 		expect(screen.queryByText(/Min\./)).toBeNull();
 		expect(screen.queryByText(/Klassenarbeit/)).toBeNull();
 	});
