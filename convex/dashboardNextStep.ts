@@ -4,6 +4,7 @@ import {
 } from "convex/server";
 import { v } from "convex/values";
 import { query } from "./_generated/server";
+import { assertAccountActive } from "./accountDeletion";
 import { getBerlinDayKey } from "./dayKeyVariants";
 import { throwUserFacingError } from "./errors";
 import schema from "./schema";
@@ -28,6 +29,7 @@ export const isDayIndexReady = query({
 	handler: async (ctx) => {
 		const identity = await ctx.auth.getUserIdentity();
 		if (!identity) throwUserFacingError("Nicht authentifiziert.");
+		await assertAccountActive(ctx, identity.tokenIdentifier);
 		const missing = await ctx.db
 			.query("learningPlanSessions")
 			.withIndex("by_ownerTokenIdentifier_and_berlinDayKey", (q) =>
@@ -63,6 +65,7 @@ export const listCandidates = query({
 	handler: async (ctx, args) => {
 		const identity = await ctx.auth.getUserIdentity();
 		if (!identity) throwUserFacingError("Nicht authentifiziert.");
+		await assertAccountActive(ctx, identity.tokenIdentifier);
 		if (!/^\d{4}-\d{2}-\d{2}$/.test(args.todayKey)) {
 			throwUserFacingError("Ungültiger Tag.");
 		}

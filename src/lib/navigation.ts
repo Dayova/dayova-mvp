@@ -1,10 +1,11 @@
 import {
+	type NavigationAction,
 	useFocusEffect,
 	useIsFocused,
-	useNavigation,
+	useNavigationContainerRef,
 	usePreventRemove,
-} from "expo-router/react-navigation";
-import { useCallback, useRef } from "react";
+} from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BackHandler, Platform } from "react-native";
 
 export {
@@ -41,9 +42,24 @@ export const useBackIntent = (
 	onBack: () => boolean,
 	{ allowRouteRemoval = false }: { allowRouteRemoval?: boolean } = {},
 ) => {
-	const navigation = useNavigation();
 	const isFocused = useIsFocused();
+	const rootNavigation = useNavigationContainerRef();
 	const isHandlingNativeBackRef = useRef(false);
+	const [pendingRemoval, setPendingRemoval] = useState<NavigationAction | null>(
+		null,
+	);
+
+	useEffect(() => {
+		if (!pendingRemoval) return;
+		// Commit the disabled guard before resuming. SDK 58's repeat() adds
+		// the child source to parent-targeted actions; root dispatch preserves
+		// the original target/source for nested replacements.
+		rootNavigation.dispatch(pendingRemoval);
+		// A parent guard may keep this route mounted. Restore protection after
+		// the resumed action has had a frame to finish, or cancel on unmount.
+		const frame = requestAnimationFrame(() => setPendingRemoval(null));
+		return () => cancelAnimationFrame(frame);
+	}, [pendingRemoval, rootNavigation]);
 
 	const runBackIntent = useCallback(() => {
 		if (isHandlingNativeBackRef.current) return true;
@@ -71,16 +87,14 @@ export const useBackIntent = (
 
 	// Register prevention with the native stack as well as JS. A raw
 	// beforeRemove listener runs too late to undo an iOS swipe dismissal.
-	usePreventRemove(enabled && isFocused && !allowRouteRemoval, ({ data }) => {
-		if (!isBackRemovalAction({ data }) || !runBackIntent()) {
-			// Reuse the original action so React Navigation can skip this guard
-			// when resuming a replacement or an unhandled removal.
-			// Root-ref actions (e.g. Expo Router dismissTo) have no source. Keep
-			// that absence: dispatch otherwise adds this child route as the source,
-			// which the targeted parent stack cannot find and silently ignores.
-			navigation.dispatch({ source: undefined, ...data.action });
-		}
-	});
+	usePreventRemove(
+		enabled && isFocused && !allowRouteRemoval && pendingRemoval === null,
+		({ data }) => {
+			if (!isBackRemovalAction({ data }) || !runBackIntent()) {
+				setPendingRemoval(data.action);
+			}
+		},
+	);
 
 	return runBackIntent;
 };

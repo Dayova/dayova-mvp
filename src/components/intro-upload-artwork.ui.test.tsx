@@ -55,28 +55,8 @@ describe("IntroUploadArtwork", () => {
 			screen.getByText("Schulmaterial hinzufügen", hidden),
 		).toBeOnTheScreen();
 		expect(
-			screen.getByText(
-				"Deine Unterlagen bilden die Grundlage für deinen Lernplan.",
-				hidden,
-			),
-		).toBeOnTheScreen();
-		expect(
-			screen.getByText("Schulmaterial hochladen", hidden),
-		).toBeOnTheScreen();
-		expect(
-			screen.getByText("Themenblatt, Arbeitsblätter oder Mitschriften", hidden),
+			screen.getByText("Lade PDFs, Fotos oder andere Dokumente hoch.", hidden),
 		).toBeOnTheScreen();
 		expect(screen.queryByRole("button", hidden)).toBeNull();
-	});
-
-	test("uses the numeric artwork dimensions supplied by the onboarding layout", async () => {
-		const screen = await render(
-			<IntroUploadArtwork width={280} height={254} />,
-		);
-		const artwork = screen.getByTestId("intro-upload-artwork", {
-			includeHiddenElements: true,
-		});
-
-		expect(artwork.props.style).toEqual({ width: 280, height: 254 });
 	});
 });

@@ -44,10 +44,3 @@ export const getExamEntryCreationProgress = (
 			return LEARNING_PLAN_CREATION_STEPS.examDate;
 	}
 };
-
-export const getLearningPlanCreationProgressPercentage = (progress: number) => {
-	const { currentStep: safeProgress } = getSafeLearningPlanCreationProgress({
-		currentStep: progress,
-	});
-	return Math.round((safeProgress / LEARNING_PLAN_CREATION_TOTAL_STEPS) * 100);
-};

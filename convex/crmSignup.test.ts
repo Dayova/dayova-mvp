@@ -40,8 +40,10 @@ function mockNotion(
 	minimalSchema = false,
 ) {
 	const creates: Array<{ properties: Record<string, unknown> }> = [];
+	const patches: Array<{ properties: Record<string, unknown> }> = [];
 	const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
 		const body = init?.body ? JSON.parse(String(init.body)) : {};
+		if (url.includes("/pages/") && init?.method === "PATCH") patches.push(body);
 		if (url.endsWith("/pages") && init?.method === "POST") {
 			creates.push(body);
 			if (failure === "forbidden") return new Response(null, { status: 403 });
@@ -107,7 +109,7 @@ function mockNotion(
 		});
 	});
 	vi.stubGlobal("fetch", fetchMock);
-	return { creates, fetchMock };
+	return { creates, patches, fetchMock };
 }
 async function signup() {
 	vi.stubEnv("NOTION_CRM_MODE", "off");
@@ -346,9 +348,9 @@ test.each([
 	).toEqual([]);
 }, 15000);
 
-test("an existing Clerk match is reused without overwriting contact details", async () => {
+test("an existing Clerk match refreshes app-owned email and preserves manually owned fields", async () => {
 	const { t, userId } = await signup();
-	const { creates } = mockNotion([
+	const { creates, patches } = mockNotion([
 		row(identity.subject, "crm-owned@example.com"),
 	]);
 	await t.action(internal.crmSync.reconcile, { dryRun: true });
@@ -359,6 +361,24 @@ test("an existing Clerk match is reused without overwriting contact details", as
 		await t.run((ctx) => ctx.db.query("crmStudentLinks").take(10)),
 	).toMatchObject([{ userId, pageId }]);
 	expect(await t.query(internal.crmSignupState.pending, {})).toEqual([]);
+	expect(patches.length).toBeGreaterThan(0);
+	expect(
+		patches.some(
+			(patch) =>
+				(patch.properties.Email as { email?: string })?.email ===
+				"new@example.com",
+		),
+	).toBe(true);
+	for (const patch of patches) {
+		for (const field of [
+			"Tags",
+			"Status",
+			"Registration Date",
+			"Phone",
+			"School",
+		])
+			expect(patch.properties).not.toHaveProperty(field);
+	}
 }, 15000);
 
 test.each([
@@ -386,9 +406,33 @@ test.each([
 test("account deletion removes queued CRM creation before it can run", async () => {
 	const { t } = await signup();
 	const { creates } = mockNotion();
-	await t
+	const { requestId } = await t
 		.withIdentity(identity)
-		.mutation(api.accountDeletion.deleteCurrentUserDataBatch, {});
+		.mutation(internal.accountDeletion.enqueueVerifiedDeletion, {});
+	await t.run(async (ctx) => {
+		const request = await ctx.db
+			.query("accountDeletionRequests")
+			.withIndex("by_requestId", (query) => query.eq("requestId", requestId))
+			.unique();
+		if (!request) throw new Error("deletion request missing");
+		await ctx.db.patch("accountDeletionRequests", request._id, {
+			status: "processing",
+			stage: "deleteData",
+		});
+	});
+	let done = false;
+	for (let attempt = 0; attempt < 20 && !done; attempt += 1) {
+		({ done } = await t.mutation(
+			internal.accountDeletion.deleteOwnerDataBatch,
+			{
+				requestId,
+			},
+		));
+	}
+	expect(done).toBe(true);
+	expect(
+		await t.mutation(internal.accountDeletion.completeRequest, { requestId }),
+	).toBe(true);
 	expect(await t.query(internal.crmSignupState.pending, {})).toEqual([]);
 	await t.action(internal.crmSync.reconcile, { dryRun: true });
 	vi.stubEnv("NOTION_CRM_MODE", "live");

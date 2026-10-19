@@ -10,6 +10,7 @@ import {
 	type QueryCtx,
 	query,
 } from "./_generated/server";
+import { assertAccountActive } from "./accountDeletion";
 import { advanceRollingLearningPlan } from "./adaptiveLearningPlan";
 import {
 	type AdaptiveLearningTarget,
@@ -21,6 +22,7 @@ import { deriveTopicReadiness } from "./diagnosticReadiness";
 import { throwUserFacingError } from "./errors";
 import { validateExamTopicInput } from "./examTopicInput";
 import {
+	createManagedReadUrl,
 	deleteManagedFile,
 	getConfiguredStorageProvider,
 	getR2ConfigOrThrow,
@@ -247,6 +249,7 @@ const requireOwnerTokenIdentifier = async (ctx: QueryCtx) => {
 	if (identity === null) {
 		throwUserFacingError("Nicht authentifiziert.");
 	}
+	await assertAccountActive(ctx, identity.tokenIdentifier);
 
 	return identity.tokenIdentifier;
 };
@@ -256,6 +259,7 @@ const requireOwnerTokenIdentifierForMutation = async (ctx: MutationCtx) => {
 	if (identity === null) {
 		throwUserFacingError("Nicht authentifiziert.");
 	}
+	await assertAccountActive(ctx, identity.tokenIdentifier);
 
 	return identity.tokenIdentifier;
 };
@@ -1284,6 +1288,7 @@ export const getUploadRegistrationContext = internalQuery({
 		if (identity === null) {
 			throwUserFacingError("Nicht authentifiziert.");
 		}
+		await assertAccountActive(ctx, identity.tokenIdentifier);
 
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== identity.tokenIdentifier) {
@@ -1366,6 +1371,27 @@ export const registerUploadedDocument = action({
 			fileSizeBytes: finalizedUpload.metadata?.size ?? args.fileSizeBytes,
 			sourceKind: args.sourceKind,
 		});
+	},
+});
+
+/** Mint a preview URL only after checking ownership; storage identifiers stay private. */
+export const getDocumentPreviewUrl = mutation({
+	args: { id: v.id("learningPlanDocuments") },
+	returns: v.union(v.string(), v.null()),
+	handler: async (ctx, { id }) => {
+		const owner = await requireOwnerTokenIdentifierForMutation(ctx);
+		const document = await ctx.db.get("learningPlanDocuments", id);
+		if (!document || document.ownerTokenIdentifier !== owner) return null;
+		if (!document.fileType.startsWith("image/")) return null;
+		return await createManagedReadUrl(
+			ctx,
+			document,
+			buildPlanAccessKey(document.learningPlanId),
+			{
+				userFacingMessage:
+					"Die Vorschau konnte nicht geladen werden. Versuche es erneut.",
+			},
+		);
 	},
 });
 
@@ -1520,6 +1546,7 @@ export const getAiContext = internalQuery({
 		if (identity === null) {
 			throwUserFacingError("Nicht authentifiziert.");
 		}
+		await assertAccountActive(ctx, identity.tokenIdentifier);
 
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== identity.tokenIdentifier) {
@@ -1559,6 +1586,7 @@ export const getStoredKnowledgeAnswers = internalQuery({
 		if (identity === null) {
 			throwUserFacingError("Nicht authentifiziert.");
 		}
+		await assertAccountActive(ctx, identity.tokenIdentifier);
 
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== identity.tokenIdentifier) {

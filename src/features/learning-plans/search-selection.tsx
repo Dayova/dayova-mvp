@@ -1,4 +1,11 @@
-import { createContext, type ReactNode, use, useRef, useState } from "react";
+import {
+	type ComponentRef,
+	createContext,
+	type ReactNode,
+	use,
+	useRef,
+	useState,
+} from "react";
 import { ScrollView, View } from "react-native";
 import { useReducedMotion } from "react-native-reanimated";
 import { X } from "~/components/ui/icon";
@@ -19,7 +26,7 @@ export function SearchSelectionRow({
 	count: number;
 	label: string;
 }) {
-	const scroll = useRef<ScrollView>(null);
+	const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
 	const previousCount = useRef(count);
 	const [width, setWidth] = useState<number>();
 	const reduceMotion = useReducedMotion();

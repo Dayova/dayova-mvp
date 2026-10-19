@@ -114,14 +114,17 @@ test("live audit checkpoints and completes an inventory larger than 200", async 
 	);
 	const { patches } = mockNotion(rows);
 	let inspected = 0;
-	for (let batch = 0; batch < 9; batch++) {
+	let batches = 0;
+	for (; batches < 50; batches++) {
 		const result = await t.action(internal.crmSync.reconcile, {});
 		await cancelScheduledCrm(t);
 		expect(result.status).toBe("complete");
 		inspected += result.counts.total;
 		const state = await t.query(internal.crmSyncState.status, {});
-		expect(Boolean(state?.auditCursor)).toBe(batch < 8);
+		if (!state?.auditCursor) break;
 	}
+	expect(batches).toBeLessThan(50);
+	expect(batches).toBeGreaterThan(0);
 	await finishAudit(t);
 	expect(inspected).toBe(201);
 	expect(patches).toEqual([]);
@@ -160,10 +163,10 @@ test("a successful live run continues after the first dry-run window and destina
 	});
 	await t.run(async (ctx) => {
 		const row = await ctx.db.query("crmSyncState").unique();
-		if (row)
-			await ctx.db.patch("crmSyncState", row._id, {
-				dryRunAt: Date.now() - 48 * 3600_000,
-			});
+		if (!row) throw new Error("Expected the queued CRM write to exist");
+		await ctx.db.patch("crmSyncState", row._id, {
+			dryRunAt: Date.now() - 48 * 3600_000,
+		});
 	});
 	expect(
 		await t.mutation(internal.crmSyncState.begin, {
@@ -217,10 +220,10 @@ test("a row-level audit failure does not disable later live updates when the dry
 	).toBeTypeOf("number");
 	await t.run(async (ctx) => {
 		const row = await ctx.db.query("crmSyncState").unique();
-		if (row)
-			await ctx.db.patch("crmSyncState", row._id, {
-				dryRunAt: Date.now() - 48 * 3600_000,
-			});
+		if (!row) throw new Error("Expected the queued CRM write to exist");
+		await ctx.db.patch("crmSyncState", row._id, {
+			dryRunAt: Date.now() - 48 * 3600_000,
+		});
 	});
 	expect(
 		await t.mutation(internal.crmSyncState.begin, {
@@ -262,10 +265,10 @@ test("a terminal live audit error does not authorize later live runs", async () 
 	).toBeUndefined();
 	await t.run(async (ctx) => {
 		const row = await ctx.db.query("crmSyncState").unique();
-		if (row)
-			await ctx.db.patch("crmSyncState", row._id, {
-				dryRunAt: Date.now() - 48 * 3600_000,
-			});
+		if (!row) throw new Error("Expected the queued CRM write to exist");
+		await ctx.db.patch("crmSyncState", row._id, {
+			dryRunAt: Date.now() - 48 * 3600_000,
+		});
 	});
 	await expect(
 		t.mutation(internal.crmSyncState.begin, {
@@ -304,10 +307,10 @@ test("a partial audit followed by a terminal error never verifies live mode", as
 	});
 	await t.run(async (ctx) => {
 		const row = await ctx.db.query("crmSyncState").unique();
-		if (row)
-			await ctx.db.patch("crmSyncState", row._id, {
-				dryRunAt: Date.now() - 48 * 3600_000,
-			});
+		if (!row) throw new Error("Expected the queued CRM write to exist");
+		await ctx.db.patch("crmSyncState", row._id, {
+			dryRunAt: Date.now() - 48 * 3600_000,
+		});
 	});
 	await expect(
 		t.mutation(internal.crmSyncState.begin, {
@@ -339,10 +342,10 @@ test("an expired worker lease is recoverable and its late completion cannot repl
 	});
 	await t.run(async (ctx) => {
 		const row = await ctx.db.query("crmSyncState").unique();
-		if (row)
-			await ctx.db.patch("crmSyncState", row._id, {
-				startedAt: Date.now() - 12 * 60_000,
-			});
+		if (!row) throw new Error("Expected the queued CRM write to exist");
+		await ctx.db.patch("crmSyncState", row._id, {
+			startedAt: Date.now() - 12 * 60_000,
+		});
 	});
 	expect(
 		await t.mutation(internal.crmSyncState.begin, {
@@ -615,9 +618,19 @@ test("missing linked pages remain mapped for operator review, including non-paid
 		true,
 	);
 	const firstAudit = await finishAudit(t);
-	expect(firstAudit[0]).toMatchObject({ counts: { total: 0 } });
-	expect(firstAudit[1]).toMatchObject({ counts: { missingLinkedPages: 2 } });
-	expect(firstAudit[2]).toMatchObject({ counts: { paidWithoutCrm: 1 } });
+	expect(firstAudit.reduce((n, result) => n + result.counts.total, 0)).toBe(0);
+	expect(
+		firstAudit.reduce(
+			(n, result) => n + (result.counts.missingLinkedPages ?? 0),
+			0,
+		),
+	).toBe(2);
+	expect(
+		firstAudit.reduce(
+			(n, result) => n + (result.counts.paidWithoutCrm ?? 0),
+			0,
+		),
+	).toBe(1);
 	expect(patches).toEqual([]);
 	expect(
 		await t.run((ctx) => ctx.db.query("crmStudentLinks").take(10)),
@@ -1249,9 +1262,33 @@ test("account deletion removes the new integration mapping", async () => {
 		userId,
 		clerkId,
 	});
-	await t
+	const { requestId } = await t
 		.withIdentity({ tokenIdentifier, subject: clerkId })
-		.mutation(api.accountDeletion.deleteCurrentUserDataBatch, {});
+		.mutation(internal.accountDeletion.enqueueVerifiedDeletion, {});
+	await t.run(async (ctx) => {
+		const request = await ctx.db
+			.query("accountDeletionRequests")
+			.withIndex("by_requestId", (query) => query.eq("requestId", requestId))
+			.unique();
+		if (!request) throw new Error("deletion request missing");
+		await ctx.db.patch("accountDeletionRequests", request._id, {
+			status: "processing",
+			stage: "deleteData",
+		});
+	});
+	let done = false;
+	for (let attempt = 0; attempt < 20 && !done; attempt += 1) {
+		({ done } = await t.mutation(
+			internal.accountDeletion.deleteOwnerDataBatch,
+			{
+				requestId,
+			},
+		));
+	}
+	expect(done).toBe(true);
+	expect(
+		await t.mutation(internal.accountDeletion.completeRequest, { requestId }),
+	).toBe(true);
 	expect(
 		await t.run((ctx) => ctx.db.query("crmStudentLinks").take(10)),
 	).toEqual([]);

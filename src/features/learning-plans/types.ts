@@ -3,7 +3,7 @@ import type { Id } from "#convex/_generated/dataModel";
 export type PickerTarget = "editDate" | "editStart" | "editEnd";
 
 export type SessionPhase = "theory" | "practice" | "rehearsal";
-export type SessionPurpose = "diagnostic" | "learning";
+type SessionPurpose = "diagnostic" | "learning";
 
 export type SessionExecutionStatus =
 	| "notStarted"
@@ -167,7 +167,7 @@ export type UploadAsset = {
 	size?: number | null;
 };
 
-export type QuizQuestion = {
+type QuizQuestion = {
 	id: string;
 	prompt: string;
 	targetInsight: string;

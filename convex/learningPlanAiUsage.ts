@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation, query } from "./_generated/server";
+import { assertAccountActive } from "./accountDeletion";
 import { throwUserFacingError } from "./errors";
 
 const operationValidator = v.union(
@@ -22,17 +23,23 @@ export const record = internalMutation({
 		outputTokens: v.number(),
 		estimatedCostUsdMicros: v.number(),
 	},
+	returns: v.id("learningPlanAiUsage"),
 	handler: async (ctx, args) => {
 		const identity = await ctx.auth.getUserIdentity();
-		if (!identity) throwUserFacingError("Nicht authentifiziert.");
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
-		if (!plan || plan.ownerTokenIdentifier !== identity.tokenIdentifier) {
+		if (
+			!plan ||
+			(identity && identity.tokenIdentifier !== plan.ownerTokenIdentifier)
+		) {
 			throwUserFacingError("Lernplan nicht gefunden.");
 		}
+		// Scheduled extraction has no client identity. This internal-only write
+		// derives its owner from the plan and still respects account deletion.
+		await assertAccountActive(ctx, plan.ownerTokenIdentifier);
 
 		return await ctx.db.insert("learningPlanAiUsage", {
 			...args,
-			ownerTokenIdentifier: identity.tokenIdentifier,
+			ownerTokenIdentifier: plan.ownerTokenIdentifier,
 			createdAt: Date.now(),
 		});
 	},
@@ -43,6 +50,7 @@ export const getPlanCostSummary = query({
 	handler: async (ctx, args) => {
 		const identity = await ctx.auth.getUserIdentity();
 		if (!identity) throwUserFacingError("Nicht authentifiziert.");
+		await assertAccountActive(ctx, identity.tokenIdentifier);
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== identity.tokenIdentifier) {
 			throwUserFacingError("Lernplan nicht gefunden.");
@@ -79,6 +87,7 @@ export const getMyMonthlyCostSummary = query({
 	handler: async (ctx, args) => {
 		const identity = await ctx.auth.getUserIdentity();
 		if (!identity) throwUserFacingError("Nicht authentifiziert.");
+		await assertAccountActive(ctx, identity.tokenIdentifier);
 		const entries = await ctx.db
 			.query("learningPlanAiUsage")
 			.withIndex("by_ownerTokenIdentifier_and_createdAt", (q) =>

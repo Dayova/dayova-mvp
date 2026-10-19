@@ -2,21 +2,22 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { type RefObject, useRef, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
-import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
-import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import {
-	ArrowRight,
-	CreditCard,
-	Logout,
-	SquareLock,
-	Trash2,
-} from "~/components/ui/icon";
+	Keyboard,
+	ScrollView,
+	StyleSheet,
+	View,
+	type ViewInstance,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AccountDeletionPasswordField } from "~/components/ui/account-deletion-password-field";
+import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
+import { ArrowRight, CreditCard, SquareLock } from "~/components/ui/icon";
 import { SupportContact } from "~/components/ui/support-contact";
 import { Text } from "~/components/ui/text";
 import { useAccountActions } from "~/context/AuthContext";
+import { AccountManagementSheet } from "~/features/access/account-management-sheet";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { openExternalUrl } from "~/lib/open-external-url";
 import { env } from "~/lib/runtime-config";
@@ -46,11 +47,12 @@ export function PaywallScreen() {
 	const [error, setError] = useState<string | null>(null);
 	const [showSubscriptionManagement, setShowSubscriptionManagement] =
 		useState(false);
-	const subscriptionManagementLinkRef = useRef<View>(null);
+	const subscriptionManagementLinkRef = useRef<ViewInstance>(null);
 	const pendingManagementActionRef = useRef<"delete" | "switch" | null>(null);
 	const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 	const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 	const [deleteError, setDeleteError] = useState<string | null>(null);
+	const [deletionPassword, setDeletionPassword] = useState("");
 	const deletionInFlightRef = useRef(false);
 
 	const openSubscription = () => {
@@ -81,18 +83,22 @@ export function PaywallScreen() {
 	};
 
 	const executeAccountDeletion = async () => {
-		if (deletionInFlightRef.current) return;
+		if (deletionInFlightRef.current || !deletionPassword) return;
+		Keyboard.dismiss();
 		deletionInFlightRef.current = true;
 		setDeleteError(null);
 		setIsDeletingAccount(true);
 		try {
-			await deleteAccount();
+			await deleteAccount(deletionPassword);
 			setShowDeleteConfirmation(false);
-		} catch {
+		} catch (error) {
 			setDeleteError(
-				"Das Konto konnte nicht gelöscht werden. Bitte kontaktiere den Support.",
+				error instanceof Error && error.message.trim()
+					? error.message
+					: "Die Kontolöschung konnte nicht bestätigt werden. Bitte versuche es erneut.",
 			);
 		} finally {
+			setDeletionPassword("");
 			deletionInFlightRef.current = false;
 			setIsDeletingAccount(false);
 		}
@@ -236,41 +242,35 @@ export function PaywallScreen() {
 					</View>
 				</ScrollView>
 			</View>
-			<DayovaSheetFrame
+			<AccountManagementSheet
 				visible={showSubscriptionManagement}
-				title="Konto verwalten"
-				description="Hier kannst du dein Dayova-Konto wechseln oder löschen. Store-Abos verwaltest du direkt in deinem Store."
-				closeAccessibilityLabel="Kontoverwaltung schließen"
 				onClose={() => setShowSubscriptionManagement(false)}
 				onDismiss={finishSubscriptionManagementDismissal}
 				returnFocusRef={subscriptionManagementLinkRef}
-			>
-				<View className="overflow-hidden rounded-card border border-border/45 bg-card">
-					<ManagementAction
-						accessibilityLabel="Abmelden oder Konto wechseln"
-						icon={<Logout size={20} color={BRAND_COLORS.primaryStrong} />}
-						label="Konto wechseln"
-						onPress={switchAccount}
-					/>
-					<View className="mx-4 h-px bg-border" />
-					<ManagementAction
-						destructive
-						icon={<Trash2 size={20} color={BRAND_COLORS.destructive} />}
-						label="Konto löschen"
-						onPress={requestAccountDeletion}
-					/>
-				</View>
-			</DayovaSheetFrame>
+				onSwitchAccount={switchAccount}
+				onDeleteAccount={requestAccountDeletion}
+			/>
 			<ConfirmationSheet
 				visible={showDeleteConfirmation}
 				title="Konto wirklich löschen?"
 				description="Dein Dayova-Konto und deine Daten werden dauerhaft gelöscht. Ein Store-Abo musst du zusätzlich im Store kündigen."
 				confirmLabel="Konto löschen"
+				confirmDisabled={!deletionPassword}
+				scrollable
 				isBusy={isDeletingAccount}
 				errorMessage={deleteError}
-				onClose={() => setShowDeleteConfirmation(false)}
+				onClose={() => {
+					setDeletionPassword("");
+					setShowDeleteConfirmation(false);
+				}}
 				onConfirm={() => void executeAccountDeletion()}
-			/>
+			>
+				<AccountDeletionPasswordField
+					value={deletionPassword}
+					onChangeText={setDeletionPassword}
+					disabled={isDeletingAccount}
+				/>
+			</ConfirmationSheet>
 		</>
 	);
 }
@@ -316,49 +316,6 @@ function CheckoutButton({ onPress }: { onPress: () => void }) {
 	);
 }
 
-function ManagementAction({
-	accessibilityLabel,
-	destructive = false,
-	icon,
-	label,
-	onPress,
-}: {
-	accessibilityLabel?: string;
-	destructive?: boolean;
-	icon: React.ReactNode;
-	label: string;
-	onPress: () => void;
-}) {
-	return (
-		<FeedbackPressable
-			accessibilityLabel={accessibilityLabel}
-			accessibilityRole="button"
-			className="min-h-14 flex-row items-center px-4 py-3 active:bg-system-subtle"
-			onPress={onPress}
-		>
-			<View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-system-subtle">
-				{icon}
-			</View>
-			<Text
-				className={
-					destructive
-						? "flex-1 font-semibold text-body-3 text-destructive"
-						: "flex-1 font-semibold text-body-3 text-text"
-				}
-			>
-				{label}
-			</Text>
-			<ArrowRight
-				size={18}
-				color={
-					destructive ? BRAND_COLORS.destructive : BRAND_COLORS.secondaryText
-				}
-				strokeWidth={2}
-			/>
-		</FeedbackPressable>
-	);
-}
-
 function LegalLink({
 	buttonRef,
 	label,
@@ -366,7 +323,7 @@ function LegalLink({
 	onPress,
 	url,
 }: {
-	buttonRef?: RefObject<View | null>;
+	buttonRef?: RefObject<ViewInstance | null>;
 	label: string;
 	onOpen?: (url?: string) => Promise<void>;
 	onPress?: () => void;

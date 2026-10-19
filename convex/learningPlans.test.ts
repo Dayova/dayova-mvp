@@ -1568,17 +1568,11 @@ test("generated draft sessions are not synced as calendar entries before accepta
 		}),
 	).resolves.toBeNull();
 
-	const createdId = await t.mutation(api.dayEntries.create, {
-		dayKey: "2026-06-05",
-		title: "Physik Test",
-		time: "11:00",
-		kind: "Leistungskontrolle",
-		plannedDateLabel: "5. Juni 2026",
-		durationMinutes: 45,
-		examTypeLabel: "Test",
+	const calendar = await t.query(api.dayEntries.listByDayKeys, {
+		dayKeys: ["2026-06-05"],
 	});
-
-	expect(createdId).toBeTruthy();
+	expect(calendar["2026-06-05"]).toHaveLength(1);
+	expect(calendar["2026-06-05"][0].kind).toBe("Leistungskontrolle");
 });
 
 test("AI context includes timed homework during the plan scheduling window", async () => {

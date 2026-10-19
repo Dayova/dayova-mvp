@@ -116,6 +116,9 @@ export default function NewLearningPlanScreen() {
 		api.learningPlans.registerUploadedDocument,
 	);
 	const removeDocument = useMutation(api.learningPlans.removeDocument);
+	const loadDocumentPreview = useMutation(
+		api.learningPlans.getDocumentPreviewUrl,
+	);
 
 	const subject = params.subject?.trim() || "Fach";
 	const personalSubjectId = params.personalSubjectId as
@@ -843,6 +846,7 @@ export default function NewLearningPlanScreen() {
 						canUpload={canUpload}
 						canContinue={canContinueUpload}
 						documents={snapshot?.documents ?? []}
+						loadPreview={loadDocumentPreview}
 						errorMessage={errorMessage}
 						isBusy={isBusy || isPlanSnapshotLoading}
 						isUploading={isUploading}

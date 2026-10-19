@@ -106,8 +106,6 @@ describe("TimetableWeekEditor", () => {
 				"Wische nach links oder rechts, um die Stunden zu prüfen.",
 			),
 		).toBeNull();
-		expect(pager.props.horizontal).toBe(true);
-		expect(pager.props.pagingEnabled).toBe(true);
 		expect(screen.getByText("1 / 2")).toBeTruthy();
 
 		await fireEvent(

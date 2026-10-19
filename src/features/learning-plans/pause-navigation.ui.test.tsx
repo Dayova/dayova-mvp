@@ -1,19 +1,19 @@
 import { beforeEach, expect, jest, test } from "@jest/globals";
-import { act, fireEvent, render, screen } from "@testing-library/react-native";
+import { act } from "@testing-library/react-native";
+import { Stack } from "expo-router";
 import {
-	createNavigatorFactory,
-	NavigationContainer,
-	StackRouter,
-	useNavigationBuilder,
-	usePreventRemoveContext,
-} from "expo-router/react-navigation";
-import type { ReactNode } from "react";
-import { Text, View } from "react-native";
+	fireEvent,
+	renderRouter,
+	screen,
+	testRouter,
+	waitFor,
+} from "expo-router/testing-library";
+import { Text } from "react-native";
 import NewLearningPlanScreen from "~/app/(creation)/learning-plans/new";
 
 let mockClose: () => void;
 let mockParams: Record<string, string>;
-const mockSave = jest.fn<() => Promise<void>>();
+const mockSave = jest.fn<(_args: Record<string, unknown>) => Promise<void>>();
 
 jest.mock("react-native-keyboard-controller", () => {
 	const { View, ScrollView } =
@@ -22,28 +22,6 @@ jest.mock("react-native-keyboard-controller", () => {
 		KeyboardStickyView: View,
 		KeyboardAwareScrollView: ScrollView,
 		useKeyboardState: () => false,
-	};
-});
-jest.mock("react-native-safe-area-context", () => ({
-	useSafeAreaInsets: () => ({ top: 0, bottom: 34, left: 0, right: 0 }),
-}));
-
-jest.mock("expo-router", () => {
-	const { useNavigation, StackActions } = jest.requireActual<
-		typeof import("expo-router/react-navigation")
-	>("expo-router/react-navigation");
-	return {
-		Stack: { Screen: () => null },
-		useLocalSearchParams: () => mockParams,
-		useRouter: () => {
-			const navigation = useNavigation();
-			return {
-				// dismissTo removes the creation route when the overview is below it.
-				dismissTo: () => navigation.dispatch(StackActions.popToTop()),
-				replace: () => navigation.dispatch(StackActions.replace("Overview")),
-				setParams: jest.fn(),
-			};
-		},
 	};
 });
 jest.mock("convex/react", () => ({
@@ -111,7 +89,7 @@ jest.mock("~/components/ui/icon", () => {
 		React.createElement("Icon", props);
 	return new Proxy({}, { get: () => Icon });
 });
-jest.mock("react-native-reanimated", () =>
+jest.mock("react-native-reanimated/mock", () =>
 	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
 );
 jest.mock("~/lib/theme", () => ({
@@ -129,52 +107,23 @@ jest.mock("expo-file-system", () => ({ File: class {} }));
 jest.mock("expo-document-picker", () => ({}));
 jest.mock("expo-image-picker", () => ({}));
 
-function TestNavigator({ children }: { children: ReactNode }) {
-	const { state, descriptors, NavigationContent } = useNavigationBuilder(
-		StackRouter,
-		{ children },
-	);
-	return (
-		<NavigationContent>
-			<Protection />
-			{state.routes.map((route, index) => (
-				<View
-					key={route.key}
-					style={{ display: index === state.index ? "flex" : "none" }}
-				>
-					{descriptors[route.key].render()}
-				</View>
-			))}
-		</NavigationContent>
-	);
-}
-
-function Protection() {
-	const { preventedRoutes } = usePreventRemoveContext();
-	return (
-		<Text testID="native-protection">
-			{Object.values(preventedRoutes).some((route) => route.preventRemove)
-				? "protected"
-				: "unprotected"}
-		</Text>
-	);
-}
-
-const Stack = createNavigatorFactory(TestNavigator)();
+// Exercise the SDK 58 router and its actual removal guard rather than the
+// retired React Navigation container/protection context.
 const Overview = () => <Text>Lernplanübersicht</Text>;
-const App = () => (
-	<NavigationContainer
-		initialState={{
-			index: 1,
-			routes: [{ name: "Overview" }, { name: "Creation" }],
-		}}
-	>
-		<Stack.Navigator>
-			<Stack.Screen name="Overview" component={Overview} />
-			<Stack.Screen name="Creation" component={NewLearningPlanScreen} />
-		</Stack.Navigator>
-	</NavigationContainer>
-);
+async function renderCreation() {
+	return renderRouter(
+		{
+			_layout: {
+				default: () => <Stack />,
+				unstable_settings: { anchor: "learning-plans/index" },
+			},
+			"learning-plans/index": Overview,
+			creation: NewLearningPlanScreen,
+			"entry/success": () => <Text>Prüfung erstellt</Text>,
+		},
+		{ initialUrl: `/creation?${new URLSearchParams(mockParams)}` },
+	);
+}
 
 beforeEach(() => {
 	jest.clearAllMocks();
@@ -187,12 +136,11 @@ beforeEach(() => {
 });
 
 test("confirmed pause leaves the real guarded route for the overview", async () => {
-	await render(<App />);
-	expect(screen.getByTestId("native-protection")).toHaveTextContent(
-		"protected",
-	);
+	const result = await renderCreation();
+	expect(result.getPathname()).toBe("/creation");
 	await act(() => mockClose());
 	await fireEvent.press(screen.getByText("Später fortsetzen"));
+	await waitFor(() => expect(result.getPathname()).toBe("/learning-plans"));
 	expect(screen.getByText("Lernplanübersicht")).toBeVisible();
 	expect(screen.queryByLabelText("Hinweise suchen")).toBeNull();
 });
@@ -205,7 +153,7 @@ test("pause keeps native protection until edited topics have saved", async () =>
 				finishSave = resolve;
 			}),
 	);
-	await render(<App />);
+	const result = await renderCreation();
 	await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 	await fireEvent.changeText(
 		screen.getByLabelText("Hinweise suchen"),
@@ -218,11 +166,12 @@ test("pause keeps native protection until edited topics have saved", async () =>
 	);
 	await act(() => mockClose());
 	await fireEvent.press(screen.getByText("Später fortsetzen"));
-	expect(screen.getByTestId("native-protection")).toHaveTextContent(
-		"protected",
-	);
+	expect(result.getPathname()).toBe("/creation");
+	await testRouter.back();
+	expect(result.getPathname()).toBe("/creation");
 	expect(screen.getByLabelText("Hinweise suchen")).toBeOnTheScreen();
 	await act(() => finishSave());
+	await waitFor(() => expect(result.getPathname()).toBe("/learning-plans"));
 	expect(screen.getByText("Lernplanübersicht")).toBeVisible();
 	expect(mockSave).toHaveBeenCalledWith({
 		id: "plan-native-pause",
@@ -234,7 +183,7 @@ test("pause keeps native protection until edited topics have saved", async () =>
 
 test("failed pause retains the route, native protection and edited text", async () => {
 	mockSave.mockRejectedValue(new Error("offline"));
-	await render(<App />);
+	const result = await renderCreation();
 	await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 	await fireEvent.changeText(
 		screen.getByLabelText("Hinweise suchen"),
@@ -247,9 +196,7 @@ test("failed pause retains the route, native protection and edited text", async 
 	);
 	await act(() => mockClose());
 	await fireEvent.press(screen.getByText("Später fortsetzen"));
-	expect(screen.getByTestId("native-protection")).toHaveTextContent(
-		"protected",
-	);
+	expect(result.getPathname()).toBe("/creation");
 	expect(screen.getByText("Auch Inventur.")).toBeOnTheScreen();
 	expect(screen.getByText("Ohne Hilfsmittel")).toBeOnTheScreen();
 	expect(screen.getByText("offline")).toBeOnTheScreen();
@@ -262,13 +209,12 @@ test("the deliberate material-later replacement is allowed while back stays prot
 		topicDescription: "Bilanz",
 		step: "topic",
 	};
-	await render(<App />);
+	const result = await renderCreation();
 	await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
-	expect(screen.getByTestId("native-protection")).toHaveTextContent(
-		"protected",
-	);
+	expect(result.getPathname()).toBe("/creation");
 	await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 	await fireEvent.press(screen.getByText("Ohne Lernmaterial erstellen"));
-	expect(screen.getByText("Lernplanübersicht")).toBeVisible();
+	await waitFor(() => expect(result.getPathname()).toBe("/entry/success"));
+	expect(screen.getByText("Prüfung erstellt")).toBeVisible();
 	expect(screen.queryByText("Schulmaterial hinzufügen")).toBeNull();
 });

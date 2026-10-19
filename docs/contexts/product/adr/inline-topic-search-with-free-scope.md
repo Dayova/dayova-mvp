@@ -16,7 +16,7 @@ The rationale and validation plan live in the [Notion decision record](https://a
 
 ## Persistence and compatibility
 
-The current sequence is topics → optional hints → material. Both pages use a bottom Weiter action; empty hints can continue. Back traverses material → hints → topics and retains selections. Hint suggestions remain the deterministic subject/topic-aware examples v1, with no inferred or preselected requirement. Unknown subjects receive no guessed examples. The former internal inline/extra-screen assignment is retired and cannot change the production flow. The [older comparison protocol](../../../qa/hint-location-comparison-2026-10-17.md) remains historical; DAY-517 student validation is still open.
+The current sequence is topics → optional hints → material. Both pages use a bottom Weiter action; empty hints can continue. Back traverses material → hints → topics and retains selections. Hint suggestions remain the deterministic subject/topic-aware examples v1, with no inferred or preselected requirement. Unknown subjects receive no guessed examples. The former internal inline/extra-screen assignment is retired and cannot change the production flow. The [older comparison protocol](https://github.com/Dayova/dayova-mvp/blob/0e7707a95945744963eba3b990f2b195b13691a4/docs/qa/hint-location-comparison-2026-10-17.md) remains historical; DAY-517 student validation is still open.
 
 - Optional learningPlans fields `topicItems` (chosen titles) and `topicAdditionalInfo` (verbatim additional text) preserve the UI separation and title boundaries through pause, back and reopen. Never split titles at commas or semicolons.
 - `topicDescription` is the validated compatibility projection of both fields, joined with newlines. AI, material analysis and the related calendar entry keep receiving the full scope including conditions. All three are updated in one mutation; reject divergent projections.
@@ -31,7 +31,7 @@ The authenticated WLO adapter originated in #872 at `c9a4c4e41aafe71cc8f97004ad1
 
 A best-effort server cache stores public suggestions for five minutes in at most 256 hash-addressed slots. Its digest contains a version, normalized query and resolved context; no raw query, personal subject name or user identity is stored. Check authentication before reading, compare the complete digest to reject slot collisions, and check expiry in the action rather than a time-dependent query. Cache failures fall back to the provider, and provider failures are not cached. These are per-layer TTLs; without a freshness timestamp propagated to the client, a server hit subsequently cached locally may be nearly ten minutes old. This bounded catalog staleness is accepted; it does not apply to a learner's saved selections or notes.
 
-Measurements, tradeoffs and the remaining cold-provider limit are in the [performance verification](../../../qa/topic-search-performance-2026-10-17.md). No whole-catalog synchronization or change to personal subject identity is introduced.
+Measurements, tradeoffs and the remaining cold-provider limit are in the [performance verification](https://github.com/Dayova/dayova-mvp/blob/0e7707a95945744963eba3b990f2b195b13691a4/docs/qa/topic-search-performance-2026-10-17.md). No whole-catalog synchronization or change to personal subject identity is introduced.
 
 ## Acceptance limits
 
