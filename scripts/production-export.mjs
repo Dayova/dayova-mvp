@@ -1,6 +1,12 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { lstatSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	lstatSync,
+	readdirSync,
+	readFileSync,
+	writeFileSync,
+} from "node:fs";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -77,6 +83,23 @@ export function recordProductionExport(directory, context) {
 }
 
 export function verifyProductionExport(directory, expected) {
+	if (!existsSync(join(directory, manifestName))) {
+		// EAS may preserve the uploaded directory's relative prefix on extraction.
+		const candidates = [];
+		const visit = (path) => {
+			if (lstatSync(path).isSymbolicLink())
+				throw new Error("Export artifacts must not contain symbolic links");
+			if (!lstatSync(path).isDirectory()) return;
+			if (existsSync(join(path, manifestName))) candidates.push(path);
+			else for (const name of readdirSync(path)) visit(join(path, name));
+		};
+		visit(directory);
+		if (candidates.length !== 1)
+			throw new Error(
+				"Expected exactly one verified production export in the downloaded artifact",
+			);
+		directory = candidates[0];
+	}
 	const manifest = JSON.parse(
 		readFileSync(join(directory, manifestName), "utf8"),
 	);

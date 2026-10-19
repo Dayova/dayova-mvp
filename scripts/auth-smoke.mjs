@@ -24,7 +24,11 @@ export async function authenticatedSmoke(env = process.env, request = fetch) {
 		);
 	let authorization;
 	let sessionId;
+	let stage = "configuration";
+	let primaryError;
+	let outcome;
 	const clerk = async (path, form) => {
+		stage = `clerk:${path.split("/").at(-1)}`;
 		const response = await request(
 			`https://${host}/v1/${path}?_is_native=true`,
 			{
@@ -46,6 +50,7 @@ export async function authenticatedSmoke(env = process.env, request = fetch) {
 		return data.response ?? data;
 	};
 	const me = async (token) => {
+		stage = token ? "authenticated-convex-query" : "anonymous-convex-query";
 		const response = await request(`${convexUrl}/api/query`, {
 			method: "POST",
 			headers: {
@@ -111,14 +116,27 @@ export async function authenticatedSmoke(env = process.env, request = fetch) {
 			throw new Error(
 				"The deployed Convex backend did not return the authenticated synthetic user",
 			);
-		return {
+		outcome = {
 			clerkSignIn: "success",
 			authenticatedConvexQuery: "success",
 			unauthenticatedConvexQuery: "denied",
 		};
-	} finally {
-		if (sessionId) await clerk(`client/sessions/${sessionId}/remove`, {});
+	} catch (error) {
+		primaryError = Object.assign(error, { smokeStage: stage });
 	}
+	if (sessionId) {
+		try {
+			await clerk(`client/sessions/${sessionId}/remove`, {});
+		} catch (error) {
+			if (primaryError) primaryError.cleanupFailed = true;
+			else
+				primaryError = Object.assign(error, {
+					smokeStage: "clerk-session-cleanup",
+				});
+		}
+	}
+	if (primaryError) throw primaryError;
+	return outcome;
 }
 
 if (
@@ -126,19 +144,32 @@ if (
 	import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
 	const start = performance.now();
+	let result;
 	try {
-		const result = {
+		result = {
+			status: "success",
 			...(await authenticatedSmoke()),
-			seconds: (performance.now() - start) / 1000,
 		};
-		mkdirSync(".maestro/artifacts/ci", { recursive: true });
-		writeFileSync(
-			".maestro/artifacts/ci/auth-smoke.json",
-			JSON.stringify(result, null, 2),
-		);
-		console.log(JSON.stringify(result));
 	} catch (error) {
-		console.error(error.message);
+		let message = error.message;
+		for (const value of [
+			process.env.MAESTRO_CI_EMAIL,
+			process.env.MAESTRO_CI_PASSWORD,
+		])
+			if (value) message = message.replaceAll(value, "[redacted]");
+		result = {
+			status: "failure",
+			stage: error.smokeStage ?? "configuration",
+			error: message,
+			cleanupFailed: Boolean(error.cleanupFailed),
+		};
 		process.exitCode = 1;
 	}
+	result.seconds = (performance.now() - start) / 1000;
+	mkdirSync(".maestro/artifacts/ci", { recursive: true });
+	writeFileSync(
+		".maestro/artifacts/ci/auth-smoke.json",
+		JSON.stringify(result, null, 2),
+	);
+	console.log(JSON.stringify(result));
 }

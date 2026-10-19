@@ -20,7 +20,7 @@ on:
 
 concurrency:
   cancel_in_progress: true
-  group: ${{ workflow.filename }}-${{ github.ref }}
+  group: ${{ workflow.filename }}-${{ github.event_name }}-${{ github.ref }}
 
 defaults:
   tools:
@@ -127,61 +127,21 @@ jobs:
         run: node scripts/production-export.mjs
       - id: ota_guard
         name: Check OTA safety against distributed binaries
-        run: |
-          set -euo pipefail
-          ota_exit_code=0
-          if ota_report="$(node scripts/ota-safety.mjs --json)"; then
-            ota_safe=true
-          else
-            ota_exit_code=$?
-            ota_safe=false
-          fi
-
-          # Validate the complete consumer contract before exposing any verdict.
-          OTA_REPORT="$ota_report" OTA_EXIT_CODE="$ota_exit_code" node -e '
-            const report = JSON.parse(process.env.OTA_REPORT);
-            if (!report || typeof report !== "object" ||
-                typeof report.safe !== "boolean" ||
-                ![null, "compatibility", "preflight"].includes(report.failureKind) ||
-                report.safe !== (report.failureKind === null) ||
-                Number(process.env.OTA_EXIT_CODE) !== (report.safe ? 0 : 1) ||
-                ["reason", "baseline", "currentFingerprints"].some(key =>
-                  typeof report[key] !== "string" || report[key].trim() === "")) {
-              throw new Error("Invalid or incomplete OTA safety report");
-            }
-          '
-
-          printf '%s\n' "$ota_report"
-          ota_reason="$(OTA_REPORT="$ota_report" node -p 'JSON.parse(process.env.OTA_REPORT).reason.replace(/\b[a-f0-9]{40}\b/g, hash => "`" + hash + "`")')"
-          ota_baseline="$(OTA_REPORT="$ota_report" node -p 'JSON.parse(process.env.OTA_REPORT).baseline')"
-          ota_current_fingerprints="$(OTA_REPORT="$ota_report" node -p 'JSON.parse(process.env.OTA_REPORT).currentFingerprints')"
-          ota_failure_kind="$(OTA_REPORT="$ota_report" node -p 'JSON.parse(process.env.OTA_REPORT).failureKind')"
-
-          set-output ota_safe "$ota_safe"
-          set-output ota_reason "$ota_reason"
-          set-output ota_baseline "$ota_baseline"
-          set-output ota_current_fingerprints "$ota_current_fingerprints"
-
-          # Native incompatibility is advisory on PRs; an incomplete check is not.
-          set-output ota_failure_kind "$ota_failure_kind"
+        run: |-
+          source scripts/ci-ota-report.sh
       - name: Require a completed OTA assessment
         run: test "${{ steps.ota_guard.outputs.ota_failure_kind }}" != "preflight"
-      - name: Package the verified export
-        if: ${{ github.event_name == 'push' && github.ref_name == 'main' && steps.ota_guard.outputs.ota_safe == 'true' }}
-        run: |
-          mkdir -p .maestro/artifacts/ci
-          tar -czf .maestro/artifacts/ci/production-export.tar.gz -C dist production
       - uses: eas/upload_artifact
-        if: ${{ github.event_name == 'push' && github.ref_name == 'main' && steps.ota_guard.outputs.ota_safe == 'true' }}
         with:
           type: other
           name: production-export
-          path: .maestro/artifacts/ci/production-export.tar.gz
+          path: dist/production
 
   checks:
     # Preserve the required Expo check context; skipped prerequisites must fail.
     name: Lint, typecheck, and test
     type: custom
+    environment: production
     runs_on: linux-medium
     after:
       - quality
@@ -199,6 +159,10 @@ jobs:
       ANDROID_STATUS: ${{ after.android_smoke.status }}
       IOS_STATUS: ${{ after.ios_smoke.status }}
       AUTH_STATUS: ${{ after.authenticated_smoke.status }}
+      APP_VARIANT: production
+      CI_SOURCE_SHA: ${{ github.sha }}
+      OTA_IOS_FINGERPRINT: ${{ after.production_fingerprint.outputs.ios_fingerprint_hash }}
+      OTA_ANDROID_FINGERPRINT: ${{ after.production_fingerprint.outputs.android_fingerprint_hash }}
     steps:
       - name: Require successful validation
         run: |
@@ -213,6 +177,18 @@ jobs:
             test "$IOS_STATUS" = success
             test "$AUTH_STATUS" = success
           fi
+      - uses: eas/checkout
+        if: ${{ success() && env.REQUIRE_OTA == 'true' }}
+      - uses: eas/download_artifact
+        id: verified_export
+        if: ${{ success() && env.REQUIRE_OTA == 'true' }}
+        with:
+          name: production-export
+      - name: Verify artifact transfer and provenance
+        if: ${{ success() && env.REQUIRE_OTA == 'true' }}
+        env:
+          EXPORT_DIRECTORY: ${{ steps.verified_export.outputs.artifact_path }}
+        run: node scripts/ci-verify-export.mjs "$EXPORT_DIRECTORY"
 
   pr_ota_report:
     name: PR OTA compatibility report
@@ -232,7 +208,6 @@ jobs:
 
         ### ${{ after.ota_checks.status == 'success' && (after.ota_checks.outputs.ota_safe == 'true' && '✅ OTA-compatible' || after.ota_checks.outputs.ota_safe == 'false' && '⚠️ Not OTA-compatible') || '❓ Compatibility not confirmed' }}
 
-        ${{ after.ota_checks.status == 'success' && (after.ota_checks.outputs.ota_safe == 'true' && 'This commit is compatible with the recorded app builds.' || after.ota_checks.outputs.ota_safe == 'false' && 'This commit cannot ship via OTA to the recorded app builds. A verified native release or compatibility review is needed.') || 'The assessment failed or was skipped. Open the EAS run to see what needs attention.' }}
 
         | Check | Status |
         | --- | --- |
@@ -299,7 +274,6 @@ jobs:
       OTA_SOURCE_SHA: ${{ github.sha }}
       OTA_ANDROID_FINGERPRINT: ${{ needs.production_fingerprint.outputs.android_fingerprint_hash }}
       OTA_IOS_FINGERPRINT: ${{ needs.production_fingerprint.outputs.ios_fingerprint_hash }}
-      OTA_EXPORT_DIRECTORY: dist/production
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules
@@ -307,16 +281,12 @@ jobs:
         id: verified_export
         with:
           name: production-export
-      - name: Restore the verified export
-        env:
-          EXPORT_ARCHIVE: ${{ steps.verified_export.outputs.artifact_path }}
-        run: |
-          mkdir -p dist
-          tar -xzf "$EXPORT_ARCHIVE" -C dist
       - name: Verify production manifest and distributed-binary compatibility
         run: node scripts/ota-safety.mjs
-      - name: Export and publish both production platforms
+      - name: Publish the verified production export
         run: node scripts/publish-production-ota.mjs
+        env:
+          OTA_EXPORT_DIRECTORY: ${{ steps.verified_export.outputs.artifact_path }}
 
   ota_skipped:
     name: OTA update skipped

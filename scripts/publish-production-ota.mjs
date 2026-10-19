@@ -110,6 +110,7 @@ export function publishProductionOta({
 	};
 	verifySource("before-export");
 	verifyGuard();
+	let exportDirectory = "dist";
 	if (preparedExport) {
 		if (
 			preparedExport.context.sourceSha !== sourceSha ||
@@ -118,7 +119,10 @@ export function publishProductionOta({
 			throw new Error(
 				"Prepared export context must match the publication source and runtime",
 			);
-		verifyProductionExport(preparedExport.directory, preparedExport.context);
+		exportDirectory = verifyProductionExport(
+			preparedExport.directory,
+			preparedExport.context,
+		);
 	} else {
 		run("expo", ["export", "--platform", "all", "--output-dir", "dist"], false);
 	}
@@ -162,7 +166,7 @@ export function publishProductionOta({
 			"--platform",
 			"all",
 			"--input-dir",
-			preparedExport?.directory ?? "dist",
+			exportDirectory,
 			"--skip-bundler",
 			"--message",
 			`Production OTA from ${sourceSha}`,

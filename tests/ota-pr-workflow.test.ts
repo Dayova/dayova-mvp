@@ -36,6 +36,13 @@ const runReportGuard = (report: string, exitStatus = 1) => {
 	try {
 		mkdirSync(join(directory, "scripts"));
 		writeFileSync(
+			join(directory, "scripts/ci-ota-report.sh"),
+			readFileSync(
+				new URL("../scripts/ci-ota-report.sh", import.meta.url),
+				"utf8",
+			),
+		);
+		writeFileSync(
 			join(directory, "scripts/ota-safety.mjs"),
 			"process.stdout.write(process.env.OTA_TEST_REPORT); process.exitCode = Number(process.env.OTA_TEST_STATUS);",
 		);

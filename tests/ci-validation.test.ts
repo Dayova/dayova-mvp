@@ -52,6 +52,14 @@ describe("native validation scope over real Git history", () => {
 		["modules/example/index.ts", true],
 		["src/context/Example.tsx", true],
 		[".maestro/flows/example.yaml", true],
+		["src/app/_layout.tsx", true],
+		["src/lib/clerk-convex-auth.ts", true],
+		["src/components/auth-navigation-gate.tsx", true],
+		["convex/auth.config.ts", true],
+		["assets/icon.png", true],
+		["metro.config.js", true],
+		["babel.config.js", true],
+		["index.ts", true],
 	])("routes a change to %s", (path, expected) => {
 		const directory = mkdtempSync(join(tmpdir(), "dayova-ci-scope-"));
 		const git = (...args: string[]) =>

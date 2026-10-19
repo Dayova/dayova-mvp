@@ -27,7 +27,7 @@ if (!forced && event !== "workflow_dispatch") {
 		.filter(Boolean);
 }
 const relevant = paths.filter((path) =>
-	/^(app\.config\.cts|eas\.json|package\.json|pnpm-(lock\.yaml|workspace\.yaml)|(?:plugins|modules|patches|\.maestro)\/|src\/(?:context|features\/auth)\/|\.eas\/workflows\/ci\.yml|scripts\/(?:ci-native-changes|auth-smoke)\.mjs)/.test(
+	/^(app\.config\.cts|eas\.json|package\.json|metro\.config\.js|babel\.config\.js|index\.ts|pnpm-(lock\.yaml|workspace\.yaml)|(?:assets|plugins|modules|patches|\.maestro)\/|src\/(?:app|context|features\/auth)\/|src\/lib\/(?:clerk|auth|access|session|onboarding|runtime-config)|src\/components\/auth-navigation-gate\.tsx|convex\/(?:auth\.config|users|clerkIdentity|entitlements)\.ts|\.eas\/workflows\/ci\.yml|scripts\/(?:ci-native-changes|auth-smoke)\.mjs)/.test(
 		path,
 	),
 );
