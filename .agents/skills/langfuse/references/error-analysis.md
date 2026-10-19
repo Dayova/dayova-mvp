@@ -60,7 +60,7 @@ Verify you can actually reach the user's project before proceeding. If access fa
 
 ### Annotation queues
 
-> **CRITICAL:** Queues cannot be updated or deleted after creation. Create score configs first, then the queue with all config IDs. To add new configs later, create a new queue.
+> **Public API limitation:** The documented public API does not expose queue-level update/delete endpoints. Create score configs before creating the queue with its config IDs. If later changes are needed, use the supported queue-editing UI or create a replacement queue through the API. The UI supports editing and deleting queues; queue items have their own API operations. Check current API/schema support for the target deployment before acting.
 
 
 **Always give the user a direct link immediately after creating a queue:**

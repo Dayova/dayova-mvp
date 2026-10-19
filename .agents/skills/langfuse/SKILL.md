@@ -13,7 +13,7 @@ This skill helps you use Langfuse effectively across all common workflows: instr
 Follow these principles for ALL Langfuse work:
 
 1. **Documentation First**: NEVER implement based on memory. Always fetch current docs before writing code (Langfuse updates frequently) See the section below on how to access documentation.
-2. **CLI for Data Access**: Use `langfuse-cli` when querying/modifying Langfuse data. See the section below on how to use the CLI.
+2. **CLI for Data Access**: Use the pinned `@langfuse/cli` commands below when querying/modifying Langfuse data.
 3. **Best Practices by Use Case**: Read the relevant reference below use-case-specific guidelines before asking the user for more details or implementing.
 4. **Use latest Langfuse versions**: Unless the user specified otherwise or there's a good reason, always use the latest version of Langfuse SDKs/APIs. Even if you're only creating a plan for another agent to execute, be explicit about the exact version to use.
 5. **If you guide the user through UI** and are unsure about a label or location, inspect the user’s screenshots or ask to see the relevant screen. Do not assume UI labels have the exact same names as API, SDK, or CLI fields.
@@ -38,19 +38,19 @@ Follow these principles for ALL Langfuse work:
 
 ## 1. Langfuse API via CLI
 
-Use the `langfuse-cli` to interact with the full Langfuse REST API from the command line. Run via npx (no install required):
+Use `@langfuse/cli@1.2.4` to interact with the full Langfuse REST API from the command line. This is Dayova's reviewed CLI pin (2026-10-19). Review upstream changes and verify discovery commands before updating the pin; keep it explicit when running with credentials.
 
 Start by discovering the schema and available arguments:
 
 ```bash
 # Discover all available resources
-npx langfuse-cli api __schema
+npx @langfuse/cli@1.2.4 api schema --json
 
 # List actions for a resource
-npx langfuse-cli api <resource> --help
+npx @langfuse/cli@1.2.4 api <resource> --help
 
 # Show args/options for a specific action
-npx langfuse-cli api <resource> <action> --help
+npx @langfuse/cli@1.2.4 api <resource> <action> --help
 ```
 
 ### Credentials

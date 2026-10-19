@@ -160,7 +160,7 @@ export const evalSuites = {
 	"langfuse-instrumentation": {
 		kind: "behavioral",
 		command:
-			"pnpm exec vitest run tests/ai-observability.test.ts tests/ai-eval.test.ts tests/ai-eval-review.test.ts",
+			"pnpm exec vitest run tests/ai-observability.test.ts tests/ai-evaluation.test.ts tests/ai-evaluation-review.test.ts",
 		owner:
 			"DAY-219 and DAY-293; ai/README.md also requires a live trace audit for instrumentation changes",
 	},
@@ -206,7 +206,7 @@ const sourceDefaults = {
 		skillRationale:
 			"Dayova uses Langfuse for metadata-only AI tracing, cost attribution, and synthetic model evaluations",
 		overrideRationale:
-			"Preserve the upstream pin and MIT license, normalize Codex frontmatter, and apply ai/README.md privacy and current-API corrections, including synthetic-only content review in the error-analysis guide.",
+			"Preserve the upstream pin and MIT license, normalize Codex frontmatter, pin CLI examples to reviewed @langfuse/cli@1.2.4, and apply ai/README.md privacy and API corrections, including synthetic-only content review and API-scoped queue limitations.",
 		evalSuite: ["catalog-contract", "langfuse-instrumentation"],
 		lastReviewed: "2026-10-19",
 	},

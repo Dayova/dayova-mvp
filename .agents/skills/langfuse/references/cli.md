@@ -1,6 +1,6 @@
 ---
 name: langfuse-cli
-description: Langfuse CLI usage reference — install, resource/action discovery, credentials, and common usage tips for `langfuse-cli`. Use for further tips on using the Langfuse CLI.
+description: Langfuse CLI usage reference — pinned installation, resource/action discovery, credentials, and common usage tips for `@langfuse/cli`.
 ---
 
 # Langfuse CLI Reference
@@ -9,13 +9,16 @@ Documentation: https://langfuse.com/docs/api-and-data-platform/features/cli
 
 ## Install
 
+Use Dayova's reviewed `1.2.4` pin. Review a version change and verify command
+discovery before updating these examples; avoid unpinned execution with API keys.
+
 ```bash
 # Run directly (recommended)
-npx langfuse-cli api <resource> <action>
-bunx langfuse-cli api <resource> <action>
+npx @langfuse/cli@1.2.4 api <resource> <action>
+bunx @langfuse/cli@1.2.4 api <resource> <action>
 
 # Or install globally
-npm i -g langfuse-cli
+npm i -g @langfuse/cli@1.2.4
 langfuse api <resource> <action>
 ```
 
@@ -23,7 +26,7 @@ langfuse api <resource> <action>
 
 ```bash
 # List all resources and auth info
-langfuse api __schema
+langfuse api schema --json
 
 # List actions for a resource
 langfuse api <resource> --help

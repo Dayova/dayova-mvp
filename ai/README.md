@@ -16,7 +16,9 @@ Source: [langfuse/skills at 127253d0](https://github.com/langfuse/skills/tree/12
 Local changes add Dayova's production contract and correct automatic-capture
 and Python OpenAI wrapper guidance in `references/instrumentation.md`, normalize
 Codex frontmatter to `name` and `description`, restrict content-based error
-analysis in `references/error-analysis.md` to approved synthetic evaluations, prefer
+analysis in `references/error-analysis.md` to approved synthetic evaluations,
+scope queue mutation limitations to the public API, pin CLI examples to reviewed
+`@langfuse/cli@1.2.4`, prefer
 stable evaluator APIs in `references/setting-up-evals.md`, and clean up trailing
 whitespace. The upstream MIT license is included.
 `skills-lock.json` records the upstream source path and content hash.
@@ -27,7 +29,8 @@ source in a temporary workspace, review its diff, preserve these local correctio
 and license, update the lock/source revision and governance review, and run
 `pnpm skills:validate` before replacing the installed skill.
 Consult the [current CLI documentation](https://langfuse.com/docs/api-and-data-platform/features/cli)
-before running the upstream CLI examples; new installs use `@langfuse/cli`.
+before refreshing the pinned `@langfuse/cli@1.2.4` examples. Keep that explicit
+version when running with project keys; upstream examples may be unpinned.
 
 ## Backend tracing
 
