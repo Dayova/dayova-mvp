@@ -62,7 +62,7 @@ jobs:
     needs:
       - contributor_gate
     env:
-      CI_EVENT_NAME: ${{ github.event_name }}
+      CI_EVENT_NAME: ${{ github.event_name == 'push' && github.ref_name == github.sha && 'workflow_dispatch' || github.event_name }}
       CI_REF_NAME: ${{ github.ref_name || 'manual' }}
       CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || 'unavailable' }}
       CI_NATIVE_FORCE: ${{ (inputs.native_checks == true || inputs.native_checks == 'true') && 'true' || 'false' }}
@@ -71,7 +71,7 @@ jobs:
     outputs:
       native_required: ${{ steps.native_scope.outputs.required }}
     # This custom job uses production scope; fork code must not reach checkout.
-    if: ${{ github.event_name != 'push' || github.ref_name == 'main' || startsWith(github.ref_name || 'manual', 'gh-readonly-queue/main/') }}
+    if: ${{ github.event_name != 'push' || github.ref_name == github.sha || github.ref_name == 'main' || startsWith(github.ref_name || 'manual', 'gh-readonly-queue/main/') }}
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules

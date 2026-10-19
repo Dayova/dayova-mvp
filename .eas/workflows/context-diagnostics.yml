@@ -10,17 +10,18 @@ jobs:
     env:
       CI_EVENT_NAME: ${{ github.event_name || 'missing' }}
       CI_REF_NAME: ${{ github.ref_name || 'missing' }}
+      CI_SHA: ${{ github.sha || 'missing' }}
       CI_NON_PUSH: ${{ github.event_name != 'push' && 'true' || 'false' }}
-      CI_ROUTE: ${{ (github.event_name != 'push' || github.ref_name == 'main' || startsWith(github.ref_name || 'manual', 'gh-readonly-queue/main/')) && 'true' || 'false' }}
+      CI_ROUTE: ${{ (github.event_name != 'push' || github.ref_name == github.sha || github.ref_name == 'main' || startsWith(github.ref_name || 'manual', 'gh-readonly-queue/main/')) && 'true' || 'false' }}
     steps:
-      - run: node -e 'console.log(JSON.stringify(Object.fromEntries(Object.entries(process.env).filter(([key]) => key.startsWith("CI_")))))'
+      - run: node -e 'console.log(JSON.stringify(Object.fromEntries(["CI_EVENT_NAME", "CI_REF_NAME", "CI_SHA", "CI_NON_PUSH", "CI_ROUTE"].map(key => [key, process.env[key]]))))'
   route:
     type: doc
-    if: ${{ github.event_name != 'push' || github.ref_name == 'main' || startsWith(github.ref_name || 'manual', 'gh-readonly-queue/main/') }}
+    if: ${{ github.event_name != 'push' || github.ref_name == github.sha || github.ref_name == 'main' || startsWith(github.ref_name || 'manual', 'gh-readonly-queue/main/') }}
     params:
       md: The quality branch-routing condition accepted this context.
   manual:
     type: doc
-    if: ${{ github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.ref_name == github.sha }}
     params:
       md: The event is workflow_dispatch.

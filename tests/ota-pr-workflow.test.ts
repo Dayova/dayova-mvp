@@ -246,6 +246,12 @@ describe("PR OTA workflow routing", () => {
 			false,
 		],
 		["manual CI", event("workflow_dispatch"), false],
+		[
+			"manual CLI ref resolved to its commit SHA",
+			{ ...event("push"), ref_name: event("push").sha },
+			false,
+			true,
+		],
 	])("routes %s to production compatibility checks", (_label, github, expected, queueChecks = false) => {
 		const context = { github };
 		const canRun = (id: string): boolean => {
