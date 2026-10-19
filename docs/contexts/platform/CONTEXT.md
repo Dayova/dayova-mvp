@@ -28,12 +28,13 @@ live in the [canonical Notion decision record](https://app.notion.com/p/3fd2e872
 The [code-facing reference](adr/0001-enforce-repository-checks-and-limit-typed-linting.md)
 links the historical stacked-PR CI evidence.
 
-`.eas/workflows/ci.yml` uses one `checks` job, displayed as
-`Lint, typecheck, and test`, for trusted pull requests, manual runs, and pushes
-to `main`. Formatting, lint, unused code/dependencies, repository skill validation,
-TypeScript, and tests are separate sequential steps. A merge
-therefore checks the resulting `main` commit again under the same visible job
-name instead of skipping a PR-only job and repeating its commands elsewhere.
+`.eas/workflows/ci.yml` runs formatting, lint, unused code/dependencies,
+repository skill validation, TypeScript, and tests in `quality`. The final
+`checks` job preserves the required `Lint, typecheck, and test` context and
+rejects failed or skipped applicable quality, OTA, native, and authentication
+prerequisites. A merge validates the resulting `main` commit again. Opening,
+reopening, or updating a PR triggers CI; marking it ready does not repeat an
+unchanged commit.
 
 Pull-request triggers cover every target branch, including stack parents. Do not
 restrict them to `main`: doing so leaves new commits in dependent PRs without CI
@@ -44,8 +45,32 @@ Pull request checks require the author's GitHub association to be `OWNER`,
 `MEMBER`, or `COLLABORATOR`. Manual runs validate only. Trusted same-repository
 PRs also run production fingerprinting and OTA compatibility checks; Convex
 deployment and OTA publication remain restricted to pushes to `main`.
-Both Convex deployment and OTA checks depend on successful `checks`; OTA
-publication also requires successful fingerprinting, deployment, and OTA safety.
+OTA checks depend on `quality`; Convex deployment depends on final `checks`.
+OTA publication also requires successful fingerprinting, deployment, and OTA
+safety. Production exports carry file hashes and source/runtime/environment/native
+fingerprint provenance. The final gate downloads and verifies the uploaded
+artifact; publication reuses and revalidates it without bundling again.
+
+Native/configuration and auth/onboarding changes select Android/iOS validation
+through `scripts/ci-native-changes.mjs`. The weekly run forces it; manual CI can
+set `native_checks=true`. Profile `ci` builds embedded non-production apps against
+the reviewed development Clerk/Convex tenant, with updates and analytics disabled.
+Matching native builds are reused only with a freshly repacked JavaScript bundle.
+Maestro and the real-service auth probe use sensitive development environment
+variables `MAESTRO_CI_EMAIL` and `MAESTRO_CI_PASSWORD` for a synthetic Clerk test
+identity. The auth probe checks both authenticated access and anonymous denial.
+
+`pnpm test:ci` retains per-stage timings, Vitest JUnit, and Jest JSON under ignored
+`.maestro/artifacts/ci/`. Weekly CI and the manual `test-coverage.yml` collect
+Vitest/Jest coverage there. Upload steps run even on failure. Manual
+`test-benchmark.yml` and `export-benchmark.yml` compare worker counts and separate
+versus combined exports on the same commit and runner; inspect resolved inputs
+before treating a run as a matched comparison.
+
+`Automated review coverage` reports a completed CodeRabbit review separately
+from its provider status. A skipped, rate-limited, missing, or unknown result
+stays pending even if the provider reports success. This informational status
+does not replace the required independent reviews.
 
 Biome owns general linting and formatting for application/backend source, root
 configuration, tests, ESLint rules, scripts, plugins, and local modules. Its
