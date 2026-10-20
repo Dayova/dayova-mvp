@@ -100,7 +100,7 @@ test("propagates workflow attribution to every validation and generation observa
 	const { exporter, runtime } = setup();
 	await withAiOperation(
 		{
-			operation: "generatePlan",
+			operation: "ensureSessionContent",
 			actorId: "SECRET identity",
 			entityId: "plan-id",
 		},
@@ -122,15 +122,28 @@ test("propagates workflow attribution to every validation and generation observa
 		expect(span.attributes["user.id"]).toBe(spans[2].attributes["user.id"]);
 		expect(span.attributes["langfuse.environment"]).toBe("development");
 		expect(span.attributes["langfuse.release"]).toBe("test-release");
-		expect(span.attributes["langfuse.trace.tags"]).toContain("generatePlan");
+		expect(span.attributes["langfuse.trace.tags"]).toContain(
+			"ensureSessionContent",
+		);
 		expect(
 			JSON.parse(span.attributes["langfuse.observation.metadata"] as string),
 		).toMatchObject({
-			workflow: "generatePlan",
+			workflow: "ensureSessionContent",
+			workflowLabel: "Lernblock-Inhalte bereitstellen",
+			workflowDescription: expect.stringContaining(
+				"vorhandene Lernblock-Inhalte",
+			),
 			entityId: "plan-id",
 			contentCapture: "disabled",
 		});
 	}
+	expect(spans[2].name).toBe("ensureSessionContent");
+	expect(
+		JSON.parse(spans[2].attributes["langfuse.trace.metadata"] as string),
+	).toMatchObject({
+		workflowLabel: "Lernblock-Inhalte bereitstellen",
+		workflowDescription: expect.stringContaining("tatsächliche KI-Aufrufe"),
+	});
 	expect(JSON.stringify(spans.map((span) => span.attributes))).not.toContain(
 		"SECRET",
 	);
@@ -334,7 +347,7 @@ test("the real Langfuse processor exports metadata-only OTLP over HTTP", async (
 	vi.stubEnv("LANGFUSE_BASE_URL", `http://127.0.0.1:${address.port}`);
 	try {
 		await withAiOperation(
-			{ operation: "plan", actorId: "SECRET identity" },
+			{ operation: "ensureSessionContent", actorId: "SECRET identity" },
 			() => {
 				setAiTraceSession("learning-plan:otlp-test");
 				return generateText({
@@ -388,6 +401,13 @@ test("the real Langfuse processor exports metadata-only OTLP over HTTP", async (
 			expect(attributes["session.id"]).toBe("learning-plan:otlp-test");
 			expect(attributes["user.id"]).toMatch(/^[a-f0-9]{64}$/);
 			expect(attributes["langfuse.environment"]).toBe("development");
+			expect(
+				JSON.parse(attributes["langfuse.observation.metadata"] as string),
+			).toMatchObject({
+				workflow: "ensureSessionContent",
+				workflowLabel: "Lernblock-Inhalte bereitstellen",
+				workflowDescription: expect.stringContaining("tatsächliche KI-Aufrufe"),
+			});
 		}
 	} finally {
 		await new Promise<void>((resolve, reject) =>

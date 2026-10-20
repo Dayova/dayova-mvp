@@ -41,6 +41,8 @@ type OperationContext = {
 	attributes: Attributes;
 	metadata: {
 		workflow: string;
+		workflowLabel?: string;
+		workflowDescription?: string;
 		entityId?: string;
 		contentCapture: string;
 		instrumentationVersion: string;
@@ -49,6 +51,66 @@ type OperationContext = {
 };
 const operations = new AsyncLocalStorage<OperationContext>();
 let runtime: Runtime | undefined;
+
+// Static explanations are safe to export. Keep technical names stable for filters.
+const workflows = new Map([
+	[
+		"ensureSessionContent",
+		{
+			workflowLabel: "Lernblock-Inhalte bereitstellen",
+			workflowDescription:
+				"Verwendet vorhandene Lernblock-Inhalte oder erzeugt fehlende bzw. ersetzt veraltete Inhalte. Nur untergeordnete Generation-Beobachtungen stehen für tatsächliche KI-Aufrufe.",
+		},
+	],
+	[
+		"retryFailedSessionContent",
+		{
+			workflowLabel: "Fehlende Lernblock-Inhalte erneut erzeugen",
+			workflowDescription:
+				"Versucht die Erzeugung fehlender oder fehlgeschlagener Lernblock-Inhalte eines Lernplans erneut.",
+		},
+	],
+	[
+		"addSessionWithContent",
+		{
+			workflowLabel: "Zusätzlichen Lernblock erstellen",
+			workflowDescription:
+				"Ergänzt einen Lernblock im Lernplan und erzeugt dessen Lerninhalte.",
+		},
+	],
+	[
+		"generateKnowledgeQuestions",
+		{
+			workflowLabel: "Wissenscheck erstellen",
+			workflowDescription:
+				"Erzeugt Fragen zum vorhandenen Wissen anhand der Lernmaterialien als Grundlage für die Lernplanung.",
+		},
+	],
+	[
+		"generatePlan",
+		{
+			workflowLabel: "Lernplan erstellen",
+			workflowDescription:
+				"Erstellt den Lernplan anhand der Lernmaterialien und des Wissenschecks und erzeugt die zugehörigen Lernblock-Inhalte.",
+		},
+	],
+	[
+		"evaluateWrittenAnswer",
+		{
+			workflowLabel: "Freitextantwort bewerten",
+			workflowDescription:
+				"Bewertet eine geschriebene Antwort auf eine Lernaufgabe und erstellt Feedback.",
+		},
+	],
+	[
+		"extract",
+		{
+			workflowLabel: "Stundenplan einlesen",
+			workflowDescription:
+				"Liest Unterrichtsstunden mit Fach, Wochentag und Uhrzeit aus einem hochgeladenen Stundenplan.",
+		},
+	],
+]);
 
 const safeLabel = (value: string | undefined) =>
 	value && /^[a-zA-Z0-9_.:/-]{1,160}$/.test(value) ? value : undefined;
@@ -160,6 +222,7 @@ export const withAiOperation = async <T>(
 		const operation = safeLabel(context.operation) ?? "ai-operation";
 		metadata = {
 			workflow: operation,
+			...workflows.get(operation),
 			entityId: safeLabel(context.entityId),
 			contentCapture: "disabled",
 			instrumentationVersion: "2",
