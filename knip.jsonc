@@ -6,6 +6,10 @@
 		"scripts/check-clerk-lifecycle-local.mjs",
 		// Invoked manually or by the validation-only EAS benchmark.
 		"scripts/benchmark-checks.mjs",
+		// EAS workflow step entry points.
+		"scripts/ci-*.mjs",
+		"scripts/auth-smoke.mjs",
+		"scripts/production-export.mjs",
 		// Manually invoked topic-search probes and native evidence harness.
 		"scripts/evidence/pr884/*.{cjs,mjs,tsx}",
 		// Checked by TypeScript, never executed by a runtime test runner.

@@ -1,0 +1,9 @@
+appId: ${MAESTRO_APP_ID}
+name: Embedded launch and unauthenticated journeys
+env:
+  APP_ID: ${MAESTRO_APP_ID}
+---
+- runFlow: ../flows/app-launch.yaml
+- runFlow: ../flows/login-validation.yaml
+- runFlow: ../flows/password-recovery.yaml
+- runFlow: ../flows/onboarding-navigation.yaml

@@ -49,6 +49,17 @@ Do not use test count or coverage percentage as a reason to retain a weak test.
 
 ### Test and CI timing
 
+`pnpm test:ci` runs the same maintained Vitest, Node, and Jest suites while
+retaining JUnit/JSON results and source-tagged stage timings under ignored
+`.maestro/artifacts/ci/`. `pnpm test:coverage` additionally collects coverage;
+weekly CI and the manual EAS `test-coverage.yml` retain its HTML, lcov, and JSON
+reports. Coverage does not call real network services or enforce a numeric gate.
+
+Vitest owns maintained `.ts` application and Convex source, excluding test/type
+files and generated Convex code. Jest owns rendered `.tsx` source, excluding UI
+test files. Configuration fixtures and source-contract tests live outside those
+source include sets. Read the two reports separately to avoid double-counting.
+
 `node scripts/benchmark-checks.mjs` runs the CI commands sequentially: lint,
 typecheck, then three full test runs. It prints `DAYOVA_BENCHMARK` JSON records
 with elapsed seconds, trial, runtime, and exit status. A failed check stops the
@@ -58,6 +69,9 @@ report each sample and the median, and separate cold transforms from warm runs.
 The manual EAS workflow `test-benchmark.yml` uses the same Node/pnpm versions and
 `linux-medium` runner as CI, with no deployment jobs. Run it against explicit
 commits using `eas workflow:run test-benchmark.yml --ref <sha> --non-interactive`.
+Set `--input jest_workers=1` or `--input jest_workers=2` for matched worker
+comparisons. `export-benchmark.yml` accepts `--input mode=separate` or
+`--input mode=combined`, repeats three exports, and never publishes an update.
 Report test time separately from install/queue time and the whole quality job;
 local timing cannot establish a remote CI speedup. See [PR #901](https://github.com/Dayova/dayova-mvp/pull/901) for the October 2026 audit, raw samples, and fault checks.
 

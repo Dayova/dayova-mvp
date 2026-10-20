@@ -1,5 +1,9 @@
 module.exports = {
 	preset: "jest-expo",
+	maxWorkers: Number(process.env.CI_JEST_WORKERS ?? 1),
+	collectCoverageFrom: ["src/**/*.tsx", "!src/**/*.ui.test.tsx"],
+	coverageDirectory: ".maestro/artifacts/ci/coverage/jest",
+	coverageReporters: ["text-summary", "json-summary", "lcov", "html"],
 	moduleNameMapper: {
 		"^@hugeicons/core-free-icons$": "<rootDir>/tests/adapters/hugeicons.cjs",
 		"^#convex/(.*)$": "<rootDir>/convex/$1",
