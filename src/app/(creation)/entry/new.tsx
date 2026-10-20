@@ -203,7 +203,7 @@ export default function NewEntryScreen() {
 	const fieldTextColor = colors.text;
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
-	const createDayEntry = useMutation(api.dayEntries.create);
+	const createDayEntry = useMutation(api.dayEntries.createWithResult);
 	const updatePendingExam = useMutation(api.dayEntries.updatePendingExam);
 	const { capture } = useValidationAnalytics();
 	const params = useLocalSearchParams<{
@@ -441,6 +441,7 @@ export default function NewEntryScreen() {
 			? `${trimmedSubject} Hausaufgabe`
 			: `${trimmedSubject} ${trimmedExamType}`;
 		let createdEntryId: Id<"dayEntries"> | null = null;
+		let wasCreated = false;
 
 		const interaction = isHomework
 			? "homework.create"
@@ -485,18 +486,20 @@ export default function NewEntryScreen() {
 				});
 				createdEntryId = savedExamId;
 			} else {
-				createdEntryId = await createDayEntry(entryFields);
+				const result = await createDayEntry(entryFields);
+				createdEntryId = result.id;
+				wasCreated = result.created;
 				if (!isHomework) savedExamIdRef.current = createdEntryId;
 			}
 			trackFeature(interaction, "succeeded", createdEntryId);
-			if (isHomework) {
+			if (isHomework && wasCreated) {
 				void capture("homework_created", {
 					day_entry_id: createdEntryId,
 					planned_day_key: nextDayKey,
 					due_day_key: getDayKey(dueDate),
 					duration_minutes: resolvedDurationMinutes,
 				});
-			} else if (selectedExamType && !savedExamId) {
+			} else if (!isHomework && selectedExamType && wasCreated) {
 				void capture("exam_created", {
 					day_entry_id: createdEntryId,
 					planned_day_key: nextDayKey,
