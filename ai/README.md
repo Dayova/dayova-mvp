@@ -63,6 +63,13 @@ observation, including retries, so observation-based user/session cost totals
 include the generations. Workflow/entity metadata is also present directly on
 observations. Names remain stable when models change; dynamic IDs and attempt
 numbers belong in attributes rather than names.
+Known application workflows also carry the static German `workflowLabel` and
+`workflowDescription` in trace metadata and every child observation's metadata.
+Open a trace/observation's metadata to read these explanations. For example,
+`ensureSessionContent` means "Lernblock-Inhalte bereitstellen": existing content
+can be reused; only child generation observations represent actual model calls.
+These descriptions apply to new traces after the backend is deployed; historical
+traces are not backfilled. Keep explanations static and free of learner content.
 The exporter is awaited at action completion and has a bounded flush timeout.
 Telemetry setup/export failures do not change the learner result or error.
 
