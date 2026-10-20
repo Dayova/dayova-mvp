@@ -112,6 +112,12 @@ when the PostHog key is absent.
 
 ## SDK 58 runtime boundary
 
+The subsequent symbols-complete release uses shared app/runtime `1.0.8`.
+`expo-symbols` adds iOS `SymbolModule`; the earlier distributed 1.0.6 graph
+and previously used 1.0.7 test runtime must not receive this candidate's OTA.
+The verified production baseline remains on 1.0.5 until replacement store
+artifacts and staging OTA launches are verified on both platforms.
+
 The SDK 58 / React Native 0.88 upgrade uses app/runtime `1.0.6` on both platforms.
 Keep the distributed SDK 57 baseline immutable; this graph requires new native
 binaries and must not be published to runtime `1.0.5`. Patch ownership and upstream

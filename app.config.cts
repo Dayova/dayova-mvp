@@ -55,7 +55,7 @@ if (isReleaseConfig) {
 	validatePublicEnvForRelease(undefined, { platform: releasePlatform });
 }
 
-const APP_VERSION = "1.0.6";
+const APP_VERSION = "1.0.8";
 const BACKGROUND_COLOR = "#ffffff";
 // Keep this native launch color aligned with DARK_THEME_VARIABLES["--background"].
 // theme-css.test.ts prevents the values from drifting.
