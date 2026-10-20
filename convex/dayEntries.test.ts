@@ -12,6 +12,72 @@ const user = {
 	tokenIdentifier: "test:user",
 };
 
+test.each([
+	"Hausaufgabe",
+	"Leistungskontrolle",
+])("reports creation only for the first save of the same %s", async (kind) => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const args = {
+		dayKey: "2026-10-24",
+		title: `Englisch ${kind}`,
+		kind,
+		time: "16:00",
+		durationMinutes: 30,
+	};
+	const first = await t.mutation(api.dayEntries.createWithResult, args);
+	expect(first.created).toBe(true);
+	expect(await t.query(api.dayEntries.get, { id: first.id })).toMatchObject({
+		title: args.title,
+		kind,
+	});
+	expect(await t.mutation(api.dayEntries.createWithResult, args)).toEqual({
+		id: first.id,
+		created: false,
+	});
+	// Installed clients still receive an ID, and share the same deduplication.
+	expect(await t.mutation(api.dayEntries.create, args)).toBe(first.id);
+	const entries = await t.query(api.dayEntries.listByDayKeys, {
+		dayKeys: [args.dayKey],
+	});
+	expect(entries[args.dayKey]).toHaveLength(1);
+
+	const legacyId = await t.mutation(api.dayEntries.create, {
+		...args,
+		dayKey: "2026-10-25",
+	});
+	expect(
+		await t.mutation(api.dayEntries.createWithResult, {
+			...args,
+			dayKey: "2026-10-25",
+		}),
+	).toEqual({ id: legacyId, created: false });
+});
+
+test("creation results require auth and deduplicate within the current owner only", async () => {
+	const backend = convexTest(schema, modules);
+	const args = {
+		dayKey: "2026-10-24",
+		title: "Englisch Hausaufgabe",
+		kind: "Hausaufgabe",
+	};
+	await expect(
+		backend.mutation(api.dayEntries.createWithResult, args),
+	).rejects.toThrow("Nicht authentifiziert.");
+	const owner = backend.withIdentity(user);
+	const first = await owner.mutation(api.dayEntries.createWithResult, args);
+	const other = await backend
+		.withIdentity({ tokenIdentifier: "test:another-user" })
+		.mutation(api.dayEntries.createWithResult, args);
+	expect(other.created).toBe(true);
+	expect(other.id).not.toBe(first.id);
+	const different = await owner.mutation(api.dayEntries.createWithResult, {
+		...args,
+		title: "Mathematik Hausaufgabe",
+	});
+	expect(different.created).toBe(true);
+	expect(different.id).not.toBe(first.id);
+});
+
 // The cache discriminator changes only the client cache key. A query that
 // returns different data, leaks another owner's entries, or skips auth must fail.
 test("notification planning reads the same persisted, owner-scoped day entries", async () => {
