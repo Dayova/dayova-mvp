@@ -5,9 +5,15 @@ import { File } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { type Href, Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import {
+	composeExamTopicDescription,
+	type ExamTopicInput,
+	parseTopicItemsParam,
+	readExamTopicInput,
+} from "#convex/examTopicInput";
 import { isMeaningfulTopicDescription } from "#convex/topicDescriptionValidation";
 import {
 	ActionSheet,
@@ -31,6 +37,7 @@ import {
 import { prepareGalleryUploadAsset } from "~/features/learning-plans/gallery-upload";
 import { useLearningPlanSetupOrigin } from "~/features/learning-plans/learning-plan-setup-origin";
 import {
+	ExamHintsStep,
 	MaterialUploadStep,
 	RequiredTopicsStep,
 } from "~/features/learning-plans/learning-plan-setup-steps";
@@ -90,6 +97,8 @@ export default function NewLearningPlanScreen() {
 		examDateLabel?: string;
 		durationMinutes?: string;
 		topicDescription?: string;
+		topicItems?: string;
+		topicAdditionalInfo?: string;
 		teacherGuidance?: string;
 		fromExamEntry?: string;
 		errorMessage?: string;
@@ -101,11 +110,15 @@ export default function NewLearningPlanScreen() {
 	const updateRequiredTopics = useMutation(
 		api.learningPlans.updateRequiredTopics,
 	);
+	const searchTopics = useAction(api.wloTopics.search);
 	const generateUploadUrl = useMutation(api.learningPlans.generateUploadUrl);
 	const registerUploadedDocument = useAction(
 		api.learningPlans.registerUploadedDocument,
 	);
 	const removeDocument = useMutation(api.learningPlans.removeDocument);
+	const loadDocumentPreview = useMutation(
+		api.learningPlans.getDocumentPreviewUrl,
+	);
 
 	const subject = params.subject?.trim() || "Fach";
 	const personalSubjectId = params.personalSubjectId as
@@ -127,12 +140,18 @@ export default function NewLearningPlanScreen() {
 		useState<Id<"learningPlans"> | null>(initialLearningPlanId ?? null);
 	const [setupStep, setSetupStep] = useState<LearningPlanSetupStep>(() => {
 		if (params.step === "topic") return "requiredTopics";
+		if (params.step === "hints") return "examHints";
 		if (params.step === "material" || params.errorMessage)
 			return "materialUpload";
 		return initialLearningPlanId ? "materialUpload" : "requiredTopics";
 	});
-	const [topicsInput, setTopicsInput] = useState<string | null>(
-		params.topicDescription ?? params.teacherGuidance ?? null,
+	const [topicInput, setTopicInput] = useState<ExamTopicInput | null>(() =>
+		initialLearningPlanId
+			? null
+			: readExamTopicInput({
+					...params,
+					topicItems: parseTopicItemsParam(params.topicItems),
+				}),
 	);
 	// Route params can be older than the saved draft; only actual input edits
 	// may overwrite its topics when pausing.
@@ -167,7 +186,8 @@ export default function NewLearningPlanScreen() {
 			: "skip",
 	) ?? null) as LearningPlanSnapshot | null;
 	const canWrite = Boolean(user && isConvexAuthenticated && !exitRequest);
-	const topics = topicsInput ?? snapshot?.plan.topicDescription ?? "";
+	const input = topicInput ?? readExamTopicInput(snapshot?.plan ?? {});
+	const topics = composeExamTopicDescription(input);
 	const hasSchoolMaterial = Boolean(
 		snapshot?.documents.some((document) => document.sourceKind === "school"),
 	);
@@ -180,6 +200,7 @@ export default function NewLearningPlanScreen() {
 		isMeaningfulTopicDescription(topics);
 	const canContinueTopics =
 		canWrite &&
+		!isPlanSnapshotLoading &&
 		!isBusy &&
 		!openingUploadAction &&
 		isMeaningfulTopicDescription(topics);
@@ -188,7 +209,9 @@ export default function NewLearningPlanScreen() {
 	const currentProgressStep =
 		setupStep === "requiredTopics"
 			? LEARNING_PLAN_CREATION_STEPS.examTopics
-			: LEARNING_PLAN_CREATION_STEPS.materialUpload;
+			: setupStep === "examHints"
+				? LEARNING_PLAN_CREATION_STEPS.examHints
+				: LEARNING_PLAN_CREATION_STEPS.materialUpload;
 
 	useEffect(() => {
 		if (!hasExamEntry) {
@@ -200,6 +223,8 @@ export default function NewLearningPlanScreen() {
 		if (params.step === "topic") {
 			// eslint-disable-next-line react-hooks/set-state-in-effect -- Route params can change while this screen remains mounted.
 			setSetupStep("requiredTopics");
+		} else if (params.step === "hints") {
+			setSetupStep("examHints");
 		} else if (params.step === "material" || params.errorMessage) {
 			setSetupStep("materialUpload");
 		}
@@ -229,6 +254,7 @@ export default function NewLearningPlanScreen() {
 				examDateLabel,
 				durationMinutes,
 				topicDescription,
+				...input,
 				notes: "",
 			}),
 		);
@@ -581,6 +607,7 @@ export default function NewLearningPlanScreen() {
 						updateRequiredTopics({
 							id: learningPlanId,
 							topicDescription: topics,
+							...input,
 						}),
 					);
 				} else {
@@ -590,6 +617,8 @@ export default function NewLearningPlanScreen() {
 					errorMessage: undefined,
 					step: "material",
 					topicDescription: topics,
+					topicItems: JSON.stringify(input.topicItems),
+					topicAdditionalInfo: input.topicAdditionalInfo,
 				});
 				setSetupStep("materialUpload");
 			} catch (error) {
@@ -650,6 +679,7 @@ export default function NewLearningPlanScreen() {
 					examDateKey,
 					durationMinutes,
 					topicDescription: topics,
+					...input,
 				}),
 			});
 			return true;
@@ -684,7 +714,9 @@ export default function NewLearningPlanScreen() {
 			try {
 				if (
 					hasEditedTopicsRef.current &&
-					topics !== snapshot?.plan.topicDescription
+					(topics !== snapshot?.plan.topicDescription ||
+						JSON.stringify(input) !==
+							JSON.stringify(readExamTopicInput(snapshot?.plan ?? {})))
 				) {
 					if (!isMeaningfulTopicDescription(topics)) {
 						throw new Error(
@@ -695,6 +727,7 @@ export default function NewLearningPlanScreen() {
 						updateRequiredTopics({
 							id: learningPlanId,
 							topicDescription: topics,
+							...input,
 						}),
 					);
 				}
@@ -716,6 +749,7 @@ export default function NewLearningPlanScreen() {
 	const goBack = () => {
 		if (exitRequest || isBusy || topicActionGateRef.current.isRunning)
 			return true;
+		if (isPauseConfirmationVisible) return true;
 		const intent = getLearningPlanCreationBackIntent({
 			step: setupStep,
 			hasSavedDraft: Boolean(learningPlanId),
@@ -724,7 +758,10 @@ export default function NewLearningPlanScreen() {
 		if (intent.kind === "ignore") return true;
 		if (intent.kind === "previousStep") {
 			setErrorMessage(null);
-			router.setParams({ errorMessage: undefined, step: "topic" });
+			router.setParams({
+				errorMessage: undefined,
+				step: intent.step === "examHints" ? "hints" : "topic",
+			});
 			setSetupStep(intent.step);
 			return true;
 		}
@@ -776,47 +813,68 @@ export default function NewLearningPlanScreen() {
 	};
 
 	if (!hasExamEntry) return null;
+	const changeAdditionalInfo = (value: string) => {
+		hasEditedTopicsRef.current = true;
+		setTopicInput({ ...input, topicAdditionalInfo: value });
+	};
+	const hintSubject = snapshot?.plan.subject ?? subject;
 
 	return (
 		<Screen>
 			<Stack.Screen options={{ gestureEnabled: true }} />
-			<ScreenScroll
-				key={setupStep}
-				includeTopSafeArea={false}
-				topPadding={0}
-				contentContainerStyle={{ flexGrow: 1 }}
-			>
-				<View key={setupStep} className="flex-1">
-					{setupStep === "requiredTopics" ? (
-						<RequiredTopicsStep
-							canContinue={canContinueTopics}
-							errorMessage={errorMessage}
-							isBusy={isBusy}
-							onChangeTopics={(value) => {
-								hasEditedTopicsRef.current = true;
-								setTopicsInput(value);
-							}}
-							onContinue={() => void continueToMaterial()}
-							topics={topics}
-						/>
-					) : (
-						<MaterialUploadStep
-							canUpload={canUpload}
-							canContinue={canContinueUpload}
-							documents={snapshot?.documents ?? []}
-							errorMessage={errorMessage}
-							isBusy={isBusy}
-							isUploading={isUploading}
-							onContinue={continueToAnalysis}
-							onOpenUpload={() => setIsUploadSheetVisible(true)}
-							onRemoveDocument={(id) => void removeUploadedDocument(id)}
-							onSkip={finishWithMaterialLater}
-							openingUploadAction={openingUploadAction}
-							showSkip={setupOrigin === "newExam"}
-						/>
-					)}
-				</View>
-			</ScreenScroll>
+			{setupStep === "examHints" ? (
+				<ExamHintsStep
+					subject={hintSubject}
+					selectedTopics={input.topicItems}
+					additionalInfo={input.topicAdditionalInfo}
+					onChange={changeAdditionalInfo}
+					onContinue={() => void continueToMaterial()}
+					canContinue={canContinueTopics}
+					errorMessage={errorMessage}
+					isBusy={isBusy || isPlanSnapshotLoading}
+				/>
+			) : setupStep === "requiredTopics" ? (
+				<RequiredTopicsStep
+					subject={hintSubject}
+					searchTopics={searchTopics}
+					canContinue={canContinueTopics}
+					errorMessage={errorMessage}
+					isBusy={isBusy || isPlanSnapshotLoading}
+					onContinue={() => {
+						if (!canContinueTopics) return;
+						setErrorMessage(null);
+						setSetupStep("examHints");
+						router.setParams({ step: "hints", errorMessage: undefined });
+					}}
+					selectedTopics={input.topicItems}
+					onChangeSelectedTopics={(value) => {
+						hasEditedTopicsRef.current = true;
+						setTopicInput({ ...input, topicItems: value });
+					}}
+				/>
+			) : (
+				<ScreenScroll
+					includeTopSafeArea={false}
+					topPadding={0}
+					contentContainerStyle={{ flexGrow: 1 }}
+				>
+					<MaterialUploadStep
+						canUpload={canUpload}
+						canContinue={canContinueUpload}
+						documents={snapshot?.documents ?? []}
+						loadPreview={loadDocumentPreview}
+						errorMessage={errorMessage}
+						isBusy={isBusy || isPlanSnapshotLoading}
+						isUploading={isUploading}
+						onContinue={continueToAnalysis}
+						onOpenUpload={() => setIsUploadSheetVisible(true)}
+						onRemoveDocument={(id) => void removeUploadedDocument(id)}
+						onSkip={finishWithMaterialLater}
+						openingUploadAction={openingUploadAction}
+						showSkip={setupOrigin === "newExam"}
+					/>
+				</ScreenScroll>
+			)}
 
 			<ActionSheet
 				visible={isUploadSheetVisible}

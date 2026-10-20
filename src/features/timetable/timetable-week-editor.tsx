@@ -3,6 +3,7 @@ import {
 	type NativeScrollEvent,
 	type NativeSyntheticEvent,
 	ScrollView,
+	type ScrollViewInstance,
 	type TextStyle,
 	View,
 	type ViewStyle,
@@ -211,7 +212,7 @@ function TimetableWeekEditor({
 	onOpenSubjectPicker,
 }: TimetableWeekEditorProps) {
 	const { shouldStackInlineContent } = useContentSizeLayout();
-	const lessonPagerRef = useRef<ScrollView>(null);
+	const lessonPagerRef = useRef<ScrollViewInstance>(null);
 	const shouldAnimateLessonScrollRef = useRef(false);
 	const [lessonPagerWidth, setLessonPagerWidth] = useState(0);
 	const [lessonIndexByDay, setLessonIndexByDay] = useState<
@@ -391,5 +392,4 @@ function TimetableWeekEditor({
 	);
 }
 
-export type { TimetableWeekEditorProps };
 export { TimetableWeekEditor };

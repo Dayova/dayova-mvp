@@ -34,6 +34,7 @@ import {
 	validationAnalyticsBeforeSend,
 } from "~/lib/analytics";
 import { useClerkConvexAuth } from "~/lib/clerk-convex-auth";
+import { getRunningUpdateInstallation } from "~/lib/running-update-installation";
 import { env, missingPublicRuntimeConfig } from "~/lib/runtime-config";
 import { DayovaThemeProvider, NAV_THEMES, useDayovaTheme } from "~/lib/theme";
 import { DARK_THEME_VARIABLES } from "~/lib/theme-variables";
@@ -130,6 +131,10 @@ function MissingConfigurationScreen() {
 }
 
 export default function RootLayout() {
+	useEffect(() => {
+		void getRunningUpdateInstallation();
+	}, []);
+
 	if (missingPublicRuntimeConfig.length > 0 || !convex) {
 		const missingConfigKeys =
 			missingPublicRuntimeConfig.length > 0
@@ -176,6 +181,9 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 						{/* Native sessions persist by default; there is no per-login opt-out.
 						    Decision: https://app.notion.com/p/3a02e87228bf81bf9f65f6214759a770 */}
 						<ClerkProvider
+							// Dayova renders custom JS auth screens. Clerk 4 exposes this
+							// switch instead of the old TurboModule startup workaround.
+							__experimental_disableNativeClientSync
 							publishableKey={
 								env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? ""
 							}

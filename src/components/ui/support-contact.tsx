@@ -1,6 +1,6 @@
 import * as Application from "expo-application";
 import { type ReactNode, useCallback, useRef, useState } from "react";
-import { Platform, Share, type View } from "react-native";
+import { Platform, Share, type ViewInstance } from "react-native";
 import { Button } from "~/components/ui/button";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
 import { ErrorMessage } from "~/components/ui/error-message";
@@ -15,7 +15,7 @@ const SUPPORT_WEBSITE = "https://dayova.com/support";
 type SupportTrigger = {
 	onPress: () => void;
 	busy: boolean;
-	buttonRef: (node: View | null) => void;
+	buttonRef: (node: ViewInstance | null) => void;
 };
 
 /** Opens a user-editable draft. Only static screen context and app/device versions
@@ -34,8 +34,8 @@ export function SupportContact({
 	const [shareError, setShareError] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const inFlight = useRef(false);
-	const buttonRef = useRef<View>(null);
-	const setButtonRef = useCallback((node: View | null) => {
+	const buttonRef = useRef<ViewInstance>(null);
+	const setButtonRef = useCallback((node: ViewInstance | null) => {
 		buttonRef.current = node;
 	}, []);
 

@@ -6,6 +6,7 @@ import {
 	learningTopicValidator,
 } from "./learningTopicMap";
 import { theoryContentValidator } from "./theoryContent";
+import { wloTopicResult } from "./wloTopicContract";
 
 const planQuestionValidator = v.object({
 	id: v.string(),
@@ -131,6 +132,67 @@ const sessionContentChoiceValidator = v.object({
 });
 
 export default defineSchema({
+	clerkIdentities: defineTable({
+		tokenIdentifier: v.string(),
+		clerkId: v.string(),
+		updatedAt: v.number(),
+		eventAt: v.number(),
+		verifiedEmail: v.optional(v.string()),
+		deletedAt: v.optional(v.number()),
+		deletionCompletedAt: v.optional(v.number()),
+	})
+		.index("by_tokenIdentifier", ["tokenIdentifier"])
+		.index("by_deletionCompletedAt", ["deletionCompletedAt"]),
+	wloTopicCache: defineTable({
+		slot: v.string(),
+		key: v.string(),
+		result: wloTopicResult,
+		expiresAt: v.number(),
+	}).index("by_slot", ["slot"]),
+	accountDeletionRequests: defineTable({
+		requestId: v.string(),
+		ownerTokenIdentifier: v.optional(v.string()),
+		clerkUserId: v.optional(v.string()),
+		status: v.union(
+			v.literal("queued"),
+			v.literal("processing"),
+			v.literal("retryScheduled"),
+			v.literal("manualReview"),
+			v.literal("completed"),
+		),
+		stage: v.union(
+			v.literal("revokeSessions"),
+			v.literal("deleteClerkIdentity"),
+			v.literal("deleteRevenueCat"),
+			v.literal("deletePostHog"),
+			v.literal("deleteData"),
+			v.literal("deleteNotion"),
+			v.literal("complete"),
+		),
+		attemptCount: v.number(),
+		deletedRecords: v.number(),
+		lastErrorCode: v.optional(v.string()),
+		clerkStatus: v.optional(
+			v.union(v.literal("completed"), v.literal("notConfigured")),
+		),
+		revenueCatStatus: v.optional(
+			v.union(v.literal("completed"), v.literal("notConfigured")),
+		),
+		postHogStatus: v.optional(
+			v.union(v.literal("completed"), v.literal("notConfigured")),
+		),
+		crmDataSourceId: v.optional(v.string()),
+		crmPageId: v.optional(v.string()),
+		crmDeletionVerified: v.optional(v.boolean()),
+		policyVersion: v.string(),
+		requestedAt: v.number(),
+		updatedAt: v.number(),
+		nextAttemptAt: v.optional(v.number()),
+		completedAt: v.optional(v.number()),
+	})
+		.index("by_requestId", ["requestId"])
+		.index("by_status_and_completedAt", ["status", "completedAt"])
+		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
 	crmStudentSignups: defineTable({
 		userId: v.id("users"),
 		status: v.union(v.literal("pending"), v.literal("review")),
@@ -165,8 +227,13 @@ export default defineSchema({
 		key: v.string(),
 		runId: v.string(),
 		dataSourceId: v.string(),
-		mode: v.union(v.literal("dry-run"), v.literal("live")),
+		mode: v.union(
+			v.literal("dry-run"),
+			v.literal("live"),
+			v.literal("cleanup"),
+		),
 		running: v.boolean(),
+		cleanupLease: v.optional(v.boolean()),
 		startedAt: v.number(),
 		finishedAt: v.optional(v.number()),
 		dryRunAt: v.optional(v.number()),
@@ -252,6 +319,7 @@ export default defineSchema({
 	})
 		.index("by_learningPlanSessionId", ["learningPlanSessionId"])
 		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
+		.index("by_recordedByTokenIdentifier", ["recordedByTokenIdentifier"])
 		.index("by_recordedAt", ["recordedAt"]),
 	onboardingQuestions: defineTable({
 		key: v.string(),
@@ -470,6 +538,8 @@ export default defineSchema({
 			),
 		),
 		topicDescription: v.string(),
+		topicItems: v.optional(v.array(v.string())),
+		topicAdditionalInfo: v.optional(v.string()),
 		teacherGuidance: v.optional(v.string()),
 		notes: v.optional(v.string()),
 		status: v.union(

@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
+import { assertAccountActive } from "./accountDeletion";
 import { getBerlinDayKey, getDayKeyQueryVariants } from "./dayKeyVariants";
 import { throwUserFacingError } from "./errors";
 import {
@@ -239,6 +240,7 @@ const requireOwnerTokenIdentifier = async (ctx: QueryCtx | MutationCtx) => {
 	if (identity === null) {
 		throwUserFacingError("Nicht authentifiziert.");
 	}
+	await assertAccountActive(ctx, identity.tokenIdentifier);
 
 	return identity.tokenIdentifier;
 };
@@ -246,7 +248,50 @@ const requireOwnerTokenIdentifier = async (ctx: QueryCtx | MutationCtx) => {
 export const listByDayKeys = query({
 	args: {
 		dayKeys: v.array(v.string()),
+		// A separate cache key keeps notification side effects on persisted data.
+		cacheScope: v.optional(v.literal("notificationPlanning")),
 	},
+	returns: v.record(
+		v.string(),
+		v.array(
+			v.object({
+				...entryFields,
+				id: v.union(
+					v.id("dayEntries"),
+					v.id("learningPlanSessions"),
+					v.id("timetableLessons"),
+				),
+				relatedDayEntryId: v.optional(v.id("dayEntries")),
+				dayKey: v.optional(v.string()),
+				source: v.optional(v.literal("timetable")),
+				topicDescription: v.optional(v.string()),
+				executionStatus: v.optional(
+					v.union(
+						v.literal("notStarted"),
+						v.literal("started"),
+						v.literal("completed"),
+						v.literal("partiallyCompleted"),
+						v.literal("missed"),
+						v.literal("adjusted"),
+					),
+				),
+				startedAt: v.optional(v.number()),
+				outcomeAt: v.optional(v.number()),
+				missedReason: v.optional(
+					v.union(
+						v.literal("no_time"),
+						v.literal("forgot"),
+						v.literal("no_motivation"),
+						v.literal("too_hard"),
+						v.literal("too_big"),
+						v.literal("unclear"),
+						v.literal("other"),
+					),
+				),
+				adjustedFromSessionId: v.optional(v.id("learningPlanSessions")),
+			}),
+		),
+	),
 	handler: async (ctx, args) => {
 		if (args.dayKeys.length > 31) {
 			throwUserFacingError("Zu viele Tage auf einmal angefragt.");

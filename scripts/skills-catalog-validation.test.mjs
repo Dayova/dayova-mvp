@@ -1,25 +1,40 @@
+import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+	cpSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { after, test } from "node:test";
-import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { validateMattLockEntry, validateSkill } from "./skill-metadata.mjs";
 import { duplicateExpoPluginSkills } from "./skills-policy.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const validatorPath = join(repoRoot, "scripts", "validate-skills-catalog.mjs");
 const fixtureRoot = mkdtempSync(join(tmpdir(), "dayova-skill-catalog-"));
 
 after(() => rmSync(fixtureRoot, { force: true, recursive: true }));
 
-function runValidator(configPath, args = ["--check-codex-config"]) {
-	return spawnSync(process.execPath, [validatorPath, ...args], {
-		cwd: repoRoot,
-		encoding: "utf8",
-		env: { ...process.env, CODEX_CONFIG_PATH: configPath },
-	});
+function runValidator(
+	configPath,
+	args = ["--check-codex-config"],
+	root = repoRoot,
+) {
+	return spawnSync(
+		process.execPath,
+		[join(root, "scripts", "validate-skills-catalog.mjs"), ...args],
+		{
+			cwd: root,
+			encoding: "utf8",
+			env: { ...process.env, CODEX_CONFIG_PATH: configPath },
+		},
+	);
 }
 
 function writeConfig(name, content) {
@@ -36,6 +51,106 @@ test("warns and succeeds when the Codex config is missing", () => {
 	const result = runValidator(join(fixtureRoot, "missing.toml"));
 	assert.equal(result.status, 0, result.stderr);
 	assert.match(result.stderr, /Codex config not found/);
+});
+
+// Exercise governance rejection paths against an isolated catalog. Restore each
+// mutation so tests never edit the contributor's installed skills or manifest.
+const governanceFixture = join(fixtureRoot, "governance");
+for (const path of [".agents", "docs", "scripts", "skills-lock.json"]) {
+	cpSync(join(repoRoot, path), join(governanceFixture, path), {
+		recursive: true,
+	});
+}
+symlinkSync(
+	join(repoRoot, "node_modules"),
+	join(governanceFixture, "node_modules"),
+	"junction",
+);
+
+function checkGovernanceMutation(path, transform, expectedError) {
+	const target = join(governanceFixture, path);
+	const original = readFileSync(target, "utf8");
+	try {
+		writeFileSync(target, transform(original), "utf8");
+		const result = runValidator(undefined, [], governanceFixture);
+		assert.equal(result.status, 1, result.stderr);
+		assert.match(result.stderr, expectedError);
+	} finally {
+		writeFileSync(target, original, "utf8");
+	}
+}
+
+test("accepts the isolated governed catalog without historical execution reports", () => {
+	const result = runValidator(undefined, [], governanceFixture);
+	assert.equal(result.status, 0, result.stderr);
+});
+
+test("rejects an installed skill without a governance record", () => {
+	const skillRoot = join(
+		governanceFixture,
+		".agents",
+		"skills",
+		"ungoverned-fixture",
+	);
+	mkdirSync(skillRoot, { recursive: true });
+	writeFileSync(
+		join(skillRoot, "SKILL.md"),
+		"---\nname: ungoverned-fixture\ndescription: Test governance coverage\n---\n",
+	);
+	try {
+		const result = runValidator(undefined, [], governanceFixture);
+		assert.equal(result.status, 1, result.stderr);
+		assert.match(
+			result.stderr,
+			/Governed repository skill set.*ungoverned-fixture/,
+		);
+	} finally {
+		rmSync(skillRoot, { recursive: true, force: true });
+	}
+});
+
+test("rejects authorization classes outside the governed set", () => {
+	checkGovernanceMutation(
+		"scripts/agent-system-governance.mjs",
+		(text) =>
+			`${text}\nskillGovernance.research.authorizationClass = 'unrestricted';\n`,
+		/skillGovernance.research.authorizationClass is unknown: unrestricted/,
+	);
+});
+
+test("rejects invocation drift between governance and installed metadata", () => {
+	checkGovernanceMutation(
+		".agents/skills/maintain-dayova-agent-system/agents/openai.yaml",
+		(text) =>
+			text.replace(
+				"allow_implicit_invocation: true",
+				"allow_implicit_invocation: false",
+			),
+		/maintain-dayova-agent-system.invocation must match agents\/openai.yaml \(explicit\)/,
+	);
+});
+
+test("rejects an evaluation suite whose maintained fixture is missing", () => {
+	checkGovernanceMutation(
+		"scripts/agent-system-governance.mjs",
+		(text) =>
+			`${text}\nevalSuites['maintain-agent-system-routing'].fixture = '.agents/evals/missing.json';\n`,
+		/fixture does not exist: .agents\/evals\/missing.json/,
+	);
+});
+
+test("rejects behavioral case sets that lose mutation-safety coverage", () => {
+	checkGovernanceMutation(
+		".agents/evals/maintain-dayova-agent-system.json",
+		(text) => {
+			const fixture = JSON.parse(text);
+			fixture.cases = fixture.cases.filter(
+				(entry) => entry.kind !== "mutation-safety",
+			);
+			return JSON.stringify(fixture);
+		},
+		/requires at least 2 mutation-safety cases/,
+	);
 });
 
 test("skips duplicate checks when the Expo plugin is disabled", () => {

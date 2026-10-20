@@ -1,121 +1,154 @@
 {
-  "cli": {
-    "version": ">= 18.11.0",
-    "appVersionSource": "remote",
-    "requireCommit": true
-  },
-  "build": {
-    "base": {
-      "node": "24.18.0",
-      "pnpm": "11.15.1"
-    },
-    "development": {
-      "extends": "base",
-      "developmentClient": true,
-      "distribution": "internal",
-      "channel": "development",
-      "environment": "development",
-      "env": {
-        "APP_VARIANT": "development"
-      }
-    },
-    "development-simulator": {
-      "extends": "development",
-      "environment": "production",
-      "ios": {
-        "simulator": true
-      }
-    },
-    "preview": {
-      "extends": "base",
-      "distribution": "internal",
-      "channel": "preview",
-      "environment": "preview",
-      "env": {
-        "APP_VARIANT": "preview"
-      }
-    },
-    "production": {
-      "extends": "base",
-      "autoIncrement": true,
-      "channel": "production",
-      "environment": "production",
-      "env": {
-        "APP_VARIANT": "production"
-      }
-    },
-    "ota-staging": {
-      "extends": "base",
-      "distribution": "internal",
-      "channel": "ota-staging",
-      "environment": "production",
-      "env": {
-        "APP_VARIANT": "production"
-      }
-    },
-    "ota-staging-testflight": {
-      "extends": "production",
-      "distribution": "store",
-      "channel": "ota-staging"
-    },
-    "ota-staging-simulator": {
-      "extends": "ota-staging-testflight",
-      "autoIncrement": false,
-      "ios": {
-        "simulator": true
-      }
-    },
-    "apk-test": {
-      "extends": "base",
-      "distribution": "internal",
-      "android": {
-        "buildType": "apk"
-      },
-      "env": {
-        "APP_VARIANT": "preview"
-      },
-      "channel": "apk-test"
-    },
-    "production-apk": {
-      "extends": "production",
-      "environment": "production",
-      "distribution": "internal",
-      "env": {
-        "APP_VARIANT": "production"
-      },
-      "android": {
-        "buildType": "apk",
-        "gradleCommand": ":app:assembleRelease -x lintVitalAnalyzeRelease"
-      }
-    }
-  },
-  "submit": {
-    "internal": {
-      "android": {
-        "track": "internal",
-        "releaseStatus": "completed"
-      }
-    },
-    "closed": {
-      "android": {
-        "track": "alpha",
-        "releaseStatus": "completed"
-      }
-    },
-    "open": {
-      "android": {
-        "track": "beta",
-        "releaseStatus": "completed"
-      }
-    },
-    "production": {
-      "ios": {
-        "ascAppId": "6768416097"
-      },
-      "android": {
-        "track": "production",
-        "releaseStatus": "draft"
-      }
-    }
-  }
+	"cli": {
+		"version": ">= 18.11.0",
+		"appVersionSource": "remote",
+		"requireCommit": true
+	},
+	"build": {
+		"base": {
+			"node": "24.18.0",
+			"pnpm": "11.15.1"
+		},
+		"development": {
+			"extends": "base",
+			"developmentClient": true,
+			"distribution": "internal",
+			"channel": "development",
+			"environment": "development",
+			"env": {
+				"APP_VARIANT": "development"
+			}
+		},
+		"development-simulator": {
+			"extends": "development",
+			"environment": "production",
+			"ios": {
+				"simulator": true
+			}
+		},
+		"preview": {
+			"extends": "base",
+			"distribution": "internal",
+			"channel": "preview",
+			"environment": "preview",
+			"env": {
+				"APP_VARIANT": "preview"
+			}
+		},
+		"validation": {
+			"extends": "base",
+			"developmentClient": false,
+			"distribution": "internal",
+			"environment": "development",
+			"channel": "validation",
+			"env": {
+				"APP_VARIANT": "preview",
+				"DAYOVA_INTERNAL_VALIDATION": "true",
+				"EXPO_PUBLIC_CONVEX_URL": "https://kindred-canary-599.eu-west-1.convex.cloud",
+				"EXPO_NO_DOTENV": "1"
+			},
+			"android": {
+				"withoutCredentials": true,
+				"gradleCommand": ":app:assembleValidation -PreactNativeArchitectures=arm64-v8a,x86_64",
+				"applicationArchivePath": "android/app/build/outputs/apk/validation/*.apk"
+			}
+		},
+		"validation-testflight": {
+			"extends": "base",
+			"developmentClient": false,
+			"distribution": "store",
+			"environment": "preview",
+			"autoIncrement": true,
+			"channel": "validation-testflight",
+			"env": {
+				"APP_VARIANT": "preview",
+				"DAYOVA_INTERNAL_VALIDATION": "true",
+				"DAYOVA_VALIDATION_DISTRIBUTION": "testflight",
+				"EXPO_PUBLIC_CONVEX_URL": "https://kindred-canary-599.eu-west-1.convex.cloud",
+				"EXPO_NO_DOTENV": "1"
+			}
+		},
+		"production": {
+			"extends": "base",
+			"autoIncrement": true,
+			"channel": "production",
+			"environment": "production",
+			"env": {
+				"APP_VARIANT": "production"
+			}
+		},
+		"ota-staging": {
+			"extends": "base",
+			"distribution": "internal",
+			"channel": "ota-staging",
+			"environment": "production",
+			"env": {
+				"APP_VARIANT": "production"
+			}
+		},
+		"ota-staging-testflight": {
+			"extends": "production",
+			"distribution": "store",
+			"channel": "ota-staging"
+		},
+		"ota-staging-simulator": {
+			"extends": "ota-staging-testflight",
+			"autoIncrement": false,
+			"ios": {
+				"simulator": true
+			}
+		},
+		"apk-test": {
+			"extends": "base",
+			"distribution": "internal",
+			"android": {
+				"buildType": "apk"
+			},
+			"env": {
+				"APP_VARIANT": "preview"
+			},
+			"channel": "apk-test"
+		},
+		"production-apk": {
+			"extends": "production",
+			"environment": "production",
+			"distribution": "internal",
+			"env": {
+				"APP_VARIANT": "production"
+			},
+			"android": {
+				"buildType": "apk",
+				"gradleCommand": ":app:assembleRelease -x lintVitalAnalyzeRelease"
+			}
+		}
+	},
+	"submit": {
+		"internal": {
+			"android": {
+				"track": "internal",
+				"releaseStatus": "completed"
+			}
+		},
+		"closed": {
+			"android": {
+				"track": "alpha",
+				"releaseStatus": "completed"
+			}
+		},
+		"open": {
+			"android": {
+				"track": "beta",
+				"releaseStatus": "completed"
+			}
+		},
+		"production": {
+			"ios": {
+				"ascAppId": "6768416097"
+			},
+			"android": {
+				"track": "production",
+				"releaseStatus": "draft"
+			}
+		}
+	}
 }

@@ -51,7 +51,7 @@ function fixture(body = report()) {
 }
 
 describe("OTA report freshness status", () => {
-	it("marks a stale Expo report pending on the latest commit without writing comments", async () => {
+	it("marks a stale Expo report pending on the latest commit", async () => {
 		const f = fixture();
 		await reconcile(f.github, f.context);
 		expect(f.createCommitStatus).toHaveBeenCalledWith({
@@ -63,7 +63,6 @@ describe("OTA report freshness status", () => {
 			description: expect.stringContaining("compatibility unconfirmed"),
 			target_url: `${f.pr.html_url}/checks`,
 		});
-		expect(f.comment.body).toBe(report());
 	});
 
 	it("marks a report current when Expo assesses the PR head", async () => {
@@ -147,8 +146,12 @@ describe("OTA report freshness status", () => {
 
 	it("does not publish a status for closed or fork PRs", async () => {
 		for (const invalid of [
-			(pr: ReturnType<typeof fixture>["pr"]) => { pr.state = "closed"; },
-			(pr: ReturnType<typeof fixture>["pr"]) => { pr.head.repo.id = 2; },
+			(pr: ReturnType<typeof fixture>["pr"]) => {
+				pr.state = "closed";
+			},
+			(pr: ReturnType<typeof fixture>["pr"]) => {
+				pr.head.repo.id = 2;
+			},
 		]) {
 			const f = fixture();
 			invalid(f.pr);

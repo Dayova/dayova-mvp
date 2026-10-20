@@ -9,9 +9,18 @@ describe("learning plan creation back intent", () => {
 				hasSavedDraft: true,
 				isPauseConfirmationVisible: false,
 			}),
-		).toEqual({ kind: "previousStep", step: "requiredTopics" });
+		).toEqual({ kind: "previousStep", step: "examHints" });
 	});
 
+	test("returns from hints to topics before considering a saved-draft exit", () => {
+		expect(
+			getLearningPlanCreationBackIntent({
+				step: "examHints",
+				hasSavedDraft: true,
+				isPauseConfirmationVisible: false,
+			}),
+		).toEqual({ kind: "previousStep", step: "requiredTopics" });
+	});
 	test("confirms before pausing a saved draft from the first step", () => {
 		expect(
 			getLearningPlanCreationBackIntent({

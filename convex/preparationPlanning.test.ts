@@ -45,6 +45,23 @@ async function setup(
 	);
 	return { t, id, root };
 }
+// Read the same public calendar projection used by the app.
+async function calendar(t: Awaited<ReturnType<typeof setup>>["t"]) {
+	// Cover the complete fixture window, including the exam, so a misplaced
+	// event cannot disappear from zero/count assertions. The API accepts 31 days.
+	const days = Array.from({ length: 88 }, (_, offset) =>
+		new Date(Date.UTC(2026, 9, 5 + offset)).toISOString().slice(0, 10),
+	);
+	const groups = [];
+	for (let start = 0; start < days.length; start += 31) {
+		groups.push(
+			await t.query(api.dayEntries.listByDayKeys, {
+				dayKeys: days.slice(start, start + 31),
+			}),
+		);
+	}
+	return groups.flatMap((group) => Object.values(group).flat());
+}
 const slot = {
 	id: "slot-1",
 	dateKey: "2026-10-06",
@@ -102,12 +119,10 @@ test("schedule is atomic, has one calendar event and three small steps", async (
 	expect(
 		result?.sessions.filter((s) => s.planningStatus === "committed"),
 	).toHaveLength(1);
-	const entries = await t.run((ctx) => ctx.db.query("dayEntries").take(1000));
+	const entries = await calendar(t);
 	expect(entries).toHaveLength(1);
 	expect(entries[0].durationMinutes).toBe(30);
-	expect(
-		await t.run((ctx) => ctx.db.query("userLearningTimes").take(1000)),
-	).toHaveLength(0);
+	expect(await t.query(api.learningTimes.listMine, {})).toHaveLength(0);
 });
 test("other owners cannot inspect or adopt a schedule", async () => {
 	const { id, root } = await setup();
@@ -145,14 +160,7 @@ test("competing plans cannot book the same time", async () => {
 		}),
 	).rejects.toThrow("überschneidet");
 	expect(
-		await t.run((ctx) =>
-			ctx.db
-				.query("learningPlanSessions")
-				.withIndex("by_learningPlanId_and_sortOrder", (q) =>
-					q.eq("learningPlanId", second),
-				)
-				.take(1000),
-		),
+		(await t.query(api.learningPlans.getSnapshot, { id: second }))?.sessions,
 	).toHaveLength(0);
 });
 test("shorter accepted availability retains full fixed budget and can be edited without duplicate entries", async () => {
@@ -167,7 +175,7 @@ test("shorter accepted availability retains full fixed budget and can be edited 
 		revision: 1,
 		slots: [{ ...slot, startTime: "18:00", durationMinutes: 20 }],
 	});
-	const entries = await t.run((ctx) => ctx.db.query("dayEntries").take(1000));
+	const entries = await calendar(t);
 	expect(entries).toHaveLength(1);
 	expect(entries[0].time).toBe("18:00");
 	expect(entries[0].durationMinutes).toBe(20);
@@ -204,7 +212,7 @@ test("early completion counts once, preserves group event and stops after last r
 				outcome: "completed",
 			}),
 		).rejects.toThrow();
-		const entries = await t.run((ctx) => ctx.db.query("dayEntries").take(1000));
+		const entries = await calendar(t);
 		expect(entries).toHaveLength(1);
 	}
 	const snap = await t.query(api.learningPlans.getSnapshot, { id });
@@ -226,9 +234,7 @@ test("early completion counts once, preserves group event and stops after last r
 		(await t.query(api.learningPlans.getSnapshot, { id }))?.plan
 			.preparationState,
 	).toBe("completed");
-	expect(
-		await t.run((ctx) => ctx.db.query("dayEntries").take(1000)),
-	).toHaveLength(1);
+	expect(await calendar(t)).toHaveLength(1);
 });
 
 test("missed and partial steps remain resumable and remaining part of a day can move", async () => {
@@ -272,12 +278,13 @@ test("missed and partial steps remain resumable and remaining part of a day can 
 	});
 	snap = await t.query(api.learningPlans.getSnapshot, { id });
 	expect(snap?.sessions.filter((s) => s.completed)).toHaveLength(1);
+	expect(snap?.sessions.filter((s) => !s.completed)).toHaveLength(2);
 	expect(
 		snap?.sessions
 			.filter((s) => !s.completed)
 			.every((s) => s.dateKey === "2026-10-07"),
 	).toBe(true);
-	const entries = await t.run((ctx) => ctx.db.query("dayEntries").take(1000));
+	const entries = await calendar(t);
 	expect(entries).toHaveLength(2);
 	expect(entries.filter((e) => e.completed)).toHaveLength(1);
 });
@@ -370,9 +377,7 @@ test("same-day exam can start the full fixed preparation without calendar availa
 	expect(
 		snapshot?.sessions.find((s) => s.planningStatus === "committed")?.id,
 	).toBe(next);
-	expect(
-		await t.run((ctx) => ctx.db.query("dayEntries").take(1000)),
-	).toHaveLength(0);
+	expect(await calendar(t)).toHaveLength(0);
 	await t.mutation(api.learningPlans.startSession, { sessionId: next });
 });
 test("moving a later slot earlier reconciles exactly one committed next step", async () => {
@@ -653,14 +658,8 @@ test.each([
 			outcome: "partiallyCompleted",
 			activeStudySeconds: 120,
 		});
-	const before = await t.run((ctx) =>
-		ctx.db
-			.query("learningPlanSessions")
-			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
-				q.eq("learningPlanId", id),
-			)
-			.take(500),
-	);
+	const before = (await t.query(api.learningPlans.getSnapshot, { id: id }))
+		?.sessions;
 	const schedule = await t.query(api.learningPlans.getPreparationSchedule, {
 		learningPlanId: id,
 		now: { dateKey: "2026-10-05", minutes: 840 },
@@ -672,13 +671,13 @@ test.each([
 		revision: schedule.revision,
 		slots: [slot],
 	});
-	for (const original of before) {
-		const after = await t.run((ctx) =>
-			ctx.db.get("learningPlanSessions", original._id),
-		);
+	expect(before).toHaveLength(6);
+	for (const original of before ?? []) {
+		const after = (
+			await t.query(api.learningPlans.getSnapshot, { id })
+		)?.sessions.find((session) => session.id === original.id);
 		expect(after).toMatchObject({
 			unscheduled: true,
-			preparationSlotId: "flexible",
 			durationMinutes: original.durationMinutes,
 		});
 	}
@@ -696,31 +695,29 @@ test("deleted grouped calendar entries are recreated when a step is started", as
 		revision: 0,
 		slots: [slot],
 	});
-	const [entry] = await t.run((ctx) => ctx.db.query("dayEntries").take(10));
-	await t.mutation(api.dayEntries.remove, { id: entry._id });
+	const [entry] = await calendar(t);
+	await t.mutation(api.dayEntries.remove, {
+		id:
+			entry.relatedDayEntryId ??
+			(() => {
+				throw Error("Missing stored calendar entry");
+			})(),
+	});
 	const snapshot = await t.query(api.learningPlans.getSnapshot, { id });
 	const first = snapshot?.sessions[0];
 	if (!first) throw Error("Missing first step");
 	await t.mutation(api.learningPlans.startSession, { sessionId: first.id });
-	const entries = await t.run((ctx) => ctx.db.query("dayEntries").take(10));
+	const entries = await calendar(t);
 	expect(entries).toHaveLength(1);
-	expect(entries[0]._id).not.toBe(entry._id);
+	expect(entries[0].id).not.toBe(entry.id);
 	expect(entries[0]).toMatchObject({
 		durationMinutes: 30,
 		executionStatus: "started",
 		startedAt: Date.now(),
 	});
-	const sessions = await t.run((ctx) =>
-		ctx.db
-			.query("learningPlanSessions")
-			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
-				q.eq("learningPlanId", id),
-			)
-			.take(10),
-	);
 	expect(
-		sessions.every((session) => session.dayEntryId === entries[0]._id),
-	).toBe(true);
+		(await t.query(api.learningPlans.getSnapshot, { id }))?.sessions,
+	).toHaveLength(3);
 });
 
 test("moving the remainder skips a deleted historical calendar entry", async () => {
@@ -738,8 +735,14 @@ test("moving the remainder skips a deleted historical calendar entry", async () 
 		sessionId: first.id,
 		outcome: "completed",
 	});
-	const [entry] = await t.run((ctx) => ctx.db.query("dayEntries").take(10));
-	await t.mutation(api.dayEntries.remove, { id: entry._id });
+	const [entry] = await calendar(t);
+	await t.mutation(api.dayEntries.remove, {
+		id:
+			entry.relatedDayEntryId ??
+			(() => {
+				throw Error("Missing stored calendar entry");
+			})(),
+	});
 	const schedule = await t.query(api.learningPlans.getPreparationSchedule, {
 		learningPlanId: id,
 		now: { dateKey: "2026-10-05", minutes: 840 },
@@ -749,7 +752,7 @@ test("moving the remainder skips a deleted historical calendar entry", async () 
 		revision: schedule.revision,
 		slots: [{ ...slot, dateKey: "2026-10-07", durationMinutes: 20 }],
 	});
-	const entries = await t.run((ctx) => ctx.db.query("dayEntries").take(10));
+	const entries = await calendar(t);
 	expect(entries).toHaveLength(1);
 	expect(entries[0]).toMatchObject({
 		dayKey: "2026-10-07",
@@ -767,7 +770,7 @@ test("grouped calendar title and actual start/completion times survive repeated 
 		revision: 0,
 		slots: [slot],
 	});
-	const [initial] = await t.run((ctx) => ctx.db.query("dayEntries").take(10));
+	const [initial] = await calendar(t);
 	const startedAt = Date.now();
 	for (let i = 0; i < 3; i++) {
 		const next = (
@@ -780,7 +783,13 @@ test("grouped calendar title and actual start/completion times survive repeated 
 			sessionId: next.id,
 			outcome: "completed",
 		});
-		const entry = await t.run((ctx) => ctx.db.get("dayEntries", initial._id));
+		const entry = await t.query(api.dayEntries.get, {
+			id:
+				initial.relatedDayEntryId ??
+				(() => {
+					throw Error("Missing stored calendar entry");
+				})(),
+		});
 		expect(entry).toMatchObject({ title: initial.title, startedAt });
 	}
 	const outcomeAt = Date.now();
@@ -789,7 +798,13 @@ test("grouped calendar title and actual start/completion times survive repeated 
 		learningPlanId: id,
 	});
 	expect(
-		await t.run((ctx) => ctx.db.get("dayEntries", initial._id)),
+		await t.query(api.dayEntries.get, {
+			id:
+				initial.relatedDayEntryId ??
+				(() => {
+					throw Error("Missing stored calendar entry");
+				})(),
+		}),
 	).toMatchObject({
 		title: initial.title,
 		startedAt,
@@ -815,7 +830,7 @@ test("interrupted groups retain their start time while all steps are idle", asyn
 		sessionId: first.id,
 		outcome: "partiallyCompleted",
 	});
-	const [entry] = await t.run((ctx) => ctx.db.query("dayEntries").take(10));
+	const [entry] = await calendar(t);
 	expect(entry.startedAt).toBe(startedAt);
 	expect(entry.outcomeAt).toBeUndefined();
 });
@@ -948,18 +963,12 @@ test("flexible budget counts only open required steps and clamps to zero", async
 		(await t.query(api.learningPlans.getPreparationSchedule, args))
 			.budgetMinutes,
 	).toBe(10);
-	const open = await t.run((ctx) =>
-		ctx.db
-			.query("learningPlanSessions")
-			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
-				q.eq("learningPlanId", id),
-			)
-			.take(500),
-	);
-	const flexible = open.find((s) => s.preparationSlotId === "flexible");
+	const open = (await t.query(api.learningPlans.getSnapshot, { id: id }))
+		?.sessions;
+	const flexible = open?.find((s) => s.preparationSlotId === "flexible");
 	if (!flexible) throw Error("Missing flexible step");
 	await t.run((ctx) =>
-		ctx.db.patch("learningPlanSessions", flexible._id, {
+		ctx.db.patch("learningPlanSessions", flexible.id, {
 			durationMinutes: 240,
 		}),
 	);

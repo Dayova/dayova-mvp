@@ -12,6 +12,45 @@ const user = {
 	tokenIdentifier: "test:user",
 };
 
+// The cache discriminator changes only the client cache key. A query that
+// returns different data, leaks another owner's entries, or skips auth must fail.
+test("notification planning reads the same persisted, owner-scoped day entries", async () => {
+	const backend = convexTest(schema, modules);
+	const t = backend.withIdentity(user);
+	const id = await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-10-19",
+		title: "Mathematik üben",
+		kind: "Hausaufgabe",
+	});
+	await backend
+		.withIdentity({ tokenIdentifier: "test:someone-else" })
+		.mutation(api.dayEntries.create, {
+			dayKey: "2026-10-19",
+			title: "Privater Eintrag",
+		});
+	const args = {
+		dayKeys: ["2026-10-19"],
+		cacheScope: "notificationPlanning" as const,
+	};
+	const result = await t.query(api.dayEntries.listByDayKeys, args);
+	expect(result["2026-10-19"]).toHaveLength(1);
+	expect(result["2026-10-19"]?.[0]).toMatchObject({
+		id,
+		title: "Mathematik üben",
+	});
+	expect(result).toEqual(
+		await t.query(api.dayEntries.listByDayKeys, { dayKeys: args.dayKeys }),
+	);
+	await t.mutation(api.dayEntries.setCompleted, { id, completed: true });
+	expect(
+		(await t.query(api.dayEntries.listByDayKeys, args))["2026-10-19"]?.[0]
+			?.completed,
+	).toBe(true);
+	await expect(
+		backend.query(api.dayEntries.listByDayKeys, args),
+	).rejects.toThrow();
+});
+
 test("revises the same pending exam after navigating back through creation", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const id = await t.mutation(api.dayEntries.create, {
@@ -32,10 +71,14 @@ test("revises the same pending exam after navigating back through creation", asy
 		plannedDateLabel: "Donnerstag, 1. Oktober",
 		durationMinutes: 45,
 	});
-	const entries = await t.run((ctx) => ctx.db.query("dayEntries").take(2));
+	const grouped = await t.query(api.dayEntries.listByDayKeys, {
+		dayKeys: ["2026-09-30", "2026-10-01"],
+	});
+	expect(grouped["2026-09-30"]).toEqual([]);
+	const entries = grouped["2026-10-01"];
 	expect(entries).toHaveLength(1);
 	expect(entries[0]).toMatchObject({
-		_id: id,
+		id,
 		dayKey: "2026-10-01",
 		subject: "Chemie",
 		title: "Chemie Test",
@@ -90,16 +133,17 @@ test("pending exam edits replace or clear the personal subject reference", async
 		plannedDateLabel: "2. Oktober",
 		durationMinutes: 60,
 	});
-	const result = await t.run(async (ctx) => ({
-		entry: await ctx.db.get("dayEntries", id),
-		references: await ctx.db.query("personalSubjectReferences").take(10),
-	}));
-	expect(result.entry).toMatchObject({
+	const result = await t.query(api.dayEntries.get, { id });
+	expect(result).toMatchObject({ subject: "Chemie", title: "Chemie Klausur" });
+	expect(result?.personalSubjectId).toBeUndefined();
+	await t.mutation(api.personalSubjects.rename, {
+		id: latin.id,
+		name: "Sprache",
+	});
+	expect(await t.query(api.dayEntries.get, { id })).toMatchObject({
 		subject: "Chemie",
 		title: "Chemie Klausur",
 	});
-	expect(result.entry?.personalSubjectId).toBeUndefined();
-	expect(result.references).toEqual([]);
 });
 
 test("stores an explicit one-time subject through create and resume", async () => {
@@ -219,9 +263,7 @@ test("stores required exam topics without creating a learning plan", async () =>
 	).resolves.toMatchObject({
 		topicDescription: "Lineare Funktionen, Steigung und Achsenabschnitt",
 	});
-	expect(await t.run((ctx) => ctx.db.query("learningPlans").take(1))).toEqual(
-		[],
-	);
+	expect(await t.query(api.learningPlans.listOverview, {})).toEqual([]);
 });
 
 test("manual timed entry overlapping an existing entry is rejected with conflict details", async () => {

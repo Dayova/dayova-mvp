@@ -1,6 +1,6 @@
 export const ANIMATED_FLOWER_BASE_SIZE = 360;
-export const ANIMATED_FLOWER_BASE_PETAL_SIZE = 174;
-export const ANIMATED_FLOWER_BASE_PETAL_DISTANCE = 86;
+const ANIMATED_FLOWER_BASE_PETAL_SIZE = 174;
+const ANIMATED_FLOWER_BASE_PETAL_DISTANCE = 86;
 
 export type AnimatedFlowerPetal = {
 	id: string;

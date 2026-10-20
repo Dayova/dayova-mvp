@@ -6,6 +6,16 @@ Notion is Dayova's main internal documentation and knowledge workspace. Linear o
 
 Linear workspace `dayova`, team `Dayova` (`DAY`), is the source of truth for issues and PRDs. GitHub Issues for `Dayova/dayova-mvp` is a bidirectionally synced compatibility surface, and linked pull requests drive Linear workflow status automation. Agent-facing operation rules live in `docs/agents/issue-tracker.md`.
 
+## AI observability and evaluation boundary
+
+Langfuse is the AI tracing/cost/evaluation destination; PostHog remains product
+analytics. Production traces export operational metadata and usage only through
+`ai/observability.ts`, with optional HMAC user attribution and no raw learner
+content. The standalone evaluation CLI publishes only explicit synthetic runs.
+See the [runtime and evaluation runbook](../../../ai/README.md) and canonical
+[AI model strategy](https://app.notion.com/p/3ae2e87228bf81ccb1ccdbbc83c7709c).
+Model experiments never change production routing automatically.
+
 ## Language
 
 **PostHog Student Profile**:
@@ -105,6 +115,17 @@ from Clerk metadata by normal mobile flows; seed or patch it intentionally for
 internal users.
 
 ## Notes
+
+- Topic suggestions derive WLO search context from the selected subject name in
+  `convex/wloSubjectContext.ts`. Recognized aliases, explicit course markers and
+  combinations of known areas provide ranking hints only. Personal subjects keep
+  their existing identity, ownership and persistence; do not store WLO taxonomy as
+  their identity or add a mandatory mapping step. Unknown names search without an
+  inferred category. Exact title matches remain available across subjects; other
+  contextual matches precede labelled additional suggestions. The catalog never
+  changes the selected subject or expands the exam scope automatically. See the
+  [decision record](https://app.notion.com/p/3fb2e87228bf817a880dde6127a1996a)
+  and [DAY-517](https://linear.app/dayova/issue/DAY-517).
 
 - The student CRM is a read-only projection of Convex effective access, joined
   through Clerk User ID. New authenticated accounts queue creation of a minimal

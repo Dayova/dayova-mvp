@@ -441,6 +441,8 @@ test("registering the same local notification plan reuses its authorization", as
 		{ notifications },
 	);
 
+	expect(first?.registrationId).toMatch(/\S/);
+	expect(second?.registrationId).toMatch(/\S/);
 	expect(first?.registrationId).toBe(second?.registrationId);
 });
 

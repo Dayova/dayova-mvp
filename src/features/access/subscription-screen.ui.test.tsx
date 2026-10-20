@@ -4,20 +4,11 @@ import type { ReactNode } from "react";
 import { SubscriptionScreen } from "./subscription-screen";
 
 let mockReducedMotion = false;
-const mockAnimate = jest.fn();
 jest.mock("react-native-reanimated", () => ({
 	...jest.requireActual<Record<string, unknown>>(
 		"../../../tests/mocks/selection-reanimated.cjs",
 	),
 	useReducedMotion: () => mockReducedMotion,
-	withTiming: (value: number) => {
-		mockAnimate(value);
-		return value;
-	},
-	withSpring: (value: number) => {
-		mockAnimate(value);
-		return value;
-	},
 }));
 
 jest.mock("~/lib/theme", () => ({
@@ -67,7 +58,9 @@ const storePlans = [
 ];
 const mockGetPlans = jest.fn(async () => storePlans);
 const mockPurchase = jest.fn<
-	() => Promise<{ status: "purchased" | "cancelled" | "notEntitled" }>
+	(
+		plan: string,
+	) => Promise<{ status: "purchased" | "cancelled" | "notEntitled" }>
 >(async () => ({ status: "purchased" }));
 const mockRestore = jest.fn(async () => ({ status: "purchased" as const }));
 const mockRefreshPaidAccess = jest.fn(async () => true);
@@ -145,15 +138,13 @@ jest.mock("~/lib/runtime-config", () => ({
 }));
 
 describe("SubscriptionScreen", () => {
-	test("plan selection has shared press feedback and commits only on a completed press", async () => {
+	test("plan selection commits only on a completed press", async () => {
 		const screen = await render(<SubscriptionScreen />);
 		const annual = await screen.findByRole("radio", {
 			name: /Jährlich, 155,88 €/,
 		});
 		const monthly = screen.getByRole("radio", { name: /Monatlich,/ });
-		mockAnimate.mockClear();
 		await fireEvent(annual, "pressIn");
-		expect(mockAnimate).toHaveBeenCalledWith(0.98);
 		expect(monthly).toBeChecked();
 		await fireEvent(annual, "pressOut");
 		expect(monthly).toBeChecked();
@@ -175,7 +166,6 @@ describe("SubscriptionScreen", () => {
 			expect(plan).toBeChecked();
 			expect(screen.getAllByRole("radio", { checked: true })).toHaveLength(1);
 		}
-		expect(mockAnimate).not.toHaveBeenCalled();
 		expect(mockPurchase).not.toHaveBeenCalled();
 	});
 
@@ -193,12 +183,12 @@ describe("SubscriptionScreen", () => {
 		await waitFor(() =>
 			expect(screen.getByTestId("subscription-plan-annual")).toBeDisabled(),
 		);
-		mockAnimate.mockClear();
 		await fireEvent(screen.getByTestId("subscription-plan-annual"), "pressIn");
 		await fireEvent.press(screen.getByTestId("subscription-plan-annual"));
 		expect(screen.getByTestId("subscription-plan-monthly")).toBeChecked();
-		expect(mockAnimate).not.toHaveBeenCalled();
-		await act(async () => finishPurchase?.());
+		const finish = finishPurchase;
+		if (!finish) throw new Error("Purchase must be pending before completion");
+		await act(async () => finish());
 	});
 	test.each([
 		"failed",

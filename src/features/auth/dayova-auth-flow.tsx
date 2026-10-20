@@ -18,6 +18,7 @@ import {
 	Platform,
 	ScrollView,
 	TextInput,
+	type TextInputInstance,
 	type TextInputProps,
 	useWindowDimensions,
 	View,
@@ -604,7 +605,7 @@ export function OnboardingStepScreen({ stepId }: { stepId: OnboardingStepId }) {
 	const [passwordVisible, setPasswordVisible] = useState(false);
 	const [isRegistering, setIsRegistering] = useState(false);
 	const [renderError, setRenderError] = useState<string | null>(null);
-	const textInputRef = useRef<TextInput | null>(null);
+	const textInputRef = useRef<TextInputInstance | null>(null);
 	const registrationActionGateRef = useRef(createAsyncActionGate());
 	const {
 		startRegistrationWithEmail,
@@ -771,7 +772,7 @@ export function OnboardingStepScreen({ stepId }: { stepId: OnboardingStepId }) {
 export function OnboardingVerificationScreen() {
 	const insets = useSafeAreaInsets();
 	const [verificationCode, setVerificationCode] = useState("");
-	const verificationInputRef = useRef<TextInput | null>(null);
+	const verificationInputRef = useRef<TextInputInstance | null>(null);
 	const verificationSubmittedRef = useRef(false);
 	const { verifyEmailCode, resendVerification, isLoading } = useAuthFlow();
 	const {
@@ -981,7 +982,7 @@ export function OnboardingCreationScreen() {
 	);
 }
 
-export function IntroStepView({
+function IntroStepView({
 	activeIndex,
 	topInset,
 	bottomInset,
@@ -1325,7 +1326,7 @@ function QuestionStepView({
 	error: string | null;
 	busy: boolean;
 	passwordVisible: boolean;
-	inputRef: RefObject<TextInput | null>;
+	inputRef: RefObject<TextInputInstance | null>;
 	bottomInset: number;
 	onBack: () => boolean;
 	onContinue: () => void;
@@ -1638,7 +1639,7 @@ export function LoginScreen() {
 	const [verificationCode, setVerificationCode] = useState("");
 	const [verificationMode, setVerificationMode] = useState(false);
 	const [passwordResetMode, setPasswordResetMode] = useState(false);
-	const verificationInputRef = useRef<TextInput | null>(null);
+	const verificationInputRef = useRef<TextInputInstance | null>(null);
 	const submittedRef = useRef(false);
 	const loginActionGateRef = useRef(createAsyncActionGate());
 	const {
@@ -1936,7 +1937,7 @@ function PasswordResetScreen({
 	const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [notice, setNotice] = useState<string | null>(null);
-	const codeInputRef = useRef<TextInput | null>(null);
+	const codeInputRef = useRef<TextInputInstance | null>(null);
 	const codeSubmittedRef = useRef(false);
 	const requestInFlightRef = useRef(false);
 	const {
@@ -2343,7 +2344,7 @@ function VerificationScreen({
 	error: string | null;
 	disabled: boolean;
 	gestureEnabled?: boolean;
-	inputRef: RefObject<TextInput | null>;
+	inputRef: RefObject<TextInputInstance | null>;
 	progress: number;
 	topInset: number;
 	bottomInset: number;
@@ -2814,7 +2815,7 @@ function PillTextInput({
 	onChangeText,
 	onSubmit,
 }: {
-	refObject: RefObject<TextInput | null>;
+	refObject: RefObject<TextInputInstance | null>;
 	testID: string;
 	value: string;
 	accessibilityLabel: string;
@@ -2916,7 +2917,7 @@ function OtpCodeInput({
 }: {
 	value: string;
 	onChangeText: (value: string) => void;
-	inputRef: RefObject<TextInput | null>;
+	inputRef: RefObject<TextInputInstance | null>;
 	disabled: boolean;
 }) {
 	const { colors: COLORS } = useDayovaTheme();
@@ -2976,8 +2977,7 @@ function OtpCodeInput({
 				autoCorrect={false}
 				autoCapitalize="none"
 				caretHidden
-				// Keep the input above the native opacity cutoff so taps can restore focus.
-				className="absolute inset-0 opacity-[0.02]"
+				className="absolute inset-0 text-transparent"
 				maxLength={CODE_LENGTH}
 				selectionColor="transparent"
 			/>

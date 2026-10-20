@@ -54,6 +54,9 @@ __pycache__/
 
 # Review evidence and local capture scratch space are not build inputs.
 /docs/evidence/
+/docs/pr-screenshots/
+/docs/qa/
+/docs/validation/
 /.tmp/
 
 # Downloaded store binaries are release evidence, not source artifacts.
