@@ -7,11 +7,16 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
   statuses: write
 
 jobs:
   coverage:
-    if: github.event_name == 'pull_request_target' || github.event.context == 'CodeRabbit'
+    if: >-
+      (github.event_name == 'pull_request_target' &&
+       github.event.pull_request.state == 'open' &&
+       !github.event.pull_request.draft) ||
+      (github.event_name == 'status' && github.event.context == 'CodeRabbit')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     concurrency:
@@ -23,6 +28,22 @@ jobs:
         with:
           script: |
             const sha = context.payload.pull_request?.head.sha ?? context.payload.sha;
+            const candidates = context.payload.pull_request
+              ? [context.payload.pull_request]
+              : await github.paginate(github.rest.repos.listPullRequestsAssociatedWithCommit, {
+                  ...context.repo, commit_sha: sha, per_page: 100,
+                });
+            let eligible = false;
+            for (const candidate of candidates) {
+              const { data: pr } = await github.rest.pulls.get({
+                ...context.repo, pull_number: candidate.number,
+              });
+              if (pr.state === 'open' && !pr.draft && pr.head.sha === sha) {
+                eligible = true;
+                break;
+              }
+            }
+            if (!eligible) return;
             const statuses = await github.paginate(github.rest.repos.listCommitStatusesForRef, {
               ...context.repo, ref: sha, per_page: 100,
             });

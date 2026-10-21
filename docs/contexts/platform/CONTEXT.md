@@ -33,8 +33,10 @@ repository skill validation, TypeScript, and tests in `quality`. The final
 `checks` job preserves the required `Lint, typecheck, and test` context and
 rejects failed or skipped applicable quality, OTA, native, and authentication
 prerequisites. A merge validates the resulting `main` commit again. Opening,
-reopening, or updating a PR triggers CI; marking it ready does not repeat an
-unchanged commit.
+reopening, or updating an open, non-draft PR triggers CI. Marking a draft ready
+for review triggers CI even when its commit has not changed. Draft PR events
+are filtered before EAS creates a run. Main, merge-queue, scheduled, and manual
+runs retain their existing behavior.
 
 Pull-request triggers cover every target branch, including stack parents. Do not
 restrict them to `main`: doing so leaves new commits in dependent PRs without CI
@@ -94,6 +96,12 @@ the authenticated flow to diagnose login without repeating exports and repacks.
 Its full suite excludes the tagged negative control. Disposable iOS simulators
 disable and verify password AutoFill before testing because Maestro cannot inspect
 the iOS password-save sheet; application password behavior stays unchanged.
+
+The GitHub OTA-freshness and automated-review reporters skip draft PR events
+and check current PR eligibility before writing statuses from asynchronous
+comment/provider events. GitHub can still show skipped jobs or brief metadata
+reconciliation runs; no validation or new status is produced for a draft.
+Existing runs and historical statuses are not canceled or deleted by this policy.
 
 `Automated review coverage` reports a completed CodeRabbit review separately
 from its provider status. A skipped, rate-limited, missing, or unknown result

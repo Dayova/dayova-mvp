@@ -22,6 +22,7 @@ function fixture(body = report()) {
 	const comment = { id: 12, user: { login: "expo[bot]" }, body };
 	const pr = {
 		state: "open",
+		draft: false,
 		base: { ref: "main", repo: { id: 1 } },
 		head: { sha: headSha, repo: { id: 1 } },
 		html_url: "https://github.com/Dayova/dayova-mvp/pull/740",
@@ -51,6 +52,27 @@ function fixture(body = report()) {
 }
 
 describe("OTA report freshness status", () => {
+	it.each([
+		"pull_request_target",
+		"issue_comment",
+	])("does not publish a status for a draft through %s", async (eventName) => {
+		const f = fixture();
+		f.pr.draft = true;
+		f.context.eventName = eventName;
+		await reconcile(f.github, f.context);
+		expect(f.createCommitStatus).not.toHaveBeenCalled();
+	});
+
+	it("stops if the PR returns to draft while comments are read", async () => {
+		const f = fixture();
+		f.github.paginate.mockImplementation(async () => {
+			f.pr.draft = true;
+			return [structuredClone(f.comment)];
+		});
+		await reconcile(f.github, f.context);
+		expect(f.createCommitStatus).not.toHaveBeenCalled();
+	});
+
 	it("marks a stale Expo report pending on the latest commit", async () => {
 		const f = fixture();
 		await reconcile(f.github, f.context);

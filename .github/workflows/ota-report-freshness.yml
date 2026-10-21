@@ -14,7 +14,9 @@ permissions:
 jobs:
   reconcile:
     if: >-
-      github.event_name == 'pull_request_target' ||
+      (github.event_name == 'pull_request_target' &&
+       github.event.pull_request.state == 'open' &&
+       !github.event.pull_request.draft) ||
       (github.event.issue.pull_request &&
        github.event.comment.user.login == 'expo[bot]' &&
        (github.event.action == 'deleted' ||
@@ -40,7 +42,7 @@ jobs:
                (comment.body?.startsWith('## 📱 OTA compatibility\n') &&
                 comment.body.includes('<!-- eas-comment-id: ')));
             const readPr = async () => (await github.rest.pulls.get({ ...repo, pull_number: number })).data;
-            const eligible = pr => pr.state === 'open' &&
+            const eligible = pr => pr.state === 'open' && !pr.draft &&
               pr.head.repo?.id === pr.base.repo?.id;
             if (!eligible(await readPr())) return;
 

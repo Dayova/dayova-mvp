@@ -2,10 +2,12 @@ name: Continuous Integration
 
 on:
   pull_request:
+    if: ${{ github.event.pull_request.state == 'open' && !github.event.pull_request.draft }}
     types:
       - opened
       - reopened
       - synchronize
+      - ready_for_review
   push:
     branches:
       - main
