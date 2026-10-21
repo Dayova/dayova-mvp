@@ -1,5 +1,6 @@
 import { type Infer, v } from "convex/values";
 import { OPERATING_SYSTEMS } from "../src/lib/operating-systems";
+import { contactPreferencesValidator } from "./contactConsentContract";
 
 export const operatingSystem = v.union(
 	...OPERATING_SYSTEMS.map((value) => v.literal(value)),
@@ -49,6 +50,7 @@ export const crmProjection = v.object({
 	userId: v.id("users"),
 	email: v.string(),
 	registeredAt: v.number(),
+	contact: v.optional(contactPreferencesValidator),
 	profile: v.object({
 		name: v.optional(v.string()),
 		grade: v.optional(v.string()),

@@ -18,7 +18,7 @@ export type OnboardingDecisionStep =
 			values: readonly number[];
 	  }
 	| { kind: AnswerStepKind; field: keyof OnboardingAnswers }
-	| { kind: "fact" | "intro" | "payoff" };
+	| { kind: "fact" | "intro" | "payoff" | "contact" };
 
 export type OnboardingStepDecision = {
 	action: "advance" | "register";

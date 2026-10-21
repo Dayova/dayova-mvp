@@ -5,6 +5,7 @@ import {
 import { isGermanFederalState } from "~/lib/federal-states";
 import { isSupportedGrade } from "~/lib/grades";
 import { isSupportedSchoolType } from "~/lib/school-types";
+import { type ContactChoice, isContactChoice } from "./contact-preferences";
 
 const STORAGE_KEY_PREFIX = "dayova.pending-onboarding-sync";
 const SCHEMA_VERSION = 1;
@@ -18,6 +19,7 @@ const PERSISTED_ONBOARDING_DURATION_MINUTES = [
 const MINUTES_PER_DAY = 24 * 60;
 
 export type PendingOnboardingSyncAnswers = {
+	contact?: ContactChoice;
 	dailySchoolTime: string;
 	studyDays: string;
 	learningTime: string;
@@ -146,6 +148,8 @@ const isValidAnswers = (
 	value: unknown,
 ): value is PendingOnboardingSyncAnswers => {
 	if (!isRecordBase(value)) return false;
+	if (value.contact !== undefined && !isContactChoice(value.contact))
+		return false;
 	const dailySchoolTime = value.dailySchoolTime;
 	const studyDays = value.studyDays;
 	const learningTime = value.learningTime;

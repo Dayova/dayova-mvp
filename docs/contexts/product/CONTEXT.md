@@ -186,3 +186,11 @@ Engineer: "And `Praxis` maps to the existing rehearsal phase?"
 Domain: "Yes. It is the Figma/user-facing name for the Generalprobe-style phase."
 Engineer: "For validation, should we count a completed `Praxis` session as `Generalprobe`?"
 Domain: "Yes. Generalprobe is the validation readout term for completed `Praxis`, not a fourth learner-facing phase."
+
+## Voluntary personal contact
+
+Feedback contact (WhatsApp invitation and telephone feedback conversation) and
+Dayova news via WhatsApp are independent opt-ins. Neither is required for an
+account, trial, or paid access, and neither implies a beta or Inner Circle status.
+See the [contact-consent boundary](../integrations/adr/0004-own-contact-consent-in-convex.md)
+and its linked Notion decision record.

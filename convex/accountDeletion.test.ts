@@ -325,6 +325,18 @@ test("deletes account data in bounded internal batches and preserves other users
 			stage: "deleteData",
 		});
 
+		for (const owner of [userId, otherUserId]) {
+			await ctx.db.insert("contactConsentEvents", {
+				userId: owner,
+				phone: "+4915123456789",
+				feedback: true,
+				news: false,
+				version: "test",
+				revision: 1,
+				updatedAt: Date.now(),
+				source: "settings",
+			});
+		}
 		const questionId = await ctx.db.insert("onboardingQuestions", {
 			key: "grade",
 			kind: "input",
@@ -421,6 +433,7 @@ test("deletes account data in bounded internal batches and preserves other users
 		personalSubjectReferences: await ctx.db
 			.query("personalSubjectReferences")
 			.take(100),
+		contactEvents: await ctx.db.query("contactConsentEvents").take(100),
 		onboardingAnswers: await ctx.db.query("userOnboardingAnswers").take(100),
 		requests: await ctx.db.query("accountDeletionRequests").take(10),
 		users: await ctx.db.query("users").take(10),
@@ -434,6 +447,7 @@ test("deletes account data in bounded internal batches and preserves other users
 	]);
 	expect(remaining.personalSubjectReferences).toEqual([]);
 	expect(remaining.onboardingAnswers).toMatchObject([{ userId: otherUserId }]);
+	expect(remaining.contactEvents).toMatchObject([{ userId: otherUserId }]);
 	expect(remaining.users).toMatchObject([
 		{ tokenIdentifier: otherIdentity.tokenIdentifier },
 	]);
@@ -443,7 +457,7 @@ test("deletes account data in bounded internal batches and preserves other users
 	expect(remaining.requests[0]).toMatchObject({
 		status: "completed",
 		stage: "complete",
-		deletedRecords: 36,
+		deletedRecords: 37,
 	});
 	expect(remaining.requests[0]).not.toHaveProperty("ownerTokenIdentifier");
 	expect(remaining.requests[0]).not.toHaveProperty("clerkUserId");

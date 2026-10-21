@@ -61,6 +61,7 @@ const PUBLIC_AUTH_PATHS = new Set([
 const ACCESS_SETUP_PATHS = new Set(["/trial", "/paywall", "/subscription"]);
 const EXPIRED_ACCESS_PATHS = new Set(["/paywall", "/subscription"]);
 const ACCESS_BYPASS_PATHS = new Set([
+	"/contact-preferences",
 	ONBOARDING_PATH,
 	PASSWORD_RESET_SUCCESS_PATH,
 	SESSION_TASK_RESET_PASSWORD_PATH,

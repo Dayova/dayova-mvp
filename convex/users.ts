@@ -15,6 +15,8 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { env, mutation, query } from "./_generated/server";
 import { assertAccountActive } from "./accountDeletion";
 import { getClerkIdentity } from "./clerkIdentity";
+import { contactChoiceValidator } from "./contactConsentContract";
+import { saveContactChoice } from "./contactPreferences";
 import { operatingSystem } from "./crmContract";
 import { enqueueCrmUpdate } from "./crmUpdates";
 import { throwUserFacingError } from "./errors";
@@ -537,8 +539,10 @@ export const getMe = query({
 });
 
 export const saveOnboardingAnswers = mutation({
+	returns: v.object({ success: v.boolean(), learningTimesCreated: v.number() }),
 	args: {
 		answers: v.object({
+			contact: v.optional(contactChoiceValidator),
 			// Accepted temporarily for older installed clients. These decorative
 			// answers are intentionally excluded from ONBOARDING_PERSISTED_ANSWER_KEYS.
 			studyTime: v.optional(v.string()),
@@ -564,6 +568,10 @@ export const saveOnboardingAnswers = mutation({
 
 		if (!user) {
 			throwUserFacingError("Der Nutzer konnte nicht gefunden werden.");
+		}
+		// Import once: replayed onboarding must never undo a later settings decision.
+		if (args.answers.contact && !user.contactPreferences) {
+			await saveContactChoice(ctx, user, args.answers.contact, "onboarding");
 		}
 		const normalizedGrade = normalizeOptionalGrade(args.answers.grade);
 		if (!normalizedGrade) {

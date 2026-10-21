@@ -849,6 +849,15 @@ export const deleteOwnerDataBatch = internalMutation({
 				.withIndex("by_userId", (q) => q.eq("userId", user._id))
 				.take(DELETE_BATCH_SIZE);
 			deletedRecords += await deleteRows(ctx, "crmStudentUpdates", crmUpdates);
+			const contactEvents = await ctx.db
+				.query("contactConsentEvents")
+				.withIndex("by_userId", (q) => q.eq("userId", user._id))
+				.take(DELETE_BATCH_SIZE);
+			deletedRecords += await deleteRows(
+				ctx,
+				"contactConsentEvents",
+				contactEvents,
+			);
 			const userOnboardingAnswers = await ctx.db
 				.query("userOnboardingAnswers")
 				.withIndex("by_userId", (query) => query.eq("userId", user._id))

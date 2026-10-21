@@ -158,3 +158,15 @@ Google Play Billing. Website billing is a separate channel: the app must not
 register RevenueCat redemption URL schemes, process web-purchase redemption
 links, or direct customers to website checkout. Mobile access continues to be
 derived from RevenueCat subscriber snapshots verified by Convex.
+
+## Voluntary contact choices
+
+DAY-550 adds `contact_choice` (`skipped`, `feedback`, `news`, `both`) to the
+backend-confirmed `onboarding_completed` event, using onboarding version 4.
+Only completed, authenticated registrations contribute; no new anonymous
+tracking is enabled. Settings use bounded `settings.contact_opened`,
+`settings.contact_saved`, and `settings.contact_withdrawn` interactions and the
+`contact_preferences` screen. Phone/phone-number fields are prohibited from
+analytics, including the SDK hook. Contact state and history belong to Convex;
+Notion receives the current operational projection. See
+[the code-facing decision](adr/0004-own-contact-consent-in-convex.md).

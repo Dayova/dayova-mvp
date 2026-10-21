@@ -103,6 +103,7 @@
 		"expo-symbols": "~58.0.4",
 		"expo-system-ui": "~58.0.6",
 		"expo-updates": "~58.0.17",
+		"libphonenumber-js": "^1.13.15",
 		"nativewind": "^4.2.3",
 		"officeparser": "^6.1.0",
 		"posthog-react-native": "^4.50.0",

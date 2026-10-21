@@ -8,6 +8,10 @@ import {
 	useState,
 } from "react";
 import type { OnboardingStepId } from "~/features/auth/onboarding-route-model";
+import {
+	type ContactChoice,
+	emptyContactChoice,
+} from "~/lib/contact-preferences";
 import type { SupportedSchoolType } from "~/lib/school-types";
 
 export type OnboardingAnswers = {
@@ -37,6 +41,8 @@ const emptyAnswers: OnboardingAnswers = {
 };
 
 type OnboardingContextValue = {
+	contactChoice: ContactChoice;
+	setContactChoice: (choice: ContactChoice) => void;
 	answers: OnboardingAnswers;
 	setAnswer: <Field extends keyof OnboardingAnswers>(
 		field: Field,
@@ -67,6 +73,7 @@ const OnboardingContext = createContext<OnboardingContextValue | undefined>(
 export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({
 	children,
 }) => {
+	const [contactChoice, setContactChoice] = useState(emptyContactChoice);
 	const [answers, setAnswers] = useState<OnboardingAnswers>(emptyAnswers);
 	const [introIndex, setIntroIndex] = useState(0);
 	const [visitedSteps, setVisitedSteps] = useState<
@@ -120,6 +127,8 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({
 
 	const value = useMemo<OnboardingContextValue>(
 		() => ({
+			contactChoice,
+			setContactChoice,
 			answers,
 			setAnswer: (field, value) => {
 				setAnswers((current) => ({ ...current, [field]: value }));
@@ -133,6 +142,7 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({
 			},
 			clearAnswers: () => {
 				setAnswers(emptyAnswers);
+				setContactChoice(emptyContactChoice());
 				setIntroIndex(0);
 				visitedStepsRef.current = new Set();
 				setVisitedSteps(new Set());
@@ -161,6 +171,7 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({
 		}),
 		[
 			answers,
+			contactChoice,
 			introIndex,
 			progressOrigin,
 			registrationStage,

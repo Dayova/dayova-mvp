@@ -226,8 +226,11 @@ const eventPropertyRules = {
 		screen: required(oneOf(Object.values(ANALYTICS_SCREENS))),
 	},
 	onboarding_completed: {
+		contact_choice: optional(
+			oneOf(["skipped", "feedback", "news", "both"] as const),
+		),
 		local_day_key: required(isDayKey),
-		onboarding_version: required(oneOf([1, 2, 3] as const)),
+		onboarding_version: required(oneOf([1, 2, 3, 4] as const)),
 	},
 	homework_created: {
 		day_entry_id: required(isNonEmptyString),
@@ -340,6 +343,9 @@ const POSTHOG_SYSTEM_PERSON_PROPERTY_KEYS = new Set([
 	"$lib_version",
 ]);
 const PROHIBITED_ANALYTICS_KEYS = new Set([
+	"phone",
+	"phone_number",
+	"telephone",
 	"name",
 	"full_name",
 	"email",

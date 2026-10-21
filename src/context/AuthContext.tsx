@@ -38,6 +38,7 @@ import {
 	type ClerkProfile as RegisterProfile,
 	splitClerkName as splitName,
 } from "~/lib/clerk-registration";
+import type { ContactChoice } from "~/lib/contact-preferences";
 import { getDayKey } from "~/lib/day-key";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import {
@@ -710,46 +711,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		user,
 	]);
 
-	const captureOnboardingCompleted = useCallback(async () => {
-		if (!isPostHogConfigured || !user) return;
+	const captureOnboardingCompleted = useCallback(
+		async (contact?: ContactChoice) => {
+			if (!isPostHogConfigured || !user) return;
 
-		const localDayKey = getDayKey(new Date());
-		let validationStudentCode = user.validationStudentCode ?? null;
-		const activityResult = await runWithAuthSettleRetries(() =>
-			markValidationActivity({ localDayKey }),
-		);
-		if (!activityResult.ok) {
-			logDiagnosticError(
-				"Failed to mark onboarding validation activity.",
-				activityResult.lastError,
-				{
-					source: "auth.onboarding.analytics.markActivity",
-					level: "warn",
-				},
+			const localDayKey = getDayKey(new Date());
+			let validationStudentCode = user.validationStudentCode ?? null;
+			const activityResult = await runWithAuthSettleRetries(() =>
+				markValidationActivity({ localDayKey }),
 			);
-			if (activityResult.lastError !== activityResult.firstError) {
+			if (!activityResult.ok) {
 				logDiagnosticError(
-					"Initial onboarding validation activity error.",
-					activityResult.firstError,
+					"Failed to mark onboarding validation activity.",
+					activityResult.lastError,
 					{
-						source: "auth.onboarding.analytics.markActivity.initial",
+						source: "auth.onboarding.analytics.markActivity",
 						level: "warn",
 					},
 				);
+				if (activityResult.lastError !== activityResult.firstError) {
+					logDiagnosticError(
+						"Initial onboarding validation activity error.",
+						activityResult.firstError,
+						{
+							source: "auth.onboarding.analytics.markActivity.initial",
+							level: "warn",
+						},
+					);
+				}
+				return;
 			}
-			return;
-		}
-		validationStudentCode =
-			activityResult.value.validationStudentCode ?? validationStudentCode;
+			validationStudentCode =
+				activityResult.value.validationStudentCode ?? validationStudentCode;
 
-		createValidationAnalytics(posthog, {
-			distinctId: user.clerkId,
-			sharedContext: { validationStudentCode },
-		}).capture("onboarding_completed", {
-			local_day_key: localDayKey,
-			onboarding_version: 3,
-		});
-	}, [markValidationActivity, posthog, user]);
+			createValidationAnalytics(posthog, {
+				distinctId: user.clerkId,
+				sharedContext: { validationStudentCode },
+			}).capture("onboarding_completed", {
+				local_day_key: localDayKey,
+				onboarding_version: 4,
+				...(contact
+					? {
+							contact_choice: contact.feedback
+								? contact.news
+									? "both"
+									: "feedback"
+								: contact.news
+									? "news"
+									: "skipped",
+						}
+					: {}),
+			});
+		},
+		[markValidationActivity, posthog, user],
+	);
 
 	useEffect(() => {
 		void answersSyncAttempt;
@@ -786,7 +801,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					if (!cancelled) {
 						const transition = getPendingOnboardingSyncTransition(result.value);
 						if (transition.shouldFinalize) {
-							void captureOnboardingCompleted();
+							void captureOnboardingCompleted(
+								onboardingCompletion.result.status === "pending"
+									? onboardingCompletion.result.answers.contact
+									: undefined,
+							);
 							clearAnswers();
 						}
 						setOnboardingCompletion({

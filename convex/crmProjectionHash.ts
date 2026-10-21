@@ -1,7 +1,8 @@
+import { CONTACT_CONSENT_VERSION } from "../src/lib/contact-preferences";
 import type { CrmProjection } from "./crmContract";
 
 // Bump the version whenever the Notion projection changes so old links refresh.
-const VERSION = "crm-projection-v1:";
+const VERSION = `crm-projection-v2:${CONTACT_CONSENT_VERSION}:`;
 
 export async function crmProjectionHash(projection: CrmProjection) {
 	const input = new TextEncoder().encode(VERSION + JSON.stringify(projection));

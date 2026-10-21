@@ -70,6 +70,9 @@ describe("validation analytics contract", () => {
 	it.each([
 		"name",
 		"email",
+		"phone",
+		"phone_number",
+		"phoneNumber",
 		"birth_date",
 		"avatar_url",
 		"school_type",
@@ -397,6 +400,9 @@ describe("validation analytics contract", () => {
 	it.each([
 		"name",
 		"email",
+		"phone",
+		"phone_number",
+		"phoneNumber",
 		"birth_date",
 		"avatar_url",
 		"school_type",

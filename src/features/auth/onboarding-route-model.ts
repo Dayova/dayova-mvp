@@ -62,7 +62,15 @@ type WheelStep = {
 	field: Extract<keyof OnboardingAnswers, "state" | "schoolType" | "grade">;
 };
 
+type ContactStep = {
+	kind: "contact";
+	id: "contact";
+	title: string;
+	description: string;
+};
+
 export type OnboardingProfileStep =
+	| ContactStep
 	| RangeStep
 	| FactStep
 	| DaysStep
@@ -148,6 +156,13 @@ export const ONBOARDING_PROFILE_STEPS = [
 		description:
 			"Wir speichern nur die Schulart, nicht den Namen deiner Schule.",
 		field: "schoolType",
+	},
+	{
+		kind: "contact",
+		id: "contact",
+		title: "Gestalte Dayova mit uns.",
+		description:
+			"Wir möchten erfahren, was dir beim Lernen hilft und was wir verbessern können. Wenn du möchtest, bleiben wir persönlich mit dir in Kontakt.",
 	},
 	{
 		kind: "text",
