@@ -1,5 +1,5 @@
 import { beforeEach, expect, jest, test } from "@jest/globals";
-import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import ContactPreferencesScreen from "~/app/contact-preferences";
 import {
 	CONTACT_FEEDBACK_LABEL,
@@ -79,7 +79,13 @@ beforeEach(() => {
 
 test("withdraws even with an invalid edited number and only confirms after backend success", async () => {
 	const confirmed = { ...emptyContactChoice(), revision: 2, updatedAt: 2 };
-	mockWithdraw.mockResolvedValue(confirmed);
+	let confirmWithdrawal!: (value: ContactPreferences) => void;
+	mockWithdraw.mockImplementation(
+		() =>
+			new Promise((resolve) => {
+				confirmWithdrawal = resolve;
+			}),
+	);
 	const screen = await render(<ContactPreferencesScreen />);
 	await fireEvent.changeText(
 		screen.getByLabelText("Deine Telefonnummer (freiwillig)"),
@@ -93,6 +99,14 @@ test("withdraws even with an invalid edited number and only confirms after backe
 	);
 	await waitFor(() => expect(mockWithdraw).toHaveBeenCalledWith({}));
 	expect(mockSave).not.toHaveBeenCalled();
+	expect(
+		screen.queryByText("Deine Kontaktauswahl wurde gespeichert."),
+	).toBeNull();
+	expect(mockTrack).not.toHaveBeenCalled();
+	expect(
+		screen.getByRole("button", { name: "Alle Kontaktfreigaben widerrufen" }),
+	).toBeDisabled();
+	await act(async () => confirmWithdrawal(confirmed));
 	expect(
 		screen.getByText("Deine Kontaktauswahl wurde gespeichert."),
 	).toBeOnTheScreen();
@@ -148,7 +162,12 @@ test("retains a failed draft, shows a safe error, and retries with its revision"
 	);
 	await waitFor(() => expect(mockSave).toHaveBeenCalledTimes(2));
 	expect(mockSave).toHaveBeenLastCalledWith({
-		choice: expect.objectContaining({ news: true, feedback: true }),
+		choice: {
+			phone: "+4915123456789",
+			news: true,
+			feedback: true,
+			version: "2026-10-21.contact.v1",
+		},
 		expectedRevision: 1,
 	});
 });

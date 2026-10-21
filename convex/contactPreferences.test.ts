@@ -106,6 +106,33 @@ test("withdrawal clears the number and rejects a delayed grant with an old revis
 	});
 });
 
+test("an explicit withdrawal invalidates pending grants even when contact is already off", async () => {
+	const t = convexTest(schema, modules).withIdentity(identity);
+	await t.mutation(api.users.syncCurrentUser, {});
+	await t.mutation(api.contactPreferences.save, {
+		choice: emptyContactChoice(),
+		expectedRevision: 0,
+	});
+	expect(await t.mutation(api.contactPreferences.withdraw, {})).toMatchObject({
+		phone: "",
+		feedback: false,
+		news: false,
+		revision: 2,
+	});
+	await expect(
+		t.mutation(api.contactPreferences.save, { choice, expectedRevision: 1 }),
+	).rejects.toThrow("inzwischen geändert");
+	expect(
+		await t.mutation(api.contactPreferences.save, {
+			choice: emptyContactChoice(),
+			expectedRevision: 2,
+		}),
+	).toMatchObject({ revision: 3 });
+	await expect(
+		t.mutation(api.contactPreferences.save, { choice, expectedRevision: 2 }),
+	).rejects.toThrow("inzwischen geändert");
+});
+
 test("imports onboarding once, survives retries and leaves old installed clients compatible", async () => {
 	const t = convexTest(schema, modules).withIdentity(identity);
 	await t.mutation(api.users.syncCurrentUser, {});

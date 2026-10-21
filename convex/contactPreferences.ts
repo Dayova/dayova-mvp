@@ -50,7 +50,11 @@ export async function saveContactChoice(
 		version: CONTACT_CONSENT_VERSION,
 	};
 	const previous = user.contactPreferences;
+	// Even an already-cleared choice must invalidate grants drafted before this
+	// explicit withdrawal. Unchanged grants can still be retried idempotently.
+	const isWithdrawal = source === "settings" && !granted;
 	if (
+		!isWithdrawal &&
 		previous &&
 		previous.phone === next.phone &&
 		previous.feedback === next.feedback &&
