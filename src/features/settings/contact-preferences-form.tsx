@@ -48,7 +48,7 @@ export function ContactPreferencesForm({
 				accessibilityHint="Bei einer Änderung der Nummer wählst du die Kontaktzwecke erneut aus."
 			/>
 			<SelectionOptionRow
-				label="Feedbackgespräche"
+				label="Feedback"
 				description={CONTACT_FEEDBACK_LABEL}
 				accessibilityLabel={CONTACT_FEEDBACK_LABEL}
 				accessibilityRole="checkbox"
