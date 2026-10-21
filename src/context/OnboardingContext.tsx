@@ -128,7 +128,10 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({
 	const value = useMemo<OnboardingContextValue>(
 		() => ({
 			contactChoice,
-			setContactChoice,
+			setContactChoice: (choice) => {
+				setContactChoice(choice);
+				setStepError("contact", null);
+			},
 			answers,
 			setAnswer: (field, value) => {
 				setAnswers((current) => ({ ...current, [field]: value }));
