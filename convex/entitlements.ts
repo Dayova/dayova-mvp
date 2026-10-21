@@ -1,4 +1,8 @@
 import { v } from "convex/values";
+import {
+	TRIAL_DURATION_DAYS,
+	TRIAL_REMINDER_DAYS_BEFORE_END,
+} from "../src/lib/trial-policy";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
@@ -13,8 +17,6 @@ import { enqueueCrmUpdate } from "./crmUpdates";
 import { throwUserFacingError } from "./errors";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const TRIAL_DURATION_MS = 14 * DAY_MS;
-const TRIAL_REMINDER_DELAY_MS = 12 * DAY_MS;
 
 async function scheduleCrmSync(ctx: MutationCtx, userId: Doc<"users">["_id"]) {
 	await enqueueCrmUpdate(ctx, userId);
@@ -371,12 +373,14 @@ export const activateMyTrial = mutation({
 			)
 			.unique();
 		if (existing) {
+			// Preserve every stored cohort, including manual extensions. Migrating
+			// existing trials needs a separate decision; activation never regrants one.
 			return getCurrentAccess(existing, Date.now());
 		}
 
 		const now = Date.now();
-		const trialExpiresAt = now + TRIAL_DURATION_MS;
-		const reminderAt = now + TRIAL_REMINDER_DELAY_MS;
+		const trialExpiresAt = now + TRIAL_DURATION_DAYS * DAY_MS;
+		const reminderAt = trialExpiresAt - TRIAL_REMINDER_DAYS_BEFORE_END * DAY_MS;
 
 		const entitlement = {
 			ownerTokenIdentifier: identity.tokenIdentifier,

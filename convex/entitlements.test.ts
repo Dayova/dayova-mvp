@@ -2,7 +2,7 @@
 
 import { convexTest } from "convex-test";
 import { afterEach, expect, test, vi } from "vitest";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -20,7 +20,7 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
-test("authenticated user activates 14 days of account access", async () => {
+test("authenticated user activates 30 days of account access", async () => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date("2026-07-28T10:00:00.000Z"));
 	const t = convexTest(schema, modules).withIdentity(user);
@@ -32,9 +32,9 @@ test("authenticated user activates 14 days of account access", async () => {
 
 	expect(access).toEqual({
 		canUseApp: true,
-		reminderAt: Date.parse("2026-08-09T10:00:00.000Z"),
+		reminderAt: Date.parse("2026-08-25T10:00:00.000Z"),
 		state: "trial",
-		trialExpiresAt: Date.parse("2026-08-11T10:00:00.000Z"),
+		trialExpiresAt: Date.parse("2026-08-27T10:00:00.000Z"),
 		trialStartedAt: Date.parse("2026-07-28T10:00:00.000Z"),
 		trialTermsVersion: "2026-07-28",
 	});
@@ -71,7 +71,127 @@ test("authenticated account without an entitlement requires activation", async (
 	});
 });
 
-test("trial access expires exactly 14 days after activation", async () => {
+test.each([
+	["2026-10-21T12:00:00.000Z", "2026-11-20T12:00:00.000Z"],
+	["2026-03-15T12:00:00.000Z", "2026-04-14T12:00:00.000Z"],
+	["2028-02-01T23:59:59.000Z", "2028-03-02T23:59:59.000Z"],
+])("30 full days from %s expire at %s regardless of calendar boundaries", async (start, end) => {
+	vi.useFakeTimers();
+	vi.setSystemTime(new Date(start));
+	const t = convexTest(schema, modules).withIdentity(user);
+	await t.mutation(api.users.syncCurrentUser, {});
+	await t.mutation(api.entitlements.activateMyTrial, { termsVersion: "30d" });
+	await expect(
+		t.query(api.entitlements.getMyAccess, { now: Date.parse(end) - 1 }),
+	).resolves.toMatchObject({
+		state: "trial",
+		canUseApp: true,
+		trialExpiresAt: Date.parse(end),
+	});
+	await expect(
+		t.query(api.entitlements.getMyAccess, { now: Date.parse(end) }),
+	).resolves.toMatchObject({ state: "expired", canUseApp: false });
+});
+
+test.each([
+	{
+		name: "running 14-day trial",
+		start: "2026-10-10T12:00:00.000Z",
+		end: "2026-10-24T12:00:00.000Z",
+		paid: false,
+		state: "trial",
+	},
+	{
+		name: "expired 14-day trial",
+		start: "2026-10-06T12:00:00.000Z",
+		end: "2026-10-20T12:00:00.000Z",
+		paid: false,
+		state: "expired",
+	},
+	{
+		name: "manual extension",
+		start: "2026-10-06T12:00:00.000Z",
+		end: "2026-12-31T12:00:00.000Z",
+		paid: false,
+		state: "trial",
+	},
+	{
+		name: "paid account",
+		start: "2026-10-06T12:00:00.000Z",
+		end: "2026-10-20T12:00:00.000Z",
+		paid: true,
+		state: "paid",
+	},
+])("activation preserves the stored $name", async ({
+	start,
+	end,
+	paid,
+	state,
+}) => {
+	vi.useFakeTimers();
+	vi.setSystemTime(new Date("2026-10-21T12:00:00.000Z"));
+	const t = convexTest(schema, modules).withIdentity(user);
+	await t.mutation(api.users.syncCurrentUser, {});
+	const before = await t.run(async (ctx) => {
+		const account = await ctx.db
+			.query("users")
+			.withIndex("by_tokenIdentifier", (q) =>
+				q.eq("tokenIdentifier", user.tokenIdentifier),
+			)
+			.unique();
+		if (!account) throw new Error("Missing test account");
+		const id = await ctx.db.insert("accessEntitlements", {
+			userId: account._id,
+			ownerTokenIdentifier: user.tokenIdentifier,
+			trialStartedAt: Date.parse(start),
+			trialExpiresAt: Date.parse(end),
+			trialReminderAt: Date.parse(end) - 172_800_000,
+			trialTermsVersion: "legacy-14d",
+			revenueCatEntitlementActive: paid,
+			...(paid
+				? { subscriptionExpiresAt: Date.parse("2026-12-01T12:00:00.000Z") }
+				: {}),
+			createdAt: 1,
+			updatedAt: 1,
+		});
+		return ctx.db.get("accessEntitlements", id);
+	});
+	if (!before) throw new Error("Missing seeded entitlement");
+	await expect(
+		t.mutation(api.entitlements.activateMyTrial, { termsVersion: "30d" }),
+	).resolves.toMatchObject({ state, canUseApp: state !== "expired" });
+	expect(
+		await t.run((ctx) => ctx.db.get("accessEntitlements", before._id)),
+	).toEqual(before);
+});
+
+test("CRM receives the same new trial deadline and expiry state as the app", async () => {
+	vi.useFakeTimers();
+	vi.setSystemTime(new Date("2026-10-21T12:00:00.000Z"));
+	const t = convexTest(schema, modules).withIdentity(user);
+	await t.mutation(api.users.syncCurrentUser, {});
+	await t.mutation(api.entitlements.activateMyTrial, { termsVersion: "30d" });
+	const inspect = (now: string) =>
+		t.query(internal.crmSyncState.inspectStudent, {
+			clerkId: user.subject,
+			pageId: "synthetic-crm-page",
+			now: Date.parse(now),
+		});
+	await expect(inspect("2026-11-20T11:59:59.999Z")).resolves.toMatchObject({
+		status: "matched",
+		projection: {
+			state: "trial",
+			trialStartedAt: Date.parse("2026-10-21T12:00:00.000Z"),
+			trialExpiresAt: Date.parse("2026-11-20T12:00:00.000Z"),
+		},
+	});
+	await expect(inspect("2026-11-20T12:00:00.000Z")).resolves.toMatchObject({
+		status: "matched",
+		projection: { state: "expired" },
+	});
+});
+
+test("trial access expires exactly 30 days after activation", async () => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date("2026-07-28T10:00:00.000Z"));
 	const t = convexTest(schema, modules).withIdentity(user);
@@ -82,7 +202,7 @@ test("trial access expires exactly 14 days after activation", async () => {
 
 	await expect(
 		t.query(api.entitlements.getMyAccess, {
-			now: Date.parse("2026-08-11T10:00:00.000Z"),
+			now: Date.parse("2026-08-27T10:00:00.000Z"),
 		}),
 	).resolves.toMatchObject({
 		canUseApp: false,
@@ -399,12 +519,12 @@ test("TRANSFER webhook grants the destination and revokes the source account", a
 	expect(response.status).toBe(200);
 	await expect(
 		destination.query(api.entitlements.getMyAccess, {
-			now: Date.parse("2026-08-12T10:00:00.000Z"),
+			now: Date.parse("2026-08-28T10:00:00.000Z"),
 		}),
 	).resolves.toMatchObject({ canUseApp: true, state: "paid" });
 	await expect(
 		source.query(api.entitlements.getMyAccess, {
-			now: Date.parse("2026-08-12T10:00:00.000Z"),
+			now: Date.parse("2026-08-28T10:00:00.000Z"),
 		}),
 	).resolves.toMatchObject({ canUseApp: false, state: "expired" });
 });
@@ -439,10 +559,10 @@ test("activating an expired entitlement preserves its real access state", async 
 		termsVersion: "2026-07-28",
 	});
 
-	vi.setSystemTime(new Date("2026-08-12T10:00:00.000Z"));
+	vi.setSystemTime(new Date("2026-08-28T10:00:00.000Z"));
 	await expect(
 		t.mutation(api.entitlements.activateMyTrial, {
-			termsVersion: "2026-08-12",
+			termsVersion: "2026-08-28",
 		}),
 	).resolves.toMatchObject({
 		canUseApp: false,
@@ -483,7 +603,7 @@ test("RevenueCat webhook returns 503 when subscriber synchronization fails", asy
 	expect(response.status).toBe(503);
 });
 
-test("Day 12 creates an in-app trial reminder exactly once", async () => {
+test("Day 28 creates an in-app trial reminder exactly once", async () => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date("2026-07-28T10:00:00.000Z"));
 	const t = convexTest(schema, modules).withIdentity(user);
@@ -492,9 +612,35 @@ test("Day 12 creates an in-app trial reminder exactly once", async () => {
 		termsVersion: "2026-07-28",
 	});
 
-	await t.finishAllScheduledFunctions(() => {
-		vi.advanceTimersByTime(12 * 24 * 60 * 60 * 1000);
-	});
+	// convex-test uses setTimeout, whose maximum delay is less than 28 days.
+	// Verify the persisted scheduler deadline, then exercise its callback at that time.
+	const scheduled = await t.run((ctx) =>
+		ctx.db.system.query("_scheduled_functions").take(10),
+	);
+	expect(scheduled).toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({
+				name: "entitlements:deliverTrialReminder",
+				args: [
+					{
+						expectedTrialExpiresAt: Date.parse("2026-08-27T10:00:00.000Z"),
+						ownerTokenIdentifier: user.tokenIdentifier,
+					},
+				],
+				scheduledTime: Date.parse("2026-08-25T10:00:00.000Z"),
+			}),
+		]),
+	);
+	expect(
+		await t.query(api.notifications.listInbox, { category: "all" }),
+	).toEqual([]);
+	vi.setSystemTime(new Date("2026-08-25T10:00:00.000Z"));
+	for (let delivery = 0; delivery < 2; delivery++) {
+		await t.mutation(internal.entitlements.deliverTrialReminder, {
+			expectedTrialExpiresAt: Date.parse("2026-08-27T10:00:00.000Z"),
+			ownerTokenIdentifier: user.tokenIdentifier,
+		});
+	}
 	const inbox = await t.query(api.notifications.listInbox, {
 		category: "all",
 	});

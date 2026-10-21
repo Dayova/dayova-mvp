@@ -6,6 +6,19 @@ Notion is Dayova's main internal documentation and knowledge workspace. Keep thi
 
 Canonical product framing: [Dayova Business Plan 2026 — Exact Exam, Real Gaps, Next Step](https://app.notion.com/p/Dayova-Business-Plan-2026-Exact-Exam-Real-Gaps-Next-Step-3ac2e87228bf81efa709e901f684da0d)
 
+## Trial access
+
+The [30-day trial decision](https://app.notion.com/p/3fb2e87228bf81d8a5d2ce018cf138a9)
+is implemented for new trial activations by `src/lib/trial-policy.ts` and
+`convex/entitlements.ts`: 30 full 24-hour days from the server's activation time,
+without payment details, with a reminder 48 hours before expiry. This applies
+to eligible accounts without an existing entitlement, regardless of signup date.
+Stored trial dates, including legacy 14-day trials and manual extensions, are
+preserved. Repeated activation never restarts access. A separate migration
+decision is required to extend existing cohorts. App reminders and CRM use the
+stored timestamps; Store subscription offers are a separate contract.
+
+
 ## Language
 
 **Dayova**:

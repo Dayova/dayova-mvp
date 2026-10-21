@@ -12,9 +12,13 @@ import { useAccess } from "~/context/AccessContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { openExternalUrl } from "~/lib/open-external-url";
 import { env } from "~/lib/runtime-config";
+import {
+	TRIAL_DURATION_DAYS,
+	TRIAL_REMINDER_DAYS_BEFORE_END,
+	TRIAL_TERMS_VERSION,
+} from "~/lib/trial-policy";
 import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
-const TRIAL_TERMS_VERSION = "2026-07-28-v1";
 const TRIAL_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 const WHITE = DAYOVA_DESIGN_SYSTEM.colors.light1;
 // LinearGradient exposes its full-bleed geometry through the native style API.
@@ -22,19 +26,19 @@ const gradientFillStyle = StyleSheet.absoluteFill;
 
 const timelineItems = [
 	{
-		body: "Du kannst alle Lernfunktionen 14 Tage lang ohne Zahlungsmittel nutzen.",
+		body: `Du kannst alle Lernfunktionen ${TRIAL_DURATION_DAYS} Tage lang ohne Zahlungsmittel nutzen.`,
 		icon: Check,
 		title: "Heute: Dein voller Zugriff startet",
 	},
 	{
 		body: "Wir erinnern dich in Dayova und – wenn erlaubt – per Mitteilung.",
 		icon: Bell,
-		title: "Tag 12: Wir erinnern dich",
+		title: `Tag ${TRIAL_DURATION_DAYS - TRIAL_REMINDER_DAYS_BEFORE_END}: Wir erinnern dich`,
 	},
 	{
 		body: "Du entscheidest selbst, ob du weitermachst. Es wird nichts automatisch berechnet.",
 		icon: SquareLock,
-		title: "Tag 14: Du entscheidest",
+		title: `Tag ${TRIAL_DURATION_DAYS}: Du entscheidest`,
 	},
 ] as const;
 
@@ -114,7 +118,7 @@ export function TrialActivationScreen() {
 				>
 					<View className="items-center gap-3 pb-7">
 						<Text className="text-center font-semibold text-body-4 text-white/85">
-							14 TAGE KOSTENLOS
+							{TRIAL_DURATION_DAYS} TAGE KOSTENLOS
 						</Text>
 						<Text
 							variant="h1"
@@ -201,7 +205,7 @@ export function TrialActivationScreen() {
 							</View>
 						) : null}
 						<Button
-							accessibilityHint="Aktiviert deine kostenlose 14-tägige Testphase."
+							accessibilityHint={`Aktiviert deine kostenlose ${TRIAL_DURATION_DAYS}-tägige Testphase.`}
 							className="border-white bg-white active:bg-white/90"
 							disabled={showStarting}
 							onPress={() => void startTrial()}

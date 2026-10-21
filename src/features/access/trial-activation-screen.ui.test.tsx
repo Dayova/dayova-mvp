@@ -60,6 +60,26 @@ describe("TrialActivationScreen", () => {
 		mockInsets = { bottom: 34, left: 0, right: 0, top: 59 };
 	});
 
+	test("explains the no-card 30-day trial and activates the displayed terms", async () => {
+		const screen = await render(<TrialActivationScreen />);
+		expect(screen.getByText("30 TAGE KOSTENLOS")).toBeOnTheScreen();
+		expect(
+			screen.getByText(
+				"Du kannst alle Lernfunktionen 30 Tage lang ohne Zahlungsmittel nutzen.",
+			),
+		).toBeOnTheScreen();
+		expect(screen.getByText("Tag 28: Wir erinnern dich")).toBeOnTheScreen();
+		expect(screen.getByText("Tag 30: Du entscheidest")).toBeOnTheScreen();
+		expect(screen.getByRole("button", { name: "Dayova starten" })).toHaveProp(
+			"accessibilityHint",
+			"Aktiviert deine kostenlose 30-tägige Testphase.",
+		);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Dayova starten" }),
+		);
+		expect(mockActivateTrial).toHaveBeenCalledWith("2026-10-16-30d-v1");
+	});
+
 	test("updates the viewport when system insets change without losing an activation error", async () => {
 		mockActivateTrial.mockRejectedValueOnce(new Error("offline"));
 		const screen = await render(<TrialActivationScreen />);
