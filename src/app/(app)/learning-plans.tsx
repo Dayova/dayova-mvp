@@ -2,7 +2,7 @@ import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ScrollView, View } from "react-native";
+import { Platform, ScrollView, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
 	Easing,
@@ -872,7 +872,8 @@ export default function LearningPlansScreen() {
 
 	return (
 		<SafeAreaView
-			edges={{ bottom: true }}
+			// iOS scroll insets keep the final card reachable without an opaque tab-bar strip.
+			edges={{ bottom: Platform.OS !== "ios" }}
 			// The native safe area needs the current theme color at runtime.
 			style={{ flex: 1, backgroundColor: colors.background }}
 		>
@@ -919,6 +920,7 @@ export default function LearningPlansScreen() {
 
 			<ScrollView
 				className="flex-1"
+				contentInsetAdjustmentBehavior="automatic"
 				contentContainerClassName="px-6 pb-6"
 				showsVerticalScrollIndicator={false}
 			>
