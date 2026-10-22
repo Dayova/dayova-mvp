@@ -1,34 +1,46 @@
-import { expect, jest, test } from "@jest/globals";
+import { afterEach, beforeEach, expect, jest, test } from "@jest/globals";
 import {
 	fireEvent,
 	render as renderNative,
 } from "@testing-library/react-native";
-import type { ReactElement } from "react";
+import { type ReactElement, useState } from "react";
+import { DayovaThemeProvider } from "~/lib/theme";
 import { InlineDatePicker } from "./inline-date-picker.ios";
 
+beforeEach(() => {
+	jest.useFakeTimers({ now: new Date(2026, 0, 1) });
+});
+
+afterEach(() => {
+	jest.useRealTimers();
+});
+
 async function render(element: ReactElement) {
-	const screen = await renderNative(element);
+	const screen = await renderNative(element, { wrapper: DayovaThemeProvider });
 	await fireEvent(screen.getByTestId("calendar-viewport"), "layout", {
 		nativeEvent: { layout: { width: 350 } },
 	});
 	return screen;
 }
 
-jest.mock("~/lib/theme", () => ({
-	useDayovaTheme: () => ({
-		colors: {
-			primary: "#00BAFF",
-			text: "#FFFFFF",
-			secondaryText: "#999999",
-			onPrimary: "#111111",
-		},
-	}),
-}));
-jest.mock("~/components/ui/icon", () => ({
-	ArrowLeft: () => null,
-	ArrowRight: () => null,
-	ChevronDown: () => null,
-}));
+test("keeps the calendar available when selecting a day in another month", async () => {
+	function ControlledPicker() {
+		const [value, setValue] = useState(new Date(2026, 10, 25));
+		return <InlineDatePicker value={value} onChange={setValue} />;
+	}
+	const screen = await render(<ControlledPicker />);
+	await fireEvent.press(screen.getByRole("button", { name: "Nächster Monat" }));
+	await fireEvent.press(
+		screen.getByRole("button", { name: "Donnerstag, 31. Dezember 2026" }),
+	);
+	expect(
+		screen.getByRole("button", { name: "Donnerstag, 31. Dezember 2026" }),
+	).toBeSelected();
+	await fireEvent.press(
+		screen.getByRole("button", { name: "Vorheriger Monat" }),
+	);
+	expect(screen.getByText("November 2026")).toBeTruthy();
+});
 
 test("selects the initial month and preserves the selected date while browsing other months", async () => {
 	const onChange = jest.fn();
@@ -122,9 +134,6 @@ test("supports year rollover, leap days, month selection and external date updat
 	await screen.rerender(
 		<InlineDatePicker value={new Date(2029, 3, 1)} onChange={onChange} />,
 	);
-	await fireEvent(screen.getByTestId("calendar-viewport"), "layout", {
-		nativeEvent: { layout: { width: 350 } },
-	});
 	expect(screen.getByText("April 2029")).toBeTruthy();
 	expect(
 		screen.getByRole("button", { name: "Sonntag, 1. April 2029" }),

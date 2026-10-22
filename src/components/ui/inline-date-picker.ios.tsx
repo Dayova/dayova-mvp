@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, ScrollView, useWindowDimensions, View } from "react-native";
+import { Pressable, useWindowDimensions, View } from "react-native";
 import { ArrowLeft, ArrowRight, ChevronDown } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { startOfLocalDay } from "~/lib/day-key";
@@ -23,16 +23,7 @@ const dayFormatter = new Intl.DateTimeFormat("de-DE", {
 const weekdays = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 
 /** A fixed six-week grid avoids the graphical iOS picker's delayed row reflow. */
-export function InlineDatePicker(props: InlineDatePickerProps) {
-	return (
-		<CalendarGrid
-			key={`${props.value.getFullYear()}-${props.value.getMonth()}`}
-			{...props}
-		/>
-	);
-}
-
-function CalendarGrid({
+export function InlineDatePicker({
 	value,
 	minimumDate,
 	maximumDate,
@@ -47,6 +38,16 @@ function CalendarGrid({
 		() => new Date(selectedYear, selectedMonth, 1),
 	);
 	const [choosingMonth, setChoosingMonth] = useState(false);
+	const selectedMonthKey = `${selectedYear}-${selectedMonth}`;
+	const [previousSelectedMonth, setPreviousSelectedMonth] =
+		useState(selectedMonthKey);
+	if (previousSelectedMonth !== selectedMonthKey) {
+		// Follow controlled month changes without remounting the measured viewport.
+		// A remount hides the days until the next native layout.
+		setPreviousSelectedMonth(selectedMonthKey);
+		setMonth(new Date(selectedYear, selectedMonth, 1));
+		setChoosingMonth(false);
+	}
 	const year = month.getFullYear();
 	const monthIndex = month.getMonth();
 	const selectedDay = startOfLocalDay(value).getTime();
@@ -57,11 +58,12 @@ function CalendarGrid({
 	const maximum = maximumDate
 		? startOfLocalDay(maximumDate).getTime()
 		: Infinity;
-	// Runtime text scaling determines row height and a scrollable minimum width.
+	// Preserve the seven-day grid only while full-size text fits the viewport.
 	const scale = Math.max(1, fontScale);
 	const rowHeight = 44 * scale;
 	const weekdayHeight = 28 * scale;
 	const minimumWidth = 7 * Math.max(44, 24 * scale);
+	const useDayList = width > 0 && width < minimumWidth;
 	const periodAvailable = (first: Date, last: Date) =>
 		first.getTime() <= maximum && last.getTime() >= minimum;
 	const canPrevious = choosingMonth
@@ -92,103 +94,110 @@ function CalendarGrid({
 		<View
 			testID="calendar-viewport"
 			onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
-			style={{ height: rowHeight * 7 + weekdayHeight }}
+			style={{ height: useDayList ? undefined : rowHeight * 7 + weekdayHeight }}
 		>
 			{width > 0 ? (
-				<ScrollView horizontal>
-					<View style={{ width: Math.max(width, minimumWidth) }}>
-						<View
-							className="flex-row items-center"
-							style={{ height: rowHeight }}
+				<View style={{ width }}>
+					<View
+						className={cn(
+							"flex-row items-center",
+							useDayList && "flex-wrap justify-end",
+						)}
+						style={{ height: useDayList ? undefined : rowHeight }}
+					>
+						<Pressable
+							accessibilityRole="button"
+							accessibilityLabel={
+								choosingMonth ? "Zur Tagesauswahl" : "Monat und Jahr auswählen"
+							}
+							accessibilityState={{ expanded: choosingMonth }}
+							accessibilityValue={{
+								text: choosingMonth
+									? String(year)
+									: monthFormatter.format(month),
+							}}
+							onPress={() => setChoosingMonth(!choosingMonth)}
+							className={cn(
+								"flex-row items-center gap-2 px-2",
+								useDayList ? "w-full" : "flex-1",
+							)}
+							style={{ minHeight: rowHeight }}
 						>
-							<Pressable
-								accessibilityRole="button"
-								accessibilityLabel={
-									choosingMonth
-										? "Zur Tagesauswahl"
-										: "Monat und Jahr auswählen"
-								}
-								accessibilityState={{ expanded: choosingMonth }}
-								accessibilityValue={{
-									text: choosingMonth
-										? String(year)
-										: monthFormatter.format(month),
-								}}
-								onPress={() => setChoosingMonth(!choosingMonth)}
-								className="flex-1 flex-row items-center gap-1.5 px-2"
-								style={{ minHeight: rowHeight }}
-							>
-								<Text className="shrink font-semibold text-body-2 text-text">
-									{choosingMonth ? year : monthFormatter.format(month)}
-								</Text>
-								<ChevronDown size={18} color={colors.primary} />
-							</Pressable>
-							{([-1, 1] as const).map((direction) => {
-								const enabled = direction === -1 ? canPrevious : canNext;
-								const Icon = direction === -1 ? ArrowLeft : ArrowRight;
+							<Text className="shrink font-semibold text-body-2 text-text">
+								{choosingMonth ? year : monthFormatter.format(month)}
+							</Text>
+							<ChevronDown size={18} color={colors.primary} />
+						</Pressable>
+						{([-1, 1] as const).map((direction) => {
+							const enabled = direction === -1 ? canPrevious : canNext;
+							const Icon = direction === -1 ? ArrowLeft : ArrowRight;
+							return (
+								<Pressable
+									key={direction}
+									accessibilityRole="button"
+									accessibilityLabel={
+										choosingMonth
+											? direction === -1
+												? "Vorheriges Jahr"
+												: "Nächstes Jahr"
+											: direction === -1
+												? "Vorheriger Monat"
+												: "Nächster Monat"
+									}
+									accessibilityState={{ disabled: !enabled }}
+									disabled={!enabled}
+									onPress={() => move(direction)}
+									className={cn(
+										"w-11 items-center justify-center",
+										!enabled && "opacity-30",
+									)}
+									style={{ height: rowHeight }}
+								>
+									<Icon size={24} color={colors.primary} />
+								</Pressable>
+							);
+						})}
+					</View>
+					{choosingMonth ? (
+						<View className="flex-row flex-wrap pt-4">
+							{Array.from(
+								{ length: 12 },
+								(_, index) => new Date(year, index, 1),
+							).map((date) => {
+								const enabled = periodAvailable(
+									date,
+									new Date(year, date.getMonth() + 1, 0),
+								);
 								return (
 									<Pressable
-										key={direction}
+										key={date.getTime()}
 										accessibilityRole="button"
-										accessibilityLabel={
-											choosingMonth
-												? direction === -1
-													? "Vorheriges Jahr"
-													: "Nächstes Jahr"
-												: direction === -1
-													? "Vorheriger Monat"
-													: "Nächster Monat"
-										}
+										accessibilityLabel={monthFormatter.format(date)}
 										accessibilityState={{ disabled: !enabled }}
 										disabled={!enabled}
-										onPress={() => move(direction)}
+										onPress={() => {
+											setMonth(date);
+											setChoosingMonth(false);
+										}}
 										className={cn(
-											"w-11 items-center justify-center",
+											"items-center justify-center",
+											useDayList ? "w-full" : "w-1/3",
 											!enabled && "opacity-30",
 										)}
-										style={{ height: rowHeight }}
+										style={{ minHeight: rowHeight * 1.5 }}
 									>
-										<Icon size={24} color={colors.primary} />
+										<Text className="text-body-2 text-text">
+											{useDayList
+												? monthFormatter.format(date)
+												: shortMonthFormatter.format(date)}
+										</Text>
 									</Pressable>
 								);
 							})}
 						</View>
-						{choosingMonth ? (
-							<View className="flex-row flex-wrap pt-3.5">
-								{Array.from(
-									{ length: 12 },
-									(_, index) => new Date(year, index, 1),
-								).map((date) => {
-									const enabled = periodAvailable(
-										date,
-										new Date(year, date.getMonth() + 1, 0),
-									);
-									return (
-										<Pressable
-											key={date.getTime()}
-											accessibilityRole="button"
-											accessibilityLabel={monthFormatter.format(date)}
-											accessibilityState={{ disabled: !enabled }}
-											disabled={!enabled}
-											onPress={() => {
-												setMonth(date);
-												setChoosingMonth(false);
-											}}
-											className={cn(
-												"w-1/3 items-center justify-center",
-												!enabled && "opacity-30",
-											)}
-											style={{ height: rowHeight * 1.5 }}
-										>
-											<Text className="text-body-2 text-text">
-												{shortMonthFormatter.format(date)}
-											</Text>
-										</Pressable>
-									);
-								})}
-							</View>
-						) : (
-							<>
+					) : (
+						<>
+							{!useDayList ? (
 								<View
 									className="flex-row items-center"
 									style={{ height: weekdayHeight }}
@@ -202,71 +211,83 @@ function CalendarGrid({
 										</Text>
 									))}
 								</View>
-								<View>
-									{Array.from({ length: 6 }, (_, week) =>
-										days.slice(week * 7, week * 7 + 7),
-									).map((week) => (
-										<View key={week[0].getTime()} className="flex-row">
-											{week.map((date) => {
-												const timestamp = date.getTime();
-												const selected = timestamp === selectedDay;
-												const isToday = timestamp === today;
-												const enabled =
-													timestamp >= minimum && timestamp <= maximum;
-												const cellStyle = { height: rowHeight };
-												if (date.getMonth() !== monthIndex)
-													return (
-														<View
-															key={timestamp}
-															className="flex-1 items-center justify-center"
-															style={cellStyle}
-														/>
-													);
+							) : null}
+							<View>
+								{(useDayList
+									? days
+											.filter((date) => date.getMonth() === monthIndex)
+											.map((date) => [date])
+									: Array.from({ length: 6 }, (_, week) =>
+											days.slice(week * 7, week * 7 + 7),
+										)
+								).map((week) => (
+									<View key={week[0].getTime()} className="flex-row">
+										{week.map((date) => {
+											const timestamp = date.getTime();
+											const selected = timestamp === selectedDay;
+											const isToday = timestamp === today;
+											const enabled =
+												timestamp >= minimum && timestamp <= maximum;
+											const cellStyle = useDayList
+												? { minHeight: rowHeight }
+												: { height: rowHeight };
+											if (date.getMonth() !== monthIndex)
 												return (
-													<Pressable
+													<View
 														key={timestamp}
-														accessibilityRole="button"
-														accessibilityLabel={`${dayFormatter.format(date)}${isToday ? ", heute" : ""}`}
-														accessibilityState={{
-															selected,
-															disabled: !enabled,
-														}}
-														disabled={!enabled}
-														onPress={() => onChange(date)}
 														className="flex-1 items-center justify-center"
 														style={cellStyle}
-													>
-														<View
-															className={cn(
-																"w-full items-center justify-center rounded-full border-primary",
-																selected && "bg-primary",
-																isToday && !selected && "border",
-															)}
-															style={{
-																maxWidth: rowHeight - 4,
-																height: rowHeight - 4,
-															}}
-														>
-															<Text
-																className={cn(
-																	"text-body-2 text-text",
-																	selected && "font-semibold text-on-primary",
-																	!enabled && "opacity-30",
-																)}
-															>
-																{date.getDate()}
-															</Text>
-														</View>
-													</Pressable>
+													/>
 												);
-											})}
-										</View>
-									))}
-								</View>
-							</>
-						)}
-					</View>
-				</ScrollView>
+											return (
+												<Pressable
+													key={timestamp}
+													accessibilityRole="button"
+													accessibilityLabel={`${dayFormatter.format(date)}${isToday ? ", heute" : ""}`}
+													accessibilityState={{
+														selected,
+														disabled: !enabled,
+													}}
+													disabled={!enabled}
+													onPress={() => onChange(date)}
+													className="flex-1 items-center justify-center"
+													style={cellStyle}
+												>
+													<View
+														className={cn(
+															"w-full justify-center border-primary",
+															useDayList
+																? "rounded-input px-3 py-2"
+																: "items-center rounded-full",
+															selected && "bg-primary",
+															isToday && !selected && "border",
+														)}
+														style={{
+															maxWidth: useDayList ? undefined : rowHeight - 4,
+															minHeight: rowHeight - 4,
+														}}
+													>
+														<Text
+															className={cn(
+																"text-body-2 text-text",
+																selected && "font-semibold text-on-primary",
+																!enabled && "opacity-30",
+															)}
+														>
+															{useDayList
+																? dayFormatter.format(date)
+																: date.getDate()}
+														</Text>
+													</View>
+												</Pressable>
+											);
+										})}
+									</View>
+								))}
+							</View>
+						</>
+					)}
+				</View>
 			) : null}
 		</View>
 	);
