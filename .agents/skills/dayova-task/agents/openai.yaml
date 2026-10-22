@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dayova Task"
+  short_description: "Take a Dayova task through an isolated draft PR"
+  default_prompt: "Use $dayova-task DAY-123 — fix the calendar jump. Use iPhone 17 Pro, dark mode."

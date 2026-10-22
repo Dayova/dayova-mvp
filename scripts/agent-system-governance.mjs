@@ -19,6 +19,28 @@ const canonicalSurfaces = {
 };
 
 export const authorizationClasses = {
+	"task-delivery": {
+		mutationClass: "requested-repository-and-owned-local-runtime",
+		authorization:
+			"Implement the requested task, claim only its worktree/branch/devices/ports, use verified non-production synthetic accounts and fixtures within task ownership, reconcile Linear, and publish an owned draft PR. No production writes, merge, deployment, paid build, or mutation of another task's resources.",
+		systems: {
+			read: [
+				"repository",
+				"Linear",
+				"Notion",
+				"GitHub",
+				"provider environment inventory",
+				"local runtime",
+			],
+			write: [
+				"owned repository worktree and branch",
+				"owned local runtime",
+				"verified task-owned non-production fixtures",
+				"GitHub draft PR and evidence",
+				"owning Linear issue",
+			],
+		},
+	},
 	"ai-observability-conditional": {
 		mutationClass: "read-only-by-default-authorized-ai-observability-write",
 		authorization:
@@ -157,6 +179,12 @@ export const authorizationClasses = {
 };
 
 export const evalSuites = {
+	"dayova-task-resources": {
+		kind: "behavioral-and-mutation-safety",
+		command: "node --test scripts/dayova-task/*.test.mjs",
+		fixture: ".agents/evals/dayova-task.json",
+		owner: "DAY-553 (part of DAY-221)",
+	},
 	"langfuse-instrumentation": {
 		kind: "behavioral",
 		command:
@@ -695,6 +723,12 @@ const skillDefinitions = {
 	],
 	[DAYOVA_REPOSITORY_SOURCE]: [
 		[
+			"dayova-task",
+			"Execute a Dayova implementation task from a description or Linear issue through owned setup, validation and draft PR delivery.",
+			"Review-only, diagnosis-only, release/deployment, personal skill creation, or event-scoped tracker reconciliation.",
+			"task-delivery",
+		],
+		[
 			"dayova-product-design",
 			"Design, substantially redesign, critique, or resolve the interaction structure of a Dayova UI surface.",
 			"Implement an already-settled UI detail or change non-product infrastructure.",
@@ -733,6 +767,7 @@ function defineSkill(source, [name, positive, negative, authorizationClass]) {
 	const authorization = authorizationClasses[authorizationClass];
 	const contractPath = `.agents/skills/${name}/SKILL.md`;
 	const evalSuite = [...defaults.evalSuite];
+	if (name === "dayova-task") evalSuite.push("dayova-task-resources");
 	if (name === "maintain-dayova-agent-system") {
 		evalSuite.push("maintain-agent-system-routing");
 	}
@@ -760,7 +795,10 @@ function defineSkill(source, [name, positive, negative, authorizationClass]) {
 		authorizationClass,
 		overrideRationale: defaults.overrideRationale,
 		evalSuite,
-		lastReviewed: defaults.lastReviewed ?? GOVERNANCE_REVIEW_DATE,
+		lastReviewed:
+			name === "dayova-task"
+				? "2026-10-22"
+				: (defaults.lastReviewed ?? GOVERNANCE_REVIEW_DATE),
 		retirementCriteria:
 			"Retire or merge when the positive boundary disappears, another governed workflow owns it, or evaluation evidence no longer justifies its maintenance cost.",
 	};

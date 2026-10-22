@@ -50,6 +50,11 @@ because a file changed. See `docs/testing.md` for examples and review guidance.
 
 ### Delivery workflow
 
+Use `$dayova-task` for end-to-end implementation from a description or Linear
+issue, including owned worktree/runtime setup and draft PR delivery. See its
+[resource procedure](.agents/skills/dayova-task/references/resources.md) before
+allocating simulators, Metro servers, QA accounts, or test data.
+
 For explicitly mutating repository work (for example implementation, fixes, refactors, or review-feedback changes), completion normally includes:
 
 1. validate the result;
