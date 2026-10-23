@@ -29,7 +29,9 @@ appId: ${APP_ID}
             - tapOn: Open
       - extendedWaitUntil:
           visible: "Login|Reload"
-          timeout: 60000
+          # A fresh development bundle can consume the first minute on a cloud
+          # iOS worker. Wait for the rendered app after compilation as well.
+          timeout: 180000
       # Dismiss a developer menu if the client still presents one.
       # Android dismisses this modal with Back; iOS exposes a Close control.
       - runFlow:

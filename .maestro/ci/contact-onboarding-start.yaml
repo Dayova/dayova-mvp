@@ -90,7 +90,7 @@ name: Reach the optional contact step through real onboarding
     direction: DOWN
 - tapOn: Weiter
 - extendedWaitUntil:
-    visible: 'Deine Lernzeiten'
+    visible: 'Maestro, deine Lernzeiten sind vorbereitet\.'
     timeout: 30000
 - scrollUntilVisible:
     element: Weiter
