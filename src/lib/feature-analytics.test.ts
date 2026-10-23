@@ -11,6 +11,9 @@ describe("feature measurement boundary", () => {
 			"entry_creation",
 		);
 		expect(
+			analyticsScreenForSegments(["learning-plans", "[planId]", "preparation"]),
+		).toBe("plan_preparation");
+		expect(
 			analyticsScreenForSegments(["entry", "private-entry-id"]),
 		).toBeUndefined();
 		expect(analyticsScreenForSegments(["unknown-screen"])).toBeUndefined();
