@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { contactChoiceError } from "../src/lib/contact-preferences";
 import {
 	GERMAN_FEDERAL_STATES,
 	isGermanFederalState,
@@ -569,8 +570,13 @@ export const saveOnboardingAnswers = mutation({
 		if (!user) {
 			throwUserFacingError("Der Nutzer konnte nicht gefunden werden.");
 		}
-		// Import once: replayed onboarding must never undo a later settings decision.
-		if (args.answers.contact && !user.contactPreferences) {
+		// Optional contact must not block onboarding when a recovered grant is
+		// invalid or its wording retired. Never replace a later settings decision.
+		if (
+			args.answers.contact &&
+			!user.contactPreferences &&
+			!contactChoiceError(args.answers.contact)
+		) {
 			await saveContactChoice(ctx, user, args.answers.contact, "onboarding");
 		}
 		const normalizedGrade = normalizeOptionalGrade(args.answers.grade);

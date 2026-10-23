@@ -152,6 +152,63 @@ test("imports onboarding once, survives retries and leaves old installed clients
 	});
 });
 
+test.each([
+	["stale version", { ...choice, version: "retired-contact-wording" }],
+	["invalid phone", { ...choice, phone: "123" }],
+])("onboarding stays usable with a %s contact grant", async (_reason, contact) => {
+	const t = convexTest(schema, modules).withIdentity(identity);
+	const userId = await t.mutation(api.users.syncCurrentUser, {});
+	await expect(
+		t.mutation(api.users.saveOnboardingAnswers, {
+			answers: {
+				...answers,
+				contact,
+				studyDays: "Montag",
+				learningTime: "16:30",
+				dailySchoolTime: "45 min",
+			},
+		}),
+	).resolves.toEqual({ success: true, learningTimesCreated: 1 });
+	await expect(t.query(api.learningTimes.listMine, {})).resolves.toMatchObject([
+		{ dayOfWeek: 1, startTime: "16:30", endTime: "17:15" },
+	]);
+	const savedAnswers = await t.run(async (ctx) => {
+		const rows = await ctx.db
+			.query("userOnboardingAnswers")
+			.withIndex("by_userId", (q) => q.eq("userId", userId))
+			.take(20);
+		return Object.fromEntries(
+			await Promise.all(
+				rows.map(async (row) => {
+					const question = await ctx.db.get(
+						"onboardingQuestions",
+						row.questionId,
+					);
+					if (!question) throw new Error("Saved answer has no question");
+					return [question.key, row.answer];
+				}),
+			),
+		);
+	});
+	expect(savedAnswers).toEqual({
+		grade: "10",
+		state: "Berlin",
+		schoolType: "gymnasium",
+		studyDays: "Montag",
+		learningTime: "16:30",
+		dailySchoolTime: "45 min",
+	});
+	await expect(t.query(api.contactPreferences.getMine, {})).resolves.toBeNull();
+	expect(
+		await t.run((ctx) =>
+			ctx.db
+				.query("contactConsentEvents")
+				.withIndex("by_userId", (q) => q.eq("userId", userId))
+				.take(1),
+		),
+	).toEqual([]);
+});
+
 test("validates grants without blocking withdrawal or persisting unused numbers", async () => {
 	const t = convexTest(schema, modules).withIdentity(identity);
 	await t.mutation(api.users.syncCurrentUser, {});

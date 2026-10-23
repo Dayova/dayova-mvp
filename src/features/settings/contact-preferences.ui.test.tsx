@@ -77,6 +77,15 @@ beforeEach(() => {
 	mockTrack.mockReset();
 });
 
+test.each([
+	CONTACT_FEEDBACK_LABEL,
+	CONTACT_NEWS_LABEL,
+])("does not repeat the checkbox purpose as its screen-reader hint: %s", async (label) => {
+	const screen = await render(<ContactPreferencesScreen />);
+	expect(screen.getByRole("checkbox", { name: label })).toBeOnTheScreen();
+	expect(screen.queryByHintText(label)).toBeNull();
+});
+
 test("withdraws even with an invalid edited number and only confirms after backend success", async () => {
 	const confirmed = { ...emptyContactChoice(), revision: 2, updatedAt: 2 };
 	let confirmWithdrawal!: (value: ContactPreferences) => void;

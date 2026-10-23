@@ -52,6 +52,7 @@ export function ContactPreferencesForm({
 				label="Feedback"
 				description={CONTACT_FEEDBACK_LABEL}
 				accessibilityLabel={CONTACT_FEEDBACK_LABEL}
+				accessibilityHint=""
 				accessibilityRole="checkbox"
 				selected={choice.feedback}
 				disabled={busy}
@@ -67,6 +68,7 @@ export function ContactPreferencesForm({
 				label="Neuigkeiten zu Dayova"
 				description={CONTACT_NEWS_LABEL}
 				accessibilityLabel={CONTACT_NEWS_LABEL}
+				accessibilityHint=""
 				accessibilityRole="checkbox"
 				selected={choice.news}
 				disabled={busy}
