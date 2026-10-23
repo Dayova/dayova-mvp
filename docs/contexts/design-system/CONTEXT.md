@@ -181,8 +181,14 @@ Learning-session actions stay pinned while their measured height uses at most
 scroll. Keyboard height is deducted from that budget on both iOS and Android,
 and pinned actions measure their screen position below the header and follow
 the keyboard. Platform alone does not move actions into the content scroll.
-Written questions and multiple-choice answers both remain scrollable. At
-compact/enlarged sizes, choice letters and selection indicators sit above the
+Written questions and multiple-choice answers both remain scrollable.
+Written answers use the same bounded editor in diagnostics and learning
+sessions. The editor must not stretch to the closed-keyboard viewport and then
+shrink on focus: that changing input rectangle can scroll a fitting question
+out of view. Keep the question above the editor when both fit; longer answers
+scroll within the multiline input. Only genuinely overflowing content should
+require scrolling the question away.
+At compact/enlarged sizes, choice letters and selection indicators sit above the
 full-width answer text. Long
 German session-action labels have optional soft-hyphen breaks and centered
 wrapping, with unchanged accessible names and unrestricted system text scaling.

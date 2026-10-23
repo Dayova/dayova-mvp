@@ -8,27 +8,24 @@ export function TextAnswer({
 	onChange,
 	placeholder,
 	editable,
-	fillAvailableSpace = false,
-	autoFocus,
+	autoFocus = false,
 }: {
 	value: string;
 	onChange: (value: string) => void;
 	placeholder: string;
 	editable: boolean;
-	fillAvailableSpace?: boolean;
 	autoFocus?: boolean;
 }) {
 	const [focused, setFocused] = useState(false);
 	return (
 		<View
 			className={cn(
-				"mt-4 rounded-3xl border bg-card p-4",
+				"mt-4 h-[180px] rounded-3xl border bg-card p-4",
 				focused ? "border-primary" : "border-border",
-				fillAvailableSpace ? "min-h-[180px] flex-1" : "min-h-40",
 			)}
 		>
 			<Textarea
-				autoFocus={(autoFocus ?? fillAvailableSpace) && editable}
+				autoFocus={autoFocus && editable}
 				accessibilityLabel="Antwort"
 				className="min-h-28 px-0 py-0"
 				editable={editable}

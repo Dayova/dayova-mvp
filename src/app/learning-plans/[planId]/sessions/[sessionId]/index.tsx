@@ -1090,7 +1090,6 @@ export default function LearningSessionContentScreen() {
 									onChange={setAnswerText}
 									placeholder="Schreibe hier deine Antwort."
 									editable={!isBusy}
-									fillAvailableSpace
 									autoFocus={!isPreTheoryQuestion}
 								/>
 							)}
