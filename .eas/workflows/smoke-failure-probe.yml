@@ -1,0 +1,27 @@
+name: Deliberate device smoke failure probe
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        type: choice
+        required: true
+        options: [android, ios]
+      build_id:
+        type: string
+        required: true
+
+jobs:
+  probe:
+    type: custom
+    environment: development
+    runs_on: ${{ inputs.platform == 'android' && 'linux-medium-nested-virtualization' || 'macos-medium' }}
+    env:
+      MAESTRO_APP_ID: ${{ inputs.platform == 'android' && 'com.dayova.dev' || 'de.dayova.app-dev' }}
+    steps:
+      - uses: eas/checkout
+      - uses: ./.eas/functions/device-smoke
+        with:
+          platform: ${{ inputs.platform }}
+          build_id: ${{ inputs.build_id }}
+          flow: failure

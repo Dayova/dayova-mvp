@@ -36,6 +36,13 @@ const runReportGuard = (report: string, exitStatus = 1) => {
 	try {
 		mkdirSync(join(directory, "scripts"));
 		writeFileSync(
+			join(directory, "scripts/ci-ota-report.sh"),
+			readFileSync(
+				new URL("../scripts/ci-ota-report.sh", import.meta.url),
+				"utf8",
+			),
+		);
+		writeFileSync(
 			join(directory, "scripts/ota-safety.mjs"),
 			"process.stdout.write(process.env.OTA_TEST_REPORT); process.exitCode = Number(process.env.OTA_TEST_STATUS);",
 		);
@@ -135,6 +142,7 @@ const event = (eventName: string, association = "MEMBER", fork = false) => ({
 	// Do not assume EAS's convenience field uses GitHub's owner/name format.
 	repository: "dayova-mvp",
 	event: {
+		before: eventName === "push" ? "a".repeat(40) : undefined,
 		pull_request: {
 			author_association: association,
 			head: {
@@ -156,7 +164,7 @@ describe("repository quality gates", () => {
 	});
 
 	it("keeps every check in the shared CI job", () => {
-		const commands = workflow.jobs.checks.steps
+		const commands = workflow.jobs.quality.steps
 			.map((step: { run?: string }) => step.run)
 			.filter(Boolean);
 		expect(commands).toEqual(
@@ -166,7 +174,7 @@ describe("repository quality gates", () => {
 				"pnpm check:unused",
 				"pnpm skills:validate",
 				"pnpm typecheck",
-				"pnpm test",
+				"pnpm test:ci",
 			]),
 		);
 	});
@@ -177,7 +185,7 @@ describe("repository quality gates", () => {
 			event("push"),
 			{ ...event("push"), ref_name: "gh-readonly-queue/main/pr-846" },
 		]) {
-			expect(evaluate(workflow.jobs.checks.if, { github })).toBe(true);
+			expect(evaluate(workflow.jobs.quality.if, { github })).toBe(true);
 		}
 	});
 });
@@ -239,6 +247,18 @@ describe("PR OTA workflow routing", () => {
 			false,
 		],
 		["manual CI", event("workflow_dispatch"), false],
+		[
+			"manual CLI ref resolved to its commit SHA",
+			{ ...event("push"), ref_name: event("push").sha, event: {} },
+			false,
+			true,
+		],
+		[
+			"manual main without a push predecessor",
+			{ ...event("push"), event: {} },
+			false,
+			true,
+		],
 	])("routes %s to production compatibility checks", (_label, github, expected, queueChecks = false) => {
 		const context = { github };
 		const canRun = (id: string): boolean => {
@@ -248,7 +268,7 @@ describe("PR OTA workflow routing", () => {
 				(job.needs ?? []).every(canRun)
 			);
 		};
-		expect(canRun("checks")).toBe(
+		expect(canRun("quality")).toBe(
 			expected || queueChecks || github.event_name === "workflow_dispatch",
 		);
 		expect(canRun("production_fingerprint")).toBe(expected);
@@ -258,7 +278,10 @@ describe("PR OTA workflow routing", () => {
 			needs: { ota_checks: { outputs: { ota_safe: "true" } } },
 		};
 		const isMainPush =
-			github.event_name === "push" && github.ref_name === "main";
+			github.event_name === "push" &&
+			github.ref_name === "main" &&
+			"before" in github.event &&
+			Boolean(github.event.before);
 		expect(
 			Boolean(evaluate(workflow.jobs.send_updates.if, publicationContext)),
 		).toBe(isMainPush);
@@ -277,10 +300,9 @@ describe("PR OTA workflow routing", () => {
 	])("handles a %s assessment result", (failureKind, expected) => {
 		const step = workflow.jobs.ota_checks.steps.find(
 			(value: { name?: string }) =>
-				value.name === "Require a completed PR OTA assessment",
+				value.name === "Require a completed OTA assessment",
 		);
-		expect(evaluate(step.if, { github: event("pull_request") })).toBe(true);
-		expect(evaluate(step.if, { github: event("push") })).toBe(false);
+		expect(step.if).toBeUndefined();
 		const context = {
 			steps: { ota_guard: { outputs: { ota_failure_kind: failureKind } } },
 		};
@@ -336,5 +358,67 @@ describe("PR OTA workflow routing", () => {
 			(expression: string) => String(evaluate(expression, context)),
 		);
 		expect(commentBody).toBe(rendered);
+	});
+});
+
+describe("required CI acceptance", () => {
+	it.each([
+		[{ ...event("push"), event: {} }, "workflow_dispatch"],
+		[
+			{ ...event("push"), ref_name: event("push").sha, event: {} },
+			"workflow_dispatch",
+		],
+		[event("push"), "push"],
+		[
+			{ ...event("push"), ref_name: "gh-readonly-queue/main/pr-1", event: {} },
+			"push",
+		],
+	])("resolves the native-scope event from observed run context (%j)", (github, expected) => {
+		expect(evaluate(workflow.jobs.quality.env.CI_EVENT_NAME, { github })).toBe(
+			expected,
+		);
+	});
+	it.each([
+		["success", "success", "success", 0],
+		["failure", "success", "success", 1],
+		["success", "skipped", "success", 1],
+		["success", "success", "canceled", 1],
+	])("requires every applicable native and auth result (%s, %s, %s)", (android, ios, auth, expected) => {
+		const result = spawnSync(bash, ["-c", workflow.jobs.checks.steps[0].run], {
+			encoding: "utf8",
+			env: {
+				...process.env,
+				QUALITY_STATUS: "success",
+				REQUIRE_OTA: "false",
+				REQUIRE_NATIVE: "true",
+				ANDROID_STATUS: android,
+				IOS_STATUS: ios,
+				AUTH_STATUS: auth,
+			},
+		});
+		expect(result.error).toBeUndefined();
+		expect(result.status).toBe(expected);
+	});
+	it.each([
+		["success", "success", "success", true, 0],
+		["success", "success", "failure", true, 1],
+		["success", "skipped", "skipped", true, 1],
+		["failure", "skipped", "skipped", true, 1],
+		["canceled", "skipped", "skipped", false, 1],
+		["success", "skipped", "skipped", false, 0],
+	])("requires completed prerequisites (%s, %s, %s, OTA %s)", (quality, fingerprint, ota, requireOta, expected) => {
+		const result = spawnSync(bash, ["-c", workflow.jobs.checks.steps[0].run], {
+			encoding: "utf8",
+			env: {
+				...process.env,
+				QUALITY_STATUS: quality,
+				FINGERPRINT_STATUS: fingerprint,
+				OTA_STATUS: ota,
+				REQUIRE_OTA: String(requireOta),
+				REQUIRE_NATIVE: "false",
+			},
+		});
+		expect(result.error).toBeUndefined();
+		expect(result.status).toBe(expected);
 	});
 });

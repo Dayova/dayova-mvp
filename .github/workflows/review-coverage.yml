@@ -1,0 +1,41 @@
+name: Report automated review coverage
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+  status: {}
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  coverage:
+    if: github.event_name == 'pull_request_target' || github.event.context == 'CodeRabbit'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency:
+      group: review-coverage-${{ github.event.pull_request.head.sha || github.event.sha }}
+      cancel-in-progress: false
+    steps:
+      # Only status metadata; never check out or execute pull-request code.
+      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const sha = context.payload.pull_request?.head.sha ?? context.payload.sha;
+            const statuses = await github.paginate(github.rest.repos.listCommitStatusesForRef, {
+              ...context.repo, ref: sha, per_page: 100,
+            });
+            const latest = statuses.find(status => status.context === 'CodeRabbit');
+            const completed = latest?.state === 'success' &&
+              /^Review completed\b/i.test(latest.description ?? '');
+            const failed = ['failure', 'error'].includes(latest?.state);
+            await github.rest.repos.createCommitStatus({
+              ...context.repo, sha, context: 'Automated review coverage',
+              state: completed ? 'success' : failed ? 'failure' : 'pending',
+              description: completed
+                ? 'CodeRabbit completed a review of this commit.'
+                : failed ? 'Automated review failed; no completed review confirmed.'
+                : 'No completed review confirmed (pending, skipped, or rate limited).',
+              ...(latest?.target_url ? { target_url: latest.target_url } : {}),
+            });

@@ -29,7 +29,11 @@ const mockRouter = {
 };
 const mockCreateDraftPlan = jest.fn<() => Promise<string>>();
 const mockCreateEntry =
-	jest.fn<(_args: Record<string, unknown>) => Promise<string>>();
+	jest.fn<
+		(
+			_args: Record<string, unknown>,
+		) => Promise<{ id: string; created: boolean }>
+	>();
 const mockUpdateEntry =
 	jest.fn<(_args: Record<string, unknown>) => Promise<void>>();
 const mockUpdateRequiredTopics =
@@ -109,7 +113,7 @@ jest.mock("convex/react", () => ({
 		const functionName = getFunctionName(
 			reference as Parameters<typeof getFunctionName>[0],
 		);
-		if (functionName === "dayEntries:create") return mockCreateEntry;
+		if (functionName === "dayEntries:createWithResult") return mockCreateEntry;
 		if (functionName === "learningPlans:createDraft")
 			return mockCreateDraftPlan;
 		if (functionName === "learningPlans:updateRequiredTopics") {
@@ -331,7 +335,9 @@ beforeEach(() => {
 	mockFiles = {
 		"file:///mitschrift-2.png": { size: 2_048, header: PNG_HEADER },
 	};
-	mockCreateEntry.mockResolvedValue("exam-1");
+	mockCreateEntry
+		.mockReset()
+		.mockResolvedValue({ id: "exam-1", created: true });
 	mockUpdateEntry.mockResolvedValue(undefined);
 	mockUpdateRequiredTopics.mockResolvedValue(undefined);
 	mockGenerateUploadUrl.mockResolvedValue({
@@ -442,6 +448,41 @@ async function addHint(
 }
 
 describe("homework creation", () => {
+	test("confirms an existing homework on re-entry without another creation event", async () => {
+		mockParams = {
+			type: "homework",
+			subject: "Englisch",
+			dayKey: "2026-10-24",
+		};
+		mockCreateEntry
+			.mockResolvedValueOnce({ id: "homework-1", created: true })
+			.mockResolvedValueOnce({ id: "homework-1", created: false });
+		let screen = await render(<NewEntryScreen />);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(mockCapture).toHaveBeenCalledTimes(1);
+		expect(mockCapture).toHaveBeenCalledWith("homework_created", {
+			day_entry_id: "homework-1",
+			planned_day_key: "2026-10-24",
+			due_day_key: "2026-10-24",
+			duration_minutes: 30,
+		});
+		expect(mockRouter.replace).toHaveBeenCalledWith(
+			expect.stringContaining("/entry/success?"),
+		);
+		await screen.unmount();
+		mockCapture.mockClear();
+		mockRouter.replace.mockClear();
+		screen = await render(<NewEntryScreen />);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(mockCreateEntry).toHaveBeenCalledTimes(2);
+		expect(mockCapture).not.toHaveBeenCalled();
+		expect(mockRouter.replace).toHaveBeenCalledWith(
+			expect.stringContaining("/entry/success?"),
+		);
+	});
+
 	test.each([
 		"ios",
 		"android",
@@ -474,7 +515,7 @@ describe("homework creation", () => {
 		let rejectSave!: (error: Error) => void;
 		mockCreateEntry.mockImplementationOnce(
 			() =>
-				new Promise<string>((_resolve, reject) => {
+				new Promise<{ id: string; created: boolean }>((_resolve, reject) => {
 					rejectSave = reject;
 				}),
 		);
@@ -488,6 +529,7 @@ describe("homework creation", () => {
 		expect(saving).toBeDisabled();
 		await fireEvent.press(saving);
 		expect(mockCreateEntry).toHaveBeenCalledTimes(1);
+		expect(mockCapture).not.toHaveBeenCalled();
 		await act(() =>
 			rejectSave(new Error("Bitte wähle einen freien Zeitraum.")),
 		);
@@ -496,6 +538,7 @@ describe("homework creation", () => {
 		).toBeOnTheScreen();
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		expect(mockCreateEntry).toHaveBeenCalledTimes(2);
+		expect(mockCapture).toHaveBeenCalledTimes(1);
 		expect(mockRouter.replace).toHaveBeenCalledWith(
 			expect.stringContaining("/entry/success?"),
 		);
@@ -503,6 +546,30 @@ describe("homework creation", () => {
 });
 
 describe("exam creation across the topics boundary", () => {
+	test.each([
+		false,
+		true,
+	])("continues with an exam and respects created=%s for analytics", async (created) => {
+		mockCreateEntry.mockResolvedValueOnce({ id: "exam-1", created });
+		const screen = await render(<NewEntryScreen />);
+		await fireEvent.press(
+			screen.getByRole("button", { name: /^Weiter(?: mit .+)?$/ }),
+		);
+		expect(followReplacement()).toBe("/learning-plans/new");
+		expect(mockParams.examDayEntryId).toBe("exam-1");
+		if (created) {
+			expect(mockCapture).toHaveBeenCalledTimes(1);
+			expect(mockCapture).toHaveBeenCalledWith("exam_created", {
+				day_entry_id: "exam-1",
+				planned_day_key: "2026-09-30",
+				duration_minutes: 30,
+				exam_type: "Klassenarbeit",
+			});
+		} else {
+			expect(mockCapture).not.toHaveBeenCalled();
+		}
+	});
+
 	test.each([
 		"topicDescription",
 		"teacherGuidance",

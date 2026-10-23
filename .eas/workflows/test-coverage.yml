@@ -1,0 +1,32 @@
+name: Test coverage
+
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  cancel_in_progress: true
+  group: test-coverage-${{ github.ref }}
+
+defaults:
+  tools:
+    node: "24.18.0"
+    pnpm: "11.15.1"
+
+jobs:
+  coverage:
+    name: Vitest and Jest behavior coverage
+    type: custom
+    runs_on: linux-medium
+    env:
+      CI_JEST_WORKERS: "2"
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - name: Collect coverage and test results
+        run: pnpm test:coverage
+      - uses: eas/upload_artifact
+        if: ${{ always() }}
+        with:
+          type: other
+          name: coverage-and-test-results
+          path: .maestro/artifacts/ci

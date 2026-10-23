@@ -35,6 +35,25 @@
 				"APP_VARIANT": "preview"
 			}
 		},
+		"ci": {
+			"extends": "base",
+			"developmentClient": false,
+			"distribution": "internal",
+			"environment": "development",
+			"channel": "ci-validation",
+			"env": {
+				"APP_VARIANT": "preview",
+				"DAYOVA_CI_VALIDATION": "true",
+				"EXPO_NO_DOTENV": "1"
+			},
+			"android": {
+				"withoutCredentials": true,
+				"buildType": "apk"
+			},
+			"ios": {
+				"simulator": true
+			}
+		},
 		"validation": {
 			"extends": "base",
 			"developmentClient": false,

@@ -1,0 +1,33 @@
+name: Production export benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        default: combined
+        options: [separate, combined]
+
+defaults:
+  tools:
+    node: '24.18.0'
+    pnpm: '11.15.1'
+
+jobs:
+  benchmark:
+    type: custom
+    runs_on: linux-medium
+    environment: production
+    env:
+      APP_VARIANT: production
+      CI_EXPORT_MODE: ${{ inputs.mode }}
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - run: node scripts/ci-export-benchmark.mjs
+      - uses: eas/upload_artifact
+        if: ${{ always() }}
+        with:
+          type: other
+          name: export-benchmark-results
+          path: .maestro/artifacts/ci/export-benchmark.json

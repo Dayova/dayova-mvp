@@ -54,6 +54,13 @@ jest.mock("convex/react", () => ({
 		mockQueryArgs(args);
 		return args === "skip" ? undefined : mockServerAccess;
 	},
+	useQueries: (queries: Record<string, { args: unknown }>) => {
+		mockQueryArgs(queries.access?.args ?? "skip");
+		return { access: queries.access ? mockServerAccess : undefined };
+	},
+}));
+jest.mock("react-native-safe-area-context", () => ({
+	useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 jest.mock("posthog-react-native", () => ({ usePostHog: () => null }));
 jest.mock("~/context/OnboardingContext", () => ({
@@ -62,6 +69,9 @@ jest.mock("~/context/OnboardingContext", () => ({
 jest.mock("~/lib/analytics", () => ({ isPostHogConfigured: false }));
 jest.mock("~/lib/diagnostics", () => ({ logDiagnosticError: jest.fn() }));
 jest.mock("~/lib/runtime-config", () => ({ env: {} }));
+jest.mock("~/components/ui/dayova-sheet-frame", () => ({
+	DayovaSheetFrame: () => null,
+}));
 jest.mock("~/lib/pending-onboarding-sync-secure-store", () => ({
 	getOnboardingAccountFingerprint: async () => "test-fingerprint",
 	pendingOnboardingSyncOutbox: { resume: async () => ({ status: "none" }) },
@@ -139,6 +149,7 @@ describe("session refresh across the app", () => {
 		mockSync.mockReset().mockResolvedValue({});
 		mockReplace.mockReset();
 		mockQueryArgs.mockReset();
+		mockEntitlementSync.mockClear();
 		global.requestAnimationFrame = jest.fn(() => 1);
 		global.cancelAnimationFrame = jest.fn();
 	});
@@ -187,6 +198,29 @@ describe("session refresh across the app", () => {
 		expect(screen.getByTestId("access-state")).toHaveTextContent("paid");
 	});
 
+	test("recovers a timed-out initial verification in place without suggesting a purchase", async () => {
+		jest.useFakeTimers();
+		mockServerAccess = undefined;
+		const screen = await render(<App />);
+		await act(async () => jest.advanceTimersByTime(1_501));
+		expect(screen.getByText("Zugang gerade nicht prüfbar")).toBeOnTheScreen();
+		expect(screen.queryByText("Lernplan")).toBeNull();
+		expect(mockReplace).not.toHaveBeenCalled();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Erneut prüfen" }),
+		);
+		expect(screen.getByText("Zugang wird geprüft …")).toBeOnTheScreen();
+		mockServerAccess = {
+			canUseApp: true,
+			state: "trial",
+			trialExpiresAt: Date.now() + 86_400_000,
+		};
+		await screen.rerender(<App />);
+		expectVisible(screen);
+		expect(screen.queryByText("Zugang gerade nicht prüfbar")).toBeNull();
+		expect(mockEntitlementSync).not.toHaveBeenCalled();
+	});
+
 	test("refreshes access after a purchase without blanking the current screen", async () => {
 		jest.useFakeTimers();
 		const screen = await openApp();
@@ -233,7 +267,7 @@ describe("session refresh across the app", () => {
 		expect(screen.getByTestId("auth-bootstrap-mask")).toBeOnTheScreen();
 		expect(
 			screen.getByTestId("access-state", { includeHiddenElements: true }),
-		).toHaveTextContent("expired");
+		).toHaveTextContent("unknown");
 	});
 
 	test("bounds retained access by the existing offline window", async () => {
@@ -246,7 +280,7 @@ describe("session refresh across the app", () => {
 		expect(screen.getByTestId("auth-bootstrap-mask")).toBeOnTheScreen();
 		expect(
 			screen.getByTestId("access-state", { includeHiddenElements: true }),
-		).toHaveTextContent("expired");
+		).toHaveTextContent("unknown");
 	});
 
 	test("still schedules expiry when access starts refreshing before it expires", async () => {

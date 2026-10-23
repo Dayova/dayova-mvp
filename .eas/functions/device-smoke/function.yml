@@ -1,0 +1,34 @@
+name: Device smoke with sanitized diagnostics
+inputs:
+  - name: platform
+    required: true
+    allowed_values: [android, ios]
+  - name: build_id
+    required: true
+  - name: flow
+    default_value: full
+    allowed_values: [full, authenticated, failure]
+runs:
+  steps:
+    - uses: eas/download_build
+      id: app
+      with:
+        build_id: ${{ inputs.build_id }}
+    - uses: eas/install_maestro
+      with:
+        maestro_version: 2.10.0
+        backend: maestro
+    - uses: eas/start_android_emulator
+      if: ${{ inputs.platform == 'android' }}
+    - uses: eas/start_ios_simulator
+      if: ${{ inputs.platform == 'ios' }}
+      with:
+        enable_accessibility_settings: true
+    - name: Run device journeys and sanitize all diagnostics
+      run: node scripts/ci-run-maestro.mjs "${{ steps.app.outputs.artifact_path }}" "${{ inputs.flow }}"
+    - uses: eas/upload_artifact
+      if: ${{ always() }}
+      with:
+        type: other
+        name: sanitized-device-results
+        path: .maestro/artifacts/device

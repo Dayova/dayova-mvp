@@ -595,11 +595,10 @@ describe("production release configuration", () => {
 		});
 		expect(fingerprint.params?.unstable_skip_cng_check).not.toBe(true);
 		expect(otaChecks.needs).toEqual(
-			expect.arrayContaining(["checks", "production_fingerprint"]),
+			expect.arrayContaining(["quality", "production_fingerprint"]),
 		);
 		expect(otaChecks.env).toMatchObject({
 			APP_VARIANT: "production",
-			EAS_BUILD_PLATFORM: "ios",
 			OTA_ANDROID_FINGERPRINT: `\${{ needs.production_fingerprint.outputs.android_fingerprint_hash }}`,
 			OTA_IOS_FINGERPRINT: `\${{ needs.production_fingerprint.outputs.ios_fingerprint_hash }}`,
 		});
@@ -625,18 +624,7 @@ describe("production release configuration", () => {
 		expect(sendUpdates.needs).toContain("deploy_convex");
 		expect(workflow.jobs.deploy_convex.needs).toContain("checks");
 		expect(sendUpdates.if).toBe(
-			`\${{ github.event_name == 'push' && github.ref_name == 'main' && needs.ota_checks.outputs.ota_safe == 'true' }}`,
-		);
-		expect(otaChecks.steps).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					run: "pnpm exec expo export --platform ios --output-dir dist/ios",
-				}),
-				expect.objectContaining({
-					env: { EAS_BUILD_PLATFORM: "android" },
-					run: "pnpm exec expo export --platform android --output-dir dist/android",
-				}),
-			]),
+			`\${{ github.event_name == 'push' && github.ref_name == 'main' && github.event.before && needs.ota_checks.outputs.ota_safe == 'true' }}`,
 		);
 	});
 

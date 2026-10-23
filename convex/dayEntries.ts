@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { type Infer, v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
@@ -543,77 +543,92 @@ export const updatePendingExam = mutation({
 	},
 });
 
+const createEntryArgs = v.object({
+	dayKey: v.string(),
+	...entryFields,
+});
+
+const createEntry = async (
+	ctx: MutationCtx,
+	args: Infer<typeof createEntryArgs>,
+): Promise<{ id: Id<"dayEntries">; created: boolean }> => {
+	const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+	const submittedTitle = args.title.trim();
+	if (!submittedTitle) {
+		throwUserFacingError("Titel darf nicht leer sein.");
+	}
+	if (args.personalSubjectId && !args.subject?.trim()) {
+		throwUserFacingError("Fach fehlt.");
+	}
+	const resolvedSubject: {
+		subject?: string;
+		personalSubjectId?: Id<"personalSubjects">;
+	} = args.subject?.trim()
+		? await resolveSubjectSelection(ctx, {
+				ownerTokenIdentifier,
+				subject: args.subject,
+				personalSubjectId: args.personalSubjectId,
+			})
+		: {};
+	const title =
+		resolvedSubject.subject && args.subject
+			? renameSubjectPrefix(
+					submittedTitle,
+					args.subject.trim(),
+					resolvedSubject.subject,
+				)
+			: submittedTitle;
+	const normalizedArgs = {
+		...args,
+		title,
+		...resolvedSubject,
+		subjectIsOneTime:
+			args.subjectIsOneTime && !resolvedSubject.personalSubjectId
+				? true
+				: undefined,
+		...(isExamEntry(args) ? { time: undefined } : {}),
+	};
+	const existingSameEntry = await findExistingSameEntry(ctx, {
+		ownerTokenIdentifier,
+		dayKey: args.dayKey,
+		args: normalizedArgs,
+	});
+	if (existingSameEntry) {
+		return { id: existingSameEntry._id, created: false };
+	}
+
+	await assertNoScheduleConflict(ctx, {
+		ownerTokenIdentifier,
+		dayKey: args.dayKey,
+		time: normalizedArgs.time,
+		durationMinutes: normalizedArgs.durationMinutes,
+	});
+
+	const dayEntryId = await ctx.db.insert("dayEntries", {
+		ownerTokenIdentifier,
+		dayKey: args.dayKey,
+		title,
+		...optionalEntryFields(normalizedArgs),
+	});
+	await addPersonalSubjectReference(ctx, {
+		ownerTokenIdentifier,
+		personalSubjectId: resolvedSubject.personalSubjectId,
+		target: { targetKind: "dayEntry", dayEntryId },
+	});
+	return { id: dayEntryId, created: true };
+};
+
+// Keep the ID-only response for installed clients.
 export const create = mutation({
-	args: {
-		dayKey: v.string(),
-		...entryFields,
-	},
-	handler: async (ctx, args) => {
-		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
-		const submittedTitle = args.title.trim();
-		if (!submittedTitle) {
-			throwUserFacingError("Titel darf nicht leer sein.");
-		}
-		if (args.personalSubjectId && !args.subject?.trim()) {
-			throwUserFacingError("Fach fehlt.");
-		}
-		const resolvedSubject: {
-			subject?: string;
-			personalSubjectId?: Id<"personalSubjects">;
-		} = args.subject?.trim()
-			? await resolveSubjectSelection(ctx, {
-					ownerTokenIdentifier,
-					subject: args.subject,
-					personalSubjectId: args.personalSubjectId,
-				})
-			: {};
-		const title =
-			resolvedSubject.subject && args.subject
-				? renameSubjectPrefix(
-						submittedTitle,
-						args.subject.trim(),
-						resolvedSubject.subject,
-					)
-				: submittedTitle;
-		const normalizedArgs = {
-			...args,
-			title,
-			...resolvedSubject,
-			subjectIsOneTime:
-				args.subjectIsOneTime && !resolvedSubject.personalSubjectId
-					? true
-					: undefined,
-			...(isExamEntry(args) ? { time: undefined } : {}),
-		};
-		const existingSameEntry = await findExistingSameEntry(ctx, {
-			ownerTokenIdentifier,
-			dayKey: args.dayKey,
-			args: normalizedArgs,
-		});
-		if (existingSameEntry) {
-			return existingSameEntry._id;
-		}
+	args: createEntryArgs.fields,
+	returns: v.id("dayEntries"),
+	handler: async (ctx, args) => (await createEntry(ctx, args)).id,
+});
 
-		await assertNoScheduleConflict(ctx, {
-			ownerTokenIdentifier,
-			dayKey: args.dayKey,
-			time: normalizedArgs.time,
-			durationMinutes: normalizedArgs.durationMinutes,
-		});
-
-		const dayEntryId = await ctx.db.insert("dayEntries", {
-			ownerTokenIdentifier,
-			dayKey: args.dayKey,
-			title,
-			...optionalEntryFields(normalizedArgs),
-		});
-		await addPersonalSubjectReference(ctx, {
-			ownerTokenIdentifier,
-			personalSubjectId: resolvedSubject.personalSubjectId,
-			target: { targetKind: "dayEntry", dayEntryId },
-		});
-		return dayEntryId;
-	},
+export const createWithResult = mutation({
+	args: createEntryArgs.fields,
+	returns: v.object({ id: v.id("dayEntries"), created: v.boolean() }),
+	handler: createEntry,
 });
 
 export const setCompleted = mutation({

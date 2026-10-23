@@ -81,6 +81,17 @@ The exact event-specific property contract is:
 | `plan_adjusted` | `original_session_id`, `new_session_id`, `adjustment_type`, `old_planned_day_key`, `new_planned_day_key`, `old_duration_minutes`, `new_duration_minutes`, and optional `missed_reason` |
 | `user_returned_next_day` | `local_day_key`, `previous_activity_day_key` |
 
+`homework_created` and `exam_created` describe a new persisted entry, not a
+successful save attempt. Entry creation uses `dayEntries.createWithResult`:
+only `created: true` permits a creation event. An identical save returns the
+existing ID with `created: false`; confirmation/navigation still proceeds and
+`feature_interaction` can still record the successful attempt. The ID-only
+`dayEntries.create` endpoint remains compatible with installed clients. Deploy
+the additive backend endpoint before releasing its mobile caller; older clients
+can still emit duplicates. Historical analysis must deduplicate creation events
+by event name and `day_entry_id`. Client analytics remain best-effort, not a
+durable exactly-once event ledger.
+
 Slot context is exactly `learning_plan_id`, `learning_plan_session_id`, `phase`,
 `planned_day_key`, `planned_start_time`, `duration_minutes`, and optional
 `deadline_day_key`. Bounded values are:
