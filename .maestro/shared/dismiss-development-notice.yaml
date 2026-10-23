@@ -25,6 +25,8 @@ appId: ${APP_ID}
                   - tapOn: ${DEVELOPMENT_NOTICE}
             - assertVisible: Dismiss
             - tapOn:
-                text: Dismiss
-                point: "50%,10%"
+                # On this iPhone worker, Maestro's element-relative tap lands
+                # below the LogBox footer. Use the visible Dismiss column,
+                # above the home indicator, after identifying the exact notice.
+                point: "16%,92%"
       - assertNotVisible: ${DEVELOPMENT_NOTICE}
