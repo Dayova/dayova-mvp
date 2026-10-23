@@ -201,7 +201,7 @@ function SearchSetupPage({
 				{children}
 				<SetupError message={errorMessage} />
 			</ScreenScroll>
-			<CreationActionFooter followKeyboard>
+			<CreationActionFooter>
 				<SetupContinueButton
 					canContinue={canContinue}
 					isBusy={isBusy}

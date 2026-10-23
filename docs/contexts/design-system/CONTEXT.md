@@ -178,12 +178,12 @@ sizes so the expanded header does not leave task content unreachable. See
 
 Learning-session actions stay pinned while their measured height uses at most
 40% of the available question area. Larger actions join the vertical content
-scroll; iOS keyboard height is deducted from that budget, and pinned actions
-measure their screen position below the header. On Android, actions always join
-the content scroll while the keyboard is visible, following the shared keyboard
-contract rather than relying on window resizing. Written questions and
-multiple-choice answers both remain scrollable. At compact/enlarged sizes, choice
-letters and selection indicators sit above the full-width answer text. Long
+scroll. Keyboard height is deducted from that budget on both iOS and Android,
+and pinned actions measure their screen position below the header and follow
+the keyboard. Platform alone does not move actions into the content scroll.
+Written questions and multiple-choice answers both remain scrollable. At
+compact/enlarged sizes, choice letters and selection indicators sit above the
+full-width answer text. Long
 German session-action labels have optional soft-hyphen breaks and centered
 wrapping, with unchanged accessible names and unrestricted system text scaling.
 
@@ -384,12 +384,15 @@ compact while preserving comfortable button tap areas.
 
 Exam type, subject, date, topic and hint pages share `CreationActionFooter`.
 The action is a sibling of the scroll content, with 24pt side padding and bottom
-padding `max(safeArea.bottom + 10, 24)`. Retain the existing iOS keyboard-sticky
-behavior on the other creation steps. On topic and hint pages, remove the entire
-footer while the software keyboard is visible and restore it after dismissal,
-without resetting search or selections. Topic/hint content scrolls above the
-footer when shown; do not place Continue inside a growing result list or a
-scroll container.
+padding `max(safeArea.bottom + 10, 24)`. Every creation step keeps the footer
+mounted and follows the software keyboard on both iOS and Android. Keyboard
+visibility must not hide the action, reset search, or change selections.
+Topic/hint content scrolls above the footer; do not place Continue inside a
+growing result list or a scroll container. This supersedes the earlier
+topic/hint hide-while-typing exception and Android-only scrolling policy after
+Jakob's Pixel report and app-wide consistency direction on 23 October 2026.
+See the [decision record](https://app.notion.com/p/3fb2e87228bf817a880dde6127a1996a)
+and [PR #952](https://github.com/Dayova/dayova-mvp/pull/952).
 
 ## Notes
 
