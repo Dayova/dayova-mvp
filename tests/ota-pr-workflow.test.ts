@@ -388,6 +388,7 @@ describe("required CI acceptance", () => {
 			encoding: "utf8",
 			env: {
 				...process.env,
+				PREVIEW_STATUS: "success",
 				QUALITY_STATUS: "success",
 				REQUIRE_OTA: "false",
 				REQUIRE_NATIVE: "true",
@@ -420,5 +421,64 @@ describe("required CI acceptance", () => {
 		});
 		expect(result.error).toBeUndefined();
 		expect(result.status).toBe(expected);
+	});
+});
+
+// Run the actual final shell gate, including unavailable preview prerequisites.
+describe("candidate backend is a required native CI prerequisite", () => {
+	it.each([
+		["failure", true, 1],
+		["skipped", true, 1],
+		["success", true, 0],
+		["skipped", false, 0],
+	])("handles preview %s with native=%s", (preview, required, expected) => {
+		const r = spawnSync(bash, ["-c", workflow.jobs.checks.steps[0].run], {
+			encoding: "utf8",
+			env: {
+				...process.env,
+				QUALITY_STATUS: "success",
+				PREVIEW_STATUS: String(preview),
+				REQUIRE_OTA: "false",
+				REQUIRE_NATIVE: required ? "true" : "false",
+				ANDROID_STATUS: "success",
+				IOS_STATUS: "success",
+				AUTH_STATUS: "success",
+			},
+		});
+		expect(r.error).toBeUndefined();
+		expect(r.status).toBe(expected);
+	});
+	it.each([
+		"authenticated_smoke",
+		"native_fingerprint",
+		"android_build",
+		"android_repack",
+		"android_smoke",
+		"ios_build",
+		"ios_repack",
+		"ios_smoke",
+	])("routes %s to this run's preview", (name) => {
+		const outputs = {
+			url: "https://gentle-preview-123.eu-west-1.convex.cloud",
+			name: "ci-aaaaaaaaaaaa-123456abcdef",
+			source_sha: "a".repeat(40),
+		};
+		const context = {
+			needs: { preview_backend: { outputs } },
+			after: { preview_backend: { outputs } },
+		};
+		const resolved = Object.fromEntries(
+			Object.entries(workflow.jobs[name].env).map(([key, value]) => [
+				key,
+				typeof value === "string" && value.startsWith("${{")
+					? evaluate(value, context)
+					: value,
+			]),
+		);
+		expect(resolved).toMatchObject({
+			EXPO_PUBLIC_CONVEX_URL: outputs.url,
+			CI_CONVEX_PREVIEW_NAME: outputs.name,
+			CI_CONVEX_SOURCE_SHA: outputs.source_sha,
+		});
 	});
 });

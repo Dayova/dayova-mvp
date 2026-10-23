@@ -10,8 +10,12 @@ const testEnv: NodeJS.ProcessEnv = {
 	...process.env,
 	APP_VARIANT: "preview",
 	DAYOVA_CI_VALIDATION: "true",
-	EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_fixture",
-	EXPO_PUBLIC_CONVEX_URL: "https://resilient-pika-316.eu-west-1.convex.cloud",
+	EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY:
+		"pk_test_" +
+		Buffer.from("warm-parrot-13.clerk.accounts.dev$").toString("base64"),
+	EXPO_PUBLIC_CONVEX_URL: "https://gentle-preview-123.eu-west-1.convex.cloud",
+	CI_CONVEX_PREVIEW_NAME: `ci-${"a".repeat(12)}-123456abcdef`,
+	CI_CONVEX_SOURCE_SHA: "a".repeat(40),
 	EXPO_PUBLIC_POSTHOG_API_KEY: "",
 	EAS_BUILD: "false",
 	NODE_ENV: "development",
@@ -24,6 +28,12 @@ describe("isolated native CI configuration", () => {
 		{ EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_live_fixture" },
 		{ EXPO_PUBLIC_CONVEX_URL: "https://other.convex.cloud" },
 		{ EXPO_PUBLIC_POSTHOG_API_KEY: "tracking-enabled" },
+		{ CI_CONVEX_SOURCE_SHA: "" },
+		{ CI_CONVEX_PREVIEW_NAME: "ci-bbbbbbbbbbbb-123456abcdef" },
+		{
+			EXPO_PUBLIC_CONVEX_URL:
+				"https://resilient-pika-316.eu-west-1.convex.cloud",
+		},
 	])("resolves only a test app with pinned embedded JavaScript (%j)", (override) => {
 		const result = spawnSync(
 			process.execPath,
@@ -67,6 +77,8 @@ describe("native validation scope over real Git history", () => {
 		["scripts/ci-prepare-maestro.mjs", true],
 		["scripts/ci-sanitize-maestro.mjs", true],
 		["scripts/ci-run-maestro.mjs", true],
+		["scripts/ci-convex-preview.mjs", true],
+		["scripts/ci-preview-config.cjs", true],
 		[".eas/functions/device-smoke/function.yml", true],
 	])("routes a change to %s", (path, expected) => {
 		const directory = mkdtempSync(join(tmpdir(), "dayova-ci-scope-"));

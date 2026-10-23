@@ -1,8 +1,9 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { performance } from "node:perf_hooks";
 import { pathToFileURL } from "node:url";
+import config from "./ci-preview-config.cjs";
 
-// Only the reviewed development tenant and synthetic test-email identities.
+// Only this run's isolated preview and reviewed synthetic Clerk test identity.
 export async function authenticatedSmoke(env = process.env, request = fetch) {
 	const {
 		EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: key,
@@ -10,12 +11,12 @@ export async function authenticatedSmoke(env = process.env, request = fetch) {
 		MAESTRO_CI_EMAIL: email,
 		MAESTRO_CI_PASSWORD: password,
 	} = env;
+	config.previewConfiguration(env);
 	const host = key?.startsWith("pk_test_")
 		? Buffer.from(key.slice(8), "base64").toString().replace(/\$$/, "")
 		: "";
 	if (
 		host !== "warm-parrot-13.clerk.accounts.dev" ||
-		convexUrl !== "https://resilient-pika-316.eu-west-1.convex.cloud" ||
 		!email?.includes("+clerk_test@") ||
 		!password
 	)
@@ -49,8 +50,8 @@ export async function authenticatedSmoke(env = process.env, request = fetch) {
 			);
 		return data.response ?? data;
 	};
-	const query = async (path, args, token) => {
-		const response = await request(`${convexUrl}/api/query`, {
+	const rpc = async (kind, path, args, token) => {
+		const response = await request(`${convexUrl}/api/${kind}`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
@@ -65,7 +66,7 @@ export async function authenticatedSmoke(env = process.env, request = fetch) {
 	};
 	try {
 		stage = "anonymous-convex-query";
-		const denied = await query("users:getMe", {});
+		const denied = await rpc("query", "users:getMe", {});
 		if (denied.status !== "error")
 			throw new Error("Unauthenticated Convex access was not denied");
 		let signIn = await clerk("client/sign_ins", {
@@ -107,8 +108,34 @@ export async function authenticatedSmoke(env = process.env, request = fetch) {
 		sessionId = signIn.created_session_id;
 		const token = await clerk(`client/sessions/${sessionId}/tokens/convex`, {});
 		if (!token.jwt) throw new Error("Clerk did not issue the Convex JWT");
+		stage = "synthetic-user-initialization";
+		const sync = await rpc(
+			"mutation",
+			"users:syncCurrentUser",
+			{ grade: "10", schoolType: "gymnasium", state: "Bayern" },
+			token.jwt,
+		);
+		if (sync.status !== "success")
+			throw new Error("Synthetic user synchronization failed.");
+		const setup = await rpc(
+			"mutation",
+			"users:saveOnboardingAnswers",
+			{
+				answers: {
+					state: "Bayern",
+					schoolType: "gymnasium",
+					grade: "10",
+					dailySchoolTime: "30 min",
+					studyDays: "Montag, Mittwoch",
+					learningTime: "16:00",
+				},
+			},
+			token.jwt,
+		);
+		if (setup.status !== "success" || setup.value?.success !== true)
+			throw new Error("Synthetic onboarding initialization failed.");
 		stage = "authenticated-convex-query";
-		const result = await query("users:getMe", {}, token.jwt);
+		const result = await rpc("query", "users:getMe", {}, token.jwt);
 		if (
 			result.status !== "success" ||
 			!result.value?._id ||
@@ -117,24 +144,58 @@ export async function authenticatedSmoke(env = process.env, request = fetch) {
 			throw new Error(
 				"The deployed Convex backend did not return the authenticated synthetic user",
 			);
-		// NotificationSync mounts on sign-in, including before trial activation.
-		// A successful users:getMe alone cannot detect a stale deployed validator.
+		stage = "access-bootstrap-query";
+		const access = await rpc(
+			"query",
+			"entitlements:getMyAccess",
+			{ now: Date.now() },
+			token.jwt,
+		);
+		if (
+			access.status !== "success" ||
+			typeof access.value?.canUseApp !== "boolean"
+		)
+			throw new Error(
+				"The preview backend does not support the app access bootstrap contract.",
+			);
 		stage = "notification-bootstrap-query";
+		const preferences = await rpc(
+			"query",
+			"notifications:getPreferences",
+			{},
+			token.jwt,
+		);
+		if (preferences.status !== "success")
+			throw new Error(
+				"The preview backend does not support notification preferences.",
+			);
+		// Exercise the planner's real argument contract as well as free preferences.
+		// An eligibility denial is expected only for an account without app access.
 		const dayKey = new Date().toISOString().slice(0, 10);
-		const entries = await query(
+		const entries = await rpc(
+			"query",
 			"dayEntries:listByDayKeys",
 			{ dayKeys: [dayKey], cacheScope: "notificationPlanning" },
 			token.jwt,
 		);
-		if (entries.status !== "success" || !Array.isArray(entries.value?.[dayKey]))
+		const planningAllowed =
+			entries.status === "success" && Array.isArray(entries.value?.[dayKey]);
+		const planningDenied =
+			access.value.canUseApp === false &&
+			entries.status === "error" &&
+			entries.errorData?.kind === "userFacing";
+		if (!planningAllowed && !planningDenied)
 			throw new Error(
-				"The deployed Convex backend does not support the app notification bootstrap contract",
+				"The preview backend does not support the notification planning contract.",
 			);
 		outcome = {
 			clerkSignIn: "success",
 			authenticatedConvexQuery: "success",
 			unauthenticatedConvexQuery: "denied",
 			notificationBootstrapQuery: "success",
+			notificationPlanningQuery: planningAllowed ? "success" : "access-denied",
+			accessBootstrapQuery: "success",
+			syntheticUserInitialization: "success",
 		};
 	} catch (error) {
 		primaryError = Object.assign(error, { smokeStage: stage });

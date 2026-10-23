@@ -151,7 +151,9 @@ jobs:
       - android_smoke
       - ios_smoke
       - authenticated_smoke
+      - preview_backend
     env:
+      PREVIEW_STATUS: ${{ after.preview_backend.status }}
       QUALITY_STATUS: ${{ after.quality.status }}
       FINGERPRINT_STATUS: ${{ after.production_fingerprint.status }}
       OTA_STATUS: ${{ after.ota_checks.status }}
@@ -174,6 +176,7 @@ jobs:
             test "$OTA_STATUS" = success
           fi
           if [ "$REQUIRE_NATIVE" = true ]; then
+            test "$PREVIEW_STATUS" = success
             test "$ANDROID_STATUS" = success
             test "$IOS_STATUS" = success
             test "$AUTH_STATUS" = success
@@ -300,15 +303,50 @@ jobs:
         **Current fingerprints:** ${{ needs.ota_checks.outputs.ota_current_fingerprints }}
 
         This block persists across later commits until the production manifest and native fingerprints match verified distributed binaries.
+  preview_backend:
+    name: Deploy isolated candidate Convex backend
+    type: custom
+    environment: development
+    runs_on: linux-medium
+    needs:
+      - quality
+    if: ${{ needs.quality.outputs.native_required == 'true' }}
+    env:
+      CI_SOURCE_SHA: ${{ github.sha || 'unavailable' }}
+    outputs:
+      url: ${{ steps.preview.outputs.url }}
+      name: ${{ steps.preview.outputs.name }}
+      source_sha: ${{ steps.preview.outputs.source_sha }}
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - id: preview
+        name: Provision and deploy the checked-out backend
+        run: |
+          node scripts/ci-convex-preview.mjs
+          set-output url "$(node -p 'JSON.parse(require("fs").readFileSync(".maestro/artifacts/ci/convex-preview.json", "utf8")).url')"
+          set-output name "$(node -p 'JSON.parse(require("fs").readFileSync(".maestro/artifacts/ci/convex-preview.json", "utf8")).previewName')"
+          set-output source_sha "$(node -p 'JSON.parse(require("fs").readFileSync(".maestro/artifacts/ci/convex-preview.json", "utf8")).sourceSha')"
+      - uses: eas/upload_artifact
+        if: ${{ always() }}
+        with:
+          type: other
+          name: candidate-backend-provenance
+          path: .maestro/artifacts/ci
+
   native_fingerprint:
     name: Test native fingerprints
     type: fingerprint
     environment: development
     needs:
+      - preview_backend
       - quality
       - authenticated_smoke
     if: ${{ needs.quality.outputs.native_required == 'true' }}
     env:
+      EXPO_PUBLIC_CONVEX_URL: ${{ needs.preview_backend.outputs.url }}
+      CI_CONVEX_PREVIEW_NAME: ${{ needs.preview_backend.outputs.name }}
+      CI_CONVEX_SOURCE_SHA: ${{ needs.preview_backend.outputs.source_sha }}
       APP_VARIANT: preview
       DAYOVA_CI_VALIDATION: 'true'
       EXPO_NO_DOTENV: '1'
@@ -324,8 +362,13 @@ jobs:
       wait_for_in_progress: true
   android_build:
     name: android native compile
+    env:
+      EXPO_PUBLIC_CONVEX_URL: ${{ needs.preview_backend.outputs.url }}
+      CI_CONVEX_PREVIEW_NAME: ${{ needs.preview_backend.outputs.name }}
+      CI_CONVEX_SOURCE_SHA: ${{ needs.preview_backend.outputs.source_sha }}
     type: build
     needs:
+      - preview_backend
       - android_get_build
     if: ${{ !needs.android_get_build.outputs.build_id }}
     params:
@@ -336,10 +379,14 @@ jobs:
     type: repack
     environment: development
     env:
+      EXPO_PUBLIC_CONVEX_URL: ${{ needs.preview_backend.outputs.url }}
+      CI_CONVEX_PREVIEW_NAME: ${{ needs.preview_backend.outputs.name }}
+      CI_CONVEX_SOURCE_SHA: ${{ needs.preview_backend.outputs.source_sha }}
       APP_VARIANT: preview
       DAYOVA_CI_VALIDATION: 'true'
       EXPO_NO_DOTENV: '1'
     needs:
+      - preview_backend
       - android_get_build
     if: ${{ needs.android_get_build.outputs.build_id }}
     params:
@@ -351,11 +398,18 @@ jobs:
     environment: development
     runs_on: linux-medium-nested-virtualization
     after:
+      - preview_backend
       - native_fingerprint
       - android_build
       - android_repack
     if: ${{ after.native_fingerprint.status == 'success' }}
     env:
+      APP_VARIANT: preview
+      DAYOVA_CI_VALIDATION: 'true'
+      EXPO_NO_DOTENV: '1'
+      EXPO_PUBLIC_CONVEX_URL: ${{ after.preview_backend.outputs.url }}
+      CI_CONVEX_PREVIEW_NAME: ${{ after.preview_backend.outputs.name }}
+      CI_CONVEX_SOURCE_SHA: ${{ after.preview_backend.outputs.source_sha }}
       MAESTRO_APP_ID: com.dayova.dev
     steps:
       - uses: eas/checkout
@@ -376,8 +430,13 @@ jobs:
       wait_for_in_progress: true
   ios_build:
     name: ios native compile
+    env:
+      EXPO_PUBLIC_CONVEX_URL: ${{ needs.preview_backend.outputs.url }}
+      CI_CONVEX_PREVIEW_NAME: ${{ needs.preview_backend.outputs.name }}
+      CI_CONVEX_SOURCE_SHA: ${{ needs.preview_backend.outputs.source_sha }}
     type: build
     needs:
+      - preview_backend
       - ios_get_build
     if: ${{ !needs.ios_get_build.outputs.build_id }}
     params:
@@ -388,10 +447,14 @@ jobs:
     type: repack
     environment: development
     env:
+      EXPO_PUBLIC_CONVEX_URL: ${{ needs.preview_backend.outputs.url }}
+      CI_CONVEX_PREVIEW_NAME: ${{ needs.preview_backend.outputs.name }}
+      CI_CONVEX_SOURCE_SHA: ${{ needs.preview_backend.outputs.source_sha }}
       APP_VARIANT: preview
       DAYOVA_CI_VALIDATION: 'true'
       EXPO_NO_DOTENV: '1'
     needs:
+      - preview_backend
       - ios_get_build
     if: ${{ needs.ios_get_build.outputs.build_id }}
     params:
@@ -403,11 +466,18 @@ jobs:
     environment: development
     runs_on: macos-medium
     after:
+      - preview_backend
       - native_fingerprint
       - ios_build
       - ios_repack
     if: ${{ after.native_fingerprint.status == 'success' }}
     env:
+      APP_VARIANT: preview
+      DAYOVA_CI_VALIDATION: 'true'
+      EXPO_NO_DOTENV: '1'
+      EXPO_PUBLIC_CONVEX_URL: ${{ after.preview_backend.outputs.url }}
+      CI_CONVEX_PREVIEW_NAME: ${{ after.preview_backend.outputs.name }}
+      CI_CONVEX_SOURCE_SHA: ${{ after.preview_backend.outputs.source_sha }}
       MAESTRO_APP_ID: de.dayova.app-dev
     steps:
       - uses: eas/checkout
@@ -417,10 +487,18 @@ jobs:
           build_id: ${{ after.ios_repack.outputs.build_id || after.ios_build.outputs.build_id }}
   authenticated_smoke:
     name: Clerk and deployed Convex smoke
+    env:
+      APP_VARIANT: preview
+      DAYOVA_CI_VALIDATION: 'true'
+      EXPO_NO_DOTENV: '1'
+      EXPO_PUBLIC_CONVEX_URL: ${{ needs.preview_backend.outputs.url }}
+      CI_CONVEX_PREVIEW_NAME: ${{ needs.preview_backend.outputs.name }}
+      CI_CONVEX_SOURCE_SHA: ${{ needs.preview_backend.outputs.source_sha }}
     type: custom
     runs_on: linux-medium
     environment: development
     needs:
+      - preview_backend
       - quality
     if: ${{ needs.quality.outputs.native_required == 'true' }}
     steps:

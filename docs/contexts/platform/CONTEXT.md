@@ -53,20 +53,45 @@ artifact; publication reuses and revalidates it without bundling again.
 
 Native/configuration and auth/onboarding changes select Android/iOS validation
 through `scripts/ci-native-changes.mjs`. The weekly run forces it; manual CI can
-set `native_checks=true`. Profile `ci` builds embedded non-production apps against
-the reviewed development Clerk/Convex tenant, with updates and analytics disabled.
+set `native_checks=true`. Before real-service/native checks, CI provisions an
+isolated Convex preview in the reviewed project, deploys the checked-out backend,
+and passes its URL, unique preview name and source SHA to every consumer. No
+shared-tenant fallback is permitted. The required final check rejects a failed
+or skipped applicable preview prerequisite.
+
+`CONVEX_CI_PREVIEW_DEPLOY_KEY` is a preview-only project credential in the EAS
+development environment. Provisioning uses the public Convex Management API,
+creates a unique EU preview with a 24-hour expiration, and uses the official
+CLI with the preview-only credential for configuration, compilation and deployment.
+The explicit selection file is private temporary state outside uploaded artifacts
+and is removed on completion/failure. New preview environments discard inherited provider settings and allow only the
+reviewed Clerk test issuer, disabled CRM/deletion integrations and disabled
+Langfuse. Production keys, existing data and production/default deployment
+selection are not used by this path. Failed/canceled runs also expire; preview names
+are unique per attempt. Public source/URL/expiration provenance is uploaded; deploy keys
+must never appear in artifacts or outputs.
+
+Profile `ci` builds embedded non-production apps against that preview and the
+reviewed development Clerk instance, with updates and analytics disabled.
 Matching native builds are reused only with a freshly repacked JavaScript bundle.
-Native compile misses use EAS Build credits and flat build fees; fingerprints,
-repacks, and device checks consume workflow VM time. Prepackaged Maestro jobs
-also carry a per-job fee; these checks use custom VM jobs. See
-[current Expo pricing](https://expo.dev/pricing). These targeted
-checks add coverage and usage; stage speedups alone do not establish net savings.
-Maestro and the real-service auth probe use sensitive development environment
-variables `MAESTRO_CI_EMAIL` and `MAESTRO_CI_PASSWORD` for a synthetic Clerk test
-identity. The auth probe checks both authenticated access and anonymous denial.
-It also checks the signed-in notification query contract before native build
-work starts. The development backend must support the checked app's API; a stale
-deployment fails validation. CI never deploys PR backend code to this shared tenant.
+The same preview outputs reach fingerprint, build/repack and device jobs. Build
+job environment values override the profile/stored EAS environment values.
+
+The real-service probe initializes only the configured synthetic Clerk test user
+through authenticated app mutations, prepares onboarding, checks anonymous denial
+and authenticated user/access/notification contracts, and closes its Clerk session.
+It does not accept trial terms, grant access, buy a subscription or import an
+existing cohort. Fresh preview data deliberately replaces dependence on shared
+QA user state. Sensitive synthetic credentials remain `MAESTRO_CI_EMAIL` and
+`MAESTRO_CI_PASSWORD`. Native compile misses use EAS Build credits; fingerprints,
+repacks and custom device jobs consume workflow VM time.
+
+CI never deploys PR backend code to the shared development or production tenant.
+Production deployment/publication remains behind its existing main-only checks.
+This candidate-alignment slice does not establish old-client/new-backend or
+migration compatibility; that broader work remains in
+[DAY-442](https://linear.app/dayova/issue/DAY-442). Preview CI implementation and
+live verification are tracked in [DAY-561](https://linear.app/dayova/issue/DAY-561).
 
 `pnpm test:ci` retains per-stage timings, Vitest JUnit, and Jest JSON under ignored
 `.maestro/artifacts/ci/`. Weekly CI and the manual `test-coverage.yml` collect
