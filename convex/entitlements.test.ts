@@ -27,7 +27,7 @@ test("authenticated user activates 30 days of account access", async () => {
 	await t.mutation(api.users.syncCurrentUser, {});
 
 	const access = await t.mutation(api.entitlements.activateMyTrial, {
-		termsVersion: "2026-07-28",
+		termsVersion: "2026-10-16-30d-v1",
 	});
 
 	expect(access).toEqual({
@@ -36,17 +36,56 @@ test("authenticated user activates 30 days of account access", async () => {
 		state: "trial",
 		trialExpiresAt: Date.parse("2026-08-27T10:00:00.000Z"),
 		trialStartedAt: Date.parse("2026-07-28T10:00:00.000Z"),
-		trialTermsVersion: "2026-07-28",
+		trialTermsVersion: "2026-10-16-30d-v1",
 	});
 });
 
+test.each([
+	"2026-07-28-v1",
+	"30d",
+	"",
+	"2026-10-16-30d-v2",
+])("first activation rejects unsupported terms %j without granting access", async (termsVersion) => {
+	vi.useFakeTimers();
+	vi.setSystemTime(new Date("2026-10-21T12:00:00.000Z"));
+	const t = convexTest(schema, modules).withIdentity(user);
+	await t.mutation(api.users.syncCurrentUser, {});
+
+	await expect(
+		t.mutation(api.entitlements.activateMyTrial, { termsVersion }),
+	).rejects.toMatchObject({
+		data: {
+			kind: "userFacing",
+			message:
+				"Bitte aktualisiere Dayova und akzeptiere die aktuellen Nutzungsbedingungen, um deine Testphase zu starten.",
+		},
+	});
+	await expect(
+		t.query(api.entitlements.getMyAccess, {
+			now: Date.parse("2026-10-21T12:00:00.000Z"),
+		}),
+	).resolves.toEqual({ canUseApp: false, state: "needsActivation" });
+
+	await expect(
+		t.mutation(api.entitlements.activateMyTrial, {
+			termsVersion: "2026-10-16-30d-v1",
+		}),
+	).resolves.toMatchObject({
+		state: "trial",
+		canUseApp: true,
+		trialTermsVersion: "2026-10-16-30d-v1",
+		trialStartedAt: Date.parse("2026-10-21T12:00:00.000Z"),
+		trialExpiresAt: Date.parse("2026-11-20T12:00:00.000Z"),
+		reminderAt: Date.parse("2026-11-18T12:00:00.000Z"),
+	});
+});
 test("activating an existing trial never restarts its clock", async () => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date("2026-07-28T10:00:00.000Z"));
 	const t = convexTest(schema, modules).withIdentity(user);
 	await t.mutation(api.users.syncCurrentUser, {});
 	const firstAccess = await t.mutation(api.entitlements.activateMyTrial, {
-		termsVersion: "2026-07-28",
+		termsVersion: "2026-10-16-30d-v1",
 	});
 
 	vi.setSystemTime(new Date("2026-08-05T10:00:00.000Z"));
@@ -80,7 +119,9 @@ test.each([
 	vi.setSystemTime(new Date(start));
 	const t = convexTest(schema, modules).withIdentity(user);
 	await t.mutation(api.users.syncCurrentUser, {});
-	await t.mutation(api.entitlements.activateMyTrial, { termsVersion: "30d" });
+	await t.mutation(api.entitlements.activateMyTrial, {
+		termsVersion: "2026-10-16-30d-v1",
+	});
 	await expect(
 		t.query(api.entitlements.getMyAccess, { now: Date.parse(end) - 1 }),
 	).resolves.toMatchObject({
@@ -157,9 +198,11 @@ test.each([
 		return ctx.db.get("accessEntitlements", id);
 	});
 	if (!before) throw new Error("Missing seeded entitlement");
-	await expect(
-		t.mutation(api.entitlements.activateMyTrial, { termsVersion: "30d" }),
-	).resolves.toMatchObject({ state, canUseApp: state !== "expired" });
+	for (const termsVersion of ["2026-07-28-v1", "2026-10-16-30d-v1"]) {
+		await expect(
+			t.mutation(api.entitlements.activateMyTrial, { termsVersion }),
+		).resolves.toMatchObject({ state, canUseApp: state !== "expired" });
+	}
 	expect(
 		await t.run((ctx) => ctx.db.get("accessEntitlements", before._id)),
 	).toEqual(before);
@@ -170,7 +213,9 @@ test("CRM receives the same new trial deadline and expiry state as the app", asy
 	vi.setSystemTime(new Date("2026-10-21T12:00:00.000Z"));
 	const t = convexTest(schema, modules).withIdentity(user);
 	await t.mutation(api.users.syncCurrentUser, {});
-	await t.mutation(api.entitlements.activateMyTrial, { termsVersion: "30d" });
+	await t.mutation(api.entitlements.activateMyTrial, {
+		termsVersion: "2026-10-16-30d-v1",
+	});
 	const inspect = (now: string) =>
 		t.query(internal.crmSyncState.inspectStudent, {
 			clerkId: user.subject,
@@ -197,7 +242,7 @@ test("trial access expires exactly 30 days after activation", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	await t.mutation(api.users.syncCurrentUser, {});
 	await t.mutation(api.entitlements.activateMyTrial, {
-		termsVersion: "2026-07-28",
+		termsVersion: "2026-10-16-30d-v1",
 	});
 
 	await expect(
@@ -358,7 +403,7 @@ test("RevenueCat subscription grace keeps full access during a billing issue", a
 	const t = convexTest(schema, modules).withIdentity(user);
 	await t.mutation(api.users.syncCurrentUser, {});
 	await t.mutation(api.entitlements.activateMyTrial, {
-		termsVersion: "2026-07-28",
+		termsVersion: "2026-10-16-30d-v1",
 	});
 
 	await t.action(api.revenueCat.syncMyEntitlement, {});
@@ -408,7 +453,7 @@ test("authorized RevenueCat webhook refreshes access while the app is closed", a
 	const t = convexTest(schema, modules).withIdentity(user);
 	await t.mutation(api.users.syncCurrentUser, {});
 	await t.mutation(api.entitlements.activateMyTrial, {
-		termsVersion: "2026-07-28",
+		termsVersion: "2026-10-16-30d-v1",
 	});
 
 	const response = await t.fetch("/revenuecat-webhook", {
@@ -494,7 +539,7 @@ test("TRANSFER webhook grants the destination and revokes the source account", a
 	for (const client of [source, destination]) {
 		await client.mutation(api.users.syncCurrentUser, {});
 		await client.mutation(api.entitlements.activateMyTrial, {
-			termsVersion: "2026-07-28",
+			termsVersion: "2026-10-16-30d-v1",
 		});
 	}
 	await source.action(api.revenueCat.syncMyEntitlement, {});
@@ -556,7 +601,7 @@ test("activating an expired entitlement preserves its real access state", async 
 	const t = convexTest(schema, modules).withIdentity(user);
 	await t.mutation(api.users.syncCurrentUser, {});
 	await t.mutation(api.entitlements.activateMyTrial, {
-		termsVersion: "2026-07-28",
+		termsVersion: "2026-10-16-30d-v1",
 	});
 
 	vi.setSystemTime(new Date("2026-08-28T10:00:00.000Z"));
@@ -582,7 +627,7 @@ test("RevenueCat webhook returns 503 when subscriber synchronization fails", asy
 	const t = convexTest(schema, modules).withIdentity(user);
 	await t.mutation(api.users.syncCurrentUser, {});
 	await t.mutation(api.entitlements.activateMyTrial, {
-		termsVersion: "2026-07-28",
+		termsVersion: "2026-10-16-30d-v1",
 	});
 
 	const response = await t.fetch("/revenuecat-webhook", {
@@ -609,7 +654,7 @@ test("Day 28 creates an in-app trial reminder exactly once", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	await t.mutation(api.users.syncCurrentUser, {});
 	await t.mutation(api.entitlements.activateMyTrial, {
-		termsVersion: "2026-07-28",
+		termsVersion: "2026-10-16-30d-v1",
 	});
 
 	// convex-test uses setTimeout, whose maximum delay is less than 28 days.

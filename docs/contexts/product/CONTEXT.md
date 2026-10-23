@@ -13,6 +13,9 @@ is implemented for new trial activations by `src/lib/trial-policy.ts` and
 `convex/entitlements.ts`: 30 full 24-hour days from the server's activation time,
 without payment details, with a reminder 48 hours before expiry. This applies
 to eligible accounts without an existing entitlement, regardless of signup date.
+First activation requires the exact current terms version; unsupported versions
+are rejected before any grant. Existing-entitlement replays preserve their stored
+consent and access even when an older client supplies an earlier terms version.
 Stored trial dates, including legacy 14-day trials and manual extensions, are
 preserved. Repeated activation never restarts access. A separate migration
 decision is required to extend existing cohorts. App reminders and CRM use the

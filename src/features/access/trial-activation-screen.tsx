@@ -42,6 +42,7 @@ const timelineItems = [
 	},
 ] as const;
 
+/** Explains the current no-card trial and submits acceptance of its displayed policy. */
 export function TrialActivationScreen() {
 	const trackFeature = useFeatureAnalytics();
 	const { access, activateTrial } = useAccess();

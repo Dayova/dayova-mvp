@@ -1,5 +1,13 @@
 # Google Play launch command center
 
+## Trial-policy rollout compatibility
+
+Publish the app that displays and accepts terms version
+2026-10-16-30d-v1 before enabling its first-activation requirement in the
+backend. Older, not-yet-activated clients must update before starting a trial;
+their existing error screen can show only a generic activation failure.
+Include the update instruction in release/support communication. Existing
+entitlements and their accepted terms remain usable without renewed acceptance.
 Last reconciled: 2026-09-16 using signed-in Play Console, App Store Connect,
 RevenueCat, EAS, and public listing/policy checks. See the
 [live verification report](../live-verification-2026-09-16.md) for evidence and

@@ -188,10 +188,10 @@ test("trial and verified purchase changes schedule CRM updates; identical snapsh
 			),
 		);
 	await auth.mutation(api.entitlements.activateMyTrial, {
-		termsVersion: "test",
+		termsVersion: "2026-10-16-30d-v1",
 	});
 	await auth.mutation(api.entitlements.activateMyTrial, {
-		termsVersion: "test",
+		termsVersion: "2026-10-16-30d-v1",
 	});
 	expect(await scheduledCrm()).toHaveLength(1);
 	const snapshot = {
@@ -274,7 +274,9 @@ test.each([
 	vi.stubEnv("NOTION_CRM_MODE", mode);
 	const t = convexTest(schema, modules).withIdentity(identity);
 	await t.mutation(api.users.syncCurrentUser, {});
-	await t.mutation(api.entitlements.activateMyTrial, { termsVersion: "test" });
+	await t.mutation(api.entitlements.activateMyTrial, {
+		termsVersion: "2026-10-16-30d-v1",
+	});
 	await t.mutation(internal.entitlements.applyRevenueCatSnapshot, {
 		ownerTokenIdentifier: identity.tokenIdentifier,
 		active: true,
