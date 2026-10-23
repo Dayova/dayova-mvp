@@ -19,7 +19,9 @@ name: Enlarged dark settings support withdrawal and discard unconsented numbers
 - scrollUntilVisible:
     element:
       id: contact-phone-input
-    direction: UP
+    # Relaunch starts at the top. With iOS accessibility text, the introductory
+    # copy fills the viewport and the phone input is below it.
+    direction: DOWN
 - assertNotVisible: '\+12015550100'
 - assertNotVisible: '\+4915123456789'
 - tapOn:
