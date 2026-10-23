@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, jest, test } from "@jest/globals";
+import { describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render } from "@testing-library/react-native";
 import { useState } from "react";
 import type { Id } from "#convex/_generated/dataModel";
@@ -9,11 +9,6 @@ import {
 	RequiredTopicsStep,
 } from "./learning-plan-setup-steps";
 
-let mockKeyboardVisible = false;
-beforeEach(() => {
-	mockKeyboardVisible = false;
-});
-
 jest.mock("react-native-safe-area-context", () => ({
 	useSafeAreaInsets: () => ({ top: 0, bottom: 34, left: 0, right: 0 }),
 }));
@@ -21,9 +16,10 @@ jest.mock("react-native-keyboard-controller", () => {
 	const { View, ScrollView } =
 		jest.requireActual<typeof import("react-native")>("react-native");
 	return {
+		// These native doubles cover JS interactions, not keyboard positioning.
+		// Use scripts/native-qa/assert-above-keyboard.py for the live IME check.
 		KeyboardStickyView: View,
 		KeyboardAwareScrollView: ScrollView,
-		useKeyboardState: () => mockKeyboardVisible,
 	};
 });
 
@@ -86,36 +82,44 @@ describe("learning-plan setup steps", () => {
 	test.each([
 		"topics",
 		"hints",
-	] as const)("%s keeps Continue available through repeated keyboard transitions without losing the query", async (page) => {
+	] as const)("%s preserves the query and blocks Continue during a busy transition", async (page) => {
 		const props = {
 			subject: "Deutsch",
 			selectedTopics: ["Gedichtanalyse"],
-			canContinue: true,
-			isBusy: false,
 			errorMessage: null,
 			onContinue: jest.fn(),
 		};
-		const step = () =>
-			page === "topics" ? (
+		const step = (isBusy = false) => {
+			const stateProps = { ...props, isBusy, canContinue: !isBusy };
+			return page === "topics" ? (
 				<RequiredTopicsStep
-					{...props}
+					{...stateProps}
 					searchTopics={async () => ({ topics: [], truncated: false })}
 					onChangeSelectedTopics={jest.fn()}
 				/>
 			) : (
-				<ExamHintsStep {...props} additionalInfo="" onChange={jest.fn()} />
+				<ExamHintsStep {...stateProps} additionalInfo="" onChange={jest.fn()} />
 			);
+		};
 		const searchLabel = page === "topics" ? "Themen suchen" : "Hinweise suchen";
 		const screen = await render(step());
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
 		await fireEvent.changeText(screen.getByLabelText(searchLabel), "Text");
 
-		for (const visible of [true, false, true, false, true, false]) {
-			mockKeyboardVisible = visible;
-			await screen.rerender(step());
-			expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
-			expect(screen.getByLabelText(searchLabel)).toHaveDisplayValue("Text");
-		}
+		await screen.rerender(step(true));
+		const busyAction = screen.getByRole("button", {
+			name: "Weiter, wird geladen",
+		});
+		expect(busyAction).toBeDisabled();
+		expect(screen.getByLabelText(searchLabel)).toBeDisabled();
+		expect(screen.getByLabelText(searchLabel)).toHaveDisplayValue("Text");
+		await fireEvent.press(busyAction);
+		expect(props.onContinue).not.toHaveBeenCalled();
+
+		await screen.rerender(step());
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
+		expect(screen.getByLabelText(searchLabel)).toBeEnabled();
+		expect(screen.getByLabelText(searchLabel)).toHaveDisplayValue("Text");
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		expect(props.onContinue).toHaveBeenCalledTimes(1);
 	});
