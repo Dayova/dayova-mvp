@@ -1,6 +1,7 @@
 import { usePathname, useRootNavigationState, useRouter } from "expo-router";
 import { type ReactNode, useEffect } from "react";
 import { View } from "react-native";
+import { AccessVerificationRecovery } from "~/components/access-verification-recovery";
 import { useAccess } from "~/context/AccessContext";
 import { useAuthSession } from "~/context/AuthContext";
 import { resolveAccessRoute } from "~/lib/access-policy";
@@ -21,7 +22,20 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 		pendingSessionTask,
 		onboardingCompletionStatus,
 	} = useAuthSession();
-	const { access, isAccessLoading } = useAccess();
+	const {
+		access,
+		isAccessLoading,
+		isAccessUnavailable,
+		isAccessRetrying,
+		retryAccess,
+	} = useAccess();
+	const showAccessRecovery = Boolean(
+		user &&
+			!isSessionLoading &&
+			pendingSessionTask === null &&
+			onboardingCompletionStatus === "none" &&
+			isAccessUnavailable,
+	);
 	const authTargetRoute = getAuthNavigationTarget({
 		hasUser: Boolean(user),
 		isSessionLoading,
@@ -45,6 +59,7 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 		isSessionLoading ||
 		onboardingCompletionStatus === "loading" ||
 		(onboardingCompletionStatus === "none" && isAccessLoading) ||
+		showAccessRecovery ||
 		targetRoute !== null;
 
 	useEffect(() => {
@@ -77,7 +92,14 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 					importantForAccessibility="no"
 					pointerEvents="auto"
 					className="absolute inset-0 bg-background"
-				/>
+				>
+					{showAccessRecovery ? (
+						<AccessVerificationRecovery
+							isRetrying={isAccessRetrying}
+							onRetry={retryAccess}
+						/>
+					) : null}
+				</View>
 			) : null}
 		</View>
 	);

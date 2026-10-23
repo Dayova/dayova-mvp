@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
-import { act, render } from "@testing-library/react-native";
+import { act, fireEvent, render } from "@testing-library/react-native";
 import { Text } from "react-native";
 import {
 	ONBOARDING_CREATION_PATH,
@@ -30,6 +30,9 @@ const mockAccess = {
 		  }
 		| undefined,
 	isAccessLoading: false,
+	isAccessUnavailable: false,
+	isAccessRetrying: false,
+	retryAccess: jest.fn(),
 };
 
 jest.mock("expo-router", () => ({
@@ -45,6 +48,9 @@ jest.mock("~/context/AuthContext", () => ({
 jest.mock("~/context/AccessContext", () => ({
 	useAccess: () => mockAccess,
 }));
+jest.mock("react-native-safe-area-context", () => ({
+	useSafeAreaInsets: () => ({ top: 24, bottom: 16, left: 0, right: 0 }),
+}));
 
 describe("AuthNavigationGate", () => {
 	let animationFrames: FrameRequestCallback[];
@@ -59,6 +65,9 @@ describe("AuthNavigationGate", () => {
 		mockSession.user = { clerkId: "user_123" };
 		mockAccess.access = { state: "paid" };
 		mockAccess.isAccessLoading = false;
+		mockAccess.isAccessUnavailable = false;
+		mockAccess.isAccessRetrying = false;
+		mockAccess.retryAccess.mockReset();
 		animationFrames = [];
 		global.requestAnimationFrame = (callback: FrameRequestCallback) => {
 			animationFrames.push(callback);
@@ -71,6 +80,56 @@ describe("AuthNavigationGate", () => {
 		const callbacks = animationFrames.splice(0);
 		for (const callback of callbacks) callback(performance.now());
 	};
+
+	test("still redirects a server-confirmed expired account to the paywall", async () => {
+		mockRouterState.pathname = "/home";
+		mockAccess.access = { state: "expired" };
+		const screen = await render(
+			<AuthNavigationGate>
+				<Text>Private learning content</Text>
+			</AuthNavigationGate>,
+		);
+		expect(screen.queryByText("Private learning content")).toBeNull();
+		expect(screen.queryByText("Zugang gerade nicht prüfbar")).toBeNull();
+		await act(flushAnimationFrames);
+		expect(mockReplace).toHaveBeenCalledWith("/paywall");
+	});
+
+	test("offers verification retry while protecting the current route without a paywall redirect", async () => {
+		mockRouterState.pathname = "/home";
+		mockAccess.access = undefined;
+		mockAccess.isAccessUnavailable = true;
+		const screen = await render(
+			<AuthNavigationGate>
+				<Text>Private learning content</Text>
+			</AuthNavigationGate>,
+		);
+		expect(screen.getByText("Zugang gerade nicht prüfbar")).toBeOnTheScreen();
+		expect(screen.queryByText("Private learning content")).toBeNull();
+		await act(flushAnimationFrames);
+		expect(mockReplace).not.toHaveBeenCalled();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Erneut prüfen" }),
+		);
+		expect(mockAccess.retryAccess).toHaveBeenCalledTimes(1);
+		mockAccess.isAccessRetrying = true;
+		await screen.rerender(
+			<AuthNavigationGate>
+				<Text>Private learning content</Text>
+			</AuthNavigationGate>,
+		);
+		expect(screen.getByRole("button")).toBeDisabled();
+		expect(screen.getByText("Zugang wird geprüft …")).toBeOnTheScreen();
+		mockAccess.access = { state: "trial" };
+		mockAccess.isAccessUnavailable = false;
+		await screen.rerender(
+			<AuthNavigationGate>
+				<Text>Private learning content</Text>
+			</AuthNavigationGate>,
+		);
+		expect(screen.getByText("Private learning content")).toBeOnTheScreen();
+		expect(screen.queryByText("Zugang gerade nicht prüfbar")).toBeNull();
+	});
 
 	test("never exposes a public route while restoring an authenticated session", async () => {
 		const screen = await render(
