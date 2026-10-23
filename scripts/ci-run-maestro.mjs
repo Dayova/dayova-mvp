@@ -32,6 +32,11 @@ export function runDeviceSmoke(
 		],
 		authenticated: [".maestro/ci/authenticated.yaml"],
 		failure: [".maestro/ci/failure-probe.yaml"],
+		"contact-onboarding": [".maestro/ci/contact-onboarding.yaml"],
+		"contact-onboarding-large": [".maestro/ci/contact-onboarding-large.yaml"],
+		"contact-feedback": [".maestro/ci/contact-feedback.yaml"],
+		"contact-news": [".maestro/ci/contact-news.yaml"],
+		"contact-withdraw": [".maestro/ci/contact-withdraw.yaml"],
 	}[flow];
 	if (
 		!appPath ||
@@ -80,9 +85,14 @@ export function runDeviceSmoke(
 				"-e",
 				`MAESTRO_APP_ID=${env.MAESTRO_APP_ID}`,
 				"-e",
+				`APP_ID=${env.MAESTRO_APP_ID}`,
+				"-e",
 				`MAESTRO_CI_EMAIL=${env.MAESTRO_CI_EMAIL}`,
 				"-e",
 				`MAESTRO_CI_PASSWORD=${env.MAESTRO_CI_PASSWORD}`,
+				...(env.MAESTRO_DEV_SERVER_URL
+					? ["-e", `DEV_SERVER_URL=${env.MAESTRO_DEV_SERVER_URL}`]
+					: []),
 				"--format",
 				"junit",
 				"--output",

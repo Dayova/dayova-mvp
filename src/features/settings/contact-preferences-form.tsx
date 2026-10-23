@@ -29,6 +29,7 @@ export function ContactPreferencesForm({
 	return (
 		<View className="w-full max-w-[480px] gap-4 self-center">
 			<InsetTextField
+				testID="contact-phone-input"
 				label="Deine Telefonnummer (freiwillig)"
 				placeholder="+49 1512 3456789"
 				value={choice.phone}

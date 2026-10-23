@@ -1,0 +1,105 @@
+appId: ${MAESTRO_APP_ID}
+name: Reach the optional contact step through real onboarding
+---
+- runFlow:
+    file: ../shared/launch-unauthenticated.yaml
+    env:
+      APP_ID: ${MAESTRO_APP_ID}
+- tapOn: Registrierung
+- extendedWaitUntil:
+    visible: 'Schluss mit Aufschieben\.'
+    timeout: 30000
+- scrollUntilVisible:
+    element: Weiter
+    direction: DOWN
+- tapOn: Weiter
+- scrollUntilVisible:
+    element: Weiter
+    direction: DOWN
+- tapOn: Weiter
+- scrollUntilVisible:
+    element: Weiter
+    direction: DOWN
+- tapOn: Weiter
+- scrollUntilVisible:
+    element: Meinen Start personalisieren
+    direction: DOWN
+- tapOn: Meinen Start personalisieren
+- tapOn:
+    id: onboarding-name-input
+- inputText: Maestro
+- runFlow:
+    file: ../shared/dismiss-auth-keyboard.yaml
+    env:
+      AUTH_HEADING: 'Wie dürfen wir dich nennen\?'
+- scrollUntilVisible:
+    element: Weiter
+    direction: DOWN
+- tapOn: Weiter
+- scrollUntilVisible:
+    element: Weiter
+    direction: DOWN
+- tapOn: Weiter
+- scrollUntilVisible:
+    element: Weiter
+    direction: DOWN
+- tapOn: Weiter
+- tapOn: Montag
+- scrollUntilVisible:
+    element: Weiter
+    direction: DOWN
+- tapOn: Weiter
+- scrollUntilVisible:
+    element: Weiter
+    direction: DOWN
+- tapOn: Weiter
+- scrollUntilVisible:
+    element: Startzeit auswählen
+    direction: DOWN
+- tapOn: Startzeit auswählen
+- tapOn: Zeit übernehmen
+- scrollUntilVisible:
+    element: Weiter
+    direction: DOWN
+- tapOn: Weiter
+- scrollUntilVisible:
+    element: Weiter
+    direction: DOWN
+- tapOn: Weiter
+- scrollUntilVisible:
+    element: Klassenstufe auswählen
+    direction: DOWN
+- tapOn: Klassenstufe auswählen
+- scrollUntilVisible:
+    element: '10\. Klasse'
+    direction: DOWN
+- tapOn: '10\. Klasse'
+- scrollUntilVisible:
+    element: Weiter
+    direction: DOWN
+- tapOn: Weiter
+- scrollUntilVisible:
+    element: Bundesland auswählen
+    direction: DOWN
+- tapOn: Bundesland auswählen
+- scrollUntilVisible:
+    element: 'Berlin'
+    direction: DOWN
+- tapOn: 'Berlin'
+- scrollUntilVisible:
+    element: Weiter
+    direction: DOWN
+- tapOn: Weiter
+- scrollUntilVisible:
+    element: Schulart auswählen
+    direction: DOWN
+- tapOn: Schulart auswählen
+- scrollUntilVisible:
+    element: 'Gymnasium'
+    direction: DOWN
+- tapOn: 'Gymnasium'
+- scrollUntilVisible:
+    element: Weiter
+    direction: DOWN
+- tapOn: Weiter
+- assertVisible: 'Gestalte Dayova mit uns\.'

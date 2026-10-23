@@ -1,0 +1,31 @@
+name: Contact acceptance against an ephemeral local backend
+inputs:
+  - name: platform
+    required: true
+    allowed_values: [android, ios]
+  - name: build_id
+    required: true
+runs:
+  steps:
+    - uses: eas/download_build
+      id: app
+      with:
+        build_id: ${{ inputs.build_id }}
+    - uses: eas/install_maestro
+      with:
+        maestro_version: 2.10.0
+        backend: maestro
+    - uses: eas/start_android_emulator
+      if: ${{ inputs.platform == 'android' }}
+    - uses: eas/start_ios_simulator
+      if: ${{ inputs.platform == 'ios' }}
+      with:
+        enable_accessibility_settings: true
+    - name: Exercise current JS and isolated consent persistence
+      run: node scripts/native-qa/contact-preferences-qa.mjs "${{ steps.app.outputs.artifact_path }}"
+    - uses: eas/upload_artifact
+      if: ${{ always() }}
+      with:
+        type: other
+        name: contact-acceptance-results
+        path: .maestro/artifacts/contact-qa/public

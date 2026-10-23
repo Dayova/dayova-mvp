@@ -1,0 +1,15 @@
+appId: ${MAESTRO_APP_ID}
+name: Enlarged dark contact remains skippable
+---
+- runFlow: contact-onboarding-start.yaml
+- takeScreenshot: onboarding-large-dark-top
+- scrollUntilVisible:
+    element: 'Ich möchte per WhatsApp Neuigkeiten zu Dayova erhalten\.'
+    direction: DOWN
+- takeScreenshot: onboarding-large-dark-purposes
+- scrollUntilVisible:
+    element: Jetzt überspringen
+    direction: DOWN
+- takeScreenshot: onboarding-large-dark-actions
+- tapOn: Jetzt überspringen
+- assertVisible: 'Wie lautet deine E-Mail-Adresse\?'
