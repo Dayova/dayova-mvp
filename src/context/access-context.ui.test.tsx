@@ -12,6 +12,7 @@ const mockSession = {
 	user: { clerkId: "user_a" },
 	isSessionLoading: false,
 	isConvexUserSynced: true,
+	isPostAuthSyncing: false,
 	onboardingCompletionStatus: "none",
 };
 const mockVerify =
@@ -22,6 +23,7 @@ const mockConnection = { isWebSocketConnected: true };
 const mockLearningQuery = jest.fn<() => unknown>();
 jest.mock("~/context/AuthContext", () => ({
 	useAuthSession: () => mockSession,
+	useOnboardingHandoff: () => ({ retryPostAuthSync: () => {} }),
 }));
 jest.mock("convex/react", () => ({
 	useConvexConnectionState: () => mockConnection,
@@ -74,6 +76,7 @@ beforeEach(() => {
 	jest.useFakeTimers();
 	jest.spyOn(performance, "now").mockImplementation(() => mockElapsed);
 	mockElapsed = 0;
+	AppState.currentState = "active";
 	mockConnection.isWebSocketConnected = true;
 	mockLearningQuery.mockReset();
 	mockSession.user = { clerkId: "user_a" };
@@ -236,4 +239,50 @@ test("reconnecting starts a fresh server verification after an offline cold star
 	mockConnection.isWebSocketConnected = true;
 	await screen.rerender(<App />);
 	expect(screen.getByText("trial")).toBeOnTheScreen();
+});
+
+test("an inactive foreground interruption preserves the verified offline lease", async () => {
+	let change!: Parameters<typeof AppState.addEventListener>[1];
+	jest
+		.spyOn(AppState, "addEventListener")
+		.mockImplementation((_event, listener) => {
+			change = listener;
+			return { remove: () => {} };
+		});
+	mockVerify.mockResolvedValue({
+		access: {
+			state: "trial",
+			canUseApp: true,
+			trialExpiresAt: Date.parse("2026-11-20T12:00:00Z"),
+		},
+		serverNow,
+	});
+	const screen = await render(<App />);
+	expect(screen.getByText("trial")).toBeOnTheScreen();
+	mockVerify.mockRejectedValue(new Error("offline"));
+	await act(async () => change("inactive"));
+	await act(async () => change("active"));
+	await act(async () => jest.advanceTimersByTime(1501));
+	expect(screen.getByText("trial")).toBeOnTheScreen();
+});
+
+test("a process mounted in the background waits for foreground verification", async () => {
+	AppState.currentState = "background";
+	let change!: Parameters<typeof AppState.addEventListener>[1];
+	jest
+		.spyOn(AppState, "addEventListener")
+		.mockImplementation((_event, listener) => {
+			change = listener;
+			return { remove: () => {} };
+		});
+	mockVerify.mockResolvedValue({
+		access: { state: "paid", canUseApp: true },
+		serverNow,
+	});
+	const screen = await render(<App />);
+	expect(screen.getByText("loading")).toBeOnTheScreen();
+	await act(async () => jest.advanceTimersByTime(1501));
+	expect(screen.getByText("verification-required")).toBeOnTheScreen();
+	await act(async () => change("active"));
+	expect(screen.getByText("paid")).toBeOnTheScreen();
 });

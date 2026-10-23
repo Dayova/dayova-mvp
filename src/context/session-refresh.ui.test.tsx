@@ -7,7 +7,7 @@ import {
 	test,
 } from "@jest/globals";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
-import { Text } from "react-native";
+import { AppState, Text } from "react-native";
 import { AuthNavigationGate } from "~/components/auth-navigation-gate";
 import {
 	type AccessSnapshot,
@@ -145,6 +145,7 @@ const openApp = async () => {
 
 describe("session refresh across the app", () => {
 	beforeEach(() => {
+		AppState.currentState = "active";
 		mockClerkUser = makeUser();
 		mockAuthenticated = true;
 		mockServerAccess = { canUseApp: true, state: "paid" };
@@ -354,5 +355,20 @@ describe("session refresh across the app", () => {
 		mockAuthenticated = false;
 		await screen.rerender(<App />);
 		expect(screen.getByTestId("auth-bootstrap-mask")).toBeOnTheScreen();
+	});
+	test("an offline cold-start profile sync offers online verification instead of an indefinite blank mask", async () => {
+		jest.useFakeTimers();
+		const finishSync = deferSync();
+		const screen = await render(<App />);
+		try {
+			expect(
+				screen.getByTestId("profile-state", { includeHiddenElements: true }),
+			).toHaveTextContent("pending/syncing");
+			await act(async () => jest.advanceTimersByTime(1501));
+			expect(screen.getByText("Zugang online prüfen")).toBeOnTheScreen();
+		} finally {
+			await finishSync();
+		}
+		expectVisible(screen);
 	});
 });

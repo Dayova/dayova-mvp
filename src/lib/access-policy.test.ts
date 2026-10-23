@@ -259,3 +259,25 @@ describe("expired account recovery", () => {
 		).toBeNull();
 	});
 });
+
+describe("complete account-security recovery", () => {
+	it.each([
+		"/profile",
+		"/settings",
+		"/change-password",
+		"/subscription",
+		"/session-tasks/reset-password",
+		"/password-reset-success",
+	])("keeps %s available for an expired or unactivated learner", (pathname) => {
+		for (const accessState of ["needsActivation", "expired"] as const) {
+			expect(
+				resolveAccessRoute({
+					accessState,
+					isSessionLoading: false,
+					pathname,
+					user: { id: "learner" },
+				}),
+			).toBeNull();
+		}
+	});
+});

@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { accessSnapshotValidator as accessValidator } from "../src/lib/access-contract";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import {
@@ -11,33 +12,7 @@ import { assertAccountActive } from "./accountDeletion";
 import { getCurrentAccess, getPaidThrough } from "./entitlementPolicy";
 import { throwUserFacingError } from "./errors";
 
-const metadata = v.object({
-	trialStartedAt: v.optional(v.number()),
-	trialExpiresAt: v.optional(v.number()),
-	reminderAt: v.optional(v.number()),
-	trialTermsVersion: v.optional(v.string()),
-	managementUrl: v.optional(v.string()),
-	productId: v.optional(v.string()),
-	store: v.optional(v.string()),
-	subscriptionExpiresAt: v.optional(v.number()),
-	subscriptionGraceExpiresAt: v.optional(v.number()),
-	willRenew: v.optional(v.boolean()),
-});
-export const accessValidator = v.union(
-	metadata.extend({
-		state: v.union(v.literal("needsActivation"), v.literal("expired")),
-		canUseApp: v.literal(false),
-	}),
-	metadata.extend({
-		state: v.literal("trial"),
-		canUseApp: v.literal(true),
-		trialExpiresAt: v.number(),
-	}),
-	metadata.extend({
-		state: v.union(v.literal("paid"), v.literal("billingGrace")),
-		canUseApp: v.literal(true),
-	}),
-);
+export { accessValidator };
 export async function findOwnerAccess(
 	ctx: QueryCtx,
 	ownerTokenIdentifier: string,

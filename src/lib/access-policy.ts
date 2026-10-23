@@ -4,53 +4,11 @@ import {
 	PASSWORD_RESET_SUCCESS_PATH,
 	SESSION_TASK_RESET_PASSWORD_PATH,
 } from "~/lib/auth-routing";
+import type { AccessSnapshot, AccessState } from "./access-contract";
 
 export const OFFLINE_ACCESS_WINDOW_MS = 72 * 60 * 60 * 1000;
 
-export type AccessState =
-	| "needsActivation"
-	| "trial"
-	| "paid"
-	| "billingGrace"
-	| "expired";
-
-type AccessMetadata = {
-	trialStartedAt?: number;
-	trialExpiresAt?: number;
-	reminderAt?: number;
-	trialTermsVersion?: string;
-	subscriptionExpiresAt?: number;
-	subscriptionGraceExpiresAt?: number;
-	managementUrl?: string;
-	productId?: string;
-	store?: string;
-	willRenew?: boolean;
-};
-
-export type AccessSnapshot =
-	| ({
-			canUseApp: false;
-			state: "needsActivation";
-	  } & AccessMetadata)
-	| ({
-			canUseApp: true;
-			state: "trial";
-			trialExpiresAt: number;
-	  } & AccessMetadata)
-	| ({
-			canUseApp: false;
-			state: "expired";
-			trialExpiresAt?: number;
-	  } & AccessMetadata)
-	| ({
-			canUseApp: true;
-			state: "paid";
-	  } & AccessMetadata)
-	| ({
-			canUseApp: true;
-			state: "billingGrace";
-			subscriptionGraceExpiresAt: number;
-	  } & AccessMetadata);
+export type { AccessSnapshot, AccessState } from "./access-contract";
 
 const PUBLIC_AUTH_PATHS = new Set([
 	"/",
@@ -59,20 +17,23 @@ const PUBLIC_AUTH_PATHS = new Set([
 	ONBOARDING_PATH,
 ]);
 const ACCESS_SETUP_PATHS = new Set(["/trial", "/paywall", "/subscription"]);
-const EXPIRED_ACCESS_PATHS = new Set([
-	"/paywall",
-	"/subscription",
+const ACCOUNT_RECOVERY_PATHS = new Set([
 	"/settings",
 	"/profile",
 	"/notification-settings",
+	"/change-password",
+	"/subscription",
 ]);
-export const isAccessRecoveryPath = (pathname: string) =>
-	EXPIRED_ACCESS_PATHS.has(pathname);
+const EXPIRED_ACCESS_PATHS = new Set(["/paywall", ...ACCOUNT_RECOVERY_PATHS]);
 const ACCESS_BYPASS_PATHS = new Set([
 	ONBOARDING_PATH,
 	PASSWORD_RESET_SUCCESS_PATH,
 	SESSION_TASK_RESET_PASSWORD_PATH,
 ]);
+export const isAccessRecoveryPath = (pathname: string) =>
+	ACCOUNT_RECOVERY_PATHS.has(pathname) ||
+	pathname === PASSWORD_RESET_SUCCESS_PATH ||
+	pathname === SESSION_TASK_RESET_PASSWORD_PATH;
 const SUBSCRIPTION_SUCCESS_PATH = "/subscription-success";
 
 export const resolveAccessRoute = ({
@@ -92,6 +53,12 @@ export const resolveAccessRoute = ({
 		PUBLIC_AUTH_PATHS.has(pathname) || isOnboardingPath(pathname);
 	if (!user) return isAuthRoute ? null : "/";
 	if (ACCESS_BYPASS_PATHS.has(pathname) || isOnboardingPath(pathname))
+		return null;
+	if (
+		ACCOUNT_RECOVERY_PATHS.has(pathname) &&
+		accessState !== "paid" &&
+		accessState !== "billingGrace"
+	)
 		return null;
 	if (!accessState) return null;
 

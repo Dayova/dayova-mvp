@@ -35,20 +35,28 @@ const toPaidAccess = (entitlement: {
 	subscriptionProductId?: string;
 	subscriptionStore?: string;
 	subscriptionWillRenew?: boolean;
-}) => ({
-	canUseApp: true as const,
-	managementUrl: entitlement.subscriptionManagementUrl,
-	productId: entitlement.subscriptionProductId,
-	state:
+}) => {
+	const metadata = {
+		canUseApp: true as const,
+		managementUrl: entitlement.subscriptionManagementUrl,
+		productId: entitlement.subscriptionProductId,
+		store: entitlement.subscriptionStore,
+		subscriptionExpiresAt: entitlement.subscriptionExpiresAt,
+		subscriptionGraceExpiresAt: entitlement.subscriptionGraceExpiresAt,
+		willRenew: entitlement.subscriptionWillRenew ?? false,
+	};
+	if (
 		entitlement.subscriptionBillingIssueDetectedAt &&
 		entitlement.subscriptionGraceExpiresAt !== undefined
-			? ("billingGrace" as const)
-			: ("paid" as const),
-	store: entitlement.subscriptionStore,
-	subscriptionExpiresAt: entitlement.subscriptionExpiresAt,
-	subscriptionGraceExpiresAt: entitlement.subscriptionGraceExpiresAt,
-	willRenew: entitlement.subscriptionWillRenew ?? false,
-});
+	) {
+		return {
+			...metadata,
+			state: "billingGrace" as const,
+			subscriptionGraceExpiresAt: entitlement.subscriptionGraceExpiresAt,
+		};
+	}
+	return { ...metadata, state: "paid" as const };
+};
 
 export const getCurrentAccess = (
 	entitlement: Doc<"accessEntitlements">,

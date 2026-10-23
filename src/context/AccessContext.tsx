@@ -17,7 +17,7 @@ import {
 } from "react";
 import { AppState } from "react-native";
 import { api } from "#convex/_generated/api";
-import { useAuthSession } from "~/context/AuthContext";
+import { useAuthSession, useOnboardingHandoff } from "~/context/AuthContext";
 import {
 	type AccessSnapshot,
 	getNextAccessRefreshAt,
@@ -25,8 +25,6 @@ import {
 	OFFLINE_ACCESS_WINDOW_MS,
 } from "~/lib/access-policy";
 import { isOnboardingSettled } from "~/lib/auth-routing";
-
-export type { AccessSnapshot } from "~/lib/access-policy";
 
 type AccessContextValue = {
 	access: AccessSnapshot | undefined;
@@ -49,9 +47,12 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 		user,
 		isSessionLoading,
 		isConvexUserSynced,
+		isPostAuthSyncing,
 		onboardingCompletionStatus,
 	} = useAuthSession();
+	const { retryPostAuthSync } = useOnboardingHandoff();
 	const appUserId = user?.clerkId ?? null;
+	const canWaitForVerification = Boolean(appUserId && !isSessionLoading);
 	const { isAuthenticated } = useConvexAuth();
 	const { isWebSocketConnected } = useConvexConnectionState();
 	const canQuery = Boolean(
@@ -78,7 +79,9 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 	const [observedQuery, setObservedQuery] = useState(serverAccess);
 	const identity = useRef(appUserId);
 	const generation = useRef(0);
-	const foreground = useRef(true);
+	const foreground = useRef(
+		AppState.currentState === "active" || AppState.currentState === "inactive",
+	);
 	const pending = useRef<{ appUserId: string; request: Promise<void> } | null>(
 		null,
 	);
@@ -98,7 +101,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 		) {
 			setVerification({
 				...verification,
-				access: serverAccess as AccessSnapshot,
+				access: serverAccess,
 			});
 		}
 	}
@@ -129,7 +132,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 					setMonotonicNow(performance.now());
 					setVerification({
 						appUserId,
-						access: result.access as AccessSnapshot,
+						access: result.access,
 						serverNow: result.serverNow,
 						monotonicAt,
 					});
@@ -145,21 +148,20 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 	useEffect(() => {
 		if (!canQuery) return;
 		if (serverAccess && !serverAccess.canUseApp) {
-			generation.current++;
-			pending.current = null;
+			invalidateRequests();
 		}
 		void refresh().catch(() => {
 			/* A failed request cannot grant or renew access. */
 		});
-	}, [canQuery, refresh, serverAccess]);
+	}, [canQuery, invalidateRequests, refresh, serverAccess]);
 	useEffect(() => {
-		if (!appUserId || !canQuery) return;
+		if (!appUserId || !canWaitForVerification) return;
 		const timer = setTimeout(
 			() => setTimedOut({ appUserId, epoch: verificationEpoch }),
 			1500,
 		);
 		return () => clearTimeout(timer);
-	}, [appUserId, canQuery, verificationEpoch]);
+	}, [appUserId, canWaitForVerification, verificationEpoch]);
 	useEffect(() => {
 		if (!canQuery) return;
 		// Retry offline failures and renew the lease only when a real server response arrives.
@@ -171,14 +173,13 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 	}, [canQuery, refresh]);
 	useEffect(() => {
 		const listener = AppState.addEventListener("change", (state) => {
-			if (state !== "active") {
+			if (state === "background") {
 				foreground.current = false;
-				pending.current = null;
 				// JS monotonic clocks may pause in device sleep. A background transition ends this lease.
-				generation.current++;
+				invalidateRequests();
 				setVerification(null);
 				setTimedOut(null);
-			} else {
+			} else if (state === "active" && !foreground.current) {
 				foreground.current = true;
 				setVerificationEpoch((value) => value + 1);
 				setMonotonicNow(performance.now());
@@ -186,7 +187,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 			}
 		});
 		return () => listener.remove();
-	}, [refresh]);
+	}, [invalidateRequests, refresh]);
 	const current = verification?.appUserId === appUserId ? verification : null;
 	// Never read Date.now() or a persisted access cache to authorize this process.
 	const elapsed = current ? monotonicNow - current.monotonicAt : 0;
@@ -214,7 +215,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 			: undefined;
 	const access = canQuery ? verifiedAccess : undefined;
 	const isVerificationRequired =
-		canQuery &&
+		canWaitForVerification &&
 		!verifiedAccess &&
 		timedOut?.appUserId === appUserId &&
 		timedOut?.epoch === verificationEpoch;
@@ -250,6 +251,21 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 		await refresh();
 		return result.active;
 	}, [refresh, syncMyEntitlement]);
+	const retryAccessVerification = useCallback(async () => {
+		if (!isWebSocketConnected)
+			throw new Error("Online-Verbindung erforderlich");
+		if (!canQuery) {
+			if (!isPostAuthSyncing) retryPostAuthSync();
+			throw new Error("Anmeldung oder Profilabgleich noch nicht bestätigt");
+		}
+		await refresh();
+	}, [
+		canQuery,
+		isPostAuthSyncing,
+		isWebSocketConnected,
+		refresh,
+		retryPostAuthSync,
+	]);
 	const isAccessLoading =
 		Boolean(user) &&
 		!isSessionLoading &&
@@ -261,7 +277,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 			activateTrial,
 			isAccessLoading,
 			isVerificationRequired,
-			retryAccessVerification: refresh,
+			retryAccessVerification,
 			refreshPaidAccess,
 		}),
 		[
@@ -269,7 +285,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 			activateTrial,
 			isAccessLoading,
 			isVerificationRequired,
-			refresh,
+			retryAccessVerification,
 			refreshPaidAccess,
 		],
 	);

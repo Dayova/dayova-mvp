@@ -31,6 +31,7 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 		retryAccessVerification,
 	} = useAccess();
 	const [retrying, setRetrying] = useState(false);
+	const [retryError, setRetryError] = useState<string | null>(null);
 	const authTargetRoute = getAuthNavigationTarget({
 		hasUser: Boolean(user),
 		isSessionLoading,
@@ -46,13 +47,17 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 				user: { id: user.clerkId },
 			})
 		: null;
-	const targetRoute =
-		pendingSessionTask !== null || onboardingCompletionStatus !== "none"
+	const recoveringAccount =
+		user && pendingSessionTask === null && isAccessRecoveryPath(pathname);
+	const targetRoute = recoveringAccount
+		? accessTargetRoute
+		: pendingSessionTask !== null || onboardingCompletionStatus !== "none"
 			? authTargetRoute
 			: (accessTargetRoute ?? authTargetRoute);
 	const shouldMaskRoute =
 		isSessionLoading ||
-		onboardingCompletionStatus === "loading" ||
+		(onboardingCompletionStatus === "loading" &&
+			!isAccessRecoveryPath(pathname)) ||
 		(onboardingCompletionStatus === "none" &&
 			isAccessLoading &&
 			!isAccessRecoveryPath(pathname)) ||
@@ -100,15 +105,40 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 									Bitte verbinde dich mit dem Internet, damit Dayova deinen
 									Zugang prüfen kann. Dein Lernstand bleibt erhalten.
 								</Text>
+								{retryError ? (
+									<Text
+										accessibilityRole="alert"
+										className="mt-3 text-body-3 text-destructive"
+									>
+										{retryError}
+									</Text>
+								) : null}
 								<Button
 									className="mt-6"
 									disabled={retrying}
-									accessibilityState={{ busy: retrying }}
+									accessibilityState={{ busy: retrying, disabled: retrying }}
 									onPress={() => {
 										setRetrying(true);
-										void retryAccessVerification()
-											.catch(() => {})
-											.finally(() => setRetrying(false));
+										setRetryError(null);
+										let timeout: ReturnType<typeof setTimeout>;
+										void Promise.race([
+											retryAccessVerification(),
+											new Promise<never>((_resolve, reject) => {
+												timeout = setTimeout(
+													() => reject(new Error("Verification timed out")),
+													10_000,
+												);
+											}),
+										])
+											.catch(() =>
+												setRetryError(
+													"Die Prüfung hat nicht geklappt. Prüfe deine Internetverbindung und versuche es erneut.",
+												),
+											)
+											.finally(() => {
+												clearTimeout(timeout);
+												setRetrying(false);
+											});
 									}}
 								>
 									<Text>{retrying ? "Wird geprüft …" : "Erneut prüfen"}</Text>
