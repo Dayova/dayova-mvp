@@ -1,6 +1,7 @@
 appId: ${MAESTRO_APP_ID}
 name: Changing the number clears feedback and permits a separate news choice
 ---
+- runFlow: ../shared/relaunch-development.yaml
 - scrollUntilVisible:
     element:
       id: contact-phone-input

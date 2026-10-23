@@ -17,10 +17,26 @@ runs:
         backend: maestro
     - uses: eas/start_android_emulator
       if: ${{ inputs.platform == 'android' }}
+    - name: Enable software keyboard on the disposable iOS worker
+      if: ${{ inputs.platform == 'ios' }}
+      run: |
+        # Xcode 27 DeviceHub stores this setting in its sandbox container.
+        # Source: appium-ios-simulator 10.9.1, extensions/settings.ts.
+        dayovaKeyboardPrefs="$HOME/Library/Containers/com.apple.dt.Devices/Data/Library/Preferences/com.apple.dt.Devices.plist"
+        mkdir -p "$(dirname "$dayovaKeyboardPrefs")"
+        if [ ! -f "$dayovaKeyboardPrefs" ]; then
+          plutil -create binary1 "$dayovaKeyboardPrefs"
+        fi
+        plutil -replace alwaysSimulateHardwareKeyboard -bool NO "$dayovaKeyboardPrefs"
+        test "$(plutil -extract alwaysSimulateHardwareKeyboard raw -o - "$dayovaKeyboardPrefs")" = false
+        defaults write com.apple.iphonesimulator ConnectHardwareKeyboard -bool NO
     - uses: eas/start_ios_simulator
       if: ${{ inputs.platform == 'ios' }}
       with:
         enable_accessibility_settings: true
+    - name: Prepare the simulator's first software-keyboard use
+      if: ${{ inputs.platform == 'ios' }}
+      run: xcrun simctl spawn booted defaults write com.apple.keyboard.preferences DidShowContinuousPathIntroduction -int 1
     - name: Exercise current JS and isolated consent persistence
       run: node scripts/native-qa/contact-preferences-qa.mjs "${{ steps.app.outputs.artifact_path }}"
     - uses: eas/upload_artifact

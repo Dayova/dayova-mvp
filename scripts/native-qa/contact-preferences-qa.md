@@ -21,6 +21,10 @@ credentials from child environments. It does not deploy to a shared backend.
 Native journeys exercise optional onboarding, validation/keyboard behavior,
 independent purposes, number replacement, save/relaunch persistence, withdrawal,
 and large text in dark appearance. Real authenticated queries check saved state.
+The native container is installed once per run; subsequent journeys explicitly
+relaunch it without replacing the installation or clearing the session. The iOS
+worker configures DeviceHub's software keyboard before boot and separately
+asserts a visible numeric key before capturing the focused phone input.
 
 Only sanitized diagnostics and selected screenshots under
 `.maestro/artifacts/contact-qa/public` are uploaded. Private service logs stay on

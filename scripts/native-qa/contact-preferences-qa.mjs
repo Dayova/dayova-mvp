@@ -61,6 +61,7 @@ export async function runContactPreferencesQa(
 	mkdirSync(publicRoot, { recursive: true });
 	const children = [];
 	const results = [];
+	let appInstalled = false;
 	let authorization;
 	let sessionId;
 	let failure;
@@ -168,9 +169,11 @@ export async function runContactPreferencesQa(
 		console.log(`Contact QA: starting ${name}`);
 		const exitCode = runDeviceSmoke(appPath, name, {
 			env: childEnv,
+			installApp: !appInstalled,
 			directory: join(publicRoot, name, ".maestro/tests"),
 		});
 		if (exitCode !== 0) throw new Error(`${name} native journey failed`);
+		appInstalled = true;
 		results.push({ name, passed: true });
 	};
 	try {
@@ -276,6 +279,7 @@ export async function runContactPreferencesQa(
 			feedback: true,
 			news: false,
 		});
+		if (platform === "ios") journey("contact-keyboard");
 		journey("contact-news");
 		await verify("International number and independent news", {
 			phone: "+12015550100",
