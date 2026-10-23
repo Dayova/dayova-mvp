@@ -71,7 +71,9 @@ test("learning writes reject server-expired access even without another profile 
 	vi.setSystemTime(new Date("2026-11-21T12:00:00.000Z"));
 	await expect(
 		t.mutation(api.dayEntries.create, { ...exam, title: "After expiry" }),
-	).rejects.toMatchObject({ data: { kind: "userFacing" } });
+	).rejects.toMatchObject({
+		data: { kind: "userFacing", code: "learningAccessRequired" },
+	});
 });
 // Observable contracts through the real Convex API: scheduler expiry, extension safety,
 // fresh action admission, and recovery. No native/service behavior is mocked here.
@@ -174,6 +176,28 @@ test("expired accounts cannot read protected learning data but can recover their
 	await expect(
 		t.query(api.learningPlans.listOverview, {}),
 	).rejects.toMatchObject({ data: { kind: "userFacing" } });
+	await expect(t.query(api.users.getMe, {})).resolves.toMatchObject({
+		email: "access-clock@example.invalid",
+	});
+});
+
+// Fresh learners may manage their account without consenting to a trial.
+test("unactivated learning reads expose a distinct eligibility denial and retain recovery", async () => {
+	const t = convexTest(schema, modules).withIdentity(identity);
+	await t.mutation(api.users.syncCurrentUser, {});
+	await expect(
+		t.mutation(api.accessState.refreshMyAccess, {}),
+	).resolves.toMatchObject({
+		access: { state: "needsActivation", canUseApp: false },
+	});
+	await expect(
+		t.query(api.dayEntries.listByDayKeys, {
+			dayKeys: ["2026-10-24"],
+			cacheScope: "notificationPlanning",
+		}),
+	).rejects.toMatchObject({
+		data: { kind: "userFacing", code: "learningAccessRequired" },
+	});
 	await expect(t.query(api.users.getMe, {})).resolves.toMatchObject({
 		email: "access-clock@example.invalid",
 	});

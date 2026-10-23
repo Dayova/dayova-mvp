@@ -111,6 +111,7 @@ export async function assertLearningAccess(
 	if (!access?.canUseApp)
 		throwUserFacingError(
 			"Dein Zugang ist abgelaufen oder noch nicht aktiviert. Bitte prüfe deinen Zugang in Dayova.",
+			"learningAccessRequired",
 		);
 }
 export const assertMyLearningAccess = internalMutation({
