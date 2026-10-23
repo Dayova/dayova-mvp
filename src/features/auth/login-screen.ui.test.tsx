@@ -1168,9 +1168,7 @@ describe("OnboardingScreen", () => {
 		});
 		mockOnboarding.contactChoice = { ...emptyContactChoice(), news: true };
 		await screen.rerender(<OnboardingStepScreen stepId="contact" />);
-		await fireEvent.press(
-			screen.getByRole("button", { name: "Auswahl speichern und weiter" }),
-		);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		expect(mockRouter.push).not.toHaveBeenCalled();
 		expect(
 			screen.getByText(/Bitte gib eine gültige Telefonnummer/),
@@ -1209,12 +1207,7 @@ describe("OnboardingScreen", () => {
 			mockRouter.push.mockClear();
 			await fireEvent.press(
 				screen.getByRole("button", {
-					name:
-						stepId === "password"
-							? "Konto erstellen"
-							: stepId === "contact"
-								? "Auswahl speichern und weiter"
-								: "Weiter",
+					name: stepId === "password" ? "Konto erstellen" : "Weiter",
 				}),
 			);
 			await waitFor(() =>

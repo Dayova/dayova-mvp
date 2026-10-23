@@ -1432,9 +1432,7 @@ function QuestionStepView({
 		? hasInvalidLearningTime
 			? "Frühere Startzeit wählen"
 			: "Startzeit auswählen"
-		: step.kind === "contact"
-			? "Auswahl speichern und weiter"
-			: continueLabel;
+		: continueLabel;
 	const isPrimaryActionDisabled =
 		busy || (!canContinue && !shouldOpenLearningTimePicker);
 	const primaryAction = (

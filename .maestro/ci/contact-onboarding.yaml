@@ -5,9 +5,9 @@ name: Contact choices, corrected input, back and skip
 - takeScreenshot: onboarding-contact-default
 - tapOn: 'Das Dayova-Team darf mich per WhatsApp zu Feedbackgesprächen einladen und für diese Gespräche anrufen\.'
 - scrollUntilVisible:
-    element: Auswahl speichern und weiter
+    element: Weiter
     direction: DOWN
-- tapOn: Auswahl speichern und weiter
+- tapOn: Weiter
 - assertVisible: 'Bitte gib eine gültige Telefonnummer.*'
 - takeScreenshot: contact-invalid
 - scrollUntilVisible:
@@ -28,10 +28,10 @@ name: Contact choices, corrected input, back and skip
 - tapOn: 'Ich möchte per WhatsApp Neuigkeiten zu Dayova erhalten\.'
 - takeScreenshot: contact-both-selected
 - scrollUntilVisible:
-    element: Auswahl speichern und weiter
+    element: Weiter
     direction: DOWN
     timeout: 10000
-- tapOn: Auswahl speichern und weiter
+- tapOn: Weiter
 - assertVisible: 'Wie lautet deine E-Mail-Adresse\?'
 - tapOn: Zurück
 - scrollUntilVisible:
