@@ -36,6 +36,7 @@ jobs:
       - uses: eas/install_node_modules
       - uses: ./.eas/functions/contact-preferences-qa
         with:
+          scenario: settings
           platform: ios
           build_id: ${{ inputs.ios_build_id }}
   android:
@@ -54,5 +55,6 @@ jobs:
       - uses: eas/install_node_modules
       - uses: ./.eas/functions/contact-preferences-qa
         with:
+          scenario: settings
           platform: android
           build_id: ${{ inputs.android_build_id }}

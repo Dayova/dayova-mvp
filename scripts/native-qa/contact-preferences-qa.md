@@ -36,3 +36,28 @@ the disposable worker. `acceptance.json` records the source revision, platform,
 completed steps and failure; a partial run is not a pass. Inspect the screenshots
 before claiming layout acceptance. This suite does not cover new-account
 registration or manual VoiceOver/TalkBack audio traversal.
+
+## New-account registration without a number
+
+The separate manual workflow `contact-registration-qa.yml` accepts the same
+platform/build inputs. It runs the real profile flow, skips contact details,
+creates a unique development Clerk test-email account, verifies its code, waits
+for onboarding persistence, and opens authenticated contact settings. It opens
+the trial introduction without accepting terms or activating a trial. Authenticated
+read-only queries verify the empty contact decision and selected Monday learning
+day; this mode never seeds backend answers or consent through the API.
+
+The runner generates new credentials per run and replaces the reusable smoke
+credentials in every child environment. Registration screenshots, hierarchy,
+process logs and detailed diagnostics remain private on the disposable worker
+because images can visibly contain credentials. Only the sanitized JUnit report,
+result/redaction summaries and credential-free acceptance report are uploaded.
+After either success or failure, the runner attempts to sign in to its generated
+identity, checks its primary email exactly, and deletes only that account through
+Clerk's authenticated self-delete endpoint. Cleanup failure fails acceptance and
+is recorded without credentials. If creation itself failed, an unsuccessful
+cleanup attempt is reported rather than claiming that deletion was verified.
+
+A completed registration run closes the native no-number registration evidence
+gap for its tested platform and revision. Manual VoiceOver/TalkBack traversal,
+product acceptance, and privacy/retention approval remain separate requirements.

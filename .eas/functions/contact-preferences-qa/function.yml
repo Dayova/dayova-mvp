@@ -3,6 +3,9 @@ inputs:
   - name: platform
     required: true
     allowed_values: [android, ios]
+  - name: scenario
+    required: true
+    allowed_values: [settings, registration]
   - name: build_id
     required: true
 runs:
@@ -55,7 +58,7 @@ runs:
       if: ${{ success() && inputs.platform == 'ios' }}
       run: xcrun simctl spawn booted defaults write com.apple.keyboard.preferences DidShowContinuousPathIntroduction -int 1
     - name: Exercise current JS and isolated consent persistence
-      run: node scripts/native-qa/contact-preferences-qa.mjs "${{ steps.app.outputs.artifact_path }}"
+      run: node scripts/native-qa/contact-preferences-qa.mjs "${{ steps.app.outputs.artifact_path }}" "${{ inputs.scenario }}"
     - uses: eas/upload_artifact
       if: ${{ always() }}
       with:

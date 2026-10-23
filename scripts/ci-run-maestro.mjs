@@ -33,6 +33,7 @@ export function runDeviceSmoke(
 		],
 		authenticated: [".maestro/ci/authenticated.yaml"],
 		failure: [".maestro/ci/failure-probe.yaml"],
+		"contact-registration": [".maestro/ci/contact-registration.yaml"],
 		"contact-onboarding": [".maestro/ci/contact-onboarding.yaml"],
 		"contact-onboarding-large": [".maestro/ci/contact-onboarding-large.yaml"],
 		"contact-feedback": [".maestro/ci/contact-feedback.yaml"],

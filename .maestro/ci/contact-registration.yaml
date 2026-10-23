@@ -1,0 +1,64 @@
+appId: ${MAESTRO_APP_ID}
+name: A new account completes native onboarding without a phone number
+---
+- runFlow: contact-onboarding-start.yaml
+- scrollUntilVisible:
+    element: Jetzt überspringen
+    direction: DOWN
+- tapOn: Jetzt überspringen
+- extendedWaitUntil:
+    visible: 'Wie lautet deine E-Mail-Adresse\?'
+    timeout: 30000
+- tapOn:
+    id: onboarding-email-input
+- inputText:
+    text: ${MAESTRO_CI_EMAIL}
+    label: Enter this run's disposable test identity
+- runFlow:
+    file: ../shared/dismiss-auth-keyboard.yaml
+    env:
+      AUTH_HEADING: 'Wie lautet deine E-Mail-Adresse\?'
+- scrollUntilVisible:
+    element: Weiter
+    direction: DOWN
+- tapOn: Weiter
+- extendedWaitUntil:
+    visible: 'Lege dein Passwort fest\.'
+    timeout: 60000
+- tapOn:
+    id: onboarding-password-input
+- inputText:
+    text: ${MAESTRO_CI_PASSWORD}
+    label: Enter this run's generated credential
+- runFlow:
+    file: ../shared/dismiss-auth-keyboard.yaml
+    env:
+      AUTH_HEADING: 'Lege dein Passwort fest\.'
+- scrollUntilVisible:
+    element: Konto erstellen
+    direction: DOWN
+- tapOn: Konto erstellen
+- extendedWaitUntil:
+    visible: 'Bestätigungscode|Weiter zur Testphase'
+    timeout: 120000
+- runFlow:
+    when:
+      visible: Bestätigungscode
+    commands:
+      - tapOn: Bestätigungscode
+      - inputText:
+          text: '424242'
+          label: Verify the development test-email code
+- extendedWaitUntil:
+    visible:
+      text: Weiter zur Testphase
+      enabled: true
+    timeout: 120000
+# This opens the introduction; it does not accept or activate the trial.
+- tapOn: Weiter zur Testphase
+- extendedWaitUntil:
+    visible: So läuft deine Testphase
+    timeout: 60000
+- runFlow: ../shared/open-contact-preferences.yaml
+- assertVisible: Kontakt mit Dayova
+- assertVisible: 'Das Dayova-Team darf mich per WhatsApp zu Feedbackgesprächen einladen und für diese Gespräche anrufen\.'
