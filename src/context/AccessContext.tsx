@@ -33,8 +33,6 @@ const ACCESS_QUERY_TIMEOUT_MS = 1_500;
 const ACCESS_CLOCK_INTERVAL_MS = 30_000;
 const MAX_TIMER_DELAY_MS = 2_147_000_000;
 
-export type { AccessSnapshot } from "~/lib/access-policy";
-
 type CachedAccess = {
 	access: AccessSnapshot;
 	verifiedAt: number;

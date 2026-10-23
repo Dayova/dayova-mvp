@@ -51,6 +51,10 @@ jest.mock("~/context/AccessContext", () => ({
 jest.mock("react-native-safe-area-context", () => ({
 	useSafeAreaInsets: () => ({ top: 24, bottom: 16, left: 0, right: 0 }),
 }));
+jest.mock("~/components/ui/dayova-sheet-frame", () => ({
+	DayovaSheetFrame: () => null,
+}));
+jest.mock("~/lib/runtime-config", () => ({ env: {} }));
 
 describe("AuthNavigationGate", () => {
 	let animationFrames: FrameRequestCallback[];
@@ -118,7 +122,12 @@ describe("AuthNavigationGate", () => {
 				<Text>Private learning content</Text>
 			</AuthNavigationGate>,
 		);
-		expect(screen.getByRole("button")).toBeDisabled();
+		expect(
+			screen.getByRole("button", { name: "Zugang wird geprüft …" }),
+		).toBeDisabled();
+		expect(
+			screen.getByRole("button", { name: "Support kontaktieren" }),
+		).toBeEnabled();
 		expect(screen.getByText("Zugang wird geprüft …")).toBeOnTheScreen();
 		mockAccess.access = { state: "trial" };
 		mockAccess.isAccessUnavailable = false;
@@ -129,6 +138,26 @@ describe("AuthNavigationGate", () => {
 		);
 		expect(screen.getByText("Private learning content")).toBeOnTheScreen();
 		expect(screen.queryByText("Zugang gerade nicht prüfbar")).toBeNull();
+	});
+
+	test.each([
+		false,
+		true,
+	])("leaves password-reset completion accessible while verification is unavailable (loading=%s)", async (loading) => {
+		mockRouterState.pathname = "/password-reset-success";
+		mockAccess.access = undefined;
+		mockAccess.isAccessLoading = loading;
+		mockAccess.isAccessUnavailable = !loading;
+		const screen = await render(
+			<AuthNavigationGate>
+				<Text>Passwort gespeichert</Text>
+			</AuthNavigationGate>,
+		);
+		expect(screen.getByText("Passwort gespeichert")).toBeOnTheScreen();
+		expect(screen.queryByTestId("auth-bootstrap-mask")).toBeNull();
+		expect(screen.queryByText("Zugang gerade nicht prüfbar")).toBeNull();
+		await act(flushAnimationFrames);
+		expect(mockReplace).not.toHaveBeenCalled();
 	});
 
 	test("never exposes a public route while restoring an authenticated session", async () => {

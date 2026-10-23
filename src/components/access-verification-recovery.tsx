@@ -1,7 +1,9 @@
 import { ActivityIndicator, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { FeedbackPressable } from "~/components/ui/feedback-pressable";
+import { Button } from "~/components/ui/button";
+import { SupportContact } from "~/components/ui/support-contact";
 import { Text } from "~/components/ui/text";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 
 export function AccessVerificationRecovery({
 	isRetrying,
@@ -13,6 +15,7 @@ export function AccessVerificationRecovery({
 	const insets = useSafeAreaInsets();
 	return (
 		<ScrollView
+			// Native ScrollView content geometry and device insets use the native style API.
 			contentContainerStyle={{
 				flexGrow: 1,
 				justifyContent: "center",
@@ -31,18 +34,20 @@ export function AccessVerificationRecovery({
 						Internetverbindung und versuche es erneut.
 					</Text>
 				</View>
-				<FeedbackPressable
-					accessibilityRole="button"
+				<Button
 					accessibilityState={{ busy: isRetrying, disabled: isRetrying }}
 					disabled={isRetrying}
 					onPress={onRetry}
-					className="min-h-14 flex-row items-center justify-center gap-3 rounded-button bg-primary px-6 py-3"
+					className="gap-3"
 				>
-					{isRetrying ? <ActivityIndicator color="white" /> : null}
-					<Text className="font-semibold text-white">
+					{isRetrying ? (
+						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.onPrimary} />
+					) : null}
+					<Text className="text-on-primary">
 						{isRetrying ? "Zugang wird geprüft …" : "Erneut prüfen"}
 					</Text>
-				</FeedbackPressable>
+				</Button>
+				<SupportContact context="Zugangsprüfung" />
 			</View>
 		</ScrollView>
 	);

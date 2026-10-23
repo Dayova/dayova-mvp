@@ -4,7 +4,7 @@ import { View } from "react-native";
 import { AccessVerificationRecovery } from "~/components/access-verification-recovery";
 import { useAccess } from "~/context/AccessContext";
 import { useAuthSession } from "~/context/AuthContext";
-import { resolveAccessRoute } from "~/lib/access-policy";
+import { isAccessBypassPath, resolveAccessRoute } from "~/lib/access-policy";
 import { getAuthNavigationTarget } from "~/lib/auth-routing";
 import { cn } from "~/lib/utils";
 
@@ -29,12 +29,14 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 		isAccessRetrying,
 		retryAccess,
 	} = useAccess();
+	const needsAccessVerification = !isAccessBypassPath(pathname);
 	const showAccessRecovery = Boolean(
 		user &&
 			!isSessionLoading &&
 			pendingSessionTask === null &&
 			onboardingCompletionStatus === "none" &&
-			isAccessUnavailable,
+			isAccessUnavailable &&
+			needsAccessVerification,
 	);
 	const authTargetRoute = getAuthNavigationTarget({
 		hasUser: Boolean(user),
@@ -58,7 +60,9 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 	const shouldMaskRoute =
 		isSessionLoading ||
 		onboardingCompletionStatus === "loading" ||
-		(onboardingCompletionStatus === "none" && isAccessLoading) ||
+		(onboardingCompletionStatus === "none" &&
+			needsAccessVerification &&
+			isAccessLoading) ||
 		showAccessRecovery ||
 		targetRoute !== null;
 
