@@ -335,7 +335,7 @@ jobs:
       fingerprint_hash: ${{ needs.native_fingerprint.outputs.android_fingerprint_hash }}
       wait_for_in_progress: true
   android_build:
-    hooks: &ci_preview_build_hooks
+    hooks: &ci_preview_hooks
       before_install_node_modules:
         - run: node scripts/ci-preview-config.cjs pin-build
     name: android native compile
@@ -349,6 +349,7 @@ jobs:
       platform: android
       profile: ci
   android_repack:
+    hooks: *ci_preview_hooks
     name: android current bundle on verified native runtime
     type: repack
     environment: development
@@ -397,7 +398,7 @@ jobs:
       simulator: true
       wait_for_in_progress: true
   ios_build:
-    hooks: *ci_preview_build_hooks
+    hooks: *ci_preview_hooks
     name: ios native compile
     env: *ci_preview_env
     type: build
@@ -409,6 +410,7 @@ jobs:
       platform: ios
       profile: ci
   ios_repack:
+    hooks: *ci_preview_hooks
     name: ios current bundle on verified native runtime
     type: repack
     environment: development
