@@ -131,6 +131,7 @@ describe("OTA workflow report validation", () => {
 const evaluate = (expression: string, context: Record<string, unknown>) =>
 	runInNewContext(expression.slice(3, -2), {
 		...context,
+		toJSON: JSON.stringify,
 		contains: (value: string, part: string) => value.includes(part),
 		startsWith: (value: string, prefix: string) => value.startsWith(prefix),
 	});
@@ -320,44 +321,73 @@ describe("PR OTA workflow routing", () => {
 		["failure", "true", "❓ Compatibility not confirmed"],
 		["skipped", undefined, "❓ Compatibility not confirmed"],
 	])("reports %s / %s without claiming unassessed safety", (status, safe, expected) => {
-		const report = workflow.jobs.pr_ota_report;
-		expect(report.needs).toBeUndefined();
-		expect(report.after).toEqual(
-			expect.arrayContaining(["production_fingerprint", "ota_checks"]),
-		);
+		const data = workflow.jobs.pr_ota_report_data;
 		const context = {
 			github: event("pull_request"),
 			workflow: {
 				url: "https://expo.dev/accounts/dayova/projects/dayova/workflows/test-run",
 			},
 			after: {
+				contributor_gate: { status: "success" },
 				production_fingerprint: { status, outputs: {} },
 				ota_checks: { status, outputs: { ota_safe: safe } },
 			},
 		};
-		const rendered = report.params.md.replace(
-			/\$\{\{.*?\}\}/g,
-			(expression: string) => String(evaluate(expression, context)),
+		expect(evaluate(data.if, context)).toBe(true);
+		const env = Object.fromEntries(
+			Object.entries(data.env).map(([key, value]) => [
+				key,
+				String(evaluate(String(value), context)),
+			]),
 		);
-		expect(rendered).toContain(`### ${expected}`);
-		expect(rendered).toContain(`**Checked commit:** \`${context.github.sha}\``);
+		const result = spawnSync(
+			process.execPath,
+			["scripts/ci-pr-ota-report.mjs"],
+			{ encoding: "utf8", env: { ...process.env, ...env } },
+		);
+		expect(result.status, result.stderr).toBe(0);
+		const output = result.stdout.trimEnd();
+		const consumer = {
+			needs: { pr_ota_report_data: { outputs: { markdown: output } } },
+		};
+		const rendered = String(
+			evaluate(workflow.jobs.pr_ota_report.params.md, consumer),
+		);
+		expect(rendered).toContain("### " + expected);
+		expect(rendered).toContain(
+			"**Checked commit:** " +
+				String.fromCharCode(96) +
+				context.github.sha +
+				String.fromCharCode(96),
+		);
 		expect(rendered).toContain(
 			"**This report applies only to the checked commit.**",
 		);
 		expect(rendered).toContain("this result is **outdated**");
 		expect(rendered).toContain("latest commit is **unconfirmed**");
-		expect(rendered).toContain(`[View EAS run](${context.workflow.url})`);
-
-		// Both destinations render the same template, including failed assessments.
-		const comment = workflow.jobs.pr_ota_comment;
-		expect(comment.type).toBe("github-comment");
-		expect(comment.needs).toBeUndefined();
-		expect(comment.after).toEqual(report.after);
-		const commentBody = comment.params.payload.replace(
-			/\$\{\{.*?\}\}/g,
-			(expression: string) => String(evaluate(expression, context)),
-		);
-		expect(commentBody).toBe(rendered);
+		expect(rendered).toContain("[View EAS run](" + context.workflow.url + ")");
+		expect(
+			evaluate(workflow.jobs.pr_ota_comment.params.payload, consumer),
+		).toBe(rendered);
+	});
+	it.each([
+		"failure",
+		"skipped",
+		"canceled",
+	])("does not execute report source when contributor gate is %s", (status) => {
+		expect(
+			evaluate(workflow.jobs.pr_ota_report_data.if, {
+				github: event("pull_request"),
+				after: { contributor_gate: { status } },
+			}),
+		).toBe(false);
+	});
+	it("fits the hosted EAS workflow definition limit", () => {
+		// Confirmed by the actual hosted rejection: maximum 16,384 UTF-8 bytes.
+		expect(
+			readFileSync(new URL("../.eas/workflows/ci.yml", import.meta.url))
+				.byteLength,
+		).toBeLessThanOrEqual(16_384);
 	});
 });
 

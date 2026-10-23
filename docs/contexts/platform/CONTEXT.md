@@ -93,6 +93,13 @@ migration compatibility; that broader work remains in
 [DAY-442](https://linear.app/dayova/issue/DAY-442). Preview CI implementation and
 live verification are tracked in [DAY-561](https://linear.app/dayova/issue/DAY-561).
 
+The hosted EAS service enforces a 16,384-byte workflow-file limit beyond JSON
+schema validation. Keep reusable preview steps in `.eas/functions/convex-preview`
+and report rendering in `scripts/ci-pr-ota-report.mjs`; full environment aliases
+avoid repeated mappings without YAML merge keys. The workflow-size regression
+check protects that delivery boundary. The report renderer runs only after the
+contributor gate succeeds and preserves identical EAS/GitHub report payloads.
+
 `pnpm test:ci` retains per-stage timings, Vitest JUnit, and Jest JSON under ignored
 `.maestro/artifacts/ci/`. Weekly CI and the manual `test-coverage.yml` collect
 Vitest/Jest coverage there. Upload steps run even on failure.

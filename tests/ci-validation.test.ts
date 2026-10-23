@@ -80,6 +80,7 @@ describe("native validation scope over real Git history", () => {
 		["scripts/ci-convex-preview.mjs", true],
 		["scripts/ci-preview-config.cjs", true],
 		[".eas/functions/device-smoke/function.yml", true],
+		[".eas/functions/convex-preview/function.yml", true],
 	])("routes a change to %s", (path, expected) => {
 		const directory = mkdtempSync(join(tmpdir(), "dayova-ci-scope-"));
 		const git = (...args: string[]) =>
