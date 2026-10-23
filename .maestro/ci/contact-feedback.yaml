@@ -2,10 +2,7 @@ appId: ${MAESTRO_APP_ID}
 name: Authenticated feedback choice persists after native relaunch
 ---
 - runFlow: authenticated.yaml
-- openLink: dayova://contact-preferences
-- extendedWaitUntil:
-    visible: Kontakt mit Dayova
-    timeout: 30000
+- runFlow: ../shared/open-contact-preferences.yaml
 - tapOn: 'Das Dayova-Team darf mich per WhatsApp zu Feedbackgesprächen einladen und für diese Gespräche anrufen\.'
 - scrollUntilVisible:
     element: Auswahl speichern

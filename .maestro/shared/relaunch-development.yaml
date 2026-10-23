@@ -12,9 +12,25 @@ appId: ${MAESTRO_APP_ID}
     commands:
       - tapOn: Open
 - extendedWaitUntil:
+    visible: 'So läuft deine Testphase|Einstellungen|Kontakt mit Dayova|Reload'
+    timeout: 60000
+# Reopening a development client can present its menu over the restored app.
+# Dismiss that specific overlay before asserting or interacting with the app.
+- runFlow:
+    when:
+      visible: Reload
+    commands:
+      - runFlow:
+          when:
+            platform: iOS
+          commands:
+            - tapOn: Close
+      - runFlow:
+          when:
+            platform: Android
+          commands:
+            - back
+- extendedWaitUntil:
     visible: 'So läuft deine Testphase|Einstellungen|Kontakt mit Dayova'
     timeout: 60000
-- openLink: dayova://contact-preferences
-- extendedWaitUntil:
-    visible: Kontakt mit Dayova
-    timeout: 30000
+- runFlow: open-contact-preferences.yaml

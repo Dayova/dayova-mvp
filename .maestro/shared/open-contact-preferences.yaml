@@ -1,0 +1,14 @@
+appId: ${MAESTRO_APP_ID}
+---
+- openLink: dayova://contact-preferences
+- extendedWaitUntil:
+    visible: 'Kontakt mit Dayova|Open in .Dayova.\?'
+    timeout: 30000
+- runFlow:
+    when:
+      visible: 'Open in .Dayova.\?'
+    commands:
+      - tapOn: Open
+- extendedWaitUntil:
+    visible: Kontakt mit Dayova
+    timeout: 30000
