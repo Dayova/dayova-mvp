@@ -16,18 +16,16 @@ runs:
         maestro_version: 2.10.0
         backend: maestro
     - uses: eas/start_android_emulator
-      if: ${{ inputs.platform == 'android' }}
+      if: ${{ success() && inputs.platform == 'android' }}
     - name: Enable software keyboard on the disposable iOS worker
-      if: ${{ inputs.platform == 'ios' }}
+      if: ${{ success() && inputs.platform == 'ios' }}
       run: |
         node --input-type=module <<'NODE'
         import { spawnSync } from 'node:child_process';
-        import { homedir } from 'node:os';
-        import { dirname, join } from 'node:path';
         if (process.platform !== 'darwin' || !process.env.EAS_BUILD_ID) {
           throw new Error('Keyboard setup is restricted to the disposable EAS iOS worker');
         }
-        const run = (name, command, args, allowed = [0]) => {
+        const run = (name, command, args) => {
           console.log(`Keyboard setup: ${name}`);
           const result = spawnSync(command, args, {
             timeout: 20_000,
@@ -36,27 +34,25 @@ runs:
             stdio: ['ignore', 'pipe', 'pipe'],
           });
           if (result.error) throw new Error(`${name}: ${result.error.code}`);
-          if (!allowed.includes(result.status)) {
+          if (result.status !== 0) {
             throw new Error(`${name}: exit ${result.status}; ${result.stderr.trim()}`);
           }
           return result.stdout.trim();
         };
-        // Xcode 27 DeviceHub: appium-ios-simulator 10.9.1, settings.ts.
-        const prefs = join(homedir(), 'Library/Containers/com.apple.dt.Devices/Data/Library/Preferences/com.apple.dt.Devices.plist');
-        run('create preferences directory', 'mkdir', ['-p', dirname(prefs)]);
-        const exists = run('check preferences file', '/bin/sh', ['-c', 'test -f "$1" && echo present || echo absent', '_', prefs]);
-        if (exists === 'absent') run('create preferences file', 'plutil', ['-create', 'binary1', prefs]);
-        run('disable DeviceHub hardware keyboard', 'plutil', ['-replace', 'alwaysSimulateHardwareKeyboard', '-bool', 'NO', prefs]);
-        const configured = run('verify DeviceHub preference', 'plutil', ['-extract', 'alwaysSimulateHardwareKeyboard', 'raw', '-o', '-', prefs]);
-        if (configured !== 'false') throw new Error('DeviceHub hardware keyboard remains enabled');
-        run('disable legacy hardware keyboard', 'defaults', ['write', 'com.apple.iphonesimulator', 'ConnectHardwareKeyboard', '-bool', 'NO']);
+        // Pinned Xcode 26 uses Simulator.app, before DeviceHub's protected
+        // container. Source: appium-ios-simulator 10.9.1, settings.ts.
+        const xcode = run('verify Xcode version', 'xcodebuild', ['-version']);
+        if (!/^Xcode 26[.]/m.test(xcode)) throw new Error('Keyboard setup requires the pinned Xcode 26 worker');
+        run('disable hardware keyboard', 'defaults', ['write', 'com.apple.iphonesimulator', 'ConnectHardwareKeyboard', '-bool', 'NO']);
+        const configured = run('verify software-keyboard preference', 'defaults', ['read', 'com.apple.iphonesimulator', 'ConnectHardwareKeyboard']);
+        if (configured !== '0') throw new Error('Simulator hardware keyboard remains enabled');
         NODE
     - uses: eas/start_ios_simulator
-      if: ${{ inputs.platform == 'ios' }}
+      if: ${{ success() && inputs.platform == 'ios' }}
       with:
         enable_accessibility_settings: true
     - name: Prepare the simulator's first software-keyboard use
-      if: ${{ inputs.platform == 'ios' }}
+      if: ${{ success() && inputs.platform == 'ios' }}
       run: xcrun simctl spawn booted defaults write com.apple.keyboard.preferences DidShowContinuousPathIntroduction -int 1
     - name: Exercise current JS and isolated consent persistence
       run: node scripts/native-qa/contact-preferences-qa.mjs "${{ steps.app.outputs.artifact_path }}"

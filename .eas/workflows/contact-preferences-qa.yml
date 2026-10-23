@@ -23,6 +23,7 @@ jobs:
     name: iOS contact acceptance
     type: custom
     runs_on: macos-medium
+    image: macos-tahoe-26.5-xcode-26.6
     environment: development
     if: ${{ inputs.platform == 'ios' || inputs.platform == 'both' }}
     env:

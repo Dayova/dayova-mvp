@@ -23,8 +23,12 @@ independent purposes, number replacement, save/relaunch persistence, withdrawal,
 and large text in dark appearance. Real authenticated queries check saved state.
 The native container is installed once per run; subsequent journeys explicitly
 relaunch it without replacing the installation or clearing the session. The iOS
-worker configures DeviceHub's software keyboard before boot and separately
-asserts a visible numeric key before capturing the focused phone input.
+worker is pinned to Xcode 26.6 and configures Simulator.app's software keyboard
+before boot, then separately asserts a visible numeric key before capturing the
+focused phone input. Xcode 27's DeviceHub preference write timed out on EAS;
+the pinned worker avoids that protected-container operation. The existing native
+client's minimum iOS version is 16.4. Acceptance on this worker proves the tested
+runtime, not iOS 27 compatibility.
 
 Only sanitized diagnostics and selected screenshots under
 `.maestro/artifacts/contact-qa/public` are uploaded. Private service logs stay on
