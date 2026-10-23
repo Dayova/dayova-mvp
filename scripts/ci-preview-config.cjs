@@ -38,3 +38,27 @@ function previewConfiguration(env) {
 }
 
 module.exports = { CLERK_ISSUER, previewConfiguration };
+
+// EAS build:internal reloads saved variables after the initial worker config.
+// Pin only public candidate provenance in the worker's CI profile so that
+// reload and every later native bundling subprocess use the checked backend.
+if (require.main === module) {
+	if (process.argv[2] !== "pin-build") throw new Error("Expected pin-build.");
+	const { readFileSync, writeFileSync } = require("node:fs");
+	const preview = previewConfiguration(process.env);
+	const config = JSON.parse(readFileSync("eas.json", "utf8"));
+	const profile = config.build?.ci;
+	if (
+		profile?.env?.DAYOVA_CI_VALIDATION !== "true" ||
+		profile.env.APP_VARIANT !== "preview"
+	) {
+		throw new Error("Only the isolated ci build profile can be pinned.");
+	}
+	profile.env = {
+		...profile.env,
+		EXPO_PUBLIC_CONVEX_URL: preview.url,
+		CI_CONVEX_PREVIEW_NAME: preview.previewName,
+		CI_CONVEX_SOURCE_SHA: preview.sourceSha,
+	};
+	writeFileSync("eas.json", `${JSON.stringify(config, null, 2)}\n`);
+}

@@ -31,7 +31,6 @@ jobs:
   source_gate:
     name: CI source eligibility
     type: doc
-    # Keep the repository boundary separate to fit EAS's 250-character conditions.
     if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.id && github.event.pull_request.head.repo.id == github.event.pull_request.base.repo.id) }}
     params:
       md: 'CI source is eligible: pull requests must originate from this repository.'
@@ -41,7 +40,6 @@ jobs:
     type: doc
     needs:
       - source_gate
-    # Separate contributor trust from branch routing to fit EAS's condition limit.
     if: ${{ github.event_name != 'pull_request' || contains('OWNER,MEMBER,COLLABORATOR', github.event.pull_request.author_association) }}
     params:
       md: 'CI contributor is eligible: pull requests must come from trusted contributors.'
@@ -337,6 +335,9 @@ jobs:
       fingerprint_hash: ${{ needs.native_fingerprint.outputs.android_fingerprint_hash }}
       wait_for_in_progress: true
   android_build:
+    hooks: &ci_preview_build_hooks
+      before_install_node_modules:
+        - run: node scripts/ci-preview-config.cjs pin-build
     name: android native compile
     env: *ci_preview_env
     type: build
@@ -396,6 +397,7 @@ jobs:
       simulator: true
       wait_for_in_progress: true
   ios_build:
+    hooks: *ci_preview_build_hooks
     name: ios native compile
     env: *ci_preview_env
     type: build

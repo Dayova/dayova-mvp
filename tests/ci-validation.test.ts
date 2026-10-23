@@ -1,9 +1,16 @@
 // @vitest-environment node
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { parse } from "yaml";
 
 const scopeScript = resolve("scripts/ci-native-changes.mjs");
 const testEnv: NodeJS.ProcessEnv = {
@@ -22,6 +29,77 @@ const testEnv: NodeJS.ProcessEnv = {
 };
 
 describe("isolated native CI configuration", () => {
+	it.each([
+		"android",
+		"ios",
+	])("keeps the candidate backend when %s EAS reloads saved development variables", (platform) => {
+		const directory = mkdtempSync(join(tmpdir(), "dayova-ci-build-"));
+		const easPath = join(directory, "eas.json");
+		const original = {
+			build: {
+				ci: {
+					environment: "development",
+					env: {
+						APP_VARIANT: "preview",
+						DAYOVA_CI_VALIDATION: "true",
+						EXPO_NO_DOTENV: "1",
+					},
+				},
+				production: { env: { APP_VARIANT: "production" } },
+			},
+		};
+		try {
+			writeFileSync(easPath, JSON.stringify(original));
+			mkdirSync(join(directory, "scripts"));
+			writeFileSync(
+				join(directory, "scripts/ci-preview-config.cjs"),
+				readFileSync(resolve("scripts/ci-preview-config.cjs")),
+			);
+			const workflow = parse(
+				readFileSync(resolve(".eas/workflows/ci.yml"), "utf8"),
+			);
+			const steps =
+				workflow.jobs[`${platform}_build`].hooks.before_install_node_modules;
+			expect(steps).toHaveLength(1);
+			const bash =
+				process.platform === "win32"
+					? join(
+							process.env.ProgramFiles ?? "C:/Program Files",
+							"Git/bin/bash.exe",
+						)
+					: "bash";
+			const hook = spawnSync(bash, ["-c", steps[0].run], {
+				cwd: directory,
+				encoding: "utf8",
+				env: testEnv,
+			});
+			expect(hook.status, hook.stderr).toBe(0);
+			const pinned = JSON.parse(readFileSync(easPath, "utf8"));
+			expect(pinned.build.production).toEqual(original.build.production);
+			// EAS's internal resolver overlays saved variables, then build-profile env.
+			const internalEnv = {
+				...testEnv,
+				EXPO_PUBLIC_CONVEX_URL:
+					"https://resilient-pika-316.eu-west-1.convex.cloud",
+				...pinned.build.ci.env,
+			};
+			const config = spawnSync(
+				process.execPath,
+				["-e", "require('./app.config.cts')"],
+				{
+					encoding: "utf8",
+					env: internalEnv,
+				},
+			);
+			expect(config.status, config.stderr).toBe(0);
+			expect(internalEnv.EXPO_PUBLIC_CONVEX_URL).toBe(
+				"https://gentle-preview-123.eu-west-1.convex.cloud",
+			);
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+
 	it.each([
 		{},
 		{ APP_VARIANT: "production" },
