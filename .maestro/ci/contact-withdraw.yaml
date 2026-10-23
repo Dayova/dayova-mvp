@@ -16,12 +16,24 @@ name: Enlarged dark settings support withdrawal and discard unconsented numbers
     visible: Deine Kontaktauswahl wurde gespeichert.
     timeout: 30000
 - runFlow: ../shared/relaunch-development.yaml
-- scrollUntilVisible:
-    element:
-      id: contact-phone-input
-    # Relaunch starts at the top. With iOS accessibility text, the introductory
-    # copy fills the viewport and the phone input is below it.
-    direction: DOWN
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      # With iOS accessibility text, the introductory copy fills the viewport
+      # after relaunch and the phone input is below it.
+      - scrollUntilVisible:
+          element:
+            id: contact-phone-input
+          direction: DOWN
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: contact-phone-input
+          direction: UP
 - assertNotVisible: '\+12015550100'
 - assertNotVisible: '\+4915123456789'
 - tapOn:
