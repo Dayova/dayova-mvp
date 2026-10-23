@@ -1,8 +1,8 @@
 import { v } from "convex/values";
 import { z } from "zod";
 import { internal } from "./_generated/api";
-import { action } from "./_generated/server";
 import { throwUserFacingError } from "./errors";
+import { learningAction } from "./learningActions";
 import {
 	matchesWloTitle,
 	normalizeWloText as normalize,
@@ -177,7 +177,7 @@ export async function searchWloTopics(query: string, subject: string) {
 }
 
 /** Exposes WLO suggestions to signed-in learners with a recoverable provider error. */
-export const search = action({
+export const search = learningAction({
 	args: { query: v.string(), subject: v.string() },
 	returns: wloTopicResult,
 	handler: async (

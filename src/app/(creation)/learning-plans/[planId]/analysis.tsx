@@ -1,4 +1,4 @@
-import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useMutation } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, View } from "react-native";
@@ -20,6 +20,7 @@ import {
 } from "~/features/learning-plans/run-plan-preparation";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
+import { useLearningQuery } from "~/hooks/use-learning-query";
 import {
 	dismissToOrReplace,
 	goBackOrReplace,
@@ -51,7 +52,7 @@ export default function LearningPlanAnalysisScreen() {
 	const didStartRef = useRef(false);
 	const didCloseRef = useRef(false);
 
-	const snapshot = (useQuery(
+	const snapshot = (useLearningQuery(
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
 	) ?? null) as LearningPlanSnapshot | null;

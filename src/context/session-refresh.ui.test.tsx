@@ -37,6 +37,11 @@ let mockPathname = "/learning-plans/example";
 let mockAuthenticated = true;
 let mockServerAccess: AccessSnapshot | undefined;
 const mockQueryArgs = jest.fn();
+const mockVerify = jest.fn(async (_args: Record<string, never>) =>
+	mockServerAccess
+		? { access: mockServerAccess, serverNow: Date.now() }
+		: await Promise.reject(new Error("offline")),
+);
 
 jest.mock("@clerk/expo", () => ({
 	useClerk: () => mockClerk,
@@ -47,8 +52,16 @@ jest.mock("@clerk/expo", () => ({
 }));
 jest.mock("convex/react", () => ({
 	useConvex: () => ({ url: "https://test.convex.cloud" }),
-	useMutation: () => mockSync,
+	useMutation: (ref: unknown) => {
+		const { getFunctionName } =
+			jest.requireActual<typeof import("convex/server")>("convex/server");
+		return getFunctionName(ref as Parameters<typeof getFunctionName>[0]) ===
+			"accessState:refreshMyAccess"
+			? mockVerify
+			: mockSync;
+	},
 	useAction: () => mockEntitlementSync,
+	useConvexConnectionState: () => ({ isWebSocketConnected: true }),
 	useConvexAuth: () => ({ isAuthenticated: mockAuthenticated }),
 	useQuery: (_query: unknown, args: unknown) => {
 		mockQueryArgs(args);
@@ -190,12 +203,16 @@ describe("session refresh across the app", () => {
 	test("refreshes access after a purchase without blanking the current screen", async () => {
 		jest.useFakeTimers();
 		const screen = await openApp();
-		const initialArgs = mockQueryArgs.mock.lastCall?.[0];
+		mockVerify.mockClear();
 		await act(async () => jest.advanceTimersByTime(100));
 		mockServerAccess = undefined;
+		mockVerify.mockResolvedValueOnce({
+			access: { canUseApp: true, state: "paid" },
+			serverNow: Date.now(),
+		});
 		await fireEvent.press(screen.getByText("Refresh access"));
 		expect(mockEntitlementSync).toHaveBeenCalledWith({});
-		expect(mockQueryArgs.mock.lastCall?.[0]).not.toEqual(initialArgs);
+		expect(mockVerify).toHaveBeenCalledWith({});
 		expectVisible(screen);
 	});
 
@@ -241,12 +258,13 @@ describe("session refresh across the app", () => {
 		const screen = await openApp();
 		mockServerAccess = undefined;
 		await screen.rerender(<App />);
-		jest.setSystemTime(Date.now() + OFFLINE_ACCESS_WINDOW_MS + 1);
-		await act(async () => jest.advanceTimersByTime(30_000));
+		await act(async () =>
+			jest.advanceTimersByTime(OFFLINE_ACCESS_WINDOW_MS + 1),
+		);
 		expect(screen.getByTestId("auth-bootstrap-mask")).toBeOnTheScreen();
 		expect(
 			screen.getByTestId("access-state", { includeHiddenElements: true }),
-		).toHaveTextContent("expired");
+		).toHaveTextContent("unknown");
 	});
 
 	test("still schedules expiry when access starts refreshing before it expires", async () => {

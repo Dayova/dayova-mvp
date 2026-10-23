@@ -13,8 +13,19 @@ import {
 	mutation,
 	query,
 } from "./_generated/server";
+import {
+	accessValidator,
+	getStoredAccess,
+	refreshOwnerAccess,
+} from "./accessState";
 import { assertAccountActive } from "./accountDeletion";
 import { enqueueCrmUpdate } from "./crmUpdates";
+
+import {
+	getCurrentAccess,
+	getPaidThrough,
+	toTrialAccess,
+} from "./entitlementPolicy";
 import { throwUserFacingError } from "./errors";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -23,108 +34,7 @@ async function scheduleCrmSync(ctx: MutationCtx, userId: Doc<"users">["_id"]) {
 	await enqueueCrmUpdate(ctx, userId);
 }
 
-const getPaidThrough = (entitlement: {
-	subscriptionExpiresAt?: number;
-	subscriptionGraceExpiresAt?: number;
-}) => {
-	const accessDates = [
-		entitlement.subscriptionExpiresAt,
-		entitlement.subscriptionGraceExpiresAt,
-	].filter((value): value is number => value !== undefined);
-	return accessDates.length > 0
-		? Math.max(...accessDates)
-		: Number.POSITIVE_INFINITY;
-};
-
-const toTrialAccess = (entitlement: {
-	trialStartedAt: number;
-	trialExpiresAt: number;
-	trialReminderAt: number;
-	trialTermsVersion: string;
-}) => ({
-	canUseApp: true as const,
-	state: "trial" as const,
-	trialStartedAt: entitlement.trialStartedAt,
-	trialExpiresAt: entitlement.trialExpiresAt,
-	reminderAt: entitlement.trialReminderAt,
-	trialTermsVersion: entitlement.trialTermsVersion,
-});
-
-const toPaidAccess = (entitlement: {
-	subscriptionBillingIssueDetectedAt?: number;
-	subscriptionExpiresAt?: number;
-	subscriptionGraceExpiresAt?: number;
-	subscriptionManagementUrl?: string;
-	subscriptionProductId?: string;
-	subscriptionStore?: string;
-	subscriptionWillRenew?: boolean;
-}) => ({
-	canUseApp: true as const,
-	managementUrl: entitlement.subscriptionManagementUrl,
-	productId: entitlement.subscriptionProductId,
-	state:
-		entitlement.subscriptionBillingIssueDetectedAt &&
-		entitlement.subscriptionGraceExpiresAt !== undefined
-			? ("billingGrace" as const)
-			: ("paid" as const),
-	store: entitlement.subscriptionStore,
-	subscriptionExpiresAt: entitlement.subscriptionExpiresAt,
-	subscriptionGraceExpiresAt: entitlement.subscriptionGraceExpiresAt,
-	willRenew: entitlement.subscriptionWillRenew ?? false,
-});
-
-export const getCurrentAccess = (
-	entitlement: Doc<"accessEntitlements">,
-	now: number,
-) => {
-	if (
-		entitlement.revenueCatEntitlementActive &&
-		now < getPaidThrough(entitlement)
-	) {
-		return toPaidAccess(entitlement);
-	}
-
-	if (
-		entitlement.trialStartedAt === undefined ||
-		entitlement.trialExpiresAt === undefined ||
-		entitlement.trialReminderAt === undefined ||
-		entitlement.trialTermsVersion === undefined
-	) {
-		return {
-			canUseApp: false as const,
-			managementUrl: entitlement.subscriptionManagementUrl,
-			productId: entitlement.subscriptionProductId,
-			state: "expired" as const,
-			store: entitlement.subscriptionStore,
-			subscriptionExpiresAt: entitlement.subscriptionExpiresAt,
-			subscriptionGraceExpiresAt: entitlement.subscriptionGraceExpiresAt,
-			willRenew: entitlement.subscriptionWillRenew ?? false,
-		};
-	}
-
-	const trialAccess = toTrialAccess({
-		trialStartedAt: entitlement.trialStartedAt,
-		trialExpiresAt: entitlement.trialExpiresAt,
-		trialReminderAt: entitlement.trialReminderAt,
-		trialTermsVersion: entitlement.trialTermsVersion,
-	});
-
-	if (now >= entitlement.trialExpiresAt) {
-		return {
-			...trialAccess,
-			canUseApp: false as const,
-			managementUrl: entitlement.subscriptionManagementUrl,
-			productId: entitlement.subscriptionProductId,
-			state: "expired" as const,
-			store: entitlement.subscriptionStore,
-			subscriptionExpiresAt: entitlement.subscriptionExpiresAt,
-			subscriptionGraceExpiresAt: entitlement.subscriptionGraceExpiresAt,
-			willRenew: entitlement.subscriptionWillRenew ?? false,
-		};
-	}
-
-	return trialAccess;
-};
+export { getCurrentAccess } from "./entitlementPolicy";
 
 const getCurrentUser = async (ctx: MutationCtx | QueryCtx) => {
 	const identity = await ctx.auth.getUserIdentity();
@@ -148,9 +58,10 @@ const getCurrentUser = async (ctx: MutationCtx | QueryCtx) => {
 
 export const getMyAccess = query({
 	args: {
-		now: v.number(),
+		now: v.optional(v.number()),
 	},
-	handler: async (ctx, args) => {
+	returns: accessValidator,
+	handler: async (ctx) => {
 		const { identity } = await getCurrentUser(ctx);
 		const entitlement = await ctx.db
 			.query("accessEntitlements")
@@ -166,7 +77,7 @@ export const getMyAccess = query({
 			};
 		}
 
-		return getCurrentAccess(entitlement, args.now);
+		return getStoredAccess(entitlement);
 	},
 });
 
@@ -239,6 +150,7 @@ export const applyRevenueCatSnapshot = internalMutation({
 				createdAt: args.verifiedAt,
 				updatedAt: args.verifiedAt,
 			});
+			await refreshOwnerAccess(ctx, user.tokenIdentifier);
 			await scheduleCrmSync(ctx, user._id);
 
 			return { success: true as const };
@@ -265,6 +177,7 @@ export const applyRevenueCatSnapshot = internalMutation({
 			subscriptionVerifiedAt: args.verifiedAt,
 			updatedAt: args.verifiedAt,
 		});
+		await refreshOwnerAccess(ctx, args.ownerTokenIdentifier);
 		if (changed || entitlement.subscriptionVerifiedAt === undefined) {
 			await scheduleCrmSync(ctx, entitlement.userId);
 		}
@@ -407,6 +320,7 @@ export const activateMyTrial = mutation({
 		if (existing) {
 			// Preserve every stored cohort, including manual extensions. Migrating
 			// existing trials needs a separate decision; activation never regrants one.
+			await refreshOwnerAccess(ctx, identity.tokenIdentifier);
 			return getCurrentAccess(existing, Date.now());
 		}
 
@@ -431,6 +345,7 @@ export const activateMyTrial = mutation({
 			updatedAt: now,
 		};
 		await ctx.db.insert("accessEntitlements", entitlement);
+		await refreshOwnerAccess(ctx, identity.tokenIdentifier);
 		await scheduleCrmSync(ctx, user._id);
 		await ctx.scheduler.runAt(
 			reminderAt,

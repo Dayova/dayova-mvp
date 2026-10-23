@@ -1,3 +1,4 @@
+import { grantTestLearningAccess } from "./testing/access";
 /// <reference types="vite/client" />
 
 import { convexTest } from "convex-test";
@@ -17,6 +18,7 @@ const createGeneratedPlanWithSession = async (
 	durationMinutes = 30,
 ) => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const examDayEntryId = await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-06-05",
 		title: "Mathe Klausur",

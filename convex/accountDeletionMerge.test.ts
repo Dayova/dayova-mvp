@@ -1,3 +1,4 @@
+import { grantTestLearningAccess } from "./testing/access";
 /// <reference types="vite/client" />
 
 import { convexTest } from "convex-test";
@@ -11,6 +12,7 @@ test("deletion blocks the subject, dashboard and preparation APIs added on main"
 	const backend = convexTest(schema, modules);
 	const identity = { tokenIdentifier: "deletion-merge:owner" };
 	const owner = backend.withIdentity(identity);
+	await grantTestLearningAccess(owner);
 	const subject = await owner.mutation(api.personalSubjects.create, {
 		name: "Französisch",
 	});
@@ -77,8 +79,10 @@ test("deletion blocks the subject, dashboard and preparation APIs added on main"
 		await backend.run((ctx) => ctx.db.get("personalSubjects", subject.id)),
 	).toMatchObject({ name: "Französisch" });
 	await expect(
-		backend
-			.withIdentity({ tokenIdentifier: "deletion-merge:other" })
-			.query(api.personalSubjects.list, {}),
+		(
+			await grantTestLearningAccess(
+				backend.withIdentity({ tokenIdentifier: "deletion-merge:other" }),
+			)
+		).query(api.personalSubjects.list, {}),
 	).resolves.toEqual({ personal: [], reusableTimetableSubjects: [] });
 });

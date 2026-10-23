@@ -1,9 +1,9 @@
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { mutation, query } from "./_generated/server";
 import { assertAccountActive } from "./accountDeletion";
 import { throwUserFacingError } from "./errors";
+import { learningMutation, learningQuery } from "./learningFunctions";
 import {
 	listPersonalSubjectReferences,
 	MAX_PERSONAL_SUBJECT_REFERENCES,
@@ -70,7 +70,7 @@ const createResultValidator = v.union(
 	}),
 );
 
-export const list = query({
+export const list = learningQuery({
 	args: {},
 	returns: v.object({
 		personal: v.array(personalSubjectValidator),
@@ -139,7 +139,7 @@ export const list = query({
 	},
 });
 
-export const create = mutation({
+export const create = learningMutation({
 	args: { name: v.string() },
 	returns: createResultValidator,
 	handler: async (ctx, args) => {
@@ -201,7 +201,7 @@ const renameSubjectPrefix = (
 		: title;
 };
 
-export const rename = mutation({
+export const rename = learningMutation({
 	args: { id: v.id("personalSubjects"), name: v.string() },
 	returns: personalSubjectValidator,
 	handler: async (ctx, args) => {
@@ -308,7 +308,7 @@ export const rename = mutation({
 	},
 });
 
-export const remove = mutation({
+export const remove = learningMutation({
 	args: { id: v.id("personalSubjects") },
 	returns: v.null(),
 	handler: async (ctx, args) => {

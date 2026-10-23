@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
-import { act, render } from "@testing-library/react-native";
+import { act, fireEvent, render } from "@testing-library/react-native";
 import { Text } from "react-native";
 import {
 	ONBOARDING_CREATION_PATH,
@@ -8,6 +8,8 @@ import {
 import { AuthNavigationGate } from "./auth-navigation-gate";
 
 const mockReplace = jest.fn();
+const mockPush = jest.fn();
+const mockRetryAccess = jest.fn(async () => {});
 const mockRouterState = {
 	pathname: "/",
 	rootNavigationState: { key: "root" } as { key: string } | undefined,
@@ -30,12 +32,14 @@ const mockAccess = {
 		  }
 		| undefined,
 	isAccessLoading: false,
+	isVerificationRequired: false,
+	retryAccessVerification: mockRetryAccess,
 };
 
 jest.mock("expo-router", () => ({
 	usePathname: () => mockRouterState.pathname,
 	useRootNavigationState: () => mockRouterState.rootNavigationState,
-	useRouter: () => ({ replace: mockReplace }),
+	useRouter: () => ({ replace: mockReplace, push: mockPush }),
 }));
 
 jest.mock("~/context/AuthContext", () => ({
@@ -51,6 +55,9 @@ describe("AuthNavigationGate", () => {
 
 	beforeEach(() => {
 		mockReplace.mockReset();
+		mockPush.mockReset();
+		mockRetryAccess.mockClear();
+		mockAccess.isVerificationRequired = false;
 		mockRouterState.pathname = "/";
 		mockRouterState.rootNavigationState = { key: "root" };
 		mockSession.isSessionLoading = false;
@@ -162,5 +169,34 @@ describe("AuthNavigationGate", () => {
 		expect(screen.queryByTestId("auth-bootstrap-mask")).toBeNull();
 		await act(flushAnimationFrames);
 		expect(mockReplace).not.toHaveBeenCalled();
+	});
+	test("pending online verification offers retry and account recovery without claiming expiry", async () => {
+		mockRouterState.pathname = "/home";
+		mockAccess.access = undefined;
+		mockAccess.isAccessLoading = true;
+		mockAccess.isVerificationRequired = true;
+		const screen = await render(
+			<AuthNavigationGate>
+				<Text>Lerninhalt</Text>
+			</AuthNavigationGate>,
+		);
+		expect(screen.getByText("Zugang online prüfen")).toBeOnTheScreen();
+		expect(screen.queryByText("Deine Testphase ist beendet")).toBeNull();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Erneut prüfen" }),
+		);
+		expect(mockRetryAccess).toHaveBeenCalledTimes(1);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Konto verwalten" }),
+		);
+		expect(mockPush).toHaveBeenCalledWith("/profile");
+		mockRouterState.pathname = "/profile";
+		await screen.rerender(
+			<AuthNavigationGate>
+				<Text>Konto</Text>
+			</AuthNavigationGate>,
+		);
+		expect(screen.getByText("Konto")).toBeOnTheScreen();
+		expect(screen.queryByTestId("auth-bootstrap-mask")).toBeNull();
 	});
 });

@@ -2,13 +2,10 @@ import { v } from "convex/values";
 import { components, internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import {
-	action,
 	internalMutation,
 	internalQuery,
 	type MutationCtx,
-	mutation,
 	type QueryCtx,
-	query,
 } from "./_generated/server";
 import { assertAccountActive } from "./accountDeletion";
 import { throwUserFacingError } from "./errors";
@@ -16,11 +13,16 @@ import {
 	getConfiguredStorageProvider,
 	getR2ConfigOrThrow,
 } from "./fileStorage";
-import { resolveSubjectSelection } from "./personalSubjects";
+import {
+	learningAction,
+	learningMutation,
+	learningQuery,
+} from "./learningFunctions";
 import {
 	addPersonalSubjectReference,
 	deleteTimetableLessonWithPersonalSubjectReference,
 } from "./personalSubjectReferences";
+import { resolveSubjectSelection } from "./personalSubjects";
 import { timetableTimeToMinutes } from "./timetableOccurrences";
 import {
 	isSupportedTimetableFileType,
@@ -101,7 +103,7 @@ const getTimetableLessons = async (
 		)
 		.take(MAX_TIMETABLE_LESSONS);
 
-export const getMine = query({
+export const getMine = learningQuery({
 	args: {},
 	handler: async (ctx) => {
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
@@ -139,7 +141,7 @@ export const getMine = query({
 	},
 });
 
-export const createDraft = mutation({
+export const createDraft = learningMutation({
 	args: {},
 	handler: async (ctx) => {
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
@@ -284,7 +286,7 @@ const replaceLessons = async (
 	}
 };
 
-export const saveAndActivate = mutation({
+export const saveAndActivate = learningMutation({
 	args: {
 		timetableId: v.id("timetables"),
 		lessons: v.array(timetableLessonInputValidator),
@@ -324,7 +326,7 @@ export const saveAndActivate = mutation({
 	},
 });
 
-export const generateUploadUrl = mutation({
+export const generateUploadUrl = learningMutation({
 	args: {
 		timetableId: v.id("timetables"),
 	},
@@ -380,7 +382,7 @@ export const storeUploadedDocument = internalMutation({
 		}),
 });
 
-export const registerUploadedDocument = action({
+export const registerUploadedDocument = learningAction({
 	args: {
 		timetableId: v.id("timetables"),
 		uploadToken: v.string(),

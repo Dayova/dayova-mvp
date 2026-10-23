@@ -359,3 +359,11 @@ As checked September 16, the active production channel maps to branch
 `production`; its latest published group is still July 17's runtime `1.0.3`.
 Recheck the mapping at activation. This finding does not enable publication or
 make that update compatible with the current store binaries.
+
+## Server-authoritative access (DAY-556)
+
+Publish a compatible client before enabling the stricter access behavior. Older clients may submit getMyAccess.now; it is accepted and ignored. Their device-clock offline cache is not a supported enforcement boundary: require the compatible client for release acceptance. The current client requires online verification after process start and background/resume, then allows at most 72 continuous foreground offline hours, capped by actual access expiry.
+
+The optional accessEvaluatedAt/accessCheckAt fields are derived state only. Run accessMigrations:initializeAccessProjection with dryRun first on an isolated/staging deployment, then run and verify the resumable backfill during the authorized coordinated rollout. It schedules actual existing trial/paid/grace boundaries without extending any cohort deadline. Missing projections fail closed until authenticated sync/refresh initializes them; account for this transition window before a production backend deployment. Manual deadline writers must also refresh the projection/schedule. Scheduled jobs re-read current dates; learning mutations/actions independently deny at server time even if a scheduler job is delayed. Reactive reads depend on the scheduled projection transition.
+
+Do not remove the SDK/runtime OTA guard. Native rollback/restart, background/resume, reconnect, expired-account recovery and Apple/Google purchase/Restore acceptance remain release checks. A passing unit test or isolated Convex push is not native/store acceptance. No production backfill or release is implied by this implementation.

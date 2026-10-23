@@ -1,4 +1,4 @@
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
@@ -12,6 +12,7 @@ import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { PreparationSlotEditor } from "~/features/learning-plans/preparation-slot-editor";
 import { getErrorMessage } from "~/features/learning-plans/utils";
+import { useLearningQuery } from "~/hooks/use-learning-query";
 import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 export default function LearningPlanReviewScreen() {
@@ -20,7 +21,7 @@ export default function LearningPlanReviewScreen() {
 	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const { isAuthenticated } = useConvexAuth();
-	const snapshot = useQuery(
+	const snapshot = useLearningQuery(
 		api.learningPlans.getSnapshot,
 		isAuthenticated && id ? { id } : "skip",
 	);

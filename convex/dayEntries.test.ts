@@ -1,3 +1,4 @@
+import { grantTestLearningAccess } from "./testing/access";
 /// <reference types="vite/client" />
 
 import { convexTest } from "convex-test";
@@ -17,6 +18,7 @@ test.each([
 	"Leistungskontrolle",
 ])("reports creation only for the first save of the same %s", async (kind) => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const args = {
 		dayKey: "2026-10-24",
 		title: `Englisch ${kind}`,
@@ -64,10 +66,13 @@ test("creation results require auth and deduplicate within the current owner onl
 		backend.mutation(api.dayEntries.createWithResult, args),
 	).rejects.toThrow("Nicht authentifiziert.");
 	const owner = backend.withIdentity(user);
+	await grantTestLearningAccess(owner);
 	const first = await owner.mutation(api.dayEntries.createWithResult, args);
-	const other = await backend
-		.withIdentity({ tokenIdentifier: "test:another-user" })
-		.mutation(api.dayEntries.createWithResult, args);
+	const other = await (
+		await grantTestLearningAccess(
+			backend.withIdentity({ tokenIdentifier: "test:another-user" }),
+		)
+	).mutation(api.dayEntries.createWithResult, args);
 	expect(other.created).toBe(true);
 	expect(other.id).not.toBe(first.id);
 	const different = await owner.mutation(api.dayEntries.createWithResult, {
@@ -83,17 +88,20 @@ test("creation results require auth and deduplicate within the current owner onl
 test("notification planning reads the same persisted, owner-scoped day entries", async () => {
 	const backend = convexTest(schema, modules);
 	const t = backend.withIdentity(user);
+	await grantTestLearningAccess(t);
 	const id = await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-10-19",
 		title: "Mathematik üben",
 		kind: "Hausaufgabe",
 	});
-	await backend
-		.withIdentity({ tokenIdentifier: "test:someone-else" })
-		.mutation(api.dayEntries.create, {
-			dayKey: "2026-10-19",
-			title: "Privater Eintrag",
-		});
+	await (
+		await grantTestLearningAccess(
+			backend.withIdentity({ tokenIdentifier: "test:someone-else" }),
+		)
+	).mutation(api.dayEntries.create, {
+		dayKey: "2026-10-19",
+		title: "Privater Eintrag",
+	});
 	const args = {
 		dayKeys: ["2026-10-19"],
 		cacheScope: "notificationPlanning" as const,
@@ -119,6 +127,7 @@ test("notification planning reads the same persisted, owner-scoped day entries",
 
 test("revises the same pending exam after navigating back through creation", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const id = await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-09-30",
 		title: "Biologie Klassenarbeit",
@@ -154,6 +163,7 @@ test("revises the same pending exam after navigating back through creation", asy
 
 test("pending exam edits replace or clear the personal subject reference", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const french = await t.mutation(api.personalSubjects.create, {
 		name: "Französisch",
 	});
@@ -214,6 +224,7 @@ test("pending exam edits replace or clear the personal subject reference", async
 
 test("stores an explicit one-time subject through create and resume", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const id = await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-10-03",
 		title: "Debattieren Präsentation",
@@ -247,6 +258,7 @@ test("stores an explicit one-time subject through create and resume", async () =
 test("pending exam edits require ownership and cannot change an exam with a learning plan", async () => {
 	const t = convexTest(schema, modules);
 	const owner = t.withIdentity(user);
+	await grantTestLearningAccess(owner);
 	const id = await owner.mutation(api.dayEntries.create, {
 		dayKey: "2026-09-30",
 		title: "Biologie Klassenarbeit",
@@ -264,9 +276,11 @@ test("pending exam edits require ownership and cannot change an exam with a lear
 		durationMinutes: 30,
 	};
 	await expect(
-		t
-			.withIdentity({ tokenIdentifier: "someone-else" })
-			.mutation(api.dayEntries.updatePendingExam, edit),
+		(
+			await grantTestLearningAccess(
+				t.withIdentity({ tokenIdentifier: "someone-else" }),
+			)
+		).mutation(api.dayEntries.updatePendingExam, edit),
 	).rejects.toThrow("Prüfung nicht gefunden");
 	await owner.mutation(api.learningPlans.createDraft, {
 		examDayEntryId: id,
@@ -289,6 +303,7 @@ test("pending exam edits require ownership and cannot change an exam with a lear
 
 test("keeps adaptive exam entries with a stored subject schema-compatible", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 
 	await expect(
 		t.run((ctx) =>
@@ -309,6 +324,7 @@ test("keeps adaptive exam entries with a stored subject schema-compatible", asyn
 
 test("stores required exam topics without creating a learning plan", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const examDayEntryId = await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-08-12",
 		title: "Mathematik Klausur",
@@ -334,6 +350,7 @@ test("stores required exam topics without creating a learning plan", async () =>
 
 test("manual timed entry overlapping an existing entry is rejected with conflict details", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 
 	await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-05-23",
@@ -360,6 +377,7 @@ test("manual timed entry overlapping an existing entry is rejected with conflict
 
 test("manual timed entry conflicts are marked as user-facing backend errors", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 
 	await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-05-23",
@@ -391,6 +409,7 @@ test("manual timed entry conflicts are marked as user-facing backend errors", as
 
 test("multiple exams on one day ignore supplied times and are stored untimed", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 
 	await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-07-16",
@@ -440,6 +459,7 @@ test("multiple exams on one day ignore supplied times and are stored untimed", a
 
 test("untimed exams with Berlin-midnight ISO day keys do not block homework", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 
 	await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-05-30T22:00:00.000Z",
@@ -472,6 +492,7 @@ test("untimed exams with Berlin-midnight ISO day keys do not block homework", as
 
 test("manual timed entry adjacent to an existing entry is allowed", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 
 	await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-05-23",
@@ -496,6 +517,7 @@ test("manual timed entry adjacent to an existing entry is allowed", async () => 
 
 test("homework overview lists only homework entries in schedule order", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 
 	const secondHomeworkId = await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-05-24",
@@ -548,6 +570,7 @@ test("homework overview lists only homework entries in schedule order", async ()
 
 test("retrying the same create returns the existing entry instead of conflicting with itself", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 
 	const payload = {
 		dayKey: "2026-06-15",
@@ -572,6 +595,7 @@ test("retrying the same create returns the existing entry instead of conflicting
 
 test("retrying exam creation remains idempotent after a learning plan links the entry", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const payload = {
 		dayKey: "2026-06-28",
 		title: "Biologie Klassenarbeit",
@@ -601,6 +625,7 @@ test("retrying exam creation remains idempotent after a learning plan links the 
 
 test("manual entries can be marked completed and uncompleted", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const entryId = await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-06-16",
 		title: "Mathe Hausaufgabe",
@@ -637,6 +662,7 @@ test("manual entries can be marked completed and uncompleted", async () => {
 
 test("legacy exam subject metadata remains schema-compatible", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 
 	const entryId = await t.run(async (ctx) =>
 		ctx.db.insert("dayEntries", {

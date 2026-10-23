@@ -5,7 +5,9 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { AppState, Platform } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import { useAccess } from "~/context/AccessContext";
 import { useAuthSession } from "~/context/AuthContext";
+import { useLearningQuery } from "~/hooks/use-learning-query";
 import { addDays, getDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { getDeliveredNotificationInput } from "~/lib/delivered-notification";
 import { logDiagnosticError } from "~/lib/diagnostics";
@@ -45,6 +47,7 @@ const ensureNotificationChannel = async (
 
 export function NotificationSync() {
 	const router = useRouter();
+	const { access } = useAccess();
 	const { user, isSessionLoading } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const today = useCurrentLocalDay();
@@ -68,9 +71,9 @@ export function NotificationSync() {
 			),
 		[today],
 	);
-	const entriesByDay = (useQuery(
+	const entriesByDay = (useLearningQuery(
 		api.dayEntries.listByDayKeys,
-		user && isConvexAuthenticated
+		user && isConvexAuthenticated && access?.canUseApp
 			? { dayKeys, cacheScope: "notificationPlanning" }
 			: "skip",
 	) ?? null) as Record<string, DayEntry[]> | null;

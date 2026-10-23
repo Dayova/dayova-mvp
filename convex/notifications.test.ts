@@ -1,3 +1,4 @@
+import { grantTestLearningAccess } from "./testing/access";
 /// <reference types="vite/client" />
 
 import { convexTest } from "convex-test";
@@ -17,6 +18,7 @@ const user = {
 
 test("local notification registration accepts plans containing timetable lessons", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const timetableId = await t.mutation(api.timetables.createDraft, {});
 	await t.mutation(api.timetables.saveAndActivate, {
 		timetableId,
@@ -58,6 +60,7 @@ test("local notification registration accepts plans containing timetable lessons
 
 test("notification preferences default to the MVP reminder settings", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 
 	const preferences = await t.query(api.notifications.getPreferences, {});
 
@@ -76,6 +79,7 @@ test("notification preferences default to the MVP reminder settings", async () =
 
 test("notification preferences persist per user", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 
 	await t.mutation(api.notifications.updatePreferences, {
 		systemNotificationsEnabled: false,
@@ -99,6 +103,7 @@ test("notification preferences persist per user", async () => {
 
 test("system delivery can be disabled without disabling the in-app inbox", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 
 	await t.mutation(api.notifications.updatePreferences, {
 		systemNotificationsEnabled: false,
@@ -132,6 +137,7 @@ test("system delivery can be disabled without disabling the in-app inbox", async
 
 test("due entry reminders create one unread in-app notification", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 
 	await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-06-16",
@@ -172,6 +178,7 @@ test("due entry reminders create one unread in-app notification", async () => {
 
 test("changing reminder offset does not duplicate an already-created before-event notification", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 
 	await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-06-16",
@@ -212,6 +219,7 @@ test("changing reminder offset does not duplicate an already-created before-even
 
 test("forgotten event notifications are created only for incomplete entries", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 
 	await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-06-16",
@@ -257,6 +265,7 @@ test("forgotten event notifications are created only for incomplete entries", as
 
 test("inbox notifications can be marked read and deleted", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 
 	await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-06-16",
@@ -297,6 +306,7 @@ test("inbox notifications can be marked read and deleted", async () => {
 
 test("delivered local notifications are recorded once after their entry was deleted", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const entryId = await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-06-16",
 		title: "Deutsch Hausaufgabe",
@@ -356,21 +366,21 @@ test("local notification plans cannot reference another user's entry", async () 
 		subject: "other-user",
 		tokenIdentifier: "https://clerk.example|other-user",
 	};
-	const entryId = await t
-		.withIdentity(otherUser)
-		.mutation(api.dayEntries.create, {
-			dayKey: "2026-06-16",
-			title: "Private Hausaufgabe",
-			time: "16:00",
-			kind: "Hausaufgabe",
-			plannedDateLabel: "16. Juni 2026",
-			durationMinutes: 45,
-		});
+	const entryId = await (
+		await grantTestLearningAccess(t.withIdentity(otherUser))
+	).mutation(api.dayEntries.create, {
+		dayKey: "2026-06-16",
+		title: "Private Hausaufgabe",
+		time: "16:00",
+		kind: "Hausaufgabe",
+		plannedDateLabel: "16. Juni 2026",
+		durationMinutes: 45,
+	});
 
 	await expect(
-		t
-			.withIdentity(user)
-			.mutation(api.notifications.registerLocalNotificationPlan, {
+		(await grantTestLearningAccess(t.withIdentity(user))).mutation(
+			api.notifications.registerLocalNotificationPlan,
+			{
 				notifications: [
 					{
 						eventKey: `before:${entryId}`,
@@ -382,7 +392,8 @@ test("local notification plans cannot reference another user's entry", async () 
 						scheduledFor: "2026-06-16T15:45:00.000Z",
 					},
 				],
-			}),
+			},
+		),
 	).rejects.toThrow("Mitteilung gehört zu einem anderen Konto.");
 });
 
@@ -393,34 +404,36 @@ test("delivered local notifications require an owner-scoped registration", async
 		subject: "other-user",
 		tokenIdentifier: "https://clerk.example|other-user",
 	};
-	const [registration] = await t
-		.withIdentity(otherUser)
-		.mutation(api.notifications.registerLocalNotificationPlan, {
-			notifications: [
-				{
-					eventKey: "briefing:2026-06-16:07:30",
-					category: "message",
-					type: "dailyBriefing",
-					title: "Tagesüberblick",
-					body: "Heute stehen keine offenen Einträge an.",
-					scheduledFor: "2026-06-16T05:30:00.000Z",
-				},
-			],
-		});
+	const [registration] = await (
+		await grantTestLearningAccess(t.withIdentity(otherUser))
+	).mutation(api.notifications.registerLocalNotificationPlan, {
+		notifications: [
+			{
+				eventKey: "briefing:2026-06-16:07:30",
+				category: "message",
+				type: "dailyBriefing",
+				title: "Tagesüberblick",
+				body: "Heute stehen keine offenen Einträge an.",
+				scheduledFor: "2026-06-16T05:30:00.000Z",
+			},
+		],
+	});
 	if (!registration) throw new Error("Expected notification registration.");
 
 	await expect(
-		t
-			.withIdentity(user)
-			.mutation(api.notifications.recordDeliveredNotification, {
+		(await grantTestLearningAccess(t.withIdentity(user))).mutation(
+			api.notifications.recordDeliveredNotification,
+			{
 				registrationId: registration.registrationId,
 				triggeredAt: "2026-06-16T05:30:00.000Z",
-			}),
+			},
+		),
 	).rejects.toThrow("Ungültige Mitteilung.");
 });
 
 test("registering the same local notification plan reuses its authorization", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const notifications = [
 		{
 			eventKey: "briefing:2026-06-16:07:30",
@@ -448,6 +461,7 @@ test("registering the same local notification plan reuses its authorization", as
 
 test("local notification authorization reuse is not limited by prior content variants", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const registrations = [];
 
 	for (let index = 0; index < 11; index += 1) {
@@ -491,6 +505,7 @@ test("local notification authorization reuse is not limited by prior content var
 
 test("daily briefing summarizes today's entries at the configured time", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 
 	await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-06-16",
@@ -530,6 +545,7 @@ test("daily briefing summarizes today's entries at the configured time", async (
 
 test("daily briefing uses singular wording for one entry", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 
 	await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-06-16",

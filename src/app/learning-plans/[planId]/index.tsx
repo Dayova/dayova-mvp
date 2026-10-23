@@ -1,4 +1,4 @@
-import { useAction, useConvexAuth, useQuery } from "convex/react";
+import { useAction, useConvexAuth } from "convex/react";
 import {
 	Stack,
 	useFocusEffect,
@@ -56,6 +56,7 @@ import type {
 	LearningPlanSnapshot,
 	PlanSession,
 } from "~/features/learning-plans/types";
+import { useLearningQuery } from "~/hooks/use-learning-query";
 import { parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
@@ -304,7 +305,7 @@ export default function LearningPlanSessionsScreen() {
 	useEffect(() => {
 		trackFeatureRef.current = trackFeature;
 	}, [trackFeature]);
-	const snapshot = (useQuery(
+	const snapshot = (useLearningQuery(
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
 	) ?? null) as LearningPlanSnapshot | null;

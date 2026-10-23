@@ -1,3 +1,9 @@
+// This screen-behavior suite exercises an already verified learner. Entitlement and
+// query-admission behavior are covered through the real AccessProvider separately.
+jest.mock("~/context/AccessContext", () => ({
+	useAccess: () => ({ access: { state: "paid", canUseApp: true } }),
+}));
+
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render } from "@testing-library/react-native";
 import LearningPlansScreen from "~/app/(app)/learning-plans";

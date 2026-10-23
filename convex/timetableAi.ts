@@ -7,7 +7,6 @@ import { z } from "zod";
 import { observeAiModel } from "../ai/observability";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { action } from "./_generated/server";
 import { traceAiAction } from "./aiObservability";
 import { readOptionalEnv, readRequiredEnv } from "./env";
 import {
@@ -16,6 +15,7 @@ import {
 	throwUserFacingError,
 } from "./errors";
 import { createManagedReadUrl, type StorageProvider } from "./fileStorage";
+import { learningAction } from "./learningActions";
 import {
 	MAX_TIMETABLE_FILE_BYTES,
 	MAX_TIMETABLE_LESSONS,
@@ -64,7 +64,7 @@ const createVertexModel = () => {
 	});
 };
 
-export const extract = action({
+export const extract = learningAction({
 	args: {
 		timetableId: v.id("timetables"),
 	},

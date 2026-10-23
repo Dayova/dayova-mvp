@@ -59,7 +59,15 @@ const PUBLIC_AUTH_PATHS = new Set([
 	ONBOARDING_PATH,
 ]);
 const ACCESS_SETUP_PATHS = new Set(["/trial", "/paywall", "/subscription"]);
-const EXPIRED_ACCESS_PATHS = new Set(["/paywall", "/subscription"]);
+const EXPIRED_ACCESS_PATHS = new Set([
+	"/paywall",
+	"/subscription",
+	"/settings",
+	"/profile",
+	"/notification-settings",
+]);
+export const isAccessRecoveryPath = (pathname: string) =>
+	EXPIRED_ACCESS_PATHS.has(pathname);
 const ACCESS_BYPASS_PATHS = new Set([
 	ONBOARDING_PATH,
 	PASSWORD_RESET_SUCCESS_PATH,
@@ -116,7 +124,8 @@ export const getOfflineAccess = ({
 	verifiedAt: number;
 }) => {
 	if (!access.canUseApp) return false;
-	if (now > verifiedAt + OFFLINE_ACCESS_WINDOW_MS) return false;
+	if (now < verifiedAt || now >= verifiedAt + OFFLINE_ACCESS_WINDOW_MS)
+		return false;
 
 	if (access.state === "trial") {
 		return now < access.trialExpiresAt;

@@ -2,13 +2,10 @@ import { v } from "convex/values";
 import { components, internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import {
-	action,
 	internalMutation,
 	internalQuery,
 	type MutationCtx,
-	mutation,
 	type QueryCtx,
-	query,
 } from "./_generated/server";
 import { assertAccountActive } from "./accountDeletion";
 import { advanceRollingLearningPlan } from "./adaptiveLearningPlan";
@@ -28,6 +25,11 @@ import {
 	getR2ConfigOrThrow,
 } from "./fileStorage";
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
+import {
+	learningAction,
+	learningMutation,
+	learningQuery,
+} from "./learningFunctions";
 import { calculateAvailableStudyMinutes } from "./learningPlanAvailability";
 import {
 	clearSessionDayEntry,
@@ -620,7 +622,7 @@ const patchSessionAndSyncedEntry = async (
 	return updatedSession;
 };
 
-export const start = mutation({
+export const start = learningMutation({
 	args: {
 		examDayEntryId: v.id("dayEntries"),
 		subject: v.string(),
@@ -643,7 +645,7 @@ export const start = mutation({
 	},
 });
 
-export const createDraft = mutation({
+export const createDraft = learningMutation({
 	args: {
 		examDayEntryId: v.id("dayEntries"),
 		subject: v.string(),
@@ -666,7 +668,7 @@ export const createDraft = mutation({
 	},
 });
 
-export const updateBasics = mutation({
+export const updateBasics = learningMutation({
 	args: {
 		id: v.id("learningPlans"),
 		topicDescription: v.string(),
@@ -704,7 +706,7 @@ export const updateBasics = mutation({
 	},
 });
 
-export const updateRequiredTopics = mutation({
+export const updateRequiredTopics = learningMutation({
 	args: {
 		id: v.id("learningPlans"),
 		topicDescription: v.string(),
@@ -751,7 +753,7 @@ export const updateRequiredTopics = mutation({
 	},
 });
 
-export const confirmScope = mutation({
+export const confirmScope = learningMutation({
 	args: {
 		learningPlanId: v.id("learningPlans"),
 	},
@@ -783,7 +785,7 @@ export const confirmScope = mutation({
 	},
 });
 
-export const setTargetStudyMinutes = mutation({
+export const setTargetStudyMinutes = learningMutation({
 	args: {
 		learningPlanId: v.id("learningPlans"),
 		targetStudyMinutes: v.number(),
@@ -820,7 +822,7 @@ export const setTargetStudyMinutes = mutation({
 	},
 });
 
-export const getSchedulingAvailability = query({
+export const getSchedulingAvailability = learningQuery({
 	args: {
 		fromDateKey: v.string(),
 		fromTimeMinutes: v.number(),
@@ -878,7 +880,7 @@ export const getSchedulingAvailability = query({
 	},
 });
 
-export const getSnapshot = query({
+export const getSnapshot = learningQuery({
 	args: {
 		id: v.id("learningPlans"),
 	},
@@ -987,7 +989,7 @@ export const getSnapshot = query({
 	},
 });
 
-export const listOverview = query({
+export const listOverview = learningQuery({
 	args: {},
 	handler: async (ctx) => {
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
@@ -1180,7 +1182,7 @@ export const listOverview = query({
 	},
 });
 
-export const saveKnowledgeAnswer = mutation({
+export const saveKnowledgeAnswer = learningMutation({
 	args: {
 		learningPlanId: v.id("learningPlans"),
 		questionId: v.string(),
@@ -1256,7 +1258,7 @@ export const saveKnowledgeAnswer = mutation({
 	},
 });
 
-export const generateUploadUrl = mutation({
+export const generateUploadUrl = learningMutation({
 	args: {
 		learningPlanId: v.id("learningPlans"),
 	},
@@ -1327,7 +1329,7 @@ export const storeUploadedDocument = internalMutation({
 	},
 });
 
-export const registerUploadedDocument = action({
+export const registerUploadedDocument = learningAction({
 	args: {
 		learningPlanId: v.id("learningPlans"),
 		uploadToken: v.string(),
@@ -1375,7 +1377,7 @@ export const registerUploadedDocument = action({
 });
 
 /** Mint a preview URL only after checking ownership; storage identifiers stay private. */
-export const getDocumentPreviewUrl = mutation({
+export const getDocumentPreviewUrl = learningMutation({
 	args: { id: v.id("learningPlanDocuments") },
 	returns: v.union(v.string(), v.null()),
 	handler: async (ctx, { id }) => {
@@ -1395,7 +1397,7 @@ export const getDocumentPreviewUrl = mutation({
 	},
 });
 
-export const removeDocument = mutation({
+export const removeDocument = learningMutation({
 	args: {
 		id: v.id("learningPlanDocuments"),
 	},
@@ -1428,7 +1430,7 @@ export const removeDocument = mutation({
 	},
 });
 
-export const removePlan = mutation({
+export const removePlan = learningMutation({
 	args: {
 		id: v.id("learningPlans"),
 	},
@@ -2211,7 +2213,7 @@ export const markContentGenerationClaimFailed = internalMutation({
 	},
 });
 
-export const updateSession = mutation({
+export const updateSession = learningMutation({
 	args: {
 		id: v.id("learningPlanSessions"),
 		phase: phaseValidator,
@@ -2288,7 +2290,7 @@ export const updateSession = mutation({
 	},
 });
 
-export const addSession = mutation({
+export const addSession = learningMutation({
 	args: {
 		learningPlanId: v.id("learningPlans"),
 	},
@@ -2374,7 +2376,7 @@ export const addSession = mutation({
 	},
 });
 
-export const syncSessionsToCalendar = mutation({
+export const syncSessionsToCalendar = learningMutation({
 	args: {
 		learningPlanId: v.id("learningPlans"),
 	},
@@ -2415,7 +2417,7 @@ const advanceOwnedRollingLearningPlan = (
 		clearSession: clearSessionDayEntry,
 		syncSession: syncSessionDayEntry,
 	});
-export const startSession = mutation({
+export const startSession = learningMutation({
 	args: {
 		sessionId: v.id("learningPlanSessions"),
 	},
@@ -2469,7 +2471,7 @@ const capCumulativeStudySeconds = (
 };
 
 /** Checkpoint foreground study time so reopening a diagnostic preserves prior work. */
-export const checkpointStudyTime = mutation({
+export const checkpointStudyTime = learningMutation({
 	args: {
 		sessionId: v.id("learningPlanSessions"),
 		activeStudySeconds: v.number(),
@@ -2492,7 +2494,7 @@ export const checkpointStudyTime = mutation({
 		return null;
 	},
 });
-export const recordSessionOutcome = mutation({
+export const recordSessionOutcome = learningMutation({
 	args: {
 		sessionId: v.id("learningPlanSessions"),
 		outcome: v.union(v.literal("completed"), v.literal("partiallyCompleted")),
@@ -2566,7 +2568,7 @@ export const recordSessionOutcome = mutation({
 	},
 });
 
-export const missSession = mutation({
+export const missSession = learningMutation({
 	args: {
 		sessionId: v.id("learningPlanSessions"),
 		reason: missedReasonValidator,
@@ -2599,7 +2601,7 @@ export const missSession = mutation({
 	},
 });
 
-export const adjustMissedSession = mutation({
+export const adjustMissedSession = learningMutation({
 	args: {
 		sessionId: v.id("learningPlanSessions"),
 		dateKey: v.string(),
@@ -2738,7 +2740,7 @@ export const adjustMissedSession = mutation({
 	},
 });
 
-export const setSessionCompleted = mutation({
+export const setSessionCompleted = learningMutation({
 	args: {
 		sessionId: v.id("learningPlanSessions"),
 		completed: v.boolean(),
@@ -2769,7 +2771,7 @@ export const setSessionCompleted = mutation({
 	},
 });
 
-export const removeSession = mutation({
+export const removeSession = learningMutation({
 	args: {
 		id: v.id("learningPlanSessions"),
 	},
@@ -2797,7 +2799,7 @@ export const removeSession = mutation({
 	},
 });
 
-export const acceptPlan = mutation({
+export const acceptPlan = learningMutation({
 	args: {
 		learningPlanId: v.id("learningPlans"),
 	},
@@ -2889,12 +2891,12 @@ const preparationSlotValidator = v.object({
 	durationMinutes: v.number(),
 });
 /** The diagnostic is ready from the questions already generated; no AI calendar call. */
-export const prepareDiagnostic = mutation({
+export const prepareDiagnostic = learningMutation({
 	args: { learningPlanId: v.id("learningPlans") },
 	returns: v.id("learningPlanSessions"),
 	handler: preparation.prepareDiagnostic,
 });
-export const acceptDiagnostic = mutation({
+export const acceptDiagnostic = learningMutation({
 	args: {
 		learningPlanId: v.id("learningPlans"),
 		appointment: v.optional(
@@ -2905,7 +2907,7 @@ export const acceptDiagnostic = mutation({
 	handler: preparation.acceptDiagnostic,
 });
 
-export const getPreparationSchedule = query({
+export const getPreparationSchedule = learningQuery({
 	args: {
 		learningPlanId: v.id("learningPlans"),
 		now: v.object({ dateKey: v.string(), minutes: v.number() }),
@@ -2929,7 +2931,7 @@ export const getPreparationSchedule = query({
 	}),
 	handler: preparation.getPreparationSchedule,
 });
-export const savePreparationSchedule = mutation({
+export const savePreparationSchedule = learningMutation({
 	args: {
 		learningPlanId: v.id("learningPlans"),
 		revision: v.number(),
@@ -2939,13 +2941,13 @@ export const savePreparationSchedule = mutation({
 	handler: preparation.savePreparationSchedule,
 });
 /** No available calendar window must block learning, including the exam day. */
-export const startFlexiblePreparation = mutation({
+export const startFlexiblePreparation = learningMutation({
 	args: { learningPlanId: v.id("learningPlans") },
 	returns: v.id("learningPlanSessions"),
 	handler: preparation.startFlexiblePreparation,
 });
 
-export const createAdditionalPractice = mutation({
+export const createAdditionalPractice = learningMutation({
 	args: {
 		learningPlanId: v.id("learningPlans"),
 		topicId: v.string(),

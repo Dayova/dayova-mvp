@@ -1,3 +1,4 @@
+import { grantTestLearningAccess } from "./testing/access";
 /// <reference types="vite/client" />
 
 import { runToCompletion } from "@convex-dev/migrations";
@@ -54,7 +55,9 @@ async function setup() {
 				berlinDayKey: getBerlinDayKey(overrides.dateKey ?? "2027-03-01"),
 			}),
 		);
-	return { t, owner: t.withIdentity(identity), planId, insert };
+	const owner = t.withIdentity(identity);
+	await grantTestLearningAccess(owner);
+	return { t, owner, planId, insert };
 }
 
 test("finds sessions months ahead without a calendar-day horizon and reacts to completion", async () => {
@@ -139,6 +142,7 @@ test("requires authentication and isolates both session and plan ownership", asy
 		t.query(api.dashboardNextStep.listCandidates, args),
 	).rejects.toThrow("Nicht authentifiziert");
 	const stranger = t.withIdentity({ tokenIdentifier: "next-step:other" });
+	await grantTestLearningAccess(stranger);
 	expect(
 		(await stranger.query(api.dashboardNextStep.listCandidates, args)).page,
 	).toEqual([]);

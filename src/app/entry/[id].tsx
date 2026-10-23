@@ -1,4 +1,4 @@
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { type ReactNode, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, View } from "react-native";
@@ -22,6 +22,7 @@ import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
 import { optimisticEntryCompletion } from "~/features/entries/optimistic-entry-completion";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
+import { useLearningQuery } from "~/hooks/use-learning-query";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { goBackOrReplace } from "~/lib/navigation";
@@ -146,7 +147,7 @@ export default function EntryDetailScreen() {
 	}>();
 	const id = typeof params.id === "string" ? params.id : "";
 	const entry =
-		useQuery(
+		useLearningQuery(
 			api.dayEntries.get,
 			user && isConvexAuthenticated && id
 				? {
@@ -155,7 +156,7 @@ export default function EntryDetailScreen() {
 				: "skip",
 		) ?? undefined;
 	const relatedLearningPlanId = entry?.relatedLearningPlanId;
-	const relatedPlanResult = useQuery(
+	const relatedPlanResult = useLearningQuery(
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && relatedLearningPlanId
 			? { id: relatedLearningPlanId }

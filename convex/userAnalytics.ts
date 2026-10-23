@@ -1,6 +1,5 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
-import { query } from "./_generated/server";
 import { assertAccountActive } from "./accountDeletion";
 import {
 	type AdaptiveTopicEvidence,
@@ -8,6 +7,7 @@ import {
 } from "./adaptiveLearningPlanPolicy";
 import { throwUserFacingError } from "./errors";
 import type { LearningEvidenceDimension } from "./learningContentPlan";
+import { learningQuery } from "./learningFunctions";
 
 const analyticsPeriodValidator = v.union(
 	v.literal("week"),
@@ -526,7 +526,7 @@ const topicStatusRiskRank: Record<TopicEvidenceStatus, number> = {
 	secure: 3,
 };
 
-export const getOverview = query({
+export const getOverview = learningQuery({
 	args: {
 		period: analyticsPeriodValidator,
 		todayKey: v.string(),
@@ -811,7 +811,7 @@ export const getOverview = query({
 	},
 });
 
-export const getTopicQuestionEvidence = query({
+export const getTopicQuestionEvidence = learningQuery({
 	args: {
 		learningPlanId: v.id("learningPlans"),
 		topicId: v.string(),
@@ -925,7 +925,7 @@ export const getTopicQuestionEvidence = query({
 	},
 });
 
-export const getExamAnalysis = query({
+export const getExamAnalysis = learningQuery({
 	args: {
 		learningPlanId: v.optional(v.id("learningPlans")),
 		todayKey: v.string(),

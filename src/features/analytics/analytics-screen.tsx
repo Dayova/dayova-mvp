@@ -1,4 +1,4 @@
-import { useConvexAuth, useQuery } from "convex/react";
+import { useConvexAuth } from "convex/react";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import {
@@ -39,6 +39,7 @@ import { ActionSurface, Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
+import { useLearningQuery } from "~/hooks/use-learning-query";
 import { getDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
@@ -48,12 +49,14 @@ import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { cn } from "~/lib/utils";
 
 type ExamAnalysis = NonNullable<
-	ReturnType<typeof useQuery<typeof api.userAnalytics.getExamAnalysis>>
+	ReturnType<typeof useLearningQuery<typeof api.userAnalytics.getExamAnalysis>>
 >;
 type ExamProblem = NonNullable<ExamAnalysis["primaryProblem"]>;
 type TopicStatus = ExamAnalysis["topics"][number]["status"];
 type TopicQuestionEvidence = NonNullable<
-	ReturnType<typeof useQuery<typeof api.userAnalytics.getTopicQuestionEvidence>>
+	ReturnType<
+		typeof useLearningQuery<typeof api.userAnalytics.getTopicQuestionEvidence>
+	>
 >;
 type TopicQuestion = TopicQuestionEvidence["questions"][number];
 
@@ -187,7 +190,7 @@ function useExamAnalysisQuery(
 		[selectedPlanId, today],
 	);
 
-	return useQuery(
+	return useLearningQuery(
 		api.userAnalytics.getExamAnalysis,
 		user && isConvexAuthenticated ? queryArgs : "skip",
 	);
@@ -206,7 +209,7 @@ function useKnowledgeHistoryQuery() {
 		[today],
 	);
 
-	return useQuery(
+	return useLearningQuery(
 		api.userAnalytics.getOverview,
 		user && isConvexAuthenticated ? queryArgs : "skip",
 	);
@@ -218,7 +221,7 @@ function useTopicQuestionEvidenceQuery(
 ) {
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
-	return useQuery(
+	return useLearningQuery(
 		api.userAnalytics.getTopicQuestionEvidence,
 		user && isConvexAuthenticated && learningPlanId && topicId
 			? { learningPlanId, topicId }

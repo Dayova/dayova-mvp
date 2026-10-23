@@ -1,10 +1,10 @@
 import { type Infer, v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { mutation, query } from "./_generated/server";
 import { assertAccountActive } from "./accountDeletion";
 import { getBerlinDayKey, getDayKeyQueryVariants } from "./dayKeyVariants";
 import { throwUserFacingError } from "./errors";
+import { learningMutation, learningQuery } from "./learningFunctions";
 import {
 	addPersonalSubjectReference,
 	deleteDayEntryWithPersonalSubjectReference,
@@ -245,7 +245,7 @@ const requireOwnerTokenIdentifier = async (ctx: QueryCtx | MutationCtx) => {
 	return identity.tokenIdentifier;
 };
 
-export const listByDayKeys = query({
+export const listByDayKeys = learningQuery({
 	args: {
 		dayKeys: v.array(v.string()),
 		// A separate cache key keeps notification side effects on persisted data.
@@ -402,7 +402,7 @@ export const listByDayKeys = query({
 	},
 });
 
-export const listHomeworkOverview = query({
+export const listHomeworkOverview = learningQuery({
 	args: {},
 	handler: async (ctx) => {
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
@@ -436,7 +436,7 @@ export const listHomeworkOverview = query({
 	},
 });
 
-export const get = query({
+export const get = learningQuery({
 	args: {
 		id: v.id("dayEntries"),
 	},
@@ -451,7 +451,7 @@ export const get = query({
 	},
 });
 
-export const updateExamTopics = mutation({
+export const updateExamTopics = learningMutation({
 	args: {
 		id: v.id("dayEntries"),
 		topicDescription: v.string(),
@@ -476,7 +476,7 @@ export const updateExamTopics = mutation({
 
 // The exam is saved before topic setup. Returning to earlier creation steps
 // must revise that entry without creating a second exam or invalidating a plan.
-export const updatePendingExam = mutation({
+export const updatePendingExam = learningMutation({
 	args: {
 		id: v.id("dayEntries"),
 		dayKey: v.string(),
@@ -619,19 +619,19 @@ const createEntry = async (
 };
 
 // Keep the ID-only response for installed clients.
-export const create = mutation({
+export const create = learningMutation({
 	args: createEntryArgs.fields,
 	returns: v.id("dayEntries"),
 	handler: async (ctx, args) => (await createEntry(ctx, args)).id,
 });
 
-export const createWithResult = mutation({
+export const createWithResult = learningMutation({
 	args: createEntryArgs.fields,
 	returns: v.object({ id: v.id("dayEntries"), created: v.boolean() }),
 	handler: createEntry,
 });
 
-export const setCompleted = mutation({
+export const setCompleted = learningMutation({
 	args: {
 		id: v.id("dayEntries"),
 		completed: v.boolean(),
@@ -656,7 +656,7 @@ export const setCompleted = mutation({
 	},
 });
 
-export const remove = mutation({
+export const remove = learningMutation({
 	args: {
 		id: v.id("dayEntries"),
 	},

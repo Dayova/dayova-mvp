@@ -1,7 +1,8 @@
-import { usePaginatedQuery, useQuery } from "convex/react";
+import { usePaginatedQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { useEffect } from "react";
 import { api } from "#convex/_generated/api";
+import { useLearningQuery } from "~/hooks/use-learning-query";
 import { toDashboardAgendaItem } from "./dashboard-agenda";
 
 type Candidate = FunctionReturnType<
@@ -31,7 +32,7 @@ export function selectNextLearningCandidate(
 
 /** Pages forward until an eligible step is settled; skipped pages never imply an empty state. */
 export function useNextLearningStep(todayKey: string, enabled: boolean) {
-	const indexReady = useQuery(
+	const indexReady = useLearningQuery(
 		api.dashboardNextStep.isDayIndexReady,
 		enabled ? {} : "skip",
 	);

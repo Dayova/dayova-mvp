@@ -150,7 +150,7 @@ describe("getOfflineAccess", () => {
 					state: "paid",
 					subscriptionExpiresAt: Date.parse("2026-08-28T10:00:00.000Z"),
 				},
-				now: Date.parse("2026-07-31T10:00:00.000Z"),
+				now: Date.parse("2026-07-31T09:59:59.999Z"),
 				verifiedAt,
 			}),
 		).toBe(true);
@@ -237,6 +237,24 @@ describe("getNextAccessRefreshAt", () => {
 			getNextAccessRefreshAt({
 				canUseApp: false,
 				state: "expired",
+			}),
+		).toBeNull();
+	});
+});
+
+describe("expired account recovery", () => {
+	it.each([
+		"/settings",
+		"/profile",
+		"/notification-settings",
+		"/subscription",
+	])("keeps %s reachable without learning access", (pathname) => {
+		expect(
+			resolveAccessRoute({
+				accessState: "expired",
+				isSessionLoading: false,
+				pathname,
+				user: { id: "learner" },
 			}),
 		).toBeNull();
 	});

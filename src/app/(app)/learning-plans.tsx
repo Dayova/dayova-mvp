@@ -1,4 +1,4 @@
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation } from "convex/react";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -40,6 +40,7 @@ import { learningPlanResumePath } from "~/features/learning-plans/creation-route
 import { LearningPlanCardVisual } from "~/features/learning-plans/learning-plan-card-visual";
 import { MaterialRequiredSheet } from "~/features/learning-plans/material-required-sheet";
 import { getRollingLearningWindowLabel } from "~/features/learning-plans/rolling-learning-window";
+import { useLearningQuery } from "~/hooks/use-learning-query";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
@@ -795,11 +796,11 @@ export default function LearningPlansScreen() {
 	const deleteActionGateRef = useRef(createAsyncActionGate());
 	const today = useCurrentLocalDay();
 	const todayKey = getDayKey(today);
-	const plans = useQuery(
+	const plans = useLearningQuery(
 		api.learningPlans.listOverview,
 		user && isConvexAuthenticated ? {} : "skip",
 	);
-	const homework = useQuery(
+	const homework = useLearningQuery(
 		api.dayEntries.listHomeworkOverview,
 		user && isConvexAuthenticated ? {} : "skip",
 	);

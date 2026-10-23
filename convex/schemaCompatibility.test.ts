@@ -1,3 +1,4 @@
+import { grantTestLearningAccess } from "./testing/access";
 /// <reference types="vite/client" />
 
 import { convexTest } from "convex-test";
@@ -13,6 +14,7 @@ const user = {
 
 test("AI budget accounting data from prior deployments remains schema-compatible", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const examDayEntryId = await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-09-05",
 		title: "Mathe Klausur",

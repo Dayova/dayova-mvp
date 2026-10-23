@@ -1,3 +1,4 @@
+import { grantTestLearningAccess } from "./testing/access";
 /// <reference types="vite/client" />
 
 import { convexTest } from "convex-test";
@@ -121,6 +122,7 @@ const createAcceptedPlanWithSession = async (
 
 test("calendar resync replaces personal-subject references for rename and removal", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const { learningPlanId, session } = await createAcceptedPlanWithSession(t);
 	const first = await t.mutation(api.personalSubjects.create, {
 		name: "Theater",
@@ -177,6 +179,7 @@ test("calendar resync replaces personal-subject references for rename and remova
 
 test("lists a materialless draft so the upload can be resumed", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const examDayEntryId = await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-08-12",
 		title: "Mathe Klausur",
@@ -207,6 +210,7 @@ test("lists a materialless draft so the upload can be resumed", async () => {
 
 test("keeps drafts with school material resumable from the plan overview", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	await t.run(async (ctx) => {
 		await ctx.db.insert("learningPlanDocuments", {
@@ -233,6 +237,7 @@ test("keeps drafts with school material resumable from the plan overview", async
 
 test("keeps legacy school-material drafts resumable", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	await t.run(async (ctx) => {
 		await ctx.db.insert("learningPlanDocuments", {
@@ -258,6 +263,7 @@ test("keeps legacy school-material drafts resumable", async () => {
 
 test("keeps analyzed and generated plans resumable until acceptance", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 
 	await t.run((ctx) =>
@@ -288,6 +294,7 @@ test("keeps analyzed and generated plans resumable until acceptance", async () =
 
 test("adds the knowledge validation split to theory sessions by default", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 
 	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
@@ -319,6 +326,7 @@ test("adds the knowledge validation split to theory sessions by default", async 
 
 test("rejects a legacy generated plan without a first-session diagnostic", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
 		learningPlanId,
@@ -347,6 +355,7 @@ test("rejects a legacy generated plan without a first-session diagnostic", async
 
 test("stores the total study workload confirmed before generation", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 
 	await t.mutation(api.learningPlans.setTargetStudyMinutes, {
@@ -362,6 +371,7 @@ test("stores the total study workload confirmed before generation", async () => 
 
 test("aligns legacy session descriptions with the displayed duration", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 
 	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
@@ -396,6 +406,7 @@ test("aligns legacy session descriptions with the displayed duration", async () 
 
 test("keeps a plan in generation until every session content payload is ready", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 
 	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
@@ -460,6 +471,7 @@ test("keeps a plan in generation until every session content payload is ready", 
 
 test("commits only the next session while future session content stays adaptive", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 
 	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
@@ -533,6 +545,7 @@ test("commits only the next session while future session content stays adaptive"
 
 test("keeps one committed and one provisional session in the rolling window", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	await t.mutation(api.learningTimes.upsertMine, {
 		dayOfWeek: 3,
@@ -732,6 +745,7 @@ test("keeps one committed and one provisional session in the rolling window", as
 
 test("legacy theory content advances to practice instead of replaying the same pages", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	await t.mutation(api.learningTimes.upsertMine, {
 		dayOfWeek: 3,
@@ -855,6 +869,7 @@ test("legacy theory content advances to practice instead of replaying the same p
 
 test("atomically claims one session content generation at a time", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
 		learningPlanId,
@@ -903,6 +918,7 @@ test("atomically claims one session content generation at a time", async () => {
 
 test("claims plan generation atomically and persists an empty failed claim for explicit retry", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	await t.run(async (ctx) => {
 		await ctx.db.patch("learningPlans", learningPlanId, {
@@ -940,6 +956,7 @@ test("claims plan generation atomically and persists an empty failed claim for e
 
 test("requires scope confirmation before plan generation begins", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	await t.mutation(internal.learningPlans.storeKnowledgeQuestions, {
 		learningPlanId,
@@ -989,6 +1006,7 @@ test("requires scope confirmation before plan generation begins", async () => {
 
 test("allows generation recovery only after the eleven-minute stale boundary", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	await t.run(async (ctx) => {
 		await ctx.db.patch("learningPlans", learningPlanId, {
@@ -1019,6 +1037,7 @@ test("allows generation recovery only after the eleven-minute stale boundary", a
 
 test("atomically claims stale session retries and rejects a second claimant", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	await t.run(async (ctx) => {
 		await ctx.db.patch("learningPlans", learningPlanId, {
@@ -1114,6 +1133,7 @@ test("atomically claims stale session retries and rejects a second claimant", as
 
 test("invalidates only educational session edits while calendar moves preserve content", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
 		learningPlanId,
@@ -1203,6 +1223,7 @@ test("invalidates only educational session edits while calendar moves preserve c
 
 test("list overview exposes unfinished creation progress and its first unanswered question", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	const questions = createKnowledgeQuestions();
 
@@ -1238,6 +1259,7 @@ test("list overview exposes unfinished creation progress and its first unanswere
 
 test("list overview reports when every creation question has been answered", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	const questions = createKnowledgeQuestions();
 
@@ -1268,6 +1290,7 @@ test("list overview reports when every creation question has been answered", asy
 
 test("list overview finds current answers after stale question generations", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	const questions = createKnowledgeQuestions();
 
@@ -1307,7 +1330,9 @@ test("list overview finds current answers after stale question generations", asy
 test("list overview keeps unfinished creation progress scoped to its owner", async () => {
 	const t = convexTest(schema, modules);
 	const mine = t.withIdentity(user);
+	await grantTestLearningAccess(mine);
 	const other = t.withIdentity({ tokenIdentifier: "test:other-user" });
+	await grantTestLearningAccess(other);
 	const myLearningPlanId = await createPlan(mine);
 	const otherLearningPlanId = await createPlan(other);
 	const questions = [
@@ -1338,6 +1363,7 @@ test("list overview keeps unfinished creation progress scoped to its owner", asy
 
 test("list overview keeps an unfinished creation visible alongside fifty accepted plans", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const creationPlanId = await createPlan(t);
 
 	await t.mutation(internal.learningPlans.storeKnowledgeQuestions, {
@@ -1402,6 +1428,7 @@ afterEach(() => {
 
 test("adding a learning plan session into an occupied time range is rejected with conflict details", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 
 	await t.mutation(api.dayEntries.create, {
@@ -1422,6 +1449,7 @@ test("adding a learning plan session into an occupied time range is rejected wit
 
 test("moving a learning plan session into an occupied time range is rejected with conflict details", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	await t.mutation(api.learningPlans.addSession, { learningPlanId });
 	const snapshot = await t.query(api.learningPlans.getSnapshot, {
@@ -1455,6 +1483,7 @@ test("moving a learning plan session into an occupied time range is rejected wit
 
 test("updating a learning plan session at its own synced time is allowed", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	await t.mutation(api.learningPlans.addSession, { learningPlanId });
 	const snapshot = await t.query(api.learningPlans.getSnapshot, {
@@ -1477,6 +1506,7 @@ test("updating a learning plan session at its own synced time is allowed", async
 
 test("starting a learning plan rejects vague exam topic descriptions", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const examDayEntryId = await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-06-05",
 		title: "Mathe Klausur",
@@ -1511,6 +1541,7 @@ test("starting a learning plan rejects vague exam topic descriptions", async () 
 
 test("creating a draft learning plan allows incomplete exam topic descriptions", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const examDayEntryId = await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-06-05",
 		title: "Mathe Klausur",
@@ -1544,6 +1575,7 @@ test("creating a draft learning plan allows incomplete exam topic descriptions",
 
 test("generated draft sessions are not synced as calendar entries before acceptance", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 
 	await expect(
@@ -1577,6 +1609,7 @@ test("generated draft sessions are not synced as calendar entries before accepta
 
 test("AI context includes timed homework during the plan scheduling window", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 
 	await t.mutation(api.dayEntries.create, {
@@ -1601,6 +1634,7 @@ test("AI context includes timed homework during the plan scheduling window", asy
 
 test("review sessions are only synced after the plan is accepted", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 
 	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
@@ -1643,6 +1677,7 @@ test("review sessions are only synced after the plan is accepted", async () => {
 
 test("learning plan sessions move from started to completed and sync calendar state", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const { learningPlanId, session } = await createAcceptedPlanWithSession(t);
 
 	const started = await t.mutation(api.learningPlans.startSession, {
@@ -1700,6 +1735,7 @@ test("learning plan sessions move from started to completed and sync calendar st
 
 test("recording a learning plan session outcome requires the session to be started", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const { session } = await createAcceptedPlanWithSession(t);
 
 	await expect(
@@ -1712,6 +1748,7 @@ test("recording a learning plan session outcome requires the session to be start
 
 test("partially completed learning plan sessions stay incomplete but keep the outcome", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const { learningPlanId, session } = await createAcceptedPlanWithSession(t, {
 		dateKey: "2026-06-02",
 		dateLabel: "2. Juni 2026",
@@ -1741,6 +1778,7 @@ test("partially completed learning plan sessions stay incomplete but keep the ou
 
 test("missed learning plan sessions can be adjusted into a linked recovery block", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const { learningPlanId, session } = await createAcceptedPlanWithSession(t, {
 		dateKey: "2026-06-03",
 		dateLabel: "3. Juni 2026",
@@ -1782,6 +1820,7 @@ test("missed learning plan sessions can be adjusted into a linked recovery block
 
 test("removing a learning plan deletes synced sessions and detaches the exam entry", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 
 	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
@@ -1837,6 +1876,7 @@ test("removing a learning plan deletes synced sessions and detaches the exam ent
 
 test("generated plans can advance to review without available sessions", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 
 	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
@@ -1859,6 +1899,7 @@ test("generated plans can advance to review without available sessions", async (
 
 test("snapshot clears stale missing-learning-times hints after learning times are saved", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 
 	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
@@ -1912,6 +1953,7 @@ test("snapshot clears stale missing-learning-times hints after learning times ar
 
 test("generated knowledge questions reject malformed control characters before storage", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 
 	await expect(
@@ -1941,6 +1983,7 @@ test("generated knowledge questions reject malformed control characters before s
 
 test("stores a reusable topic map with generated knowledge questions", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 
 	await t.mutation(internal.learningPlans.storeKnowledgeQuestions, {
@@ -1995,6 +2038,7 @@ test("stores a reusable topic map with generated knowledge questions", async () 
 
 test("rejects a vague required-topics answer before material upload", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 
 	await expect(
@@ -2007,6 +2051,7 @@ test("rejects a vague required-topics answer before material upload", async () =
 
 test("keeps school evidence authoritative while external material remains supportive", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 
 	await t.mutation(api.learningPlans.updateRequiredTopics, {
@@ -2098,6 +2143,7 @@ test("keeps school evidence authoritative while external material remains suppor
 
 test("generated plan sessions reject malformed control characters without replacing the existing plan", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 
 	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
@@ -2173,6 +2219,7 @@ test("generated plan sessions reject malformed control characters without replac
 
 test("persists separate selections and notes, restores them, and synchronizes the calendar projection", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const id = await createPlan(t);
 	const input = {
 		topicItems: ["Bilanz", "Inventur"],
@@ -2218,6 +2265,7 @@ test("persists separate selections and notes, restores them, and synchronizes th
 
 test("changing scope through a legacy client removes stale selection metadata", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const id = await createPlan(t);
 	await t.mutation(api.learningPlans.updateRequiredTopics, {
 		id,

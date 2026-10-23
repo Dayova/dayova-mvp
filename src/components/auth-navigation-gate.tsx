@@ -1,9 +1,12 @@
 import { usePathname, useRootNavigationState, useRouter } from "expo-router";
-import { type ReactNode, useEffect } from "react";
-import { View } from "react-native";
+import { type ReactNode, useEffect, useState } from "react";
+import { ScrollView, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Button } from "~/components/ui/button";
+import { Text } from "~/components/ui/text";
 import { useAccess } from "~/context/AccessContext";
 import { useAuthSession } from "~/context/AuthContext";
-import { resolveAccessRoute } from "~/lib/access-policy";
+import { isAccessRecoveryPath, resolveAccessRoute } from "~/lib/access-policy";
 import { getAuthNavigationTarget } from "~/lib/auth-routing";
 import { cn } from "~/lib/utils";
 
@@ -21,7 +24,13 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 		pendingSessionTask,
 		onboardingCompletionStatus,
 	} = useAuthSession();
-	const { access, isAccessLoading } = useAccess();
+	const {
+		access,
+		isAccessLoading,
+		isVerificationRequired,
+		retryAccessVerification,
+	} = useAccess();
+	const [retrying, setRetrying] = useState(false);
 	const authTargetRoute = getAuthNavigationTarget({
 		hasUser: Boolean(user),
 		isSessionLoading,
@@ -44,7 +53,9 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 	const shouldMaskRoute =
 		isSessionLoading ||
 		onboardingCompletionStatus === "loading" ||
-		(onboardingCompletionStatus === "none" && isAccessLoading) ||
+		(onboardingCompletionStatus === "none" &&
+			isAccessLoading &&
+			!isAccessRecoveryPath(pathname)) ||
 		targetRoute !== null;
 
 	useEffect(() => {
@@ -77,7 +88,42 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 					importantForAccessibility="no"
 					pointerEvents="auto"
 					className="absolute inset-0 bg-background"
-				/>
+				>
+					{isVerificationRequired ? (
+						<SafeAreaView className="flex-1">
+							<ScrollView
+								className="flex-1"
+								contentContainerClassName="grow justify-center px-7 py-10"
+							>
+								<Text variant="h2">Zugang online prüfen</Text>
+								<Text className="mt-3 text-body-3 text-secondary-text">
+									Bitte verbinde dich mit dem Internet, damit Dayova deinen
+									Zugang prüfen kann. Dein Lernstand bleibt erhalten.
+								</Text>
+								<Button
+									className="mt-6"
+									disabled={retrying}
+									accessibilityState={{ busy: retrying }}
+									onPress={() => {
+										setRetrying(true);
+										void retryAccessVerification()
+											.catch(() => {})
+											.finally(() => setRetrying(false));
+									}}
+								>
+									<Text>{retrying ? "Wird geprüft …" : "Erneut prüfen"}</Text>
+								</Button>
+								<Button
+									variant="ghost"
+									className="mt-2"
+									onPress={() => router.push("/profile")}
+								>
+									<Text>Konto verwalten</Text>
+								</Button>
+							</ScrollView>
+						</SafeAreaView>
+					) : null}
+				</View>
 			) : null}
 		</View>
 	);

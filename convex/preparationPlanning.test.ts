@@ -3,6 +3,7 @@ import { convexTest } from "convex-test";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
+import { grantTestLearningAccess } from "./testing/access";
 
 const modules = import.meta.glob("./**/*.ts");
 const identity = { tokenIdentifier: "test:preparation" };
@@ -24,6 +25,7 @@ async function setup(
 ) {
 	const root = convexTest(schema, modules);
 	const t = root.withIdentity(identity);
+	await grantTestLearningAccess(t);
 	const id = await t.run(
 		async (ctx) =>
 			await ctx.db.insert("learningPlans", {
@@ -127,6 +129,7 @@ test("schedule is atomic, has one calendar event and three small steps", async (
 test("other owners cannot inspect or adopt a schedule", async () => {
 	const { id, root } = await setup();
 	const other = root.withIdentity({ tokenIdentifier: "test:other" });
+	await grantTestLearningAccess(other);
 	await expect(
 		other.mutation(api.learningPlans.savePreparationSchedule, {
 			learningPlanId: id,
@@ -625,14 +628,21 @@ test.each([
 
 test("preparation has no proposals without personal times, even with a grade", async () => {
 	const { t, id } = await setup();
-	await t.run((ctx) =>
-		ctx.db.insert("users", {
+	await t.run(async (ctx) => {
+		const fixtureUser = await ctx.db
+			.query("users")
+			.withIndex("by_tokenIdentifier", (q) =>
+				q.eq("tokenIdentifier", identity.tokenIdentifier),
+			)
+			.unique();
+		if (!fixtureUser) throw new Error("Missing eligible learner");
+		await ctx.db.patch("users", fixtureUser._id, {
 			tokenIdentifier: identity.tokenIdentifier,
 			clerkId: "preparation",
 			email: "test@example.com",
 			grade: "8",
-		}),
-	);
+		});
+	});
 	const schedule = await t.query(api.learningPlans.getPreparationSchedule, {
 		learningPlanId: id,
 		now: { dateKey: "2026-10-05", minutes: 840 },

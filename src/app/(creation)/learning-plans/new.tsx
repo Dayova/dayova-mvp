@@ -1,4 +1,4 @@
-import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useMutation } from "convex/react";
 import { fetch } from "expo/fetch";
 import * as DocumentPicker from "expo-document-picker";
 import { File } from "expo-file-system";
@@ -53,6 +53,7 @@ import {
 	parseDateKey,
 	retryOnceAfterAuthResume,
 } from "~/features/learning-plans/utils";
+import { useLearningQuery } from "~/hooks/use-learning-query";
 import { getValidationFileSizeBucket } from "~/lib/analytics";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { logDiagnosticError } from "~/lib/diagnostics";
@@ -174,7 +175,7 @@ export default function NewLearningPlanScreen() {
 	);
 
 	const hasExamEntry = Boolean(examDayEntryId || learningPlanId);
-	const snapshot = (useQuery(
+	const snapshot = (useLearningQuery(
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && learningPlanId
 			? { id: learningPlanId }

@@ -1,3 +1,4 @@
+import { grantTestLearningAccess } from "./testing/access";
 /// <reference types="vite/client" />
 
 import { convexTest } from "convex-test";
@@ -12,6 +13,7 @@ const otherUser = { tokenIdentifier: "test:subjects:other" };
 
 test("normalizes duplicates and reuses built-in subjects", async () => {
 	const backend = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(backend);
 
 	await expect(
 		backend.mutation(api.personalSubjects.create, { name: "  mathematik  " }),
@@ -42,7 +44,9 @@ test("normalizes duplicates and reuses built-in subjects", async () => {
 test("keeps personal subjects isolated by account", async () => {
 	const backend = convexTest(schema, modules);
 	const firstAccount = backend.withIdentity(user);
+	await grantTestLearningAccess(firstAccount);
 	const secondAccount = backend.withIdentity(otherUser);
+	await grantTestLearningAccess(secondAccount);
 
 	await firstAccount.mutation(api.personalSubjects.create, {
 		name: "Französisch",
@@ -70,6 +74,7 @@ test("keeps personal subjects isolated by account", async () => {
 
 test("only learner-confirmed timetable subjects are reusable", async () => {
 	const backend = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(backend);
 	const timetableId = await backend.mutation(api.timetables.createDraft, {});
 
 	await backend.run(async (ctx) => {
@@ -116,6 +121,7 @@ test("only learner-confirmed timetable subjects are reusable", async () => {
 
 test("renaming updates linked records while deleting preserves their labels", async () => {
 	const backend = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(backend);
 	const created = await backend.mutation(api.personalSubjects.create, {
 		name: "Französisch",
 	});
@@ -228,6 +234,7 @@ test("renaming updates linked records while deleting preserves their labels", as
 
 test("removing a linked plan still allows renaming the retained exam", async () => {
 	const backend = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(backend);
 	const created = await backend.mutation(api.personalSubjects.create, {
 		name: "Französisch",
 	});
@@ -274,6 +281,7 @@ test.each([
 	"Spanisch",
 ])("supports %s without a subject allowlist", async (subjectName) => {
 	const backend = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(backend);
 	const created = await backend.mutation(api.personalSubjects.create, {
 		name: subjectName,
 	});
@@ -309,6 +317,7 @@ test.each([
 
 test("legacy timetable labels cannot break personal subject loading", async () => {
 	const backend = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(backend);
 	await backend.mutation(api.personalSubjects.create, { name: "Französisch" });
 	await backend.run(async (ctx) => {
 		const timetableId = await ctx.db.insert("timetables", {
@@ -353,6 +362,7 @@ test("invalid new subjects remain rejected and unauthenticated reads stay privat
 		"Nicht authentifiziert",
 	);
 	const account = backend.withIdentity(user);
+	await grantTestLearningAccess(account);
 	for (const name of ["  ", "x".repeat(61)]) {
 		await expect(
 			account.mutation(api.personalSubjects.create, { name }),
