@@ -12,3 +12,4 @@ appId: ${MAESTRO_APP_ID}
 - extendedWaitUntil:
     visible: Kontakt mit Dayova
     timeout: 30000
+- runFlow: dismiss-development-notices.yaml

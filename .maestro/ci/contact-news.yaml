@@ -8,8 +8,11 @@ name: Changing the number clears feedback and permits a separate news choice
     direction: UP
 - tapOn:
     id: contact-phone-input
+    # The blank part after the current value puts the caret at its end.
+    point: "80%,50%"
 - eraseText: 80
 - inputText: '+12015550100'
+- assertVisible: '^\+12015550100$'
 - runFlow:
     file: ../shared/dismiss-auth-keyboard.yaml
     env:

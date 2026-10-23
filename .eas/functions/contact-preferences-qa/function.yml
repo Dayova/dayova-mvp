@@ -20,16 +20,37 @@ runs:
     - name: Enable software keyboard on the disposable iOS worker
       if: ${{ inputs.platform == 'ios' }}
       run: |
-        # Xcode 27 DeviceHub stores this setting in its sandbox container.
-        # Source: appium-ios-simulator 10.9.1, extensions/settings.ts.
-        dayovaKeyboardPrefs="$HOME/Library/Containers/com.apple.dt.Devices/Data/Library/Preferences/com.apple.dt.Devices.plist"
-        mkdir -p "$(dirname "$dayovaKeyboardPrefs")"
-        if [ ! -f "$dayovaKeyboardPrefs" ]; then
-          plutil -create binary1 "$dayovaKeyboardPrefs"
-        fi
-        plutil -replace alwaysSimulateHardwareKeyboard -bool NO "$dayovaKeyboardPrefs"
-        test "$(plutil -extract alwaysSimulateHardwareKeyboard raw -o - "$dayovaKeyboardPrefs")" = false
-        defaults write com.apple.iphonesimulator ConnectHardwareKeyboard -bool NO
+        node --input-type=module <<'NODE'
+        import { spawnSync } from 'node:child_process';
+        import { homedir } from 'node:os';
+        import { dirname, join } from 'node:path';
+        if (process.platform !== 'darwin' || !process.env.EAS_BUILD_ID) {
+          throw new Error('Keyboard setup is restricted to the disposable EAS iOS worker');
+        }
+        const run = (name, command, args, allowed = [0]) => {
+          console.log(`Keyboard setup: ${name}`);
+          const result = spawnSync(command, args, {
+            timeout: 20_000,
+            killSignal: 'SIGKILL',
+            encoding: 'utf8',
+            stdio: ['ignore', 'pipe', 'pipe'],
+          });
+          if (result.error) throw new Error(`${name}: ${result.error.code}`);
+          if (!allowed.includes(result.status)) {
+            throw new Error(`${name}: exit ${result.status}; ${result.stderr.trim()}`);
+          }
+          return result.stdout.trim();
+        };
+        // Xcode 27 DeviceHub: appium-ios-simulator 10.9.1, settings.ts.
+        const prefs = join(homedir(), 'Library/Containers/com.apple.dt.Devices/Data/Library/Preferences/com.apple.dt.Devices.plist');
+        run('create preferences directory', 'mkdir', ['-p', dirname(prefs)]);
+        const exists = run('check preferences file', '/bin/sh', ['-c', 'test -f "$1" && echo present || echo absent', '_', prefs]);
+        if (exists === 'absent') run('create preferences file', 'plutil', ['-create', 'binary1', prefs]);
+        run('disable DeviceHub hardware keyboard', 'plutil', ['-replace', 'alwaysSimulateHardwareKeyboard', '-bool', 'NO', prefs]);
+        const configured = run('verify DeviceHub preference', 'plutil', ['-extract', 'alwaysSimulateHardwareKeyboard', 'raw', '-o', '-', prefs]);
+        if (configured !== 'false') throw new Error('DeviceHub hardware keyboard remains enabled');
+        run('disable legacy hardware keyboard', 'defaults', ['write', 'com.apple.iphonesimulator', 'ConnectHardwareKeyboard', '-bool', 'NO']);
+        NODE
     - uses: eas/start_ios_simulator
       if: ${{ inputs.platform == 'ios' }}
       with:

@@ -1,0 +1,30 @@
+appId: ${APP_ID}
+---
+- runFlow:
+    when:
+      true: ${typeof DEV_SERVER_URL != 'undefined' && DEV_SERVER_URL != ''}
+      visible: ${DEVELOPMENT_NOTICE}
+    commands:
+      - runFlow:
+          when:
+            platform: Android
+          commands:
+            - tapOn:
+                containsChild:
+                  text: ${DEVELOPMENT_NOTICE}
+                # The close control is at the end of this exact notification.
+                point: "99%,50%"
+      - runFlow:
+          when:
+            platform: iOS
+          commands:
+            - runFlow:
+                when:
+                  notVisible: Dismiss
+                commands:
+                  - tapOn: ${DEVELOPMENT_NOTICE}
+            - assertVisible: Dismiss
+            - tapOn:
+                text: Dismiss
+                point: "50%,10%"
+      - assertNotVisible: ${DEVELOPMENT_NOTICE}

@@ -54,39 +54,7 @@ appId: ${APP_ID}
       enabled: true
     timeout: 60000
 - assertVisible: Registrierung
-# Disabling analytics intentionally produces this SDK warning in development.
-# Its LogBox banner can cover bottom actions. Dismiss only this exact warning;
-# iOS can prefix the accessibility label with "!, ". No other warning is matched.
-- runFlow:
-    when:
-      true: ${typeof DEV_SERVER_URL != 'undefined' && DEV_SERVER_URL != ''}
-      visible: "(?s)(!, )?You must pass your PostHog project's api key[.]\\s*The client will be disabled[.]"
-    commands:
-      - runFlow:
-          when:
-            platform: Android
-          commands:
-            - tapOn:
-                containsChild:
-                  text: "(?s)(!, )?You must pass your PostHog project's api key[.]\\s*The client will be disabled[.]"
-                # Close this notification directly; the Android SDK 58 LogBox
-                # details screen can be blank. The close control is at its end.
-                point: "99%,50%"
-      - runFlow:
-          when:
-            platform: iOS
-          commands:
-            - runFlow:
-                when:
-                  notVisible: Dismiss
-                commands:
-                  - tapOn: "(?s)(!, )?You must pass your PostHog project's api key[.]\\s*The client will be disabled[.]"
-            - assertVisible: Dismiss
-            # Keep the hit inside the label's upper area, above the safe area.
-            - tapOn:
-                text: Dismiss
-                point: "50%,10%"
-      - assertNotVisible: "(?s)(!, )?You must pass your PostHog project's api key[.]\\s*The client will be disabled[.]"
+- runFlow: dismiss-development-notices.yaml
 # The welcome controls become accessible before their entrance animation settles.
 - waitForAnimationToEnd:
     timeout: 5000
