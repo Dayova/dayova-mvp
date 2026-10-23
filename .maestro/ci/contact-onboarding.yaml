@@ -31,9 +31,6 @@ name: Contact choices, corrected input, back and skip
     element: Auswahl speichern und weiter
     direction: DOWN
     timeout: 10000
-- scrollUntilVisible:
-    element: Auswahl speichern und weiter
-    direction: DOWN
 - tapOn: Auswahl speichern und weiter
 - assertVisible: 'Wie lautet deine E-Mail-Adresse\?'
 - tapOn: Zurück

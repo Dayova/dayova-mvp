@@ -69,6 +69,8 @@ export async function runContactPreferencesQa(
 		APP_VARIANT: "development",
 		EAS_BUILD: "false",
 		NODE_ENV: "development",
+		// Keep Metro's localhost listener reachable at the explicit IPv4 URL on macOS.
+		NODE_OPTIONS: "--dns-result-order=ipv4first",
 		CONVEX_AGENT_MODE: "anonymous",
 		EXPO_NO_DOTENV: "1",
 		EXPO_PUBLIC_CONVEX_URL: localUrl,
@@ -160,8 +162,10 @@ export async function runContactPreferencesQa(
 		for (const [key, value] of Object.entries(expected))
 			assert.equal(snapshot[key], value, `${name}: ${key}`);
 		results.push({ name, passed: true, revision: snapshot.revision });
+		console.log(`Contact QA: ${name} passed`);
 	};
 	const journey = (name) => {
+		console.log(`Contact QA: starting ${name}`);
 		const exitCode = runDeviceSmoke(appPath, name, {
 			env: childEnv,
 			directory: join(publicRoot, name, ".maestro/tests"),

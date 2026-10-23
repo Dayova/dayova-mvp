@@ -13,18 +13,30 @@ name: Reach the optional contact step through real onboarding
     element: Weiter
     direction: DOWN
 - tapOn: Weiter
+- extendedWaitUntil:
+    visible: 'Lernzeiten festlegen\.'
+    timeout: 30000
 - scrollUntilVisible:
     element: Weiter
     direction: DOWN
 - tapOn: Weiter
+- extendedWaitUntil:
+    visible: 'Schulmaterial hochladen\.'
+    timeout: 30000
 - scrollUntilVisible:
     element: Weiter
     direction: DOWN
 - tapOn: Weiter
+- extendedWaitUntil:
+    visible: 'Lernplan erstellen lassen\.'
+    timeout: 30000
 - scrollUntilVisible:
     element: Meinen Start personalisieren
     direction: DOWN
 - tapOn: Meinen Start personalisieren
+- extendedWaitUntil:
+    visible: 'Wie dürfen wir dich nennen\?'
+    timeout: 30000
 - tapOn:
     id: onboarding-name-input
 - inputText: Maestro
@@ -36,23 +48,38 @@ name: Reach the optional contact step through real onboarding
     element: Weiter
     direction: DOWN
 - tapOn: Weiter
+- extendedWaitUntil:
+    visible: 'Wie lange möchtest du pro Lerntag einplanen\?'
+    timeout: 30000
 - scrollUntilVisible:
     element: Weiter
     direction: DOWN
 - tapOn: Weiter
+- extendedWaitUntil:
+    visible: 'Du brauchst nicht stundenlang zu lernen\.'
+    timeout: 30000
 - scrollUntilVisible:
     element: Weiter
     direction: DOWN
 - tapOn: Weiter
+- extendedWaitUntil:
+    visible: 'An welchen Tagen kannst du lernen\?'
+    timeout: 30000
 - tapOn: Montag
 - scrollUntilVisible:
     element: Weiter
     direction: DOWN
 - tapOn: Weiter
+- extendedWaitUntil:
+    visible: 'Du lernst, wenn es dir passt!'
+    timeout: 30000
 - scrollUntilVisible:
     element: Weiter
     direction: DOWN
 - tapOn: Weiter
+- extendedWaitUntil:
+    visible: 'Um wie viel Uhr möchtest du starten\?'
+    timeout: 30000
 - scrollUntilVisible:
     element: Startzeit auswählen
     direction: DOWN
@@ -62,10 +89,16 @@ name: Reach the optional contact step through real onboarding
     element: Weiter
     direction: DOWN
 - tapOn: Weiter
+- extendedWaitUntil:
+    visible: 'Deine Lernzeiten'
+    timeout: 30000
 - scrollUntilVisible:
     element: Weiter
     direction: DOWN
 - tapOn: Weiter
+- extendedWaitUntil:
+    visible: 'Welche Klassenstufe besuchst du\?'
+    timeout: 30000
 - scrollUntilVisible:
     element: Klassenstufe auswählen
     direction: DOWN
@@ -78,6 +111,9 @@ name: Reach the optional contact step through real onboarding
     element: Weiter
     direction: DOWN
 - tapOn: Weiter
+- extendedWaitUntil:
+    visible: 'In welchem Bundesland gehst du zur Schule\?'
+    timeout: 30000
 - scrollUntilVisible:
     element: Bundesland auswählen
     direction: DOWN
@@ -90,6 +126,9 @@ name: Reach the optional contact step through real onboarding
     element: Weiter
     direction: DOWN
 - tapOn: Weiter
+- extendedWaitUntil:
+    visible: 'Welche Schulart besuchst du\?'
+    timeout: 30000
 - scrollUntilVisible:
     element: Schulart auswählen
     direction: DOWN
@@ -102,4 +141,7 @@ name: Reach the optional contact step through real onboarding
     element: Weiter
     direction: DOWN
 - tapOn: Weiter
+- extendedWaitUntil:
+    visible: 'Gestalte Dayova mit uns\.'
+    timeout: 30000
 - assertVisible: 'Gestalte Dayova mit uns\.'
