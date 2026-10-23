@@ -9,7 +9,8 @@ import { NotificationSync } from "./notification-sync";
 // Auth/access contexts are the already-verified consumer boundary. The real
 // learning-query hook, planner and scheduler run against simulated native APIs.
 let mockAccess: AccessSnapshot | undefined;
-const mockUser = { clerkId: "notification-owner" };
+let mockUser = { clerkId: "notification-owner" };
+let mockNativeSequence = 0;
 const mockRouter = { push: jest.fn() };
 const mockDiagnosticError = jest.fn();
 const mockPreferences: NotificationPlanningPreferences = {
@@ -135,6 +136,8 @@ const register: (args: RegistrationArgs) => Promise<Registrations> = async ({
 beforeEach(() => {
 	jest.useFakeTimers();
 	jest.setSystemTime(new Date(2026, 10, 19, 7));
+	mockUser = { clerkId: "notification-owner" };
+	mockNativeSequence = 0;
 	mockAccess = trial();
 	mockScheduled.clear();
 	mockDiagnosticError.mockClear();
@@ -151,7 +154,7 @@ beforeEach(() => {
 	mockNotifications.scheduleNotificationAsync
 		.mockReset()
 		.mockImplementation(async (request) => {
-			const identifier = `scheduled-${mockScheduled.size}`;
+			const identifier = `scheduled-${++mockNativeSequence}`;
 			mockScheduled.set(identifier, { identifier, content: request.content });
 			return identifier;
 		});
@@ -272,4 +275,30 @@ test("a native cancellation failure is reported and does not block a later confi
 	mockAccess = { state: "expired", canUseApp: false };
 	await screen.rerender(<NotificationSync />);
 	await waitFor(() => expect(reminders()).toHaveLength(0));
+});
+
+test("an unchanged completed plan keeps its native reminders across equivalent account-context updates", async () => {
+	const screen = await render(<NotificationSync />);
+	await waitFor(() => expect(reminders()).toHaveLength(1));
+	const completed = reminders();
+	mockUser = { ...mockUser };
+	await screen.rerender(<NotificationSync />);
+	expect(reminders()).toEqual(completed);
+});
+
+test("a rejected initial registration is reported and an unchanged plan can retry after a context update", async () => {
+	const failure = new Error("Registration unavailable");
+	mockRegister.mockRejectedValueOnce(failure);
+	const screen = await render(<NotificationSync />);
+	await waitFor(() =>
+		expect(mockDiagnosticError).toHaveBeenCalledWith(
+			expect.any(String),
+			failure,
+			expect.objectContaining({ level: "warn" }),
+		),
+	);
+	expect(reminders()).toHaveLength(0);
+	mockUser = { ...mockUser };
+	await screen.rerender(<NotificationSync />);
+	await waitFor(() => expect(reminders()).toHaveLength(1));
 });

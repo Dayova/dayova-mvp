@@ -268,20 +268,31 @@ export function NotificationSync() {
 			dayKeys,
 			ownerId: user.clerkId,
 		});
-		if (latestSyncKeyRef.current !== syncKey) {
+		let syncCompleted = latestSyncKeyRef.current === syncKey;
+		const reportSyncFailure = (error: unknown) => {
+			logDiagnosticError("Failed to sync local notifications.", error, {
+				source: "notifications.syncLocalPlan",
+				level: "warn",
+			});
+		};
+		if (!syncCompleted) {
 			latestSyncKeyRef.current = syncKey;
-			void syncNotifications();
+			void syncNotifications().then(() => {
+				if (!cancelled) syncCompleted = true;
+			}, reportSyncFailure);
 		}
 
 		const subscription = AppState.addEventListener("change", (state) => {
 			if (state !== "active") return;
-			void syncNotifications();
+			void syncNotifications().catch(reportSyncFailure);
 		});
 
 		return () => {
 			cancelled = true;
 			// An interrupted verification/registration must not suppress the next plan.
-			if (latestSyncKeyRef.current === syncKey) latestSyncKeyRef.current = null;
+			if (!syncCompleted && latestSyncKeyRef.current === syncKey) {
+				latestSyncKeyRef.current = null;
+			}
 			subscription.remove();
 		};
 	}, [
