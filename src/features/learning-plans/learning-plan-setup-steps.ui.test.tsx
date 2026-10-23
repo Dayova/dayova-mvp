@@ -86,7 +86,7 @@ describe("learning-plan setup steps", () => {
 	test.each([
 		"topics",
 		"hints",
-	] as const)("%s hides Continue while typing and restores it without losing the query", async (page) => {
+	] as const)("%s keeps Continue available through repeated keyboard transitions without losing the query", async (page) => {
 		const props = {
 			subject: "Deutsch",
 			selectedTopics: ["Gedichtanalyse"],
@@ -110,14 +110,12 @@ describe("learning-plan setup steps", () => {
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
 		await fireEvent.changeText(screen.getByLabelText(searchLabel), "Text");
 
-		mockKeyboardVisible = true;
-		await screen.rerender(step());
-		expect(screen.queryByRole("button", { name: "Weiter" })).toBeNull();
-		expect(screen.getByLabelText(searchLabel)).toHaveDisplayValue("Text");
-
-		mockKeyboardVisible = false;
-		await screen.rerender(step());
-		expect(screen.getByLabelText(searchLabel)).toHaveDisplayValue("Text");
+		for (const visible of [true, false, true, false, true, false]) {
+			mockKeyboardVisible = visible;
+			await screen.rerender(step());
+			expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
+			expect(screen.getByLabelText(searchLabel)).toHaveDisplayValue("Text");
+		}
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		expect(props.onContinue).toHaveBeenCalledTimes(1);
 	});

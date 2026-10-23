@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { ActivityIndicator, View } from "react-native";
-import { useKeyboardState } from "react-native-keyboard-controller";
 import type { Id } from "#convex/_generated/dataModel";
 import { Button } from "~/components/ui/button";
 import { ScreenScroll } from "~/components/ui/screen";
@@ -192,7 +191,6 @@ function SearchSetupPage({
 	isBusy: boolean;
 	onContinue: () => void;
 }) {
-	const isKeyboardVisible = useKeyboardState((state) => state.isVisible);
 	return (
 		<View className="flex-1">
 			<ScreenScroll
@@ -203,15 +201,13 @@ function SearchSetupPage({
 				{children}
 				<SetupError message={errorMessage} />
 			</ScreenScroll>
-			{!isKeyboardVisible ? (
-				<CreationActionFooter>
-					<SetupContinueButton
-						canContinue={canContinue}
-						isBusy={isBusy}
-						onPress={onContinue}
-					/>
-				</CreationActionFooter>
-			) : null}
+			<CreationActionFooter followKeyboard>
+				<SetupContinueButton
+					canContinue={canContinue}
+					isBusy={isBusy}
+					onPress={onContinue}
+				/>
+			</CreationActionFooter>
 		</View>
 	);
 }
