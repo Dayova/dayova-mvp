@@ -84,7 +84,16 @@ name: Reach the optional contact step through real onboarding
     element: Startzeit auswählen
     direction: DOWN
 - tapOn: Startzeit auswählen
-- tapOn: Zeit übernehmen
+# The sheet's accessibility node can appear before its opening motion settles.
+# Both iOS workers left the sheet open after immediate confirmation taps.
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    text: Zeit übernehmen
+    retryTapIfNoChange: true
+- extendedWaitUntil:
+    notVisible: Zeit übernehmen
+    timeout: 10000
 - scrollUntilVisible:
     element: Weiter
     direction: DOWN
