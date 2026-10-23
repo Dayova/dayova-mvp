@@ -24,6 +24,11 @@ unless the team explicitly supersedes this temporary model.
 
 ## Existing Docs
 
+- Communication templates: `brand/templates/README.md`. PowerPoint, Canva and
+  Google Sheets share a separate communication layout and an accessible
+  secondary-text adaptation; this does not change app tokens. See the
+  [Notion decision record](https://app.notion.com/p/3d32e87228bf81ec8b1ae2c3e2c3c052).
+
 - `docs/styling.md`
 - `docs/bottom-sheets.md`
 - `docs/accessibility.md`
