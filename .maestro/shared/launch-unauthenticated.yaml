@@ -28,7 +28,9 @@ appId: ${APP_ID}
           commands:
             - tapOn: Open
       - extendedWaitUntil:
-          visible: "Login|Reload"
+          # At accessibility text sizes the welcome actions are below the fold.
+          # The brand button identifies the rendered app without needing scroll.
+          visible: "Login|Reload|Dayova, App-Informationen"
           # A fresh development bundle can consume the first minute on a cloud
           # iOS worker. Wait for the rendered app after compilation as well.
           timeout: 180000
@@ -48,13 +50,14 @@ appId: ${APP_ID}
                   platform: Android
                 commands:
                   - back
-- extendedWaitUntil:
-    visible:
+- runFlow: dismiss-development-notices.yaml
+- scrollUntilVisible:
+    element:
       text: Login
       enabled: true
+    direction: DOWN
     timeout: 60000
 - assertVisible: Registrierung
-- runFlow: dismiss-development-notices.yaml
 # The welcome controls become accessible before their entrance animation settles.
 - waitForAnimationToEnd:
     timeout: 5000
