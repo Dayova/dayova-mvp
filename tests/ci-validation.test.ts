@@ -30,9 +30,11 @@ const testEnv: NodeJS.ProcessEnv = {
 
 describe("isolated native CI configuration", () => {
 	it.each([
-		"android",
-		"ios",
-	])("keeps the candidate backend when %s EAS reloads saved development variables", (platform) => {
+		"android_build",
+		"ios_build",
+		"android_repack",
+		"ios_repack",
+	])("keeps the candidate backend when %s EAS reloads saved development variables", (job) => {
 		const directory = mkdtempSync(join(tmpdir(), "dayova-ci-build-"));
 		const easPath = join(directory, "eas.json");
 		const original = {
@@ -58,8 +60,7 @@ describe("isolated native CI configuration", () => {
 			const workflow = parse(
 				readFileSync(resolve(".eas/workflows/ci.yml"), "utf8"),
 			);
-			const steps =
-				workflow.jobs[`${platform}_build`].hooks.before_install_node_modules;
+			const steps = workflow.jobs[job].hooks?.before_install_node_modules ?? [];
 			expect(steps).toHaveLength(1);
 			const bash =
 				process.platform === "win32"

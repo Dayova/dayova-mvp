@@ -75,7 +75,7 @@ Profile `ci` builds embedded non-production apps against that preview and the
 reviewed development Clerk instance, with updates and analytics disabled.
 Matching native builds are reused only with a freshly repacked JavaScript bundle.
 The same preview outputs reach fingerprint, build/repack and device jobs. Before
-installing dependencies, compile jobs pin public preview provenance in the worker
+installing dependencies, compile and repack jobs pin public preview provenance in the worker
 copy of the `ci` profile: EAS `build:internal` otherwise reloads the saved
 development URL over the inline job value. Other profiles stay unchanged.
 
