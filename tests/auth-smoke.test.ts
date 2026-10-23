@@ -143,6 +143,7 @@ describe("real-service authentication probe consumer", () => {
 		"missing-notification-api",
 		"stale-notification-validator",
 		"malformed-notification-result",
+		"access-denied",
 	])("rejects %s rather than accepting a stale/unusable backend", async (fault) => {
 		const boundary = services(fault);
 		await expect(authenticatedSmoke(env, boundary.request)).rejects.toThrow();
@@ -172,15 +173,5 @@ describe("real-service authentication probe consumer", () => {
 			authenticatedSmoke({ ...env, ...override }, boundary.request),
 		).rejects.toThrow("CI validation requires");
 		expect(boundary.request).not.toHaveBeenCalled();
-	});
-});
-
-describe("notification planning before trial consent", () => {
-	it("recognizes an explicit eligibility denial after checking the real planner argument contract", async () => {
-		const boundary = services("access-denied");
-		await expect(
-			authenticatedSmoke(env, boundary.request),
-		).resolves.toMatchObject({ notificationPlanningQuery: "access-denied" });
-		expect(boundary.state().removed).toBe(true);
 	});
 });

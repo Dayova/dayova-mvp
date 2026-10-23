@@ -170,7 +170,7 @@ export async function authenticatedSmoke(env = process.env, request = fetch) {
 				"The preview backend does not support notification preferences.",
 			);
 		// Exercise the planner's real argument contract as well as free preferences.
-		// An eligibility denial is expected only for an account without app access.
+		// This candidate exposes the planner before activation; user-facing errors are failures.
 		const dayKey = new Date().toISOString().slice(0, 10);
 		const entries = await rpc(
 			"query",
@@ -180,11 +180,7 @@ export async function authenticatedSmoke(env = process.env, request = fetch) {
 		);
 		const planningAllowed =
 			entries.status === "success" && Array.isArray(entries.value?.[dayKey]);
-		const planningDenied =
-			access.value.canUseApp === false &&
-			entries.status === "error" &&
-			entries.errorData?.kind === "userFacing";
-		if (!planningAllowed && !planningDenied)
+		if (!planningAllowed)
 			throw new Error(
 				"The preview backend does not support the notification planning contract.",
 			);
@@ -193,7 +189,7 @@ export async function authenticatedSmoke(env = process.env, request = fetch) {
 			authenticatedConvexQuery: "success",
 			unauthenticatedConvexQuery: "denied",
 			notificationBootstrapQuery: "success",
-			notificationPlanningQuery: planningAllowed ? "success" : "access-denied",
+			notificationPlanningQuery: "success",
 			accessBootstrapQuery: "success",
 			syntheticUserInitialization: "success",
 		};
