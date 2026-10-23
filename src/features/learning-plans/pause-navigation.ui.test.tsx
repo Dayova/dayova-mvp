@@ -205,6 +205,7 @@ test("failed pause retains the route, native protection and edited text", async 
 	await fireEvent.press(screen.getByText("Später fortsetzen"));
 	await waitFor(() => expect(result.getPathname()).toBe("/learning-plans"));
 	expect(screen.getByText("Lernplanübersicht")).toBeVisible();
+	expect(mockSave).toHaveBeenCalledTimes(2);
 	expect(mockSave).toHaveBeenLastCalledWith({
 		id: "plan-native-pause",
 		topicItems: ["Bilanz"],
