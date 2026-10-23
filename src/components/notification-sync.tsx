@@ -204,11 +204,13 @@ export function NotificationSync() {
 			!preferences ||
 			!entriesByDay
 		) {
+			latestSyncKeyRef.current = null;
 			return;
 		}
 
 		let cancelled = false;
-		const syncNotifications = async () => {
+		let latestAttempt = 0;
+		const syncNotifications = async (attempt: number) => {
 			const now = new Date();
 			const localDayKey = getDayKey(now);
 			const localMinutes = getLocalMinutes(now);
@@ -217,14 +219,14 @@ export function NotificationSync() {
 				localDayKey,
 				localMinutes,
 			});
-			if (cancelled) return;
+			if (cancelled || attempt !== latestAttempt) return;
 
 			const notifications = getNotificationsModule();
 			if (!notifications) return;
 			await reconcilePresentedNotifications(notifications);
 
 			const permissions = await notifications.getPermissionsAsync();
-			if (cancelled) return;
+			if (cancelled || attempt !== latestAttempt) return;
 			const canScheduleSystemNotifications =
 				preferences.systemNotificationsEnabled &&
 				hasNotificationPermission(notifications, permissions);
@@ -243,7 +245,7 @@ export function NotificationSync() {
 			const registrations = await registerLocalNotificationPlan(
 				buildLocalNotificationRegistrationInput(plan),
 			);
-			if (cancelled) return;
+			if (cancelled || attempt !== latestAttempt) return;
 			const registrationBySchedule = new Map(
 				registrations.map((registration) => [
 					`${registration.eventKey}\0${registration.scheduledFor}`,
@@ -275,16 +277,21 @@ export function NotificationSync() {
 				level: "warn",
 			});
 		};
+		const startSync = () => {
+			if (cancelled) return;
+			const attempt = ++latestAttempt;
+			syncCompleted = false;
+			void syncNotifications(attempt).then(() => {
+				if (!cancelled && attempt === latestAttempt) syncCompleted = true;
+			}, reportSyncFailure);
+		};
 		if (!syncCompleted) {
 			latestSyncKeyRef.current = syncKey;
-			void syncNotifications().then(() => {
-				if (!cancelled) syncCompleted = true;
-			}, reportSyncFailure);
+			startSync();
 		}
 
 		const subscription = AppState.addEventListener("change", (state) => {
-			if (state !== "active") return;
-			void syncNotifications().catch(reportSyncFailure);
+			if (state === "active") startSync();
 		});
 
 		return () => {

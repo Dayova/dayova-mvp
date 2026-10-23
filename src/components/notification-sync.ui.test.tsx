@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, jest, test } from "@jest/globals";
 import { act, render, waitFor } from "@testing-library/react-native";
 import type { FunctionArgs, FunctionReturnType } from "convex/server";
+import { AppState, type AppStateStatus } from "react-native";
 import type { api } from "#convex/_generated/api";
 import type { AccessSnapshot } from "~/lib/access-contract";
 import type { NotificationPlanningPreferences } from "~/lib/notification-planner";
@@ -9,8 +10,10 @@ import { NotificationSync } from "./notification-sync";
 // Auth/access contexts are the already-verified consumer boundary. The real
 // learning-query hook, planner and scheduler run against simulated native APIs.
 let mockAccess: AccessSnapshot | undefined;
+let mockConvexAuthenticated = true;
 let mockUser = { clerkId: "notification-owner" };
 let mockNativeSequence = 0;
+const mockAppStateListeners = new Set<(state: AppStateStatus) => void>();
 const mockRouter = { push: jest.fn() };
 const mockDiagnosticError = jest.fn();
 const mockPreferences: NotificationPlanningPreferences = {
@@ -91,7 +94,7 @@ jest.mock("~/lib/notification-permissions", () => ({
 	getNotificationsModule: () => mockNotifications,
 }));
 jest.mock("convex/react", () => ({
-	useConvexAuth: () => ({ isAuthenticated: true }),
+	useConvexAuth: () => ({ isAuthenticated: mockConvexAuthenticated }),
 	useQuery: (ref: unknown, args: unknown) => {
 		if (args === "skip") return undefined;
 		const { getFunctionName } =
@@ -135,9 +138,21 @@ const register: (args: RegistrationArgs) => Promise<Registrations> = async ({
 	}));
 beforeEach(() => {
 	jest.useFakeTimers();
+	mockAppStateListeners.clear();
+	jest
+		.spyOn(AppState, "addEventListener")
+		.mockImplementation((_type, listener) => {
+			mockAppStateListeners.add(listener);
+			return {
+				remove: () => {
+					mockAppStateListeners.delete(listener);
+				},
+			};
+		});
 	jest.setSystemTime(new Date(2026, 10, 19, 7));
 	mockUser = { clerkId: "notification-owner" };
 	mockNativeSequence = 0;
+	mockConvexAuthenticated = true;
 	mockAccess = trial();
 	mockScheduled.clear();
 	mockDiagnosticError.mockClear();
@@ -160,6 +175,7 @@ beforeEach(() => {
 		});
 });
 afterEach(() => {
+	jest.restoreAllMocks();
 	jest.useRealTimers();
 });
 
@@ -299,6 +315,99 @@ test("a rejected initial registration is reported and an unchanged plan can retr
 	);
 	expect(reminders()).toHaveLength(0);
 	mockUser = { ...mockUser };
+	await screen.rerender(<NotificationSync />);
+	await waitFor(() => expect(reminders()).toHaveLength(1));
+});
+
+const resume = async () => {
+	if (mockAppStateListeners.size === 0)
+		throw new Error("NotificationSync has no active lifecycle listener");
+	await act(async () => {
+		for (const listener of mockAppStateListeners) listener("inactive");
+		for (const listener of mockAppStateListeners) listener("active");
+	});
+};
+
+test("failed resume replacement can recover on an equivalent account-context update", async () => {
+	const screen = await render(<NotificationSync />);
+	await waitFor(() => expect(reminders()).toHaveLength(1));
+	const failure = new Error("Native resume replacement failed");
+	mockNotifications.scheduleNotificationAsync.mockRejectedValueOnce(failure);
+	await resume();
+	await waitFor(() =>
+		expect(mockDiagnosticError).toHaveBeenCalledWith(
+			expect.any(String),
+			failure,
+			expect.objectContaining({ level: "warn" }),
+		),
+	);
+	expect(reminders()).toHaveLength(0);
+	mockUser = { ...mockUser };
+	await screen.rerender(<NotificationSync />);
+	await waitFor(() => expect(reminders()).toHaveLength(1));
+});
+
+test("a successful resume after initial rejection keeps the now-complete plan deduplicated", async () => {
+	const failure = new Error("Initial registration failed");
+	mockRegister.mockRejectedValueOnce(failure);
+	const screen = await render(<NotificationSync />);
+	await waitFor(() => expect(mockDiagnosticError).toHaveBeenCalled());
+	expect(reminders()).toHaveLength(0);
+	await resume();
+	await waitFor(() => expect(reminders()).toHaveLength(1));
+	const completed = reminders();
+	mockUser = { ...mockUser };
+	await screen.rerender(<NotificationSync />);
+	expect(reminders()).toEqual(completed);
+});
+
+test("an older overlapping resume cannot overwrite reminders or complete a newer failed attempt", async () => {
+	const screen = await render(<NotificationSync />);
+	await waitFor(() => expect(reminders()).toHaveLength(1));
+	const original = reminders();
+	let complete!: (value: Registrations) => void;
+	mockRegister.mockImplementationOnce(
+		() =>
+			new Promise<Registrations>((resolve) => {
+				complete = resolve;
+			}),
+	);
+	await resume();
+	await waitFor(() => expect(mockRegister).toHaveBeenCalledTimes(2));
+	const olderArgs = mockRegister.mock.calls[1][0];
+	const failure = new Error("Latest registration failed");
+	mockRegister.mockRejectedValueOnce(failure);
+	await resume();
+	await waitFor(() =>
+		expect(mockDiagnosticError).toHaveBeenCalledWith(
+			expect.any(String),
+			failure,
+			expect.objectContaining({ level: "warn" }),
+		),
+	);
+	await act(async () => complete(await register(olderArgs)));
+	expect(reminders()).toEqual(original);
+	mockUser = { ...mockUser };
+	await screen.rerender(<NotificationSync />);
+	await waitFor(() => {
+		expect(reminders()).toHaveLength(1);
+		expect(reminders()).not.toEqual(original);
+	});
+});
+
+test("restored Convex eligibility reconciles native state while unknown access preserves the previous plan", async () => {
+	const screen = await render(<NotificationSync />);
+	await waitFor(() => expect(reminders()).toHaveLength(1));
+	const previous = reminders();
+	mockConvexAuthenticated = false;
+	mockAccess = undefined;
+	await screen.rerender(<NotificationSync />);
+	expect(reminders()).toEqual(previous);
+	// Simulate the native scheduler no longer retaining the prior request while
+	// this consumer cannot subscribe. Restoration must reconcile real OS state.
+	for (const request of previous) mockScheduled.delete(request.identifier);
+	mockConvexAuthenticated = true;
+	mockAccess = trial();
 	await screen.rerender(<NotificationSync />);
 	await waitFor(() => expect(reminders()).toHaveLength(1));
 });
