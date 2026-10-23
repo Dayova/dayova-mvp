@@ -1,4 +1,5 @@
 import {
+	type RequestForQueries,
 	useAction,
 	useConvexAuth,
 	useMutation,
@@ -129,16 +130,16 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 	);
 	// Unlike useQuery, useQueries returns query errors so this boundary can
 	// recover without treating an unavailable verification as an expired trial.
-	const accessResult = useQueries(
-		canQuery
-			? {
-					access: {
-						query: api.entitlements.getMyAccess,
-						args: { now: queryNow },
-					},
-				}
-			: {},
-	).access as AccessSnapshot | Error | undefined;
+	const accessQueries = useMemo((): RequestForQueries => {
+		if (!canQuery) return {};
+		return {
+			access: { query: api.entitlements.getMyAccess, args: { now: queryNow } },
+		};
+	}, [canQuery, queryNow]);
+	const accessResult = useQueries(accessQueries).access as
+		| AccessSnapshot
+		| Error
+		| undefined;
 	const accessError = accessResult instanceof Error ? accessResult : null;
 	const serverAccess = accessResult instanceof Error ? undefined : accessResult;
 	// Keep recovery visible during retries, but reset it when this account's
