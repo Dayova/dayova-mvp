@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Pressable, useWindowDimensions, View } from "react-native";
+import { useWindowDimensions, View } from "react-native";
+import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import { ArrowLeft, ArrowRight, ChevronDown } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { startOfLocalDay } from "~/lib/day-key";
@@ -105,7 +106,7 @@ export function InlineDatePicker({
 						)}
 						style={{ height: useDayList ? undefined : rowHeight }}
 					>
-						<Pressable
+						<FeedbackPressable
 							accessibilityRole="button"
 							accessibilityLabel={
 								choosingMonth ? "Zur Tagesauswahl" : "Monat und Jahr auswählen"
@@ -127,12 +128,12 @@ export function InlineDatePicker({
 								{choosingMonth ? year : monthFormatter.format(month)}
 							</Text>
 							<ChevronDown size={18} color={colors.primary} />
-						</Pressable>
+						</FeedbackPressable>
 						{([-1, 1] as const).map((direction) => {
 							const enabled = direction === -1 ? canPrevious : canNext;
 							const Icon = direction === -1 ? ArrowLeft : ArrowRight;
 							return (
-								<Pressable
+								<FeedbackPressable
 									key={direction}
 									accessibilityRole="button"
 									accessibilityLabel={
@@ -154,7 +155,7 @@ export function InlineDatePicker({
 									style={{ height: rowHeight }}
 								>
 									<Icon size={24} color={colors.primary} />
-								</Pressable>
+								</FeedbackPressable>
 							);
 						})}
 					</View>
@@ -169,7 +170,7 @@ export function InlineDatePicker({
 									new Date(year, date.getMonth() + 1, 0),
 								);
 								return (
-									<Pressable
+									<FeedbackPressable
 										key={date.getTime()}
 										accessibilityRole="button"
 										accessibilityLabel={monthFormatter.format(date)}
@@ -191,7 +192,7 @@ export function InlineDatePicker({
 												? monthFormatter.format(date)
 												: shortMonthFormatter.format(date)}
 										</Text>
-									</Pressable>
+									</FeedbackPressable>
 								);
 							})}
 						</View>
@@ -240,7 +241,7 @@ export function InlineDatePicker({
 													/>
 												);
 											return (
-												<Pressable
+												<FeedbackPressable
 													key={timestamp}
 													accessibilityRole="button"
 													accessibilityLabel={`${dayFormatter.format(date)}${isToday ? ", heute" : ""}`}
@@ -279,7 +280,7 @@ export function InlineDatePicker({
 																: date.getDate()}
 														</Text>
 													</View>
-												</Pressable>
+												</FeedbackPressable>
 											);
 										})}
 									</View>
