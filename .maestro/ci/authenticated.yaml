@@ -31,18 +31,20 @@ env:
     timeout: 10000
 - tapOn: LOGIN
 - extendedWaitUntil:
-    visible: 'Bestätigungscode|So läuft deine Testphase'
+    visible: 'Bestätigungscode|So läuft deine Testphase|Einstellungen'
     timeout: 60000
 - runFlow:
     when:
-      notVisible: So läuft deine Testphase
+      visible: Bestätigungscode
     commands:
       - tapOn: Bestätigungscode
       - inputText:
           text: '424242'
           label: Verify the Clerk test-email code
+# This reusable synthetic identity may already have trial/paid access.
+# The app must then open its authenticated tabs instead of granting another trial.
 - extendedWaitUntil:
-    visible: So läuft deine Testphase
+    visible: 'So läuft deine Testphase|Einstellungen'
     timeout: 60000
 - assertNotVisible: Login
 - takeScreenshot: authenticated-convex-access
