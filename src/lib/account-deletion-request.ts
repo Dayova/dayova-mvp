@@ -11,7 +11,14 @@ type DeletionSession = PasswordReverificationSession & {
 };
 
 /** A server response already contains a safe deletion-specific UI message. */
-export class AccountDeletionResponseError extends Error {}
+export class AccountDeletionResponseError extends Error {
+	constructor(
+		message: string,
+		readonly status?: number,
+	) {
+		super(message);
+	}
+}
 
 export async function readAccountDeletionResponse(
 	response: Response,
@@ -26,7 +33,7 @@ export async function readAccountDeletionResponse(
 			body.error.trim()
 				? body.error
 				: "Die Kontolöschung konnte nicht bestätigt werden. Bitte versuche es erneut.";
-		throw new AccountDeletionResponseError(message);
+		throw new AccountDeletionResponseError(message, response.status);
 	}
 	return response.json();
 }
