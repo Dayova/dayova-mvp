@@ -1,9 +1,10 @@
 import {
+	type RequestForQueries,
 	useAction,
 	useConvexAuth,
 	useConvexConnectionState,
 	useMutation,
-	useQuery,
+	useQueries,
 } from "convex/react";
 import {
 	createContext,
@@ -65,10 +66,20 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 	const verifyAccess = useMutation(api.accessState.refreshMyAccess);
 	const syncMyEntitlement = useAction(api.revenueCat.syncMyEntitlement);
 	// Reactive changes trigger a fresh clock verification. Cached queries can never start an offline lease.
-	const serverAccess = useQuery(
-		api.entitlements.getMyAccess,
-		canQuery ? {} : "skip",
+	// Keep request identity stable; useQueries returns failures instead of throwing
+	// through the recovery surface. Only a fresh mutation can grant a lease.
+	const accessQueries = useMemo(
+		(): RequestForQueries =>
+			canQuery
+				? { access: { query: api.entitlements.getMyAccess, args: {} } }
+				: {},
+		[canQuery],
 	);
+	const accessResult = useQueries(accessQueries).access as
+		| AccessSnapshot
+		| Error
+		| undefined;
+	const serverAccess = accessResult instanceof Error ? undefined : accessResult;
 	const [verification, setVerification] = useState<Verification | null>(null);
 	const [timedOut, setTimedOut] = useState<{
 		appUserId: string;

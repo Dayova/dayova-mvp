@@ -26,6 +26,7 @@ jest.mock("~/context/AuthContext", () => ({
 	useOnboardingHandoff: () => ({ retryPostAuthSync: () => {} }),
 }));
 jest.mock("convex/react", () => ({
+	useQueries: () => ({ access: mockQuery() }),
 	useConvexConnectionState: () => mockConnection,
 	useConvexAuth: () => ({ isAuthenticated: true }),
 	useAction: () => jest.fn(),
