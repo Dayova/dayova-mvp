@@ -132,6 +132,7 @@ export const INTERACTION_VALUES = [
 	"dailyBriefingTime",
 	"beforeExamEnabled",
 	"beforeLearningTimeEnabled",
+	"startLearningTimeEnabled",
 	"beforeHomeworkWorkEnabled",
 	"beforeHomeworkDueEnabled",
 	"reminderOffsetMinutes",

@@ -40,7 +40,10 @@ const weekLabel = (key: string) => {
 	return `Woche ab ${slotDateLabel(date.toISOString().slice(0, 10))}`;
 };
 export default function PreparationScreen() {
-	const { planId } = useLocalSearchParams<{ planId: string }>();
+	const { planId, editSlot } = useLocalSearchParams<{
+		planId: string;
+		editSlot?: string;
+	}>();
 	const id = planId as Id<"learningPlans">;
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
@@ -67,10 +70,24 @@ export default function PreparationScreen() {
 		slots: Slot[];
 		revision: number;
 	} | null>(null);
-	const [editing, setEditing] = useState<PreparationSlot | null>(null);
+	const [selectedSlot, setSelectedSlot] = useState<PreparationSlot | null>(
+		null,
+	);
+	const [dismissedSlot, setDismissedSlot] = useState<string | undefined>();
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const slots = draft?.slots ?? schedule?.slots ?? [];
+	const editing =
+		selectedSlot ??
+		(editSlot !== dismissedSlot
+			? slots.find(
+					(slot) => slot.id === editSlot && !slot.locked && !slot.completed,
+				)
+			: null);
+	const setEditing = (slot: PreparationSlot | null) => {
+		setDismissedSlot(editSlot);
+		setSelectedSlot(slot);
+	};
 	const total = slots.reduce(
 		(sum, s) => sum + s.durationMinutes + s.completedMinutes,
 		0,

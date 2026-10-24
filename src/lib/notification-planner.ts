@@ -1,4 +1,8 @@
 import type { Id } from "#convex/_generated/dataModel";
+import {
+	isReminderEntryPending,
+	learningReminderBody,
+} from "#convex/notificationRules";
 import { parseDayKey } from "./day-key";
 
 export type NotificationPlanningPreferences = {
@@ -7,6 +11,7 @@ export type NotificationPlanningPreferences = {
 	dailyBriefingTime: string;
 	beforeExamEnabled: boolean;
 	beforeLearningTimeEnabled: boolean;
+	startLearningTimeEnabled?: boolean;
 	beforeHomeworkWorkEnabled: boolean;
 	beforeHomeworkDueEnabled: boolean;
 	reminderOffsetMinutes: number;
@@ -27,7 +32,7 @@ export type NotificationPlanningEntry = {
 
 export type PlannedLocalNotification = {
 	key: string;
-	type: "dailyBriefing" | "beforeEvent" | "forgottenEvent";
+	type: "dailyBriefing" | "beforeEvent" | "startEvent" | "forgottenEvent";
 	category: "learningPlan" | "task" | "message";
 	title: string;
 	body: string;
@@ -94,11 +99,7 @@ const formatEntryForBriefing = (entry: NotificationPlanningEntry) => {
 };
 
 const getBriefingBody = (entries: NotificationPlanningEntry[]) => {
-	const activeEntries = entries.filter(
-		(entry) =>
-			entry.completed !== true &&
-			!(entry.relatedLearningPlanId && entry.executionStatus === "started"),
-	);
+	const activeEntries = entries.filter(isReminderEntryPending);
 	if (activeEntries.length === 0) {
 		return "Heute stehen keine offenen Einträge an.";
 	}
@@ -141,6 +142,7 @@ export const buildLocalNotificationPlan = ({
 			briefingMinutes === null ? null : dateAtMinutes(dayKey, briefingMinutes);
 		if (
 			preferences.dailyBriefingEnabled &&
+			entries.some(isReminderEntryPending) &&
 			briefingDate &&
 			briefingDate.getTime() > now.getTime()
 		) {
@@ -155,11 +157,7 @@ export const buildLocalNotificationPlan = ({
 		}
 
 		for (const entry of entries) {
-			if (
-				entry.completed === true ||
-				(entry.relatedLearningPlanId && entry.executionStatus === "started")
-			)
-				continue;
+			if (!isReminderEntryPending(entry)) continue;
 			const relatedDayEntryId = entry.relatedDayEntryId;
 			if (!relatedDayEntryId) continue;
 			const startMinutes = isExamEntry(entry)
@@ -179,13 +177,36 @@ export const buildLocalNotificationPlan = ({
 						type: "beforeEvent",
 						category: getCategory(entry),
 						title: eventTitle,
-						body: `Deine ${getEntryTitle(entry)} startet in ${preferences.reminderOffsetMinutes} Minuten.`,
+						body: isLearningEntry(entry)
+							? learningReminderBody(
+									entry,
+									"beforeEvent",
+									preferences.reminderOffsetMinutes,
+								)
+							: `Deine ${getEntryTitle(entry)} startet in ${preferences.reminderOffsetMinutes} Minuten.`,
 						triggerAt: beforeDate,
 						relatedDayEntryId,
 					});
 				}
 			}
 
+			if (
+				isLearningEntry(entry) &&
+				preferences.startLearningTimeEnabled !== false
+			) {
+				const startDate = dateAtMinutes(dayKey, startMinutes);
+				if (startDate && startDate.getTime() > now.getTime()) {
+					plan.push({
+						key: `start:${relatedDayEntryId}`,
+						type: "startEvent",
+						category: "learningPlan",
+						title: "Deine Lernsession beginnt",
+						body: learningReminderBody(entry, "startEvent"),
+						triggerAt: startDate,
+						relatedDayEntryId,
+					});
+				}
+			}
 			if (
 				preferences.forgottenEventEnabled &&
 				entry.durationMinutes !== undefined &&
@@ -201,8 +222,12 @@ export const buildLocalNotificationPlan = ({
 						key: `forgotten:${relatedDayEntryId}`,
 						type: "forgottenEvent",
 						category: getCategory(entry),
-						title: `${eventTitle} nicht vergessen`,
-						body: `Du kannst deine ${getEntryTitle(entry)} noch als erledigt markieren.`,
+						title: isLearningEntry(entry)
+							? "Lernsession neu planen"
+							: `${eventTitle} nicht vergessen`,
+						body: isLearningEntry(entry)
+							? learningReminderBody(entry, "forgottenEvent")
+							: `Du kannst deine ${getEntryTitle(entry)} noch als erledigt markieren.`,
 						triggerAt: forgottenDate,
 						relatedDayEntryId,
 					});

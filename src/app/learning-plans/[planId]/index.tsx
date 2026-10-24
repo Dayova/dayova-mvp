@@ -20,6 +20,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import { LearningReminderOffer } from "~/components/learning-reminder-offer";
 import { ScreenHeader } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
 import {
@@ -291,7 +292,11 @@ export default function LearningPlanSessionsScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const today = useCurrentLocalDay();
-	const params = useLocalSearchParams<{ planId?: string; returnTo?: string }>();
+	const params = useLocalSearchParams<{
+		planId?: string;
+		returnTo?: string;
+		sessionId?: string;
+	}>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const { user } = useAuthSession();
 	const { requestAiConsent } = useAiConsent();
@@ -308,8 +313,14 @@ export default function LearningPlanSessionsScreen() {
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
 	) ?? null) as LearningPlanSnapshot | null;
-	const [selectedSessionId, setSelectedSessionId] =
-		useState<Id<"learningPlanSessions"> | null>(null);
+	const [sessionSelection, setSessionSelection] = useState<{
+		routeSessionId: string | undefined;
+		sessionId: Id<"learningPlanSessions">;
+	} | null>(null);
+	const selectedSessionId =
+		sessionSelection?.routeSessionId === params.sessionId
+			? sessionSelection?.sessionId
+			: params.sessionId;
 	const defaultSession = snapshot
 		? getDefaultLearningPlanSession(snapshot.sessions)
 		: null;
@@ -417,6 +428,11 @@ export default function LearningPlanSessionsScreen() {
 
 	return (
 		<Screen>
+			{snapshot?.sessions.some(
+				(session) => !session.unscheduled && !session.completed,
+			) ? (
+				<LearningReminderOffer />
+			) : null}
 			<Stack.Screen options={{ gestureEnabled: true }} />
 			<ThemedStatusBar />
 			<View
@@ -519,7 +535,10 @@ export default function LearningPlanSessionsScreen() {
 								"performed",
 								session.id,
 							);
-							setSelectedSessionId(session.id);
+							setSessionSelection({
+								routeSessionId: params.sessionId,
+								sessionId: session.id,
+							});
 						}}
 					/>
 				) : (

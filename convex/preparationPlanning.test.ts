@@ -977,3 +977,76 @@ test("flexible budget counts only open required steps and clamps to zero", async
 			.budgetMinutes,
 	).toBe(0);
 });
+
+test("missed slot reminders open the live editor and count only a successful changed schedule", async () => {
+	const { t, id } = await setup();
+	await t.mutation(api.learningPlans.savePreparationSchedule, {
+		learningPlanId: id,
+		revision: 0,
+		slots: [slot],
+	});
+	const entry = await t.run(
+		async (ctx) =>
+			(
+				await ctx.db
+					.query("dayEntries")
+					.withIndex("by_ownerTokenIdentifier", (q) =>
+						q.eq("ownerTokenIdentifier", identity.tokenIdentifier),
+					)
+					.take(10)
+			)[0],
+	);
+	if (!entry?.relatedLearningPlanSessionId)
+		throw new Error("Missing scheduled session");
+	const notificationId = await t.run((ctx) =>
+		ctx.db.insert("notificationHistory", {
+			ownerTokenIdentifier: identity.tokenIdentifier,
+			eventKey: `forgotten:${entry._id}`,
+			category: "learningPlan",
+			type: "forgottenEvent",
+			title: "Neu planen",
+			body: "Finde einen neuen Termin",
+			relatedDayEntryId: entry._id,
+			relatedLearningPlanId: id,
+			relatedLearningPlanSessionId: entry.relatedLearningPlanSessionId,
+			triggeredAt: Date.now(),
+			createdAt: Date.now(),
+		}),
+	);
+	expect(
+		await t.mutation(api.notifications.openNotification, { notificationId }),
+	).toBe(
+		`/learning-plans/${id}/preparation?editSlot=${encodeURIComponent(slot.id)}`,
+	);
+	const schedule = await t.query(api.learningPlans.getPreparationSchedule, {
+		learningPlanId: id,
+		now: { dateKey: "2026-10-05", minutes: 840 },
+	});
+	// Failed saves must roll back the recovery metric as well.
+	await expect(
+		t.mutation(api.learningPlans.savePreparationSchedule, {
+			learningPlanId: id,
+			revision: schedule.revision,
+			slots: [{ ...slot, dateKey: "2026-01-01" }],
+		}),
+	).rejects.toThrow();
+	expect(
+		(await t.run((ctx) => ctx.db.get("notificationHistory", notificationId)))
+			?.rescheduledAt,
+	).toBeUndefined();
+	await t.mutation(api.learningPlans.savePreparationSchedule, {
+		learningPlanId: id,
+		revision: schedule.revision,
+		slots: [{ ...slot, startTime: "18:00" }],
+	});
+	expect(
+		(await t.run((ctx) => ctx.db.get("notificationHistory", notificationId)))
+			?.rescheduledAt,
+	).toBe(Date.now());
+	const entries = await t.query(api.dayEntries.listByDayKeys, {
+		dayKeys: [slot.dateKey],
+	});
+	expect(
+		entries[slot.dateKey].filter((e) => e.kind === "Lernen"),
+	).toMatchObject([{ time: "18:00" }]);
+});

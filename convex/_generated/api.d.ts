@@ -66,6 +66,8 @@ import type * as learningTimePlanning from "../learningTimePlanning.js";
 import type * as learningTimes from "../learningTimes.js";
 import type * as learningTimesBackfill from "../learningTimesBackfill.js";
 import type * as learningTopicMap from "../learningTopicMap.js";
+import type * as notificationEngagement from "../notificationEngagement.js";
+import type * as notificationRules from "../notificationRules.js";
 import type * as notifications from "../notifications.js";
 import type * as personalSubjectReferences from "../personalSubjectReferences.js";
 import type * as personalSubjects from "../personalSubjects.js";
@@ -152,6 +154,8 @@ declare const fullApi: ApiFromModules<{
   learningTimes: typeof learningTimes;
   learningTimesBackfill: typeof learningTimesBackfill;
   learningTopicMap: typeof learningTopicMap;
+  notificationEngagement: typeof notificationEngagement;
+  notificationRules: typeof notificationRules;
   notifications: typeof notifications;
   personalSubjectReferences: typeof personalSubjectReferences;
   personalSubjects: typeof personalSubjects;

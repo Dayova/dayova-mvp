@@ -35,7 +35,13 @@ export const getDeliveredNotificationInput = (
 		return null;
 	}
 
-	const triggeredAt = new Date(notification.date);
+	// Expo iOS 57 sends Unix seconds; Android and earlier clients use milliseconds.
+	// Normalize both native representations before validating against the schedule.
+	const timestamp =
+		notification.date > 0 && notification.date < 1_000_000_000_000
+			? notification.date * 1000
+			: notification.date;
+	const triggeredAt = new Date(timestamp);
 	if (!Number.isFinite(triggeredAt.getTime())) return null;
 
 	return {
