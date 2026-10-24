@@ -167,6 +167,41 @@ describe("AuthNavigationGate", () => {
 		}
 	});
 
+	test("two immediate restart activations dispatch once and a hung restart can be retried", async () => {
+		jest.useFakeTimers();
+		try {
+			mockSession.user = null;
+			mockSession.isSessionLoading = true;
+			mockAccess.access = undefined;
+			mockReloadApp.mockImplementationOnce(() => new Promise<never>(() => {}));
+			const screen = await render(
+				<AuthNavigationGate>
+					<Text>Lerninhalt</Text>
+				</AuthNavigationGate>,
+			);
+			await act(async () => jest.advanceTimersByTime(10_000));
+			const button = screen.getByRole("button", { name: "App neu starten" });
+			await act(async () => {
+				await Promise.all([fireEvent.press(button), fireEvent.press(button)]);
+			});
+			expect(mockReloadApp).toHaveBeenCalledTimes(1);
+			await act(async () => jest.advanceTimersByTime(10_000));
+			expect(screen.getByRole("alert")).toHaveTextContent(/Schließe Dayova/);
+			expect(
+				screen.getByRole("button", { name: "App neu starten" }),
+			).not.toBeDisabled();
+			await fireEvent.press(
+				screen.getByRole("button", { name: "App neu starten" }),
+			);
+			expect(mockReloadApp).toHaveBeenCalledTimes(2);
+			expect(
+				screen.getByRole("button", { name: "Wird neu gestartet …" }),
+			).toBeDisabled();
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
 	const flushAnimationFrames = () => {
 		const callbacks = animationFrames.splice(0);
 		for (const callback of callbacks) callback(performance.now());

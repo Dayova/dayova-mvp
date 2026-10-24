@@ -1,6 +1,6 @@
 import { reloadAppAsync } from "expo";
 import { usePathname, useRootNavigationState, useRouter } from "expo-router";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "~/components/ui/button";
@@ -32,6 +32,7 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 		retryAccessVerification,
 	} = useAccess();
 	const [retrying, setRetrying] = useState(false);
+	const retryingRef = useRef(false);
 	const [retryError, setRetryError] = useState<string | null>(null);
 	const [sessionRestoreTimedOut, setSessionRestoreTimedOut] = useState(false);
 	const sessionRecoveryRequired = isSessionLoading && sessionRestoreTimedOut;
@@ -131,9 +132,12 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 									disabled={retrying}
 									accessibilityState={{ busy: retrying, disabled: retrying }}
 									onPress={() => {
+										if (retryingRef.current) return;
+										retryingRef.current = true;
 										setRetrying(true);
 										setRetryError(null);
 										let timeout: ReturnType<typeof setTimeout>;
+										let restartAccepted = false;
 										void Promise.race([
 											sessionRecoveryRequired
 												? reloadAppAsync()
@@ -145,6 +149,9 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 												);
 											}),
 										])
+											.then(() => {
+												restartAccepted = sessionRecoveryRequired;
+											})
 											.catch(() =>
 												setRetryError(
 													sessionRecoveryRequired
@@ -154,7 +161,10 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 											)
 											.finally(() => {
 												clearTimeout(timeout);
-												setRetrying(false);
+												if (!restartAccepted) {
+													retryingRef.current = false;
+													setRetrying(false);
+												}
 											});
 									}}
 								>
