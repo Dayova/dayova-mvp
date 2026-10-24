@@ -15,8 +15,12 @@ const env = {
 	MAESTRO_CI_PASSWORD: "fixture-password",
 };
 function services(fault = "") {
-	const canUseApp =
-		fault === "eligible" || fault === "unexpected-eligibility-denial";
+	const canUseApp = [
+		"eligible",
+		"unexpected-eligibility-denial",
+		"stale-notification-validator",
+		"malformed-notification-result",
+	].includes(fault);
 	const access = { state: canUseApp ? "paid" : "needsActivation", canUseApp };
 	let initialized = false,
 		onboarding = false,
