@@ -180,12 +180,20 @@ export function MaterialUploadStep({
 
 function SearchSetupPage({
 	children,
+	title,
+	selectionLabel,
+	selectionCount,
+	optional = false,
 	canContinue,
 	errorMessage,
 	isBusy,
 	onContinue,
 }: {
 	children: ReactNode;
+	title: string;
+	selectionLabel: string;
+	selectionCount: number;
+	optional?: boolean;
 	canContinue: boolean;
 	errorMessage: string | null;
 	isBusy: boolean;
@@ -198,6 +206,21 @@ function SearchSetupPage({
 				topPadding={0}
 				contentContainerStyle={{ paddingBottom: 24 }}
 			>
+				<View className="flex-row flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+					<Text
+						accessibilityRole="header"
+						className="shrink font-poppins font-semibold text-body-1 text-text"
+					>
+						{title}
+					</Text>
+					<Text
+						accessibilityLabel={`${selectionLabel}: ${selectionCount}${optional ? ", optional" : ""}`}
+						className="font-poppins text-body-4 text-secondary-text"
+					>
+						{optional ? "Optional · " : ""}
+						{selectionCount} ausgewählt
+					</Text>
+				</View>
 				{children}
 				<SetupError message={errorMessage} />
 			</ScreenScroll>
@@ -233,17 +256,14 @@ export function RequiredTopicsStep({
 }) {
 	return (
 		<SearchSetupPage
+			title="Prüfungsthemen"
+			selectionLabel="Ausgewählte Themen"
+			selectionCount={selectedTopics.length}
 			canContinue={canContinue}
 			errorMessage={errorMessage}
 			isBusy={isBusy}
 			onContinue={onContinue}
 		>
-			<Text
-				accessibilityRole="header"
-				className="font-poppins font-semibold text-body-1 text-text"
-			>
-				Welche Themen kommen in der Prüfung dran?
-			</Text>
 			<TopicSearch
 				selectedTopics={selectedTopics}
 				subject={subject}
@@ -276,17 +296,17 @@ export function ExamHintsStep({
 }) {
 	return (
 		<SearchSetupPage
+			title="Prüfungshinweise"
+			selectionLabel="Ausgewählte Hinweise"
+			selectionCount={
+				additionalInfo.split("\n").filter((line) => line.trim()).length
+			}
+			optional
 			canContinue={canContinue}
 			errorMessage={errorMessage}
 			isBusy={isBusy}
 			onContinue={onContinue}
 		>
-			<Text
-				accessibilityRole="header"
-				className="font-poppins font-semibold text-body-1 text-text"
-			>
-				Welche Hinweise gibt es zur Prüfung?
-			</Text>
 			<ExamHintsEditor
 				subject={subject}
 				selectedTopics={selectedTopics}

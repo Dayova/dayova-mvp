@@ -46,6 +46,20 @@ Existing hint lines remain removable; custom text can be added through search.
 Changing topics never changes the selected hints. See the
 [topic-input contract](../product/adr/inline-topic-search-with-free-scope.md).
 
+The two exam search steps share a compact heading with the current selection
+count; the hints step also identifies the input as optional. Search fields and
+result cards use their shared `compact` density: 56pt minimum controls with the
+same type, colors, selection feedback and full wrapping as comfortable controls.
+Removable chips keep a 44pt minimum target. These are minimums, not fixed heights:
+system text sizing may grow controls and the page remains vertically scrollable.
+The compact composition stays the same with the keyboard open or closed. Keep
+at least three complete suggestions above Continue on the standard portrait
+phone check; enlarged text prioritizes complete, reachable content over a fixed
+number of visible rows.
+Topic results omit a repeated caption only when every supplied subject matches
+the chosen course's existing WLO context. Cross-subject, mixed and unknown
+contexts remain visible; accessible hints always retain all supplied subjects.
+
 All app switches must use `Switch` from `src/components/ui/switch`. Do not
 import or use `Switch` from `react-native`, and do not render Expo UI switches
 directly from app screens.

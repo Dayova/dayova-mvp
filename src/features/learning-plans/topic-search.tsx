@@ -5,6 +5,7 @@ import {
 	normalizeWloQuery,
 	normalizeWloText,
 	rankWloTopics,
+	resolveWloSubjectContext,
 } from "#convex/wloSubjectContext";
 import { ErrorMessage } from "~/components/ui/error-message";
 import { SearchField } from "~/components/ui/search-field";
@@ -39,6 +40,18 @@ type CachedTopics = {
 	term: string;
 	subject: string;
 };
+
+// Repeat subject captions only when they add context beyond the chosen course.
+// Accessible hints keep the complete provider context in either case.
+function visibleSubjectContext(
+	subjects: string[] | undefined,
+	subject: string,
+) {
+	const context = resolveWloSubjectContext(subject).map(normalizeWloText);
+	return subjects?.some((name) => !context.includes(normalizeWloText(name)))
+		? subjects.join(" · ")
+		: undefined;
+}
 
 function cachedSearch(
 	cache: Map<string, CachedTopics>,
@@ -216,7 +229,9 @@ export function TopicSearch({
 			title={directTitle}
 			detail={
 				exact
-					? exact.subjects?.join(" · ") || "Katalogvorschlag"
+					? exact.subjects?.length
+						? visibleSubjectContext(exact.subjects, subject)
+						: "Katalogvorschlag"
 					: "Eigenes Thema"
 			}
 			hint={
@@ -230,8 +245,9 @@ export function TopicSearch({
 		/>
 	) : null;
 	return (
-		<View className="mt-6 gap-3">
+		<View className="mt-2 gap-2">
 			<SearchField
+				density="compact"
 				accessibilityLabel="Themen suchen"
 				accessibilityHint="Suche nach Vorschlägen oder wähle deinen eingegebenen Begriff direkt als Thema aus."
 				accessibilityState={{
@@ -303,7 +319,7 @@ export function TopicSearch({
 					Themen werden gesucht …
 				</Text>
 			) : null}
-			<View className="gap-2">
+			<View className="gap-1">
 				{exact ? directChoice : null}
 				{canSearch && result ? (
 					<>
@@ -329,7 +345,7 @@ export function TopicSearch({
 								<SearchSuggestion
 									key={topic.id}
 									title={topic.title}
-									detail={context}
+									detail={visibleSubjectContext(topic.subjects, subject)}
 									hint={context ? `Themenbereich: ${context}` : undefined}
 									selected={isIncluded}
 									disabled={disabled}

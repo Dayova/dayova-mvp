@@ -56,6 +56,88 @@ jest.mock("~/lib/theme", () => ({
 }));
 
 describe("learning-plan setup steps", () => {
+	test("keeps the topic count in sync when adding and removing selections", async () => {
+		function TopicCountExample() {
+			const [selectedTopics, setSelectedTopics] = useState([
+				"Lineare Funktionen",
+				"Quadratische Funktionen",
+			]);
+			return (
+				<RequiredTopicsStep
+					subject="Mathematik"
+					searchTopics={async () => ({ topics: [], truncated: false })}
+					selectedTopics={selectedTopics}
+					onChangeSelectedTopics={setSelectedTopics}
+					canContinue
+					isBusy={false}
+					errorMessage={null}
+					onContinue={jest.fn()}
+				/>
+			);
+		}
+		const screen = await render(<TopicCountExample />);
+		expect(screen.getByLabelText("Ausgewählte Themen: 2")).toBeOnTheScreen();
+		await fireEvent.changeText(
+			screen.getByLabelText("Themen suchen"),
+			"Vektoren",
+		);
+		await fireEvent.press(screen.getByRole("checkbox", { name: "Vektoren" }));
+		expect(screen.getByLabelText("Ausgewählte Themen: 3")).toBeOnTheScreen();
+		expect(screen.getByText("3 ausgewählt")).toBeOnTheScreen();
+		await fireEvent.changeText(screen.getByLabelText("Themen suchen"), "");
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Lineare Funktionen entfernen" }),
+		);
+		expect(screen.getByLabelText("Ausgewählte Themen: 2")).toBeOnTheScreen();
+		expect(
+			screen.getByRole("button", { name: "Vektoren entfernen" }),
+		).toBeOnTheScreen();
+	});
+
+	test("keeps the hint count in sync without counting empty legacy lines", async () => {
+		function HintCountExample() {
+			const [additionalInfo, setAdditionalInfo] = useState(
+				"Rechenweg angeben\n\nErgebnis kontrollieren\n",
+			);
+			return (
+				<ExamHintsStep
+					subject="Mathematik"
+					selectedTopics={["Lineare Funktionen"]}
+					additionalInfo={additionalInfo}
+					onChange={setAdditionalInfo}
+					canContinue
+					isBusy={false}
+					errorMessage={null}
+					onContinue={jest.fn()}
+				/>
+			);
+		}
+		const screen = await render(<HintCountExample />);
+		expect(
+			screen.getByLabelText("Ausgewählte Hinweise: 2, optional"),
+		).toBeOnTheScreen();
+		await fireEvent.changeText(
+			screen.getByLabelText("Hinweise suchen"),
+			"Einheiten nennen",
+		);
+		await fireEvent.press(
+			screen.getByRole("checkbox", { name: "Einheiten nennen" }),
+		);
+		expect(
+			screen.getByLabelText("Ausgewählte Hinweise: 3, optional"),
+		).toBeOnTheScreen();
+		expect(screen.getByText("Optional · 3 ausgewählt")).toBeOnTheScreen();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Rechenweg angeben entfernen" }),
+		);
+		expect(
+			screen.getByLabelText("Ausgewählte Hinweise: 2, optional"),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByRole("button", { name: "Ergebnis kontrollieren entfernen" }),
+		).toBeOnTheScreen();
+	});
+
 	test("topic page contains only topic search and Continue", async () => {
 		const next = jest.fn();
 		const screen = await render(
