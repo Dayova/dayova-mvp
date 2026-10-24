@@ -1,10 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { AccessibilityInfo } from "react-native";
 import Animated, {
 	cancelAnimation,
 	Easing,
 	interpolate,
 	useAnimatedStyle,
-	useReducedMotion,
 	useSharedValue,
 	withTiming,
 } from "react-native-reanimated";
@@ -18,10 +18,36 @@ export function CompletionAccent({
 	color: string;
 	shape?: "card" | "circle";
 }) {
-	const reduceMotion = useReducedMotion();
+	// Reanimated's hook snapshots startup state; native preferences can change
+	// while a learner is already using the app. Stay still until it is known.
+	const [reduceMotion, setReduceMotion] = useState<boolean | null>(null);
 	const progress = useSharedValue(0);
 
 	useEffect(() => {
+		let active = true;
+		let receivedChange = false;
+		const subscription = AccessibilityInfo.addEventListener(
+			"reduceMotionChanged",
+			(enabled) => {
+				receivedChange = true;
+				setReduceMotion(enabled);
+			},
+		);
+		void AccessibilityInfo.isReduceMotionEnabled()
+			.then((enabled) => {
+				if (active && !receivedChange) setReduceMotion(enabled);
+			})
+			.catch(() => {
+				if (active && !receivedChange) setReduceMotion(true);
+			});
+		return () => {
+			active = false;
+			subscription.remove();
+		};
+	}, []);
+
+	useEffect(() => {
+		if (reduceMotion === null) return;
 		if (reduceMotion) {
 			progress.set(1);
 			return;
@@ -38,7 +64,7 @@ export function CompletionAccent({
 		transform: [{ scale: 0.96 + progress.get() * 0.16 }],
 	}));
 
-	if (reduceMotion) return null;
+	if (reduceMotion !== false) return null;
 
 	return (
 		<Animated.View

@@ -1,6 +1,13 @@
-import { describe, expect, jest, test } from "@jest/globals";
+import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render } from "@testing-library/react-native";
+import { AccessibilityInfo } from "react-native";
 import { LearningSessionCompletion } from "~/features/learning-plans/learning-session-completion";
+
+beforeEach(() => {
+	jest
+		.spyOn(AccessibilityInfo, "isReduceMotionEnabled")
+		.mockResolvedValue(true);
+});
 
 jest.mock("expo-router", () => ({
 	Stack: { Screen: () => null },
