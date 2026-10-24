@@ -1,5 +1,13 @@
 # Google Play launch command center
 
+## Trial-policy rollout compatibility
+
+Publish the app that displays and accepts terms version
+2026-10-16-30d-v1 before enabling its first-activation requirement in the
+backend. Older, not-yet-activated clients must update before starting a trial;
+their existing error screen can show only a generic activation failure.
+Include the update instruction in release/support communication. Existing
+entitlements and their accepted terms remain usable without renewed acceptance.
 Last reconciled: 2026-09-16 using signed-in Play Console, App Store Connect,
 RevenueCat, EAS, and public listing/policy checks. See the
 [live verification report](../live-verification-2026-09-16.md) for evidence and
@@ -54,9 +62,12 @@ These were verified without changing the live declarations or website.
 5. **Preserve the OTA gate.** Store availability is confirmed, but installation
    and runtime verification remain outstanding. Keep `release/production-ota-baseline.json` unchanged until
    both platforms meet the [baseline requirements](../README.md).
-6. **Start the promotion clock from real users, not review.** PRICING-002's
-   roughly day 8–10 email is anchored to public availability / authoritative
-   trial start and must still expire no later than the 14-day trial.
+6. **Use stored trial deadlines for commercial timing.** Reconcile PRICING-002's
+   historical day 8 to 10 email with the DAY-518 rollout and DAY-533 before sending.
+   Any approved offer must end no later than the account's stored
+   trialExpiresAt; preserve existing deadlines. DAY-518 does not activate or
+   retime that campaign. New activations receive 30 days only after coordinated
+   app/backend rollout; publish the prepared listing copy at the same time.
 
 ## Release ownership
 

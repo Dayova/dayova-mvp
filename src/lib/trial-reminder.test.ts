@@ -7,13 +7,18 @@ import {
 const reminderAt = Date.parse("2026-08-09T10:00:00.000Z");
 
 describe("buildTrialReminder", () => {
-	it("plans the agreed Day-12 reminder for an active trial", () => {
+	it.each([
+		["2026-08-09T10:00:00.000Z", "2026-08-11T10:00:00.000Z"],
+		["2026-08-25T10:00:00.000Z", "2026-08-27T10:00:00.000Z"],
+		["2026-11-18T12:00:00.000Z", "2026-11-20T12:00:00.000Z"],
+	])("uses the server reminder %s for expiry %s, including legacy trials", (reminderDate, expiryDate) => {
+		const reminderAt = Date.parse(reminderDate);
 		expect(
 			buildTrialReminder({
 				access: {
 					state: "trial",
 					reminderAt,
-					trialExpiresAt: Date.parse("2026-08-11T10:00:00.000Z"),
+					trialExpiresAt: Date.parse(expiryDate),
 				},
 				now: Date.parse("2026-08-01T10:00:00.000Z"),
 			}),

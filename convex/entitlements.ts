@@ -1,4 +1,9 @@
 import { v } from "convex/values";
+import {
+	TRIAL_DURATION_DAYS,
+	TRIAL_REMINDER_DAYS_BEFORE_END,
+	TRIAL_TERMS_VERSION,
+} from "../src/lib/trial-policy";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
@@ -13,8 +18,6 @@ import { enqueueCrmUpdate } from "./crmUpdates";
 import { throwUserFacingError } from "./errors";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const TRIAL_DURATION_MS = 14 * DAY_MS;
-const TRIAL_REMINDER_DELAY_MS = 12 * DAY_MS;
 
 async function scheduleCrmSync(ctx: MutationCtx, userId: Doc<"users">["_id"]) {
 	await enqueueCrmUpdate(ctx, userId);
@@ -39,7 +42,7 @@ const toTrialAccess = (entitlement: {
 	trialReminderAt: number;
 	trialTermsVersion: string;
 }) => ({
-	canUseApp: true,
+	canUseApp: true as const,
 	state: "trial" as const,
 	trialStartedAt: entitlement.trialStartedAt,
 	trialExpiresAt: entitlement.trialExpiresAt,
@@ -56,7 +59,7 @@ const toPaidAccess = (entitlement: {
 	subscriptionStore?: string;
 	subscriptionWillRenew?: boolean;
 }) => ({
-	canUseApp: true,
+	canUseApp: true as const,
 	managementUrl: entitlement.subscriptionManagementUrl,
 	productId: entitlement.subscriptionProductId,
 	state:
@@ -88,7 +91,7 @@ export const getCurrentAccess = (
 		entitlement.trialTermsVersion === undefined
 	) {
 		return {
-			canUseApp: false,
+			canUseApp: false as const,
 			managementUrl: entitlement.subscriptionManagementUrl,
 			productId: entitlement.subscriptionProductId,
 			state: "expired" as const,
@@ -109,7 +112,7 @@ export const getCurrentAccess = (
 	if (now >= entitlement.trialExpiresAt) {
 		return {
 			...trialAccess,
-			canUseApp: false,
+			canUseApp: false as const,
 			managementUrl: entitlement.subscriptionManagementUrl,
 			productId: entitlement.subscriptionProductId,
 			state: "expired" as const,
@@ -158,7 +161,7 @@ export const getMyAccess = query({
 
 		if (!entitlement) {
 			return {
-				canUseApp: false,
+				canUseApp: false as const,
 				state: "needsActivation" as const,
 			};
 		}
@@ -358,10 +361,41 @@ export const deliverTrialReminder = internalMutation({
 	},
 });
 
+const subscriptionAccessMetadataValidator = v.object({
+	managementUrl: v.optional(v.string()),
+	productId: v.optional(v.string()),
+	store: v.optional(v.string()),
+	subscriptionExpiresAt: v.optional(v.number()),
+	subscriptionGraceExpiresAt: v.optional(v.number()),
+	willRenew: v.boolean(),
+});
+/** Grants a first trial for current terms; repeated activation preserves stored access. */
 export const activateMyTrial = mutation({
 	args: {
 		termsVersion: v.string(),
 	},
+	returns: v.union(
+		v.object({
+			canUseApp: v.literal(true),
+			state: v.literal("trial"),
+			trialStartedAt: v.number(),
+			trialExpiresAt: v.number(),
+			reminderAt: v.number(),
+			trialTermsVersion: v.string(),
+		}),
+		subscriptionAccessMetadataValidator.extend({
+			canUseApp: v.literal(true),
+			state: v.union(v.literal("paid"), v.literal("billingGrace")),
+		}),
+		subscriptionAccessMetadataValidator.extend({
+			canUseApp: v.literal(false),
+			state: v.literal("expired"),
+			trialStartedAt: v.optional(v.number()),
+			trialExpiresAt: v.optional(v.number()),
+			reminderAt: v.optional(v.number()),
+			trialTermsVersion: v.optional(v.string()),
+		}),
+	),
 	handler: async (ctx, args) => {
 		const { identity, user } = await getCurrentUser(ctx);
 		const existing = await ctx.db
@@ -371,12 +405,20 @@ export const activateMyTrial = mutation({
 			)
 			.unique();
 		if (existing) {
+			// Preserve every stored cohort, including manual extensions. Migrating
+			// existing trials needs a separate decision; activation never regrants one.
 			return getCurrentAccess(existing, Date.now());
 		}
 
+		if (args.termsVersion !== TRIAL_TERMS_VERSION) {
+			throwUserFacingError(
+				"Bitte aktualisiere Dayova und akzeptiere die aktuellen Nutzungsbedingungen, um deine Testphase zu starten.",
+			);
+		}
+
 		const now = Date.now();
-		const trialExpiresAt = now + TRIAL_DURATION_MS;
-		const reminderAt = now + TRIAL_REMINDER_DELAY_MS;
+		const trialExpiresAt = now + TRIAL_DURATION_DAYS * DAY_MS;
+		const reminderAt = trialExpiresAt - TRIAL_REMINDER_DAYS_BEFORE_END * DAY_MS;
 
 		const entitlement = {
 			ownerTokenIdentifier: identity.tokenIdentifier,

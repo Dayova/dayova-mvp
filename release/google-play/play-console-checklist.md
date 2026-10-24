@@ -49,7 +49,10 @@ No account credentials or signing secrets are stored in this checklist.
 
 ## 3. Store presence
 
-- [x] Paste the de-DE copy from [`store-listing-de-DE.md`](./store-listing-de-DE.md).
+- [x] Submit the de-DE copy for the September release (historical record).
+- [ ] Publish the prepared 30-day copy from
+      [store-listing-de-DE.md](./store-listing-de-DE.md) with the DAY-518
+      app/backend and website/legal/email rollout; verify the live listing.
 - [x] Upload [`assets/play-store-icon-512.png`](./assets/play-store-icon-512.png).
 - [x] Upload [`assets/feature-graphic-1024x500.png`](./assets/feature-graphic-1024x500.png).
 - [x] Upload the eight current Android phone screenshots documented in
@@ -99,7 +102,8 @@ Console lists ten actioned declarations with no outstanding prompts on September
       Dayova separately qualifies for and implements an applicable Google
       program. Digital learning subscriptions normally use Google Play Billing.
 - [ ] Test purchase, restore, pending/cancelled purchase, expiration, account
-      switching, and the active 14-day no-card trial state.
+      switching, and new 30-day no-card activations after DAY-518 rollout.
+      Verify existing stored trials and manual extensions keep their deadlines.
 
 RevenueCat project `413fab77` is connected. The production EAS environment has
 both public platform keys and production Convex has the server key. Secret

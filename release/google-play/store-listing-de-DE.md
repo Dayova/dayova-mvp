@@ -1,9 +1,13 @@
 # Google Play store listing — de-DE
 
-Public listing rechecked: 2026-09-16. App name, descriptions, category, support
-email, website, privacy URL, and current release notes below match the
+Public listing baseline last rechecked: 2026-09-16 against the
 [German Play listing](https://play.google.com/store/apps/details?id=com.dayova&hl=de&gl=DE).
-Reviewer instructions retain the August record; reviewer login was not retested.
+The trial copy below is prepared for [DAY-518](https://linear.app/dayova/issue/DAY-518)
+and the [30-day decision](https://app.notion.com/p/3fb2e87228bf81d8a5d2ce018cf138a9);
+it is not a claim that the live listing has been updated. Publish this copy only
+with the coordinated app/backend rollout. Existing stored trial deadlines remain
+unchanged. Other listing fields and release notes retain the September baseline;
+reviewer instructions retain the August record and were not retested.
 
 ## Main store listing
 
@@ -30,7 +34,7 @@ Mit Dayova kannst du:
 
 Statt dir den gesamten Lernstoff auf einmal zu zeigen, konzentriert sich Dayova auf den nächsten sinnvollen Schritt. Nach abgeschlossenen Lernsessions wird der weitere Plan anhand deiner Ergebnisse aktualisiert.
 
-Du kannst die Lernfunktionen 14 Tage lang ohne Zahlungsmittel ausprobieren. Danach ist für die weitere Nutzung ein monatliches oder jährliches, über Google Play verwaltetes Abonnement erforderlich. Preis und Abrechnungszeitraum werden dir vor dem Kauf in Google Play angezeigt. Abonnements können in den Google-Play-Einstellungen verwaltet und gekündigt werden.
+Du kannst die Lernfunktionen 30 Tage lang ohne Zahlungsmittel ausprobieren. Danach ist für die weitere Nutzung ein monatliches oder jährliches, über Google Play verwaltetes Abonnement erforderlich. Preis und Abrechnungszeitraum werden dir vor dem Kauf in Google Play angezeigt. Abonnements können in den Google-Play-Einstellungen verwaltet und gekündigt werden.
 
 Für Dayova brauchst du ein Konto und eine Internetverbindung.
 
@@ -50,7 +54,7 @@ Erste Android-Version von Dayova: Organisiere Prüfungen und Schulmaterial, erst
 | --- | --- |
 | Default language | German (Germany) — de-DE |
 | App or game | App |
-| Free or paid | Free download; paid digital subscription after the 14-day no-card trial |
+| Free or paid | Free download; paid digital subscription after the 30-day no-card trial |
 | Category | Education |
 | Support email | kontakt@dayova.de (current public listing; supersedes the August `contact@dayova.de` record) |
 | Website | https://dayova.com/ |
@@ -81,6 +85,8 @@ DAY-183 and must not be inferred from reviewer access.
 ## Copy checks before submission
 
 - Confirm every feature named above works in the exact Play internal-test build.
+- Keep the 30-day listing copy unpublished until DAY-518 app/backend rollout and
+  the matching website/legal/email copy are ready; verify the live text afterward.
 - Use Play-localized prices; do not hard-code euro prices in the description.
 - Do not mention the parent web checkout in the Android listing while that route
   is disabled and Google Play Billing is the purchase path.
