@@ -173,7 +173,6 @@ describe("AuthNavigationGate", () => {
 			mockSession.user = null;
 			mockSession.isSessionLoading = true;
 			mockAccess.access = undefined;
-			mockReloadApp.mockImplementationOnce(() => new Promise<never>(() => {}));
 			const screen = await render(
 				<AuthNavigationGate>
 					<Text>Lerninhalt</Text>
@@ -181,9 +180,16 @@ describe("AuthNavigationGate", () => {
 			);
 			await act(async () => jest.advanceTimersByTime(10_000));
 			const button = screen.getByRole("button", { name: "App neu starten" });
-			await act(async () => {
-				await Promise.all([fireEvent.press(button), fireEvent.press(button)]);
+			let repeatedPress: Promise<unknown> | undefined;
+			mockReloadApp.mockImplementationOnce(() => {
+				// Deliver the second press before the first handler can commit disabled state.
+				// Nesting the events also keeps the testing library's act scopes ordered.
+				repeatedPress = fireEvent.press(button);
+				return new Promise<never>(() => {});
 			});
+			await fireEvent.press(button);
+			expect(repeatedPress).toBeDefined();
+			await repeatedPress;
 			expect(mockReloadApp).toHaveBeenCalledTimes(1);
 			await act(async () => jest.advanceTimersByTime(10_000));
 			expect(screen.getByRole("alert")).toHaveTextContent(/Schließe Dayova/);
