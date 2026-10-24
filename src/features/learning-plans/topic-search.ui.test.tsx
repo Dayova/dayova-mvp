@@ -10,7 +10,7 @@ import { act, fireEvent, render } from "@testing-library/react-native";
 import { Profiler, useState } from "react";
 import { isMeaningfulTopicDescription } from "#convex/topicDescriptionValidation";
 import { Textarea } from "~/components/ui/textarea";
-import { RequiredTopicsStep } from "./learning-plan-setup-steps";
+import { ExamSearchStep } from "./learning-plan-setup-steps";
 import {
 	type SearchTopics,
 	TopicSearch,
@@ -69,7 +69,8 @@ function Setup({
 	const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
 	return (
 		<>
-			<RequiredTopicsStep
+			<ExamSearchStep
+				step="requiredTopics"
 				subject={subject}
 				searchTopics={searchTopics}
 				selectedTopics={selectedTopics}
@@ -459,6 +460,45 @@ describe("inline topic search with a free-text exam scope", () => {
 			expect(screen.getByRole("checkbox", { name: title })).toBeOnTheScreen();
 		expect(screen.getAllByRole("checkbox")).toHaveLength(5);
 		expect(screen.queryByText("Weitere Vorschläge")).toBeNull();
+	});
+
+	test("avoids repeating the current course while keeping other and unknown subject context", async () => {
+		const search = jest.fn<SearchTopics>().mockResolvedValue({
+			topics: [
+				{ id: "own", title: "Funktionsbegriff", subjects: ["Mathematik"] },
+				{ id: "other", title: "Funktionsmodell", subjects: ["Physik"] },
+				{
+					id: "mixed",
+					title: "Funktionsgraph",
+					subjects: ["Mathematik", "Physik"],
+				},
+			],
+			truncated: false,
+		});
+		const screen = await render(
+			<Setup searchTopics={search} subject="Mathe LK" />,
+		);
+		await fireEvent.changeText(
+			screen.getByLabelText("Themen suchen"),
+			"Funktion",
+		);
+		await debounce();
+		expect(screen.queryByText("Mathematik")).toBeNull();
+		expect(screen.getByText("Physik")).toBeOnTheScreen();
+		expect(screen.getByText("Mathematik · Physik")).toBeOnTheScreen();
+		expect(
+			screen.getByRole("checkbox", { name: "Funktionsbegriff" }),
+		).toHaveProp("accessibilityHint", "Themenbereich: Mathematik");
+		await fireEvent.changeText(
+			screen.getByLabelText("Themen suchen"),
+			"Funktionsbegriff",
+		);
+		await debounce();
+		expect(screen.queryByText("Mathematik")).toBeNull();
+		await screen.rerender(<Setup searchTopics={search} subject="Mein Kurs" />);
+		await debounce();
+		expect(screen.getByText("Mathematik")).toBeOnTheScreen();
+		expect(screen.getByText("Physik")).toBeOnTheScreen();
 	});
 
 	test("keeps subject context on cross-subject matches and preserves additional information", async () => {

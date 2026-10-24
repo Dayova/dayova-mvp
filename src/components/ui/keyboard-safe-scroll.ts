@@ -15,10 +15,6 @@ type KeyboardSafeScrollConfig = {
 	showsVerticalScrollIndicator: false;
 };
 
-function shouldUseKeyboardStickyActions(platform: KeyboardSafePlatform) {
-	return platform === "ios";
-}
-
 function getKeyboardSafeScrollConfig(
 	platform: KeyboardSafePlatform,
 	options: KeyboardSafeScrollOptions = {},
@@ -35,4 +31,4 @@ function getKeyboardSafeScrollConfig(
 }
 
 export type { KeyboardSafeScrollOptions };
-export { getKeyboardSafeScrollConfig, shouldUseKeyboardStickyActions };
+export { getKeyboardSafeScrollConfig };

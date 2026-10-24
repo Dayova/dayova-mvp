@@ -22,6 +22,7 @@ export function SelectionOptionRow({
 	accessibilityLabel = label,
 	accessibilityHint = description,
 	className,
+	density = "comfortable",
 }: {
 	Icon?: typeof Check;
 	label: string;
@@ -33,6 +34,7 @@ export function SelectionOptionRow({
 	accessibilityLabel?: string;
 	accessibilityHint?: string;
 	className?: string;
+	density?: "comfortable" | "compact";
 }) {
 	const { colors } = useDayovaTheme();
 
@@ -45,7 +47,10 @@ export function SelectionOptionRow({
 			accessibilityState={{ checked: selected, disabled }}
 			disabled={disabled}
 			className={className}
-			contentClassName="min-h-16 flex-row items-center gap-4 rounded-3xl px-5 py-3"
+			contentClassName={cn(
+				"min-h-16 flex-row items-center gap-4 rounded-3xl px-5 py-3",
+				density === "compact" && "min-h-14 gap-3 px-4 py-2",
+			)}
 			onPress={() => {
 				if (!selected) {
 					void triggerSelectionHaptic({

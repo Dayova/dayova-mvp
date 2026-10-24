@@ -15,8 +15,8 @@ import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { LearningPlanCreationProgressHeader } from "~/features/learning-plans/creation-progress-header";
 import {
+	ExamSearchStep,
 	MaterialUploadStep,
-	RequiredTopicsStep,
 } from "~/features/learning-plans/learning-plan-setup-steps";
 import type { SearchTopics } from "~/features/learning-plans/topic-search";
 import { DayovaThemeProvider, useDayovaTheme } from "~/lib/theme";
@@ -240,7 +240,8 @@ function EvidenceScreen() {
 					) : scenario.startsWith("before") ? (
 						<Baseline {...props} />
 					) : (
-						<RequiredTopicsStep
+						<ExamSearchStep
+							step="requiredTopics"
 							key={generation}
 							{...props}
 							selectedTopics={selectedTopics}

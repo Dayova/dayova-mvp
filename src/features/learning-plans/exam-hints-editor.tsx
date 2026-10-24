@@ -57,8 +57,9 @@ export function ExamHintsEditor({
 	const selected = (hint: string) =>
 		selections.find((item) => hintKey(item.text) === hintKey(hint));
 	return (
-		<View className="mt-6 gap-3">
+		<View className="mt-2 gap-2">
 			<SearchField
+				density="compact"
 				accessibilityLabel="Hinweise suchen"
 				placeholder="Hinweis suchen oder hinzufügen"
 				value={query}
@@ -82,7 +83,7 @@ export function ExamHintsEditor({
 				</SearchSelectionRow>
 			) : null}
 			{examples.length > 0 ? (
-				<View className="mt-1 gap-2">
+				<View className="gap-1">
 					{visibleExamples.map((example) => {
 						const selection = selected(example);
 						return (

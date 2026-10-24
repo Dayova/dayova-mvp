@@ -46,6 +46,26 @@ Existing hint lines remain removable; custom text can be added through search.
 Changing topics never changes the selected hints. See the
 [topic-input contract](../product/adr/inline-topic-search-with-free-scope.md).
 
+The two exam search steps share a compact heading with the current selection
+count; the hints step also identifies the input as optional. Search fields and
+result cards use their shared `compact` density: 56pt minimum controls with the
+same type, colors, selection feedback and full wrapping as comfortable controls.
+Removable chips keep a 44pt minimum target. These are minimums, not fixed heights:
+system text sizing may grow controls and the page remains vertically scrollable.
+The compact composition stays the same with the keyboard open or closed. Keep
+at least three complete suggestions above Continue on the standard portrait
+phone check; enlarged text prioritizes complete, reachable content over a fixed
+number of visible rows.
+Both steps use the same `ExamSearchStep` instance so their native scroll and
+keyboard-following footer survive a topics/hints transition. After dismissal,
+Continue must return to its closed-keyboard reference position, including when
+the next step was entered with the keyboard open. Verify this with
+`scripts/native-qa/assert-action-restored.py` and a transition recording; merely
+checking that the action is visible does not detect a stranded elevated footer.
+Topic results omit a repeated caption only when every supplied subject matches
+the chosen course's existing WLO context. Cross-subject, mixed and unknown
+contexts remain visible; accessible hints always retain all supplied subjects.
+
 All app switches must use `Switch` from `src/components/ui/switch`. Do not
 import or use `Switch` from `react-native`, and do not render Expo UI switches
 directly from app screens.
@@ -178,12 +198,18 @@ sizes so the expanded header does not leave task content unreachable. See
 
 Learning-session actions stay pinned while their measured height uses at most
 40% of the available question area. Larger actions join the vertical content
-scroll; iOS keyboard height is deducted from that budget, and pinned actions
-measure their screen position below the header. On Android, actions always join
-the content scroll while the keyboard is visible, following the shared keyboard
-contract rather than relying on window resizing. Written questions and
-multiple-choice answers both remain scrollable. At compact/enlarged sizes, choice
-letters and selection indicators sit above the full-width answer text. Long
+scroll. Keyboard height is deducted from that budget on both iOS and Android,
+and pinned actions measure their screen position below the header and follow
+the keyboard. Platform alone does not move actions into the content scroll.
+Written questions and multiple-choice answers both remain scrollable.
+Written answers use the same bounded editor in diagnostics and learning
+sessions. The editor must not stretch to the closed-keyboard viewport and then
+shrink on focus: that changing input rectangle can scroll a fitting question
+out of view. Keep the question above the editor when both fit; longer answers
+scroll within the multiline input. Only genuinely overflowing content should
+require scrolling the question away.
+At compact/enlarged sizes, choice letters and selection indicators sit above the
+full-width answer text. Long
 German session-action labels have optional soft-hyphen breaks and centered
 wrapping, with unchanged accessible names and unrestricted system text scaling.
 
@@ -384,12 +410,15 @@ compact while preserving comfortable button tap areas.
 
 Exam type, subject, date, topic and hint pages share `CreationActionFooter`.
 The action is a sibling of the scroll content, with 24pt side padding and bottom
-padding `max(safeArea.bottom + 10, 24)`. Retain the existing iOS keyboard-sticky
-behavior on the other creation steps. On topic and hint pages, remove the entire
-footer while the software keyboard is visible and restore it after dismissal,
-without resetting search or selections. Topic/hint content scrolls above the
-footer when shown; do not place Continue inside a growing result list or a
-scroll container.
+padding `max(safeArea.bottom + 10, 24)`. Every creation step keeps the footer
+mounted and follows the software keyboard on both iOS and Android. Keyboard
+visibility must not hide the action, reset search, or change selections.
+Topic/hint content scrolls above the footer; do not place Continue inside a
+growing result list or a scroll container. This supersedes the earlier
+topic/hint hide-while-typing exception and Android-only scrolling policy after
+Jakob's Pixel report and app-wide consistency direction on 23 October 2026.
+See the [decision record](https://app.notion.com/p/3fb2e87228bf817a880dde6127a1996a)
+and [PR #952](https://github.com/Dayova/dayova-mvp/pull/952).
 
 ## Notes
 

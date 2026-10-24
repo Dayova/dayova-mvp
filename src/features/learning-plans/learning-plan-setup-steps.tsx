@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { ActivityIndicator, View } from "react-native";
-import { useKeyboardState } from "react-native-keyboard-controller";
 import type { Id } from "#convex/_generated/dataModel";
 import { Button } from "~/components/ui/button";
 import { ScreenScroll } from "~/components/ui/screen";
@@ -181,18 +180,25 @@ export function MaterialUploadStep({
 
 function SearchSetupPage({
 	children,
+	title,
+	selectionLabel,
+	selectionCount,
+	optional = false,
 	canContinue,
 	errorMessage,
 	isBusy,
 	onContinue,
 }: {
 	children: ReactNode;
+	title: string;
+	selectionLabel: string;
+	selectionCount: number;
+	optional?: boolean;
 	canContinue: boolean;
 	errorMessage: string | null;
 	isBusy: boolean;
 	onContinue: () => void;
 }) {
-	const isKeyboardVisible = useKeyboardState((state) => state.isVisible);
 	return (
 		<View className="flex-1">
 			<ScreenScroll
@@ -200,104 +206,91 @@ function SearchSetupPage({
 				topPadding={0}
 				contentContainerStyle={{ paddingBottom: 24 }}
 			>
+				<View className="flex-row flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+					<Text
+						accessibilityRole="header"
+						className="shrink font-poppins font-semibold text-body-1 text-text"
+					>
+						{title}
+					</Text>
+					<Text
+						accessibilityLabel={`${selectionLabel}: ${selectionCount}${optional ? ", optional" : ""}`}
+						className="font-poppins text-body-4 text-secondary-text"
+					>
+						{optional ? "Optional · " : ""}
+						{selectionCount} ausgewählt
+					</Text>
+				</View>
 				{children}
 				<SetupError message={errorMessage} />
 			</ScreenScroll>
-			{!isKeyboardVisible ? (
-				<CreationActionFooter>
-					<SetupContinueButton
-						canContinue={canContinue}
-						isBusy={isBusy}
-						onPress={onContinue}
-					/>
-				</CreationActionFooter>
-			) : null}
+			<CreationActionFooter>
+				<SetupContinueButton
+					canContinue={canContinue}
+					isBusy={isBusy}
+					onPress={onContinue}
+				/>
+			</CreationActionFooter>
 		</View>
 	);
 }
 
-export function RequiredTopicsStep({
-	subject,
-	searchTopics,
-	canContinue,
-	errorMessage,
-	isBusy,
-	onContinue,
-	selectedTopics,
-	onChangeSelectedTopics,
-}: {
+type ExamSearchStepProps = {
 	canContinue: boolean;
 	errorMessage: string | null;
 	isBusy: boolean;
-	onChangeSelectedTopics: (value: string[]) => void;
 	onContinue: () => void;
 	selectedTopics: string[];
 	subject: string;
-	searchTopics: SearchTopics;
-}) {
-	return (
-		<SearchSetupPage
-			canContinue={canContinue}
-			errorMessage={errorMessage}
-			isBusy={isBusy}
-			onContinue={onContinue}
-		>
-			<Text
-				accessibilityRole="header"
-				className="font-poppins font-semibold text-body-1 text-text"
-			>
-				Welche Themen kommen in der Prüfung dran?
-			</Text>
-			<TopicSearch
-				selectedTopics={selectedTopics}
-				subject={subject}
-				onChangeSelectedTopics={onChangeSelectedTopics}
-				searchTopics={searchTopics}
-				disabled={isBusy}
-			/>
-		</SearchSetupPage>
-	);
-}
+} & (
+	| {
+			step: "requiredTopics";
+			onChangeSelectedTopics: (value: string[]) => void;
+			searchTopics: SearchTopics;
+	  }
+	| {
+			step: "examHints";
+			additionalInfo: string;
+			onChange: (value: string) => void;
+	  }
+);
 
-export function ExamHintsStep({
-	subject,
-	selectedTopics,
-	additionalInfo,
-	onChange,
-	onContinue,
-	isBusy,
-	canContinue,
-	errorMessage,
-}: {
-	subject: string;
-	selectedTopics: string[];
-	additionalInfo: string;
-	onChange: (value: string) => void;
-	onContinue: () => void;
-	isBusy: boolean;
-	canContinue: boolean;
-	errorMessage: string | null;
-}) {
+/** Keep the native scroll and keyboard-following footer alive between searches. */
+export function ExamSearchStep(props: ExamSearchStepProps) {
+	const hints = props.step === "examHints";
 	return (
 		<SearchSetupPage
-			canContinue={canContinue}
-			errorMessage={errorMessage}
-			isBusy={isBusy}
-			onContinue={onContinue}
+			title={hints ? "Prüfungshinweise" : "Prüfungsthemen"}
+			selectionLabel={hints ? "Ausgewählte Hinweise" : "Ausgewählte Themen"}
+			selectionCount={
+				props.step === "examHints"
+					? props.additionalInfo.split("\n").filter((line) => line.trim())
+							.length
+					: props.selectedTopics.length
+			}
+			optional={hints}
+			canContinue={props.canContinue}
+			errorMessage={props.errorMessage}
+			isBusy={props.isBusy}
+			onContinue={props.onContinue}
 		>
-			<Text
-				accessibilityRole="header"
-				className="font-poppins font-semibold text-body-1 text-text"
-			>
-				Welche Hinweise gibt es zur Prüfung?
-			</Text>
-			<ExamHintsEditor
-				subject={subject}
-				selectedTopics={selectedTopics}
-				value={additionalInfo}
-				onChange={onChange}
-				disabled={isBusy}
-			/>
+			{props.step === "examHints" ? (
+				<ExamHintsEditor
+					subject={props.subject}
+					selectedTopics={props.selectedTopics}
+					value={props.additionalInfo}
+					onChange={props.onChange}
+					disabled={props.isBusy}
+				/>
+			) : (
+				<TopicSearch
+					selectedTopics={props.selectedTopics}
+					subject={props.subject}
+					onChangeSelectedTopics={props.onChangeSelectedTopics}
+					searchTopics={props.searchTopics}
+					disabled={props.isBusy}
+				/>
+			)}
 		</SearchSetupPage>
 	);
 }
