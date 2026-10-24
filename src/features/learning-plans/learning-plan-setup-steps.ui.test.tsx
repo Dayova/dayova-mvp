@@ -4,9 +4,8 @@ import { useState } from "react";
 import type { Id } from "#convex/_generated/dataModel";
 import { ExamHintsEditor } from "./exam-hints-editor";
 import {
-	ExamHintsStep,
+	ExamSearchStep,
 	MaterialUploadStep,
-	RequiredTopicsStep,
 } from "./learning-plan-setup-steps";
 
 jest.mock("react-native-safe-area-context", () => ({
@@ -63,7 +62,8 @@ describe("learning-plan setup steps", () => {
 				"Quadratische Funktionen",
 			]);
 			return (
-				<RequiredTopicsStep
+				<ExamSearchStep
+					step="requiredTopics"
 					subject="Mathematik"
 					searchTopics={async () => ({ topics: [], truncated: false })}
 					selectedTopics={selectedTopics}
@@ -100,7 +100,8 @@ describe("learning-plan setup steps", () => {
 				"Rechenweg angeben\n\nErgebnis kontrollieren\n",
 			);
 			return (
-				<ExamHintsStep
+				<ExamSearchStep
+					step="examHints"
 					subject="Mathematik"
 					selectedTopics={["Lineare Funktionen"]}
 					additionalInfo={additionalInfo}
@@ -141,7 +142,8 @@ describe("learning-plan setup steps", () => {
 	test("topic page contains only topic search and Continue", async () => {
 		const next = jest.fn();
 		const screen = await render(
-			<RequiredTopicsStep
+			<ExamSearchStep
+				step="requiredTopics"
 				subject="Deutsch"
 				searchTopics={async () => ({ topics: [], truncated: false })}
 				selectedTopics={["Gedichtanalyse"]}
@@ -174,13 +176,19 @@ describe("learning-plan setup steps", () => {
 		const step = (isBusy = false) => {
 			const stateProps = { ...props, isBusy, canContinue: !isBusy };
 			return page === "topics" ? (
-				<RequiredTopicsStep
+				<ExamSearchStep
+					step="requiredTopics"
 					{...stateProps}
 					searchTopics={async () => ({ topics: [], truncated: false })}
 					onChangeSelectedTopics={jest.fn()}
 				/>
 			) : (
-				<ExamHintsStep {...stateProps} additionalInfo="" onChange={jest.fn()} />
+				<ExamSearchStep
+					step="examHints"
+					{...stateProps}
+					additionalInfo=""
+					onChange={jest.fn()}
+				/>
 			);
 		};
 		const searchLabel = page === "topics" ? "Themen suchen" : "Hinweise suchen";
@@ -347,14 +355,15 @@ describe("learning-plan setup steps", () => {
 			canContinue: true,
 			errorMessage: null,
 		};
-		const screen = await render(<ExamHintsStep {...props} />);
+		const screen = await render(<ExamSearchStep step="examHints" {...props} />);
 		expect(screen.queryByLabelText("Themen suchen")).toBeNull();
 		expect(
 			screen.queryByLabelText("Hinweise zur Prüfung (optional)"),
 		).toBeNull();
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
 		await screen.rerender(
-			<ExamHintsStep
+			<ExamSearchStep
+				step="examHints"
 				{...props}
 				additionalInfo="Textbelege mit Zeilenangaben"
 				isBusy
@@ -528,7 +537,8 @@ describe("learning-plan setup steps", () => {
 
 	test("disables the topic continuation until the answer is valid", async () => {
 		const screen = await render(
-			<RequiredTopicsStep
+			<ExamSearchStep
+				step="requiredTopics"
 				subject="Mathematik"
 				searchTopics={async () => ({ topics: [], truncated: false })}
 				canContinue={false}

@@ -37,9 +37,8 @@ import {
 import { prepareGalleryUploadAsset } from "~/features/learning-plans/gallery-upload";
 import { useLearningPlanSetupOrigin } from "~/features/learning-plans/learning-plan-setup-origin";
 import {
-	ExamHintsStep,
+	ExamSearchStep,
 	MaterialUploadStep,
-	RequiredTopicsStep,
 } from "~/features/learning-plans/learning-plan-setup-steps";
 import type {
 	LearningPlanSnapshot,
@@ -807,7 +806,8 @@ export default function NewLearningPlanScreen() {
 		<Screen>
 			<Stack.Screen options={{ gestureEnabled: true }} />
 			{setupStep === "examHints" ? (
-				<ExamHintsStep
+				<ExamSearchStep
+					step="examHints"
 					subject={hintSubject}
 					selectedTopics={input.topicItems}
 					additionalInfo={input.topicAdditionalInfo}
@@ -818,7 +818,8 @@ export default function NewLearningPlanScreen() {
 					isBusy={isBusy || isPlanSnapshotLoading}
 				/>
 			) : setupStep === "requiredTopics" ? (
-				<RequiredTopicsStep
+				<ExamSearchStep
+					step="requiredTopics"
 					subject={hintSubject}
 					searchTopics={searchTopics}
 					canContinue={canContinueTopics}

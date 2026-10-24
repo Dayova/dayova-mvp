@@ -235,85 +235,62 @@ function SearchSetupPage({
 	);
 }
 
-export function RequiredTopicsStep({
-	subject,
-	searchTopics,
-	canContinue,
-	errorMessage,
-	isBusy,
-	onContinue,
-	selectedTopics,
-	onChangeSelectedTopics,
-}: {
+type ExamSearchStepProps = {
 	canContinue: boolean;
 	errorMessage: string | null;
 	isBusy: boolean;
-	onChangeSelectedTopics: (value: string[]) => void;
 	onContinue: () => void;
 	selectedTopics: string[];
 	subject: string;
-	searchTopics: SearchTopics;
-}) {
-	return (
-		<SearchSetupPage
-			title="Prüfungsthemen"
-			selectionLabel="Ausgewählte Themen"
-			selectionCount={selectedTopics.length}
-			canContinue={canContinue}
-			errorMessage={errorMessage}
-			isBusy={isBusy}
-			onContinue={onContinue}
-		>
-			<TopicSearch
-				selectedTopics={selectedTopics}
-				subject={subject}
-				onChangeSelectedTopics={onChangeSelectedTopics}
-				searchTopics={searchTopics}
-				disabled={isBusy}
-			/>
-		</SearchSetupPage>
-	);
-}
+} & (
+	| {
+			step: "requiredTopics";
+			onChangeSelectedTopics: (value: string[]) => void;
+			searchTopics: SearchTopics;
+	  }
+	| {
+			step: "examHints";
+			additionalInfo: string;
+			onChange: (value: string) => void;
+	  }
+);
 
-export function ExamHintsStep({
-	subject,
-	selectedTopics,
-	additionalInfo,
-	onChange,
-	onContinue,
-	isBusy,
-	canContinue,
-	errorMessage,
-}: {
-	subject: string;
-	selectedTopics: string[];
-	additionalInfo: string;
-	onChange: (value: string) => void;
-	onContinue: () => void;
-	isBusy: boolean;
-	canContinue: boolean;
-	errorMessage: string | null;
-}) {
+/** Keep the native scroll and keyboard-following footer alive between searches. */
+export function ExamSearchStep(props: ExamSearchStepProps) {
+	const hints = props.step === "examHints";
 	return (
 		<SearchSetupPage
-			title="Prüfungshinweise"
-			selectionLabel="Ausgewählte Hinweise"
+			title={hints ? "Prüfungshinweise" : "Prüfungsthemen"}
+			selectionLabel={hints ? "Ausgewählte Hinweise" : "Ausgewählte Themen"}
 			selectionCount={
-				additionalInfo.split("\n").filter((line) => line.trim()).length
+				props.step === "examHints"
+					? props.additionalInfo.split("\n").filter((line) => line.trim())
+							.length
+					: props.selectedTopics.length
 			}
-			optional
-			canContinue={canContinue}
-			errorMessage={errorMessage}
-			isBusy={isBusy}
-			onContinue={onContinue}
+			optional={hints}
+			canContinue={props.canContinue}
+			errorMessage={props.errorMessage}
+			isBusy={props.isBusy}
+			onContinue={props.onContinue}
 		>
-			<ExamHintsEditor
-				subject={subject}
-				selectedTopics={selectedTopics}
-				value={additionalInfo}
-				onChange={onChange}
-				disabled={isBusy}
-			/>
+			{props.step === "examHints" ? (
+				<ExamHintsEditor
+					subject={props.subject}
+					selectedTopics={props.selectedTopics}
+					value={props.additionalInfo}
+					onChange={props.onChange}
+					disabled={props.isBusy}
+				/>
+			) : (
+				<TopicSearch
+					selectedTopics={props.selectedTopics}
+					subject={props.subject}
+					onChangeSelectedTopics={props.onChangeSelectedTopics}
+					searchTopics={props.searchTopics}
+					disabled={props.isBusy}
+				/>
+			)}
 		</SearchSetupPage>
 	);
 }

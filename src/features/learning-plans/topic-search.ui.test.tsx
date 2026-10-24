@@ -10,7 +10,7 @@ import { act, fireEvent, render } from "@testing-library/react-native";
 import { Profiler, useState } from "react";
 import { isMeaningfulTopicDescription } from "#convex/topicDescriptionValidation";
 import { Textarea } from "~/components/ui/textarea";
-import { RequiredTopicsStep } from "./learning-plan-setup-steps";
+import { ExamSearchStep } from "./learning-plan-setup-steps";
 import {
 	type SearchTopics,
 	TopicSearch,
@@ -69,7 +69,8 @@ function Setup({
 	const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
 	return (
 		<>
-			<RequiredTopicsStep
+			<ExamSearchStep
+				step="requiredTopics"
 				subject={subject}
 				searchTopics={searchTopics}
 				selectedTopics={selectedTopics}

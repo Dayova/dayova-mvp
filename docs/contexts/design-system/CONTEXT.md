@@ -56,6 +56,12 @@ The compact composition stays the same with the keyboard open or closed. Keep
 at least three complete suggestions above Continue on the standard portrait
 phone check; enlarged text prioritizes complete, reachable content over a fixed
 number of visible rows.
+Both steps use the same `ExamSearchStep` instance so their native scroll and
+keyboard-following footer survive a topics/hints transition. After dismissal,
+Continue must return to its closed-keyboard reference position, including when
+the next step was entered with the keyboard open. Verify this with
+`scripts/native-qa/assert-action-restored.py` and a transition recording; merely
+checking that the action is visible does not detect a stranded elevated footer.
 Topic results omit a repeated caption only when every supplied subject matches
 the chosen course's existing WLO context. Cross-subject, mixed and unknown
 contexts remain visible; accessible hints always retain all supplied subjects.
