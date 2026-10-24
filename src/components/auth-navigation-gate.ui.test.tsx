@@ -167,6 +167,62 @@ describe("AuthNavigationGate", () => {
 		}
 	});
 
+	test.each([
+		"before",
+		"after",
+	] as const)("restart failure %s identity restoration does not leak into access verification", async (failureTiming) => {
+		jest.useFakeTimers();
+		try {
+			mockSession.user = null;
+			mockSession.isSessionLoading = true;
+			mockAccess.access = undefined;
+			let rejectReload: (error: Error) => void = () => {
+				throw new Error("Reload was not dispatched");
+			};
+			mockReloadApp.mockImplementationOnce(
+				() =>
+					new Promise<void>((_resolve, reject) => {
+						rejectReload = reject;
+						if (failureTiming === "before")
+							reject(new Error("native reload unavailable"));
+					}),
+			);
+			const screen = await render(
+				<AuthNavigationGate>
+					<Text>Lerninhalt</Text>
+				</AuthNavigationGate>,
+			);
+			await act(async () => jest.advanceTimersByTime(10_000));
+			await fireEvent.press(
+				screen.getByRole("button", { name: "App neu starten" }),
+			);
+			if (failureTiming === "before")
+				expect(screen.getByRole("alert")).toHaveTextContent(/Schließe Dayova/);
+			mockSession.user = { clerkId: "user_123" };
+			mockSession.isSessionLoading = false;
+			mockRouterState.pathname = "/home";
+			mockAccess.isAccessLoading = true;
+			mockAccess.isVerificationRequired = true;
+			await screen.rerender(
+				<AuthNavigationGate>
+					<Text>Lerninhalt</Text>
+				</AuthNavigationGate>,
+			);
+			if (failureTiming === "after")
+				await act(async () => {
+					rejectReload(new Error("late native failure"));
+				});
+			expect(screen.queryByRole("alert")).toBeNull();
+			await fireEvent.press(
+				screen.getByRole("button", { name: "Erneut prüfen" }),
+			);
+			expect(mockRetryAccess).toHaveBeenCalledTimes(1);
+			expect(mockReloadApp).toHaveBeenCalledTimes(1);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
 	test("two immediate restart activations dispatch once and a hung restart can be retried", async () => {
 		jest.useFakeTimers();
 		try {

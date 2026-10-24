@@ -33,11 +33,19 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 	} = useAccess();
 	const [retrying, setRetrying] = useState(false);
 	const retryingRef = useRef(false);
-	const [retryError, setRetryError] = useState<string | null>(null);
+	const [retryError, setRetryError] = useState<{
+		message: string;
+		sessionRecovery: boolean;
+	} | null>(null);
 	const [sessionRestoreTimedOut, setSessionRestoreTimedOut] = useState(false);
 	const sessionRecoveryRequired = isSessionLoading && sessionRestoreTimedOut;
+	const retryErrorMessage =
+		retryError?.sessionRecovery === sessionRecoveryRequired
+			? retryError.message
+			: null;
 	if (!isSessionLoading && sessionRestoreTimedOut) {
 		setSessionRestoreTimedOut(false);
+		setRetryError(null);
 	}
 	useEffect(() => {
 		if (!isSessionLoading) return;
@@ -119,12 +127,12 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 										? "Verbinde dich mit dem Internet und starte Dayova erneut, damit deine Anmeldung geladen und dein Zugang geprüft werden können. Dein Lernstand bleibt erhalten."
 										: "Bitte verbinde dich mit dem Internet, damit Dayova deinen Zugang prüfen kann. Dein Lernstand bleibt erhalten."}
 								</Text>
-								{retryError ? (
+								{retryErrorMessage ? (
 									<Text
 										accessibilityRole="alert"
 										className="mt-3 text-body-3 text-destructive"
 									>
-										{retryError}
+										{retryErrorMessage}
 									</Text>
 								) : null}
 								<Button
@@ -153,11 +161,12 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 												restartAccepted = sessionRecoveryRequired;
 											})
 											.catch(() =>
-												setRetryError(
-													sessionRecoveryRequired
+												setRetryError({
+													sessionRecovery: sessionRecoveryRequired,
+													message: sessionRecoveryRequired
 														? "Der Neustart hat nicht geklappt. Schließe Dayova und öffne die App mit Internetverbindung erneut."
 														: "Die Prüfung hat nicht geklappt. Prüfe deine Internetverbindung und versuche es erneut.",
-												),
+												}),
 											)
 											.finally(() => {
 												clearTimeout(timeout);
