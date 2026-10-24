@@ -64,6 +64,28 @@ maintained source. Missing, unmatched, or unowned records fail validation.
 Review dates are owner-maintained; the validator checks their format, while the
 review cadence below defines when an actual review is due.
 
+## Task execution route
+
+`$dayova-task` is the shared implementation entry point for descriptions, Linear
+IDs/URLs, and optional device/OS/appearance/reproduction preferences. Its
+[skill](../../.agents/skills/dayova-task/SKILL.md) selects existing specialist
+workflows; [resource scripts](../../scripts/dayova-task/resources.mjs) maintain
+chat/worktree ownership, exact fresh iOS simulator allocation and Metro leases.
+Provider verification remains an explicit agent responsibility, recorded as a
+credential-free receipt and checked against the runtime's public configuration.
+The helper does not provision or certify cloud isolation and never deploys.
+
+[DAY-553](https://linear.app/dayova/issue/DAY-553), under DAY-221, owns this route.
+Resource behavior runs through `pnpm test:unit:task-resources`; realistic routing
+and failure cases live in `.agents/evals/dayova-task.json`. Keep current execution
+evidence on the PR/issue. No upstream skill or composition pin changes here.
+
+The skill is repository-local: before merge it is available in checkouts of its
+PR branch (start a chat there, or point to that checkout's SKILL.md if the current
+catalog is stale). After merge and pulling the integration branch, collaborators
+can invoke `$dayova-task` from Dayova-MVP. It is not installed globally and does
+not automatically appear in older worktrees.
+
 ## Maintenance route
 
 Use `$maintain-dayova-agent-system` for changes to repository skills,
