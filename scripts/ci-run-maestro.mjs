@@ -18,6 +18,7 @@ export function runDeviceSmoke(
 	{
 		env = process.env,
 		execute = spawnSync,
+		installApp = true,
 		directory = join(process.cwd(), ".maestro/artifacts/device/.maestro/tests"),
 	} = {},
 ) {
@@ -32,6 +33,13 @@ export function runDeviceSmoke(
 		],
 		authenticated: [".maestro/ci/authenticated.yaml"],
 		failure: [".maestro/ci/failure-probe.yaml"],
+		"contact-registration": [".maestro/ci/contact-registration.yaml"],
+		"contact-onboarding": [".maestro/ci/contact-onboarding.yaml"],
+		"contact-onboarding-large": [".maestro/ci/contact-onboarding-large.yaml"],
+		"contact-feedback": [".maestro/ci/contact-feedback.yaml"],
+		"contact-keyboard": [".maestro/ci/contact-keyboard.yaml"],
+		"contact-news": [".maestro/ci/contact-news.yaml"],
+		"contact-withdraw": [".maestro/ci/contact-withdraw.yaml"],
 	}[flow];
 	if (
 		!appPath ||
@@ -61,11 +69,13 @@ export function runDeviceSmoke(
 	let exitCode = 1;
 	const started = Date.now();
 	try {
-		const install =
-			platform === "ios"
-				? run("install", "xcrun", ["simctl", "install", "booted", appPath])
-				: run("install", "adb", ["install", "-r", appPath]);
-		if (install !== 0) throw new Error("Test app installation failed");
+		if (installApp) {
+			const install =
+				platform === "ios"
+					? run("install", "xcrun", ["simctl", "install", "booted", appPath])
+					: run("install", "adb", ["install", "-r", appPath]);
+			if (install !== 0) throw new Error("Test app installation failed");
+		}
 		if (
 			run("prepare", process.execPath, ["scripts/ci-prepare-maestro.mjs"]) !== 0
 		)
@@ -80,9 +90,14 @@ export function runDeviceSmoke(
 				"-e",
 				`MAESTRO_APP_ID=${env.MAESTRO_APP_ID}`,
 				"-e",
+				`APP_ID=${env.MAESTRO_APP_ID}`,
+				"-e",
 				`MAESTRO_CI_EMAIL=${env.MAESTRO_CI_EMAIL}`,
 				"-e",
 				`MAESTRO_CI_PASSWORD=${env.MAESTRO_CI_PASSWORD}`,
+				...(env.MAESTRO_DEV_SERVER_URL
+					? ["-e", `DEV_SERVER_URL=${env.MAESTRO_DEV_SERVER_URL}`]
+					: []),
 				"--format",
 				"junit",
 				"--output",

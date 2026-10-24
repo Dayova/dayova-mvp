@@ -1,0 +1,55 @@
+appId: ${MAESTRO_APP_ID}
+name: Contact choices, corrected input, back and skip
+---
+- runFlow: contact-onboarding-start.yaml
+- takeScreenshot: onboarding-contact-default
+- tapOn: 'Das Dayova-Team darf mich per WhatsApp zu Feedbackgesprächen einladen und für diese Gespräche anrufen\.'
+- scrollUntilVisible:
+    element: Weiter
+    direction: DOWN
+- tapOn: Weiter
+- assertVisible: 'Bitte gib eine gültige Telefonnummer.*'
+- takeScreenshot: contact-invalid
+- scrollUntilVisible:
+    element:
+      id: contact-phone-input
+    direction: UP
+- tapOn:
+    id: contact-phone-input
+- inputText: '015123456789'
+- takeScreenshot: contact-keyboard
+- runFlow:
+    file: ../shared/dismiss-auth-keyboard.yaml
+    env:
+      AUTH_HEADING: 'Gestalte Dayova mit uns\.'
+- assertNotVisible: 'Bitte gib eine gültige Telefonnummer.*'
+- takeScreenshot: contact-error-cleared
+- tapOn: 'Das Dayova-Team darf mich per WhatsApp zu Feedbackgesprächen einladen und für diese Gespräche anrufen\.'
+- tapOn: 'Ich möchte per WhatsApp Neuigkeiten zu Dayova erhalten\.'
+- takeScreenshot: contact-both-selected
+- scrollUntilVisible:
+    element: Weiter
+    direction: DOWN
+    timeout: 10000
+- tapOn: Weiter
+- assertVisible: 'Wie lautet deine E-Mail-Adresse\?'
+- tapOn: Zurück
+- scrollUntilVisible:
+    element: 'Gestalte Dayova mit uns\.'
+    direction: UP
+- assertVisible: 'Gestalte Dayova mit uns\.'
+- assertVisible: '015123456789'
+- takeScreenshot: contact-retained
+- scrollUntilVisible:
+    element: Jetzt überspringen
+    direction: DOWN
+    timeout: 10000
+- tapOn: Jetzt überspringen
+- assertVisible: 'Wie lautet deine E-Mail-Adresse\?'
+- tapOn: Zurück
+- scrollUntilVisible:
+    element: 'Gestalte Dayova mit uns\.'
+    direction: UP
+- assertVisible: 'Gestalte Dayova mit uns\.'
+- assertNotVisible: '015123456789'
+- takeScreenshot: contact-cleared-after-skip

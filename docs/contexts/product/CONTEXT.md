@@ -174,6 +174,7 @@ _Avoid_: Treating Generalprobe as a fourth learner-facing phase separate from Pr
 - Evidence is hierarchical: independent exam-like performance may support `Probleme lösen` and `Verstehen`, and guided problem solving may support `Verstehen`; lower-strength evidence never proves a higher dimension.
 - Adaptive topic progression moves from completed theory to guided practice, repeats guided practice when any required answer is not correct, and advances an all-correct practice session to a harder independent check. One all-correct harder check can secure `Selbstständig lösen`; together with the preceding all-correct practice it supplies the repeated evidence needed for the lower dimensions. Count a multi-question session as correct only when every relevant answer is correct.
 - The Analyse overview starts directly with the complete topic list and does not show a separate aggregate knowledge-status card. Activity or completed theory review alone never proves secure knowledge.
+- Feedback contact (WhatsApp invitation and telephone feedback conversation) and Dayova news via WhatsApp are independent opt-ins. Neither is required for an account, trial, or paid access, and neither implies a beta or Inner Circle status. See the [contact-consent boundary](../integrations/adr/0004-own-contact-consent-in-convex.md) and the [Notion decision record](https://app.notion.com/p/4002e87228bf81579c64efd6ed0af17f).
 
 ## Example Dialogue
 

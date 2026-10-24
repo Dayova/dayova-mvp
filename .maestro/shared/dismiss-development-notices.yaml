@@ -1,0 +1,12 @@
+appId: ${APP_ID}
+---
+# Only the two observed fixture/deprecation notices are allowed here. Other
+# warnings and errors remain visible for diagnosis and review.
+- runFlow:
+    file: dismiss-development-notice.yaml
+    env:
+      DEVELOPMENT_NOTICE: '(?s)(!, )?You must pass your PostHog project\x27s api key[.]\s*The client will be disabled[.]'
+- runFlow:
+    file: dismiss-development-notice.yaml
+    env:
+      DEVELOPMENT_NOTICE: '(?s)(!, )?ImageBackground is deprecated and will be removed in a future release[.] Use a View with an absolutely positioned Image instead[.] See https://reactnative[.]dev/docs/imagebackground'

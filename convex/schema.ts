@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { contactPreferencesValidator } from "./contactConsentContract";
 import { crmCounts, crmError, operatingSystem } from "./crmContract";
 import {
 	learningEvidenceDimensionValidator,
@@ -247,7 +248,13 @@ export default defineSchema({
 		counts: crmCounts,
 		error: v.optional(crmError),
 	}).index("by_key", ["key"]),
+	contactConsentEvents: defineTable({
+		userId: v.id("users"),
+		...contactPreferencesValidator.fields,
+		source: v.union(v.literal("onboarding"), v.literal("settings")),
+	}).index("by_userId", ["userId"]),
 	users: defineTable({
+		contactPreferences: v.optional(contactPreferencesValidator),
 		tokenIdentifier: v.string(),
 		clerkId: v.string(),
 		email: v.string(),

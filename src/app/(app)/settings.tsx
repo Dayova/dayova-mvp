@@ -218,6 +218,15 @@ export default function SettingsScreen() {
 						<View className="gap-3" testID="settings-legal">
 							<SettingsSection title="Datenschutz & Rechtliches">
 								<SettingsRow
+									icon={Mail}
+									label="Kontakt mit Dayova"
+									onPress={() => {
+										trackFeature("settings.contact_opened");
+										router.push("/contact-preferences");
+									}}
+								/>
+								<SettingsDivider />
+								<SettingsRow
 									icon={Sparkles}
 									label="KI & Datenschutz"
 									onPress={() => {

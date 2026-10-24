@@ -10,6 +10,11 @@ import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import type { OnboardingCompletionStatus } from "~/lib/auth-routing";
 import {
+	CONTACT_FEEDBACK_LABEL,
+	CONTACT_NEWS_LABEL,
+	emptyContactChoice,
+} from "~/lib/contact-preferences";
+import {
 	AuthChoiceScreen,
 	CreationLoaderScreen,
 	LoginScreen,
@@ -19,6 +24,10 @@ import {
 	OnboardingStepScreen,
 	OnboardingVerificationScreen,
 } from "./dayova-auth-flow";
+
+jest.mock("~/lib/runtime-config", () => ({
+	env: { EXPO_PUBLIC_PRIVACY_URL: "https://dayova.de/datenschutz" },
+}));
 
 const mockLogin = jest.fn<
 	(input: {
@@ -71,10 +80,14 @@ const mockStackScreens: Array<Record<string, unknown>> = [];
 const mockRetryPostAuthSync = jest.fn();
 const mockCompleteOnboardingHandoff = jest.fn(async () => true);
 const mockStageOnboardingRecovery = jest.fn(
-	async (_answers: Record<string, string>) => undefined,
+	async (
+		_answers: import("~/lib/pending-onboarding-sync").PendingOnboardingSyncAnswers,
+	) => undefined,
 );
 const mockReplaceOnboardingRecoveryAnswers = jest.fn(
-	async (_answers: Record<string, string>) => undefined,
+	async (
+		_answers: import("~/lib/pending-onboarding-sync").PendingOnboardingSyncAnswers,
+	) => undefined,
 );
 const mockAuthSession = {
 	isConvexAuthenticated: false,
@@ -93,7 +106,10 @@ const mockSetOnboardingAnswer = jest.fn();
 const mockSetOnboardingStepError = jest.fn();
 const mockSetRegistrationStage = jest.fn();
 const mockVisitOnboardingStep = jest.fn();
+const mockSetContactChoice = jest.fn();
 const mockOnboarding = {
+	contactChoice: emptyContactChoice(),
+	setContactChoice: mockSetContactChoice,
 	answers: {
 		studyTime: "30",
 		studyDays: "Montag, Donnerstag, Samstag",
@@ -1028,6 +1044,8 @@ describe("OnboardingScreen", () => {
 		mockAuthSession.postAuthSyncError = null;
 		mockAuthSession.onboardingCompletionStatus = "none";
 		mockAuthSession.user = null;
+		mockOnboarding.contactChoice = emptyContactChoice();
+		mockSetContactChoice.mockReset();
 		mockOnboarding.answers.studyTime = "30";
 		mockOnboarding.answers.studyDays = "Montag, Donnerstag, Samstag";
 		mockOnboarding.answers.learningTime = "16:30";
@@ -1110,12 +1128,59 @@ describe("OnboardingScreen", () => {
 		const screen = await render(<OnboardingStepScreen stepId="name" />);
 
 		expect(screen.getByTestId("onboarding-name-input")).toBeOnTheScreen();
-		expect(screen.getByText("1 von 12")).toBeOnTheScreen();
+		expect(screen.getByText("1 von 13")).toBeOnTheScreen();
 		expect(screen.getByRole("progressbar")).toBeOnTheScreen();
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 
 		expect(mockVisitOnboardingStep).toHaveBeenCalledWith("studyTime");
 		expect(mockRouter.push).toHaveBeenCalledWith("/onboarding/studyTime");
+	});
+
+	test("skips contact with a typed invalid number and clears the draft", async () => {
+		mockOnboarding.contactChoice = {
+			...emptyContactChoice(),
+			phone: "123",
+			feedback: true,
+		};
+		const screen = await render(<OnboardingStepScreen stepId="contact" />);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Jetzt überspringen" }),
+		);
+		expect(mockSetContactChoice).toHaveBeenCalledWith(emptyContactChoice());
+		expect(mockRouter.push).toHaveBeenCalledWith("/onboarding/email");
+		expect(mockRegister).not.toHaveBeenCalled();
+	});
+	test("keeps contact purposes independent and requires a valid number only for an opt-in", async () => {
+		mockRouter.push.mockClear();
+		const screen = await render(<OnboardingStepScreen stepId="contact" />);
+		expect(
+			screen.getByRole("checkbox", { name: CONTACT_FEEDBACK_LABEL }),
+		).not.toBeChecked();
+		expect(
+			screen.getByRole("checkbox", { name: CONTACT_NEWS_LABEL }),
+		).not.toBeChecked();
+		await fireEvent.press(
+			screen.getByRole("checkbox", { name: CONTACT_NEWS_LABEL }),
+		);
+		expect(mockSetContactChoice).toHaveBeenCalledWith({
+			...emptyContactChoice(),
+			news: true,
+		});
+		mockOnboarding.contactChoice = { ...emptyContactChoice(), news: true };
+		await screen.rerender(<OnboardingStepScreen stepId="contact" />);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(mockRouter.push).not.toHaveBeenCalled();
+		expect(
+			screen.getByText(/Bitte gib eine gültige Telefonnummer/),
+		).toBeOnTheScreen();
+		await fireEvent.changeText(
+			screen.getByLabelText("Deine Telefonnummer (freiwillig)"),
+			"+4915123456789",
+		);
+		expect(mockSetContactChoice).toHaveBeenLastCalledWith({
+			...emptyContactChoice(),
+			phone: "+4915123456789",
+		});
 	});
 
 	test("continues through every profile step to verification without looping", async () => {
@@ -1130,6 +1195,7 @@ describe("OnboardingScreen", () => {
 			"grade",
 			"state",
 			"schoolType",
+			"contact",
 			"email",
 			"password",
 		] as const;
@@ -1538,6 +1604,7 @@ describe("OnboardingScreen", () => {
 			screen.getByRole("button", { name: "Konto erstellen" }),
 		);
 		expect(mockStageOnboardingRecovery).toHaveBeenCalledWith({
+			contact: emptyContactChoice(),
 			dailySchoolTime: "30 min",
 			studyDays: "Montag, Donnerstag, Samstag",
 			learningTime: "16:30",

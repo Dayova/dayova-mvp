@@ -241,3 +241,20 @@ describe("getNextAccessRefreshAt", () => {
 		).toBeNull();
 	});
 });
+
+it.each([
+	"needsActivation",
+	"expired",
+	"trial",
+	"paid",
+	"billingGrace",
+] as const)("keeps contact withdrawal accessible for %s", (accessState) => {
+	expect(
+		resolveAccessRoute({
+			accessState,
+			isSessionLoading: false,
+			pathname: "/contact-preferences",
+			user: { id: "student" },
+		}),
+	).toBeNull();
+});

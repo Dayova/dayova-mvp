@@ -29,6 +29,13 @@ type Env = {
   readonly CLERK_SECRET_KEY: string | undefined;
   readonly CLERK_WEBHOOK_INSTANCE_ID: string | undefined;
   readonly CLERK_WEBHOOK_SIGNING_SECRET: string | undefined;
+  readonly LANGFUSE_BASE_URL: string | undefined;
+  readonly LANGFUSE_ENABLED: string | undefined;
+  readonly LANGFUSE_PUBLIC_KEY: string | undefined;
+  readonly LANGFUSE_RELEASE: string | undefined;
+  readonly LANGFUSE_SECRET_KEY: string | undefined;
+  readonly LANGFUSE_TRACING_ENVIRONMENT: string | undefined;
+  readonly LANGFUSE_USER_HASH_SECRET: string | undefined;
   readonly NOTION_CRM_DATA_SOURCE_ID: string | undefined;
   readonly NOTION_CRM_DELETION_MODE: "off" | "live" | undefined;
   readonly NOTION_CRM_MODE: "off" | "dry-run" | "live" | undefined;

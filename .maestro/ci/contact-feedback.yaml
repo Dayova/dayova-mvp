@@ -1,0 +1,39 @@
+appId: ${MAESTRO_APP_ID}
+name: Authenticated feedback choice persists after native relaunch
+---
+- runFlow: authenticated.yaml
+- runFlow: ../shared/open-contact-preferences.yaml
+- tapOn: 'Das Dayova-Team darf mich per WhatsApp zu Feedbackgesprächen einladen und für diese Gespräche anrufen\.'
+- scrollUntilVisible:
+    element: Auswahl speichern
+    direction: DOWN
+- tapOn: Auswahl speichern
+- assertVisible: 'Bitte gib eine gültige Telefonnummer.*'
+- scrollUntilVisible:
+    element:
+      id: contact-phone-input
+    direction: UP
+- tapOn:
+    id: contact-phone-input
+- inputText: '015123456789'
+- takeScreenshot: settings-phone-keyboard
+- runFlow:
+    file: ../shared/dismiss-auth-keyboard.yaml
+    env:
+      AUTH_HEADING: Kontakt mit Dayova
+- tapOn: 'Das Dayova-Team darf mich per WhatsApp zu Feedbackgesprächen einladen und für diese Gespräche anrufen\.'
+- scrollUntilVisible:
+    element: Auswahl speichern
+    direction: DOWN
+- assertNotVisible: 'Bitte gib eine gültige Telefonnummer.*'
+- tapOn: Auswahl speichern
+- extendedWaitUntil:
+    visible: Deine Kontaktauswahl wurde gespeichert.
+    timeout: 30000
+- runFlow: ../shared/relaunch-development.yaml
+- scrollUntilVisible:
+    element:
+      id: contact-phone-input
+    direction: UP
+- assertVisible: '\+4915123456789'
+- takeScreenshot: settings-feedback-persisted

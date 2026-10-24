@@ -1,0 +1,36 @@
+appId: ${MAESTRO_APP_ID}
+---
+- stopApp
+- launchApp
+- openLink:
+    link: >-
+      ${'exp+dayova://?__expo_url=' + encodeURIComponent(DEV_SERVER_URL) +
+      '&__expo_disable_onboarding=1&__expo_disable_fab=1&__expo_disable_auto_launch=1'}
+- runFlow:
+    when:
+      visible: 'Open in .Dayova.\?'
+    commands:
+      - tapOn: Open
+- extendedWaitUntil:
+    visible: 'So läuft deine Testphase|Einstellungen|Kontakt mit Dayova|Reload'
+    timeout: 60000
+# Reopening a development client can present its menu over the restored app.
+# Dismiss that specific overlay before asserting or interacting with the app.
+- runFlow:
+    when:
+      visible: Reload
+    commands:
+      - runFlow:
+          when:
+            platform: iOS
+          commands:
+            - tapOn: Close
+      - runFlow:
+          when:
+            platform: Android
+          commands:
+            - back
+- extendedWaitUntil:
+    visible: 'So läuft deine Testphase|Einstellungen|Kontakt mit Dayova'
+    timeout: 60000
+- runFlow: open-contact-preferences.yaml

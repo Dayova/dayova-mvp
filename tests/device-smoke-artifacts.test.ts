@@ -21,6 +21,49 @@ const env = {
 
 describe("device smoke diagnostics before upload", () => {
 	it.each([
+		{ installApp: undefined, alreadyInstalled: false },
+		{ installApp: false, alreadyInstalled: true },
+	])("respects the native installation contract: %j", ({
+		installApp,
+		alreadyInstalled,
+	}) => {
+		const root = mkdtempSync(join(tmpdir(), "dayova-device-installation-"));
+		const directory = join(root, ".maestro/tests");
+		let installed = alreadyInstalled;
+		// Installation is an external native boundary: it closes the app. A
+		// subsequent journey must retain its existing installation and session.
+		const execute = ((command, args) => {
+			if (
+				command === "xcrun" &&
+				Array.isArray(args) &&
+				args.includes("install")
+			) {
+				if (alreadyInstalled) throw new Error("Reinstallation closed the app");
+				installed = true;
+			}
+			if (command === "maestro") {
+				writeFileSync(join(directory, "report.xml"), '<testsuite tests="1"/>');
+				return { status: installed ? 0 : 1 };
+			}
+			return { status: 0 };
+		}) as typeof spawnSync;
+		try {
+			expect(
+				runDeviceSmoke("test.app", "full", {
+					env,
+					execute,
+					directory,
+					installApp,
+				}),
+			).toBe(0);
+			expect(readFileSync(join(directory, "report.xml"), "utf8")).toBe(
+				'<testsuite tests="1"/>',
+			);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+	it.each([
 		[0, 0, 0],
 		[1, 0, 1],
 		[0, 1, 1],

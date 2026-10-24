@@ -1,0 +1,17 @@
+appId: ${MAESTRO_APP_ID}
+name: iOS phone input keeps the software keyboard visible
+---
+- runFlow: ../shared/relaunch-development.yaml
+- scrollUntilVisible:
+    element:
+      id: contact-phone-input
+    direction: UP
+- tapOn:
+    id: contact-phone-input
+# An exact digit key distinguishes the native keypad from the phone value.
+- assertVisible: '^1$'
+- takeScreenshot: settings-software-phone-keyboard
+- runFlow:
+    file: ../shared/dismiss-auth-keyboard.yaml
+    env:
+      AUTH_HEADING: Kontakt mit Dayova

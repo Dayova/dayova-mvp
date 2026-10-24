@@ -28,8 +28,12 @@ appId: ${APP_ID}
           commands:
             - tapOn: Open
       - extendedWaitUntil:
-          visible: "Login|Reload"
-          timeout: 60000
+          # At accessibility text sizes the welcome actions are below the fold.
+          # The brand button identifies the rendered app without needing scroll.
+          visible: "Login|Reload|Dayova, App-Informationen"
+          # A fresh development bundle can consume the first minute on a cloud
+          # iOS worker. Wait for the rendered app after compilation as well.
+          timeout: 180000
       # Dismiss a developer menu if the client still presents one.
       # Android dismisses this modal with Back; iOS exposes a Close control.
       - runFlow:
@@ -46,45 +50,14 @@ appId: ${APP_ID}
                   platform: Android
                 commands:
                   - back
-- extendedWaitUntil:
-    visible:
+- runFlow: dismiss-development-notices.yaml
+- scrollUntilVisible:
+    element:
       text: Login
       enabled: true
+    direction: DOWN
     timeout: 60000
 - assertVisible: Registrierung
-# Disabling analytics intentionally produces this SDK warning in development.
-# Its LogBox banner can cover bottom actions. Dismiss only this exact warning;
-# iOS can prefix the accessibility label with "!, ". No other warning is matched.
-- runFlow:
-    when:
-      true: ${typeof DEV_SERVER_URL != 'undefined' && DEV_SERVER_URL != ''}
-      visible: "(?s)(!, )?You must pass your PostHog project's api key[.]\\s*The client will be disabled[.]"
-    commands:
-      - runFlow:
-          when:
-            platform: Android
-          commands:
-            - tapOn:
-                containsChild:
-                  text: "(?s)(!, )?You must pass your PostHog project's api key[.]\\s*The client will be disabled[.]"
-                # Close this notification directly; the Android SDK 58 LogBox
-                # details screen can be blank. The close control is at its end.
-                point: "99%,50%"
-      - runFlow:
-          when:
-            platform: iOS
-          commands:
-            - runFlow:
-                when:
-                  notVisible: Dismiss
-                commands:
-                  - tapOn: "(?s)(!, )?You must pass your PostHog project's api key[.]\\s*The client will be disabled[.]"
-            - assertVisible: Dismiss
-            # Keep the hit inside the label's upper area, above the safe area.
-            - tapOn:
-                text: Dismiss
-                point: "50%,10%"
-      - assertNotVisible: "(?s)(!, )?You must pass your PostHog project's api key[.]\\s*The client will be disabled[.]"
 # The welcome controls become accessible before their entrance animation settles.
 - waitForAnimationToEnd:
     timeout: 5000

@@ -56,6 +56,7 @@ async function project(
 		userId: user._id,
 		email: user.email,
 		registeredAt: user._creationTime,
+		contact: user.contactPreferences,
 		profile: {
 			name: user.name,
 			grade: user.grade,

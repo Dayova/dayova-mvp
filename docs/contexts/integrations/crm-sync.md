@@ -28,8 +28,9 @@ match, otherwise creates a page containing `Student` (name, or `Dayova student`)
 `Email`, Clerk ID and the allowlisted profile/access projection. For an already
 matched contact, the app account email is refreshed on reconciliation after a
 profile change; an email collision with another Notion contact blocks the write
-for review. Phone, birth date, specific school identities, and learner content
-are not copied.
+for review. Birth date, specific school identities, and learner content are not copied.
+DAY-550 adds only explicitly opted-in contact data through the separate app-owned
+contact projection described below. Legacy `users.phone` is never projected.
 
 New pages receive the `Tags` multi-select value `Added through Integration with App`.
 It records creation provenance, not onboarding completion. Existing matched pages
@@ -317,3 +318,28 @@ API references: [query data source](https://developers.notion.com/reference/quer
 [create page](https://developers.notion.com/reference/post-page),
 [update page](https://developers.notion.com/reference/patch-page),
 [request limits](https://developers.notion.com/reference/request-limits).
+
+## App contact projection (DAY-550)
+
+The app owns five additional properties, required in both production and test
+Students schemas: `App Contact Phone` (phone_number), `App Feedback Contact`
+(checkbox), `App WhatsApp News` (checkbox), `App Contact Updated At` (date), and
+`App Contact Version` (rich_text). Manual `Phone Number`, `Beta Tester`, and
+`Inner circle` remain untouched. No existing manual phone is imported as consent.
+
+The projection always clears flags and app phone when no current consent exists.
+With a current version it copies the normalized number only if at least one
+purpose is granted. It clears the app phone on full withdrawal and account
+cleanup. `App Feedback Contact` permits only WhatsApp feedback invitations and
+feedback telephone calls; `App WhatsApp News` permits only Dayova news on WhatsApp.
+Neither flag permits arbitrary reminders, sales calls or adding someone to groups.
+
+This projection uses the existing revision-aware CRM queue and retry/sweep path.
+A Notion flag can lag a withdrawal during failures: it is an operational snapshot,
+not permission to send automatically. Before manual outreach, verify the latest
+choice and that synchronization has completed; stop outreach if freshness cannot
+be established. Document actual outreach in the existing Communications workflow.
+Any future automated sender must check the authoritative Convex decision at send
+time. The app never sends WhatsApp messages or makes calls on the team's behalf.
+
+[Contact-consent architecture](adr/0004-own-contact-consent-in-convex.md).

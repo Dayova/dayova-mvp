@@ -69,7 +69,7 @@ The exact event-specific property contract is:
 | --- | --- |
 | `feature_interaction` | `interaction`, `outcome`, optional `entity_id`, `value`, `screen`; bounded catalogs in `src/lib/feature-analytics.ts` |
 | `app_screen_viewed` | `screen`; known route-template catalog only |
-| `onboarding_completed` | `local_day_key`, `onboarding_version` |
+| `onboarding_completed` | `local_day_key`, `onboarding_version`, optional `contact_choice` (`skipped`, `feedback`, `news`, `both`) |
 | `homework_created` | `day_entry_id`, `planned_day_key`, `due_day_key`, `duration_minutes` |
 | `exam_created` | `day_entry_id`, `planned_day_key`, `duration_minutes`, `exam_type` |
 | `material_uploaded` | `learning_plan_id`, `file_type`, `file_size_bucket` |
@@ -104,8 +104,9 @@ Slot context is exactly `learning_plan_id`, `learning_plan_session_id`, `phase`,
 - `file_size_bucket`: `lt_1_mb`, `1_to_10_mb`, `10_to_50_mb`, `gte_50_mb`, using 1 MiB boundaries
 - `state`: `Baden-Württemberg`, `Bayern`, `Berlin`, `Brandenburg`, `Bremen`, `Hamburg`, `Hessen`, `Mecklenburg-Vorpommern`, `Niedersachsen`, `Nordrhein-Westfalen`, `Rheinland-Pfalz`, `Saarland`, `Sachsen`, `Sachsen-Anhalt`, `Schleswig-Holstein`, `Thüringen`
 
-`analytics_schema_version` and `onboarding_version` are both `1` for this
-contract version.
+`analytics_schema_version` is `1`. The current onboarding emits
+`onboarding_version: 4`; versions `1`, `2`, and `3` remain accepted for older
+installed clients.
 
 Generalprobe completion is derived from `study_slot_completed` with
 `phase === "rehearsal"`. Missed reason is carried by `study_slot_missed`; there
@@ -158,3 +159,15 @@ Google Play Billing. Website billing is a separate channel: the app must not
 register RevenueCat redemption URL schemes, process web-purchase redemption
 links, or direct customers to website checkout. Mobile access continues to be
 derived from RevenueCat subscriber snapshots verified by Convex.
+
+## Voluntary contact choices
+
+DAY-550 adds `contact_choice` (`skipped`, `feedback`, `news`, `both`) to the
+backend-confirmed `onboarding_completed` event, using onboarding version 4.
+Only completed, authenticated registrations contribute; no new anonymous
+tracking is enabled. Settings use bounded `settings.contact_opened`,
+`settings.contact_saved`, and `settings.contact_withdrawn` interactions and the
+`contact_preferences` screen. Phone/phone-number fields are prohibited from
+analytics, including the SDK hook. Contact state and history belong to Convex;
+Notion receives the current operational projection. See
+[the code-facing decision](adr/0004-own-contact-consent-in-convex.md).

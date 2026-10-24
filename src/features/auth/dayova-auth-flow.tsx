@@ -116,11 +116,17 @@ import {
 	LEARNING_DAYS,
 	type LearningDayLabel,
 } from "~/features/learning-times/learning-time-days";
+import { ContactPreferencesForm } from "~/features/settings/contact-preferences-form";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import {
 	ONBOARDING_CREATION_PATH,
 	PASSWORD_RESET_SUCCESS_PATH,
 } from "~/lib/auth-routing";
+import {
+	contactChoiceError,
+	emptyContactChoice,
+	prepareContactChoice,
+} from "~/lib/contact-preferences";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { GERMAN_FEDERAL_STATES } from "~/lib/federal-states";
 import { GRADE_OPTIONS } from "~/lib/grades";
@@ -615,6 +621,8 @@ export function OnboardingStepScreen({ stepId }: { stepId: OnboardingStepId }) {
 	} = useAuthFlow();
 	const {
 		answers,
+		contactChoice,
+		setContactChoice,
 		setAnswer,
 		progressOrigin,
 		setRegistrationStage,
@@ -624,6 +632,7 @@ export function OnboardingStepScreen({ stepId }: { stepId: OnboardingStepId }) {
 		visitStep,
 	} = useOnboarding();
 	const previousAnswersRef = useRef(answers);
+	const previousContactChoiceRef = useRef(contactChoice);
 	const isRegistrationBusy = isLoading || isRegistering;
 	const updateError = useCallback(
 		(error: string | null) => {
@@ -633,10 +642,15 @@ export function OnboardingStepScreen({ stepId }: { stepId: OnboardingStepId }) {
 		[setStepError, stepId],
 	);
 	useEffect(() => {
-		if (previousAnswersRef.current === answers) return;
+		if (
+			previousAnswersRef.current === answers &&
+			previousContactChoiceRef.current === contactChoice
+		)
+			return;
 		previousAnswersRef.current = answers;
+		previousContactChoiceRef.current = contactChoice;
 		setRenderError(null);
-	}, [answers]);
+	}, [answers, contactChoice]);
 	useFocusEffect(
 		useCallback(() => {
 			setRegistrationStage("flow");
@@ -669,7 +683,10 @@ export function OnboardingStepScreen({ stepId }: { stepId: OnboardingStepId }) {
 		await registrationActionGateRef.current.run(async () => {
 			setIsRegistering(true);
 			try {
-				await stageOnboardingRecovery(getOnboardingPersistenceAnswers(answers));
+				await stageOnboardingRecovery({
+					...getOnboardingPersistenceAnswers(answers),
+					contact: prepareContactChoice(contactChoice),
+				});
 				const result = await register(
 					getOnboardingRegistrationPayload(answers),
 				);
@@ -697,6 +714,14 @@ export function OnboardingStepScreen({ stepId }: { stepId: OnboardingStepId }) {
 			return;
 		}
 		updateError(null);
+		if (step.kind === "contact") {
+			Keyboard.dismiss();
+			const contactError = contactChoiceError(contactChoice);
+			if (contactError) {
+				updateError(contactError);
+				return;
+			}
+		}
 		const confirmedAnswers =
 			step.kind === "range" && !answers.studyTime.trim()
 				? { ...answers, studyTime: "30" }
@@ -761,6 +786,13 @@ export function OnboardingStepScreen({ stepId }: { stepId: OnboardingStepId }) {
 						bottomInset={insets.bottom}
 						onBack={handleBack}
 						onContinue={continueFromStep}
+						onSkipContact={() => {
+							if (isRegistrationBusy) return;
+							setContactChoice(emptyContactChoice());
+							updateError(null);
+							Keyboard.dismiss();
+							pushNextStep();
+						}}
 						onTogglePassword={() => setPasswordVisible((current) => !current)}
 					/>
 				</View>
@@ -1317,6 +1349,7 @@ function QuestionStepView({
 	onBack,
 	onContinue,
 	onTogglePassword,
+	onSkipContact,
 }: {
 	step: OnboardingProfileStep;
 	progress: number;
@@ -1331,12 +1364,17 @@ function QuestionStepView({
 	onBack: () => boolean;
 	onContinue: () => void;
 	onTogglePassword: () => void;
+	onSkipContact: () => void;
 }) {
 	const { colors: COLORS, isDark } = useDayovaTheme();
-	const { answers, setAnswer } = useOnboarding();
-	const { shouldStackInlineContent } = useContentSizeLayout({
-		requestedHorizontalPadding: 24,
-	});
+	const { answers, setAnswer, contactChoice, setContactChoice } =
+		useOnboarding();
+	const { shouldStackInlineContent: needsStackedContent } =
+		useContentSizeLayout({
+			requestedHorizontalPadding: 24,
+		});
+	const shouldStackInlineContent =
+		needsStackedContent || step.kind === "contact";
 	const reducedMotion = useReducedMotion();
 	const isWheelStep = step.kind === "wheel";
 	const stepDecision = getOnboardingStepDecision(step, answers);
@@ -1427,6 +1465,17 @@ function QuestionStepView({
 			>
 				<Text>{primaryActionLabel}</Text>
 			</Button>
+			{step.kind === "contact" ? (
+				<Button
+					variant="link"
+					disabled={busy}
+					onPress={() => {
+						onSkipContact();
+					}}
+				>
+					<Text>Jetzt überspringen</Text>
+				</Button>
+			) : null}
 		</View>
 	);
 
@@ -1441,7 +1490,7 @@ function QuestionStepView({
 			/>
 
 			<KeyboardSafeScrollView
-				enabled={step.kind === "text"}
+				enabled={step.kind === "text" || step.kind === "contact"}
 				key={step.id}
 				testID="onboarding-question-scroll"
 				className="flex-1"
@@ -1497,6 +1546,13 @@ function QuestionStepView({
 								isWheelStep && !shouldStackInlineContent ? "center" : undefined,
 						}}
 					>
+						{step.kind === "contact" ? (
+							<ContactPreferencesForm
+								choice={contactChoice}
+								onChange={setContactChoice}
+								busy={busy}
+							/>
+						) : null}
 						{step.kind === "wheel" ? <WheelAnswer step={step} /> : null}
 						{step.kind === "range" ? <RangeAnswer step={step} /> : null}
 						{step.kind === "days" ? <StudyDaysAnswer /> : null}

@@ -1,8 +1,14 @@
+import { CONTACT_CONSENT_VERSION } from "../src/lib/contact-preferences";
 import type { CrmError, CrmProjection } from "./crmContract";
 import { CRM_PROFILE_PROPERTIES, profileProperties } from "./crmProfile";
 
 export const CRM_APP_ORIGIN_TAG = "Added through Integration with App";
 export const CRM_PROPERTIES = {
+	"App Contact Phone": "phone_number",
+	"App Feedback Contact": "checkbox",
+	"App WhatsApp News": "checkbox",
+	"App Contact Updated At": "date",
+	"App Contact Version": "rich_text",
 	...CRM_PROFILE_PROPERTIES,
 	Email: "email",
 	"Clerk User ID": "rich_text",
@@ -111,9 +117,24 @@ const richText = (value: string | null) => ({
 const date = (value: number | null) => ({
 	date: value === null ? null : { start: new Date(value).toISOString() },
 });
+// Legacy/manual phone numbers never imply app consent. Keep them separately owned.
+function contactProperties(contact: CrmProjection["contact"]) {
+	const current = contact?.version === CONTACT_CONSENT_VERSION;
+	return {
+		"App Contact Phone": {
+			phone_number:
+				current && (contact.feedback || contact.news) ? contact.phone : null,
+		},
+		"App Feedback Contact": { checkbox: current && Boolean(contact.feedback) },
+		"App WhatsApp News": { checkbox: current && Boolean(contact.news) },
+		"App Contact Updated At": date(contact?.updatedAt ?? null),
+		"App Contact Version": richText(contact?.version ?? null),
+	};
+}
 export function projectionProperties(projection: CrmProjection, now: number) {
 	return {
 		...profileProperties(projection.profile),
+		...contactProperties(projection.contact),
 		Email: { email: projection.email },
 		"Convex User ID": richText(projection.userId),
 		"Identity Status": { select: { name: "matched" } },
@@ -134,7 +155,7 @@ export function projectionProperties(projection: CrmProjection, now: number) {
 		"Sync Error": { select: null },
 	};
 }
-// Contact/profile/research fields, tags, relationships and manual CRM status/history
+// Manual contact/profile/research fields, tags, relationships and CRM status/history
 // are deliberately absent. Only the current app link/access projection is cleared.
 export function deletedAccountProperties(deletedAt: number, now: number) {
 	return {
@@ -143,6 +164,7 @@ export function deletedAccountProperties(deletedAt: number, now: number) {
 		"Identity Status": { select: { name: "unmatched" } },
 		"App Account Status": { select: { name: "deleted" } },
 		"App Account Deleted At": date(deletedAt),
+		...contactProperties(undefined),
 		"Entitlement State": { select: { name: "none" } },
 		"Payment Status": { select: { name: "None" } },
 		"Subscription Plan": { select: { name: "None" } },

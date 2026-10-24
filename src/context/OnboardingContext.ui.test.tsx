@@ -2,14 +2,17 @@ import { describe, expect, test } from "@jest/globals";
 import { fireEvent, render } from "@testing-library/react-native";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import { emptyContactChoice } from "~/lib/contact-preferences";
 import { OnboardingProvider, useOnboarding } from "./OnboardingContext";
 
 function RouteConsumer({ routeKey }: { routeKey: string }) {
 	const {
 		answers,
+		contactChoice,
 		isRegistrationStage,
 		isStepVisited,
 		setAnswer,
+		setContactChoice,
 		setRegistrationStage,
 		setStepError,
 		stepErrors,
@@ -19,6 +22,8 @@ function RouteConsumer({ routeKey }: { routeKey: string }) {
 		<View testID={`route-${routeKey}`}>
 			<Text>{answers.name || "empty"}</Text>
 			<Text>{stepErrors.name ?? "no-error"}</Text>
+			<Text>{stepErrors.contact ?? "no-contact-error"}</Text>
+			<Text>{contactChoice.phone}</Text>
 			<Text>{isStepVisited("name") ? "visited" : "not-visited"}</Text>
 			<Text>
 				{isRegistrationStage("verification") ? "verification" : "flow"}
@@ -32,6 +37,23 @@ function RouteConsumer({ routeKey }: { routeKey: string }) {
 					visitStep("name");
 					setRegistrationStage("verification");
 				}}
+			/>
+			<Pressable
+				accessibilityRole="button"
+				accessibilityLabel="Report contact error"
+				onPress={() =>
+					setStepError("contact", "Bitte prüfe die Telefonnummer.")
+				}
+			/>
+			<Pressable
+				accessibilityRole="button"
+				accessibilityLabel="Correct contact choice"
+				onPress={() =>
+					setContactChoice({
+						...emptyContactChoice(),
+						phone: "+4915123456789",
+					})
+				}
 			/>
 			<Pressable
 				accessibilityRole="button"
@@ -57,6 +79,35 @@ function RouteHost() {
 }
 
 describe("OnboardingProvider route-independent state", () => {
+	test("clears a corrected contact error while preserving errors for other answers across routes", async () => {
+		const screen = await render(<RouteHost />);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Populate flow" }),
+		);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Report contact error" }),
+		);
+		expect(
+			screen.getByText("Bitte prüfe die Telefonnummer."),
+		).toBeOnTheScreen();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Change another answer" }),
+		);
+		expect(
+			screen.getByText("Bitte prüfe die Telefonnummer."),
+		).toBeOnTheScreen();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Correct contact choice" }),
+		);
+		expect(screen.queryByText("Bitte prüfe die Telefonnummer.")).toBeNull();
+		expect(screen.getByText("Bitte prüfe den Namen.")).toBeOnTheScreen();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Replace route consumer" }),
+		);
+		expect(screen.getByText("no-contact-error")).toBeOnTheScreen();
+		expect(screen.getByText("+4915123456789")).toBeOnTheScreen();
+	});
+
 	test("preserves answers, field errors, authorization and registration stage across screen unmounts", async () => {
 		const screen = await render(<RouteHost />);
 

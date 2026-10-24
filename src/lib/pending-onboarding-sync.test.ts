@@ -1,4 +1,5 @@
 import { describe, expect, it, test, vi } from "vitest";
+import { emptyContactChoice } from "./contact-preferences";
 import {
 	createPendingOnboardingSyncOutbox,
 	finalizePendingOnboardingCompletion,
@@ -681,4 +682,37 @@ describe("pending onboarding sync outbox", () => {
 			}),
 		).resolves.toEqual({ status: "recovery_required", reason });
 	});
+});
+
+test("retains the normalized contact choice across process restart and isolates it by account", async () => {
+	const { storage } = createMemoryStorage();
+	const outbox = createPendingOnboardingSyncOutbox({ storage });
+	const contact = {
+		...emptyContactChoice(),
+		phone: "+4915123456789",
+		feedback: true,
+	};
+	await outbox.stage({
+		accountFingerprint: ACCOUNT_FINGERPRINT,
+		registrationAttemptId: "contact-attempt",
+		answers: { ...ANSWERS, contact },
+	});
+	await outbox.bindToUser({
+		accountFingerprint: ACCOUNT_FINGERPRINT,
+		clerkUserId: "contact-user",
+		registrationAttemptId: "contact-attempt",
+	});
+	const restarted = createPendingOnboardingSyncOutbox({ storage });
+	expect(
+		await restarted.resume({
+			accountFingerprint: ACCOUNT_FINGERPRINT,
+			clerkUserId: "contact-user",
+		}),
+	).toMatchObject({ status: "pending", answers: { contact } });
+	expect(
+		await restarted.resume({
+			accountFingerprint: OTHER_ACCOUNT_FINGERPRINT,
+			clerkUserId: "other-user",
+		}),
+	).toEqual({ status: "none" });
 });
