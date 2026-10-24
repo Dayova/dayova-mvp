@@ -19,6 +19,10 @@ import {
 } from "react";
 import { Platform } from "react-native";
 import { api } from "#convex/_generated/api";
+import {
+	type AccountDeletionRequest,
+	AccountDeletionTransition,
+} from "~/components/account-deletion-transition";
 import { useOnboarding } from "~/context/OnboardingContext";
 import {
 	AccountDeletionResponseError,
@@ -451,6 +455,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	const convex = useConvex();
 	const { clearAnswers } = useOnboarding();
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [deletionRequest, setDeletionRequest] =
+		useState<AccountDeletionRequest | null>(null);
+	const [deletionRecovery, setDeletionRecovery] = useState<{
+		accepted: boolean;
+		message: string;
+		canReturn: boolean;
+	} | null>(null);
+	const [isRetryingDeletionLogout, setIsRetryingDeletionLogout] =
+		useState(false);
+	const deletionInFlightRef = useRef(false);
+	const [signedOutAccountId, setSignedOutAccountId] = useState<string | null>(
+		null,
+	);
 	const passwordResetHasRemoteAttemptRef = useRef(false);
 	const verificationRecoveryRef = useRef<{
 		registrationAttemptId: string;
@@ -499,7 +516,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	);
 
 	const user = useMemo<AuthUser | null>(() => {
-		if (!clerkUser) return null;
+		if (!clerkUser || clerkUser.id === signedOutAccountId) return null;
 
 		const unsafeMetadata = clerkUser.unsafeMetadata ?? {};
 		const clerkName =
@@ -534,7 +551,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				"onboardingRegistrationAttemptId",
 			),
 		};
-	}, [clerkUser]);
+	}, [clerkUser, signedOutAccountId]);
+	if (signedOutAccountId !== null && clerkUser?.id !== signedOutAccountId) {
+		setSignedOutAccountId(null);
+	}
 
 	useEffect(() => {
 		void onboardingRestoreAttempt;
@@ -1650,56 +1670,114 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	};
 
 	const deleteAccount = async (currentPassword: string) => {
+		if (deletionInFlightRef.current) return;
+		deletionInFlightRef.current = true;
+		let submitted = false;
+		let accepted = false;
 		try {
 			const session = clerk.session;
 			if (!session) throw new Error("Bitte melde dich erneut an.");
 			await submitAccountDeletion(
 				{
 					session,
-					request: async (token) => {
-						const siteUrl = env.EXPO_PUBLIC_CONVEX_SITE_URL?.trim();
-						const endpoint = new URL(siteUrl || convex.url);
-						if (!siteUrl) {
-							endpoint.hostname = endpoint.hostname.replace(
-								/\.convex\.cloud$/,
-								".convex.site",
-							);
-						}
-						endpoint.pathname = "/account-deletion";
-						const response = await fetch(endpoint.toString(), {
-							signal: AbortSignal.timeout(20_000),
-							method: "POST",
-							headers: {
-								Authorization: `Bearer ${token}`,
-								"Content-Type": "application/json",
-							},
-							body: JSON.stringify({ password: currentPassword }),
-						});
-						return readAccountDeletionResponse(response);
+					request: (token) =>
+						new Promise((resolve, reject) => {
+							submitted = true;
+							setDeletionRecovery(null);
+							setDeletionRequest({
+								resolve,
+								reject,
+								run: async () => {
+									const siteUrl = env.EXPO_PUBLIC_CONVEX_SITE_URL?.trim();
+									const endpoint = new URL(siteUrl || convex.url);
+									if (!siteUrl) {
+										endpoint.hostname = endpoint.hostname.replace(
+											/\.convex\.cloud$/,
+											".convex.site",
+										);
+									}
+									endpoint.pathname = "/account-deletion";
+									const response = await fetch(endpoint.toString(), {
+										signal: AbortSignal.timeout(20_000),
+										method: "POST",
+										headers: {
+											Authorization: `Bearer ${token}`,
+											"Content-Type": "application/json",
+										},
+										body: JSON.stringify({ password: currentPassword }),
+									});
+									return readAccountDeletionResponse(response);
+								},
+							});
+						}),
+					logout: async () => {
+						accepted = true;
+						setSignedOutAccountId(clerkUser?.id ?? null);
+						await logout();
 					},
-					logout,
 				},
 				currentPassword,
 			);
+			setDeletionRequest(null);
 		} catch (error) {
+			const message =
+				error instanceof AccountDeletionResponseError
+					? error.message
+					: error instanceof Error && error.name === "TimeoutError"
+						? "Die Kontolöschung hat zu lange gedauert. Bitte prüfe deine Verbindung und versuche es erneut."
+						: isClerkAPIResponseError(error) &&
+								error.errors.some(
+									({ code }) => code === "form_password_incorrect",
+								)
+							? "Das aktuelle Passwort ist falsch."
+							: getClerkErrorMessage(
+									error,
+									"Die Kontolöschung konnte nicht bestätigt werden. Bitte versuche es erneut.",
+								);
+			if (submitted) {
+				// A lost response may already have committed deletion. Never remount
+				// protected subscriptions until this session has been signed out.
+				setDeletionRecovery({
+					accepted,
+					canReturn:
+						error instanceof AccountDeletionResponseError &&
+						error.status !== undefined &&
+						error.status >= 400 &&
+						error.status < 500,
+					message: accepted
+						? "Dein Konto wird gelöscht. Die Abmeldung ist fehlgeschlagen. Bitte versuche es erneut."
+						: message,
+				});
+			} else {
+				setDeletionRequest(null);
+			}
 			if (error instanceof AccountDeletionResponseError) throw error;
-			if (error instanceof Error && error.name === "TimeoutError") {
-				throw new Error(
-					"Die Kontolöschung hat zu lange gedauert. Bitte prüfe deine Verbindung und versuche es erneut.",
-				);
-			}
-			if (
-				isClerkAPIResponseError(error) &&
-				error.errors.some(({ code }) => code === "form_password_incorrect")
-			) {
-				throw new Error("Das aktuelle Passwort ist falsch.");
-			}
-			throw new Error(
-				getClerkErrorMessage(
-					error,
-					"Die Kontolöschung konnte nicht bestätigt werden. Bitte versuche es erneut.",
-				),
+			throw new Error(message);
+		} finally {
+			deletionInFlightRef.current = false;
+		}
+	};
+
+	const retryDeletionLogout = async () => {
+		if (deletionInFlightRef.current) return;
+		deletionInFlightRef.current = true;
+		setIsRetryingDeletionLogout(true);
+		try {
+			await logout();
+			setSignedOutAccountId(clerkUser?.id ?? null);
+			setDeletionRequest(null);
+		} catch {
+			setDeletionRecovery(
+				(current) =>
+					current && {
+						...current,
+						message:
+							"Die Abmeldung ist fehlgeschlagen. Prüfe deine Verbindung und versuche es erneut.",
+					},
 			);
+		} finally {
+			deletionInFlightRef.current = false;
+			setIsRetryingDeletionLogout(false);
 		}
 	};
 
@@ -1766,7 +1844,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 							logout,
 						}}
 					>
-						{children}
+						{deletionRequest ? (
+							<AccountDeletionTransition
+								request={deletionRequest}
+								recovery={deletionRecovery}
+								isRetrying={isRetryingDeletionLogout}
+								onSignOut={() => {
+									if (deletionRecovery?.canReturn) setDeletionRequest(null);
+									else void retryDeletionLogout();
+								}}
+							/>
+						) : (
+							children
+						)}
 					</AccountActionsContext.Provider>
 				</AuthFlowContext.Provider>
 			</OnboardingHandoffContext.Provider>
