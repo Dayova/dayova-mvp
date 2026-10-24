@@ -6,6 +6,16 @@ Notion is Dayova's main internal documentation and knowledge workspace. Linear o
 
 Linear workspace `dayova`, team `Dayova` (`DAY`), is the source of truth for issues and PRDs. GitHub Issues for `Dayova/dayova-mvp` is a bidirectionally synced compatibility surface, and linked pull requests drive Linear workflow status automation. Agent-facing operation rules live in `docs/agents/issue-tracker.md`.
 
+## AI observability and evaluation boundary
+
+Langfuse is the AI tracing/cost/evaluation destination; PostHog remains product
+analytics. Production traces export operational metadata and usage only through
+`ai/observability.ts`, with optional HMAC user attribution and no raw learner
+content. The standalone evaluation CLI publishes only explicit synthetic runs.
+See the [runtime and evaluation runbook](../../../ai/README.md) and canonical
+[AI model strategy](https://app.notion.com/p/3ae2e87228bf81ccb1ccdbbc83c7709c).
+Model experiments never change production routing automatically.
+
 ## Language
 
 **PostHog Student Profile**:
@@ -71,6 +81,17 @@ The exact event-specific property contract is:
 | `plan_adjusted` | `original_session_id`, `new_session_id`, `adjustment_type`, `old_planned_day_key`, `new_planned_day_key`, `old_duration_minutes`, `new_duration_minutes`, and optional `missed_reason` |
 | `user_returned_next_day` | `local_day_key`, `previous_activity_day_key` |
 
+`homework_created` and `exam_created` describe a new persisted entry, not a
+successful save attempt. Entry creation uses `dayEntries.createWithResult`:
+only `created: true` permits a creation event. An identical save returns the
+existing ID with `created: false`; confirmation/navigation still proceeds and
+`feature_interaction` can still record the successful attempt. The ID-only
+`dayEntries.create` endpoint remains compatible with installed clients. Deploy
+the additive backend endpoint before releasing its mobile caller; older clients
+can still emit duplicates. Historical analysis must deduplicate creation events
+by event name and `day_entry_id`. Client analytics remain best-effort, not a
+durable exactly-once event ledger.
+
 Slot context is exactly `learning_plan_id`, `learning_plan_session_id`, `phase`,
 `planned_day_key`, `planned_start_time`, `duration_minutes`, and optional
 `deadline_day_key`. Bounded values are:
@@ -105,6 +126,17 @@ from Clerk metadata by normal mobile flows; seed or patch it intentionally for
 internal users.
 
 ## Notes
+
+- Topic suggestions derive WLO search context from the selected subject name in
+  `convex/wloSubjectContext.ts`. Recognized aliases, explicit course markers and
+  combinations of known areas provide ranking hints only. Personal subjects keep
+  their existing identity, ownership and persistence; do not store WLO taxonomy as
+  their identity or add a mandatory mapping step. Unknown names search without an
+  inferred category. Exact title matches remain available across subjects; other
+  contextual matches precede labelled additional suggestions. The catalog never
+  changes the selected subject or expands the exam scope automatically. See the
+  [decision record](https://app.notion.com/p/3fb2e87228bf817a880dde6127a1996a)
+  and [DAY-517](https://linear.app/dayova/issue/DAY-517).
 
 - The student CRM is a read-only projection of Convex effective access, joined
   through Clerk User ID. New authenticated accounts queue creation of a minimal

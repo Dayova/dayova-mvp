@@ -23,17 +23,129 @@ _Avoid_: User-facing message, learner error text
 
 ## CI Quality Gate
 
-`.eas/workflows/ci.yml` uses one `checks` job, displayed as
-`Lint, typecheck, and test`, for trusted pull requests, manual runs, and pushes
-to `main`. Lint, TypeScript, and tests are separate sequential steps. A merge
-therefore checks the resulting `main` commit again under the same visible job
-name instead of skipping a PR-only job and repeating its commands elsewhere.
+Decision rationale, acceptance, and the associated cleanup/verification scope
+live in the [canonical Notion decision record](https://app.notion.com/p/3fd2e87228bf81f98b45f94017f0079d).
+The [code-facing reference](adr/0001-enforce-repository-checks-and-limit-typed-linting.md)
+links the historical stacked-PR CI evidence.
+
+`.eas/workflows/ci.yml` runs formatting, lint, unused code/dependencies,
+repository skill validation, TypeScript, and tests in `quality`. The final
+`checks` job preserves the required `Lint, typecheck, and test` context and
+rejects failed or skipped applicable quality, OTA, native, and authentication
+prerequisites. A merge validates the resulting `main` commit again. Opening,
+reopening, or updating a PR triggers CI; marking it ready does not repeat an
+unchanged commit.
+
+Pull-request triggers cover every target branch, including stack parents. Do not
+restrict them to `main`: doing so leaves new commits in dependent PRs without CI
+or a current OTA compatibility report. The source and contributor trust gates
+still apply, and deployment/publication remain limited to pushes to `main`.
 
 Pull request checks require the author's GitHub association to be `OWNER`,
-`MEMBER`, or `COLLABORATOR`. Manual runs validate only. Production fingerprinting,
-Convex deployment, and OTA work remain restricted to pushes to `main`.
-Both Convex deployment and OTA checks depend on successful `checks`; OTA
-publication also requires successful fingerprinting, deployment, and OTA safety.
+`MEMBER`, or `COLLABORATOR`. Manual runs validate only. Trusted same-repository
+PRs also run production fingerprinting and OTA compatibility checks; Convex
+deployment and OTA publication remain restricted to pushes to `main`.
+OTA checks depend on `quality`; Convex deployment depends on final `checks`.
+OTA publication also requires successful fingerprinting, deployment, and OTA
+safety. Production exports carry file hashes and source/runtime/environment/native
+fingerprint provenance. The final gate downloads and verifies the uploaded
+artifact; publication reuses and revalidates it without bundling again.
+
+Native/configuration and auth/onboarding changes select Android/iOS validation
+through `scripts/ci-native-changes.mjs`. The weekly run forces it; manual CI can
+set `native_checks=true`. Before real-service/native checks, CI provisions an
+isolated Convex preview in the reviewed project, deploys the checked-out backend,
+and passes its URL, unique preview name and source SHA to every consumer. No
+shared-tenant fallback is permitted. The required final check rejects a failed
+or skipped applicable preview prerequisite.
+
+`CONVEX_CI_PREVIEW_DEPLOY_KEY` is a preview-only project credential in the EAS
+development environment. Provisioning uses the public Convex Management API,
+creates a unique EU preview with a 24-hour expiration, and uses the official
+CLI with the preview-only credential for configuration, compilation and deployment.
+The explicit selection file is private temporary state outside uploaded artifacts
+and is removed on completion/failure. New preview environments discard inherited provider settings and allow only the
+reviewed Clerk test issuer, disabled CRM/deletion integrations and disabled
+Langfuse. Production keys, existing data and production/default deployment
+selection are not used by this path. Failed/canceled runs also expire; preview names
+are unique per attempt. Public source/URL/expiration provenance is uploaded; deploy keys
+must never appear in artifacts or outputs.
+
+Profile `ci` builds embedded non-production apps against that preview and the
+reviewed development Clerk instance, with updates and analytics disabled.
+Matching native builds are reused only with a freshly repacked JavaScript bundle.
+The same preview outputs reach fingerprint, build/repack and device jobs. Before
+installing dependencies, compile and repack jobs pin public preview provenance in the worker
+copy of the `ci` profile: EAS `build:internal` otherwise reloads the saved
+development URL over the inline job value. Other profiles stay unchanged.
+
+The real-service probe initializes only the configured synthetic Clerk test user
+through authenticated app mutations, prepares onboarding, checks anonymous denial
+and authenticated user/access/notification contracts, and closes its Clerk session.
+It does not accept trial terms, grant access, buy a subscription or import an
+existing cohort. Fresh preview data deliberately replaces dependence on shared
+QA user state. Sensitive synthetic credentials remain `MAESTRO_CI_EMAIL` and
+`MAESTRO_CI_PASSWORD`. Native compile misses use EAS Build credits; fingerprints,
+repacks and custom device jobs consume workflow VM time.
+
+CI never deploys PR backend code to the shared development or production tenant.
+Production deployment/publication remains behind its existing main-only checks.
+This candidate-alignment slice does not establish old-client/new-backend or
+migration compatibility; that broader work remains in
+[DAY-442](https://linear.app/dayova/issue/DAY-442). Preview CI implementation and
+live verification are tracked in [DAY-561](https://linear.app/dayova/issue/DAY-561).
+
+The hosted EAS service enforces a 16,384-byte workflow-file limit beyond JSON
+schema validation. Keep reusable preview steps in `.eas/functions/convex-preview`
+and report rendering in `scripts/ci-pr-ota-report.mjs`; full environment aliases
+avoid repeated mappings without YAML merge keys. The workflow-size regression
+check protects that delivery boundary. The report renderer runs only after the
+contributor gate succeeds and preserves identical EAS/GitHub report payloads.
+
+`pnpm test:ci` retains per-stage timings, Vitest JUnit, and Jest JSON under ignored
+`.maestro/artifacts/ci/`. Weekly CI and the manual `test-coverage.yml` collect
+Vitest/Jest coverage there. Upload steps run even on failure.
+CI uses two Jest workers on `linux-medium`, selected by the matched benchmark.
+Manual
+`test-benchmark.yml` and `export-benchmark.yml` compare worker counts and separate
+versus combined exports on the same commit and runner; inspect resolved inputs
+before treating a run as a matched comparison.
+
+`smoke-failure-probe.yml` is an explicitly manual negative control: provide the
+platform and verified CI build ID. It launches the test app and deliberately fails
+an impossible UI assertion so the failed status and retained diagnostics can be
+checked. It must never be included in normal smoke execution.
+Maestro debug files include expanded environment values. Device checks use the
+shared `.eas/functions/device-smoke` custom function so `ci-run-maestro.mjs`
+collects diagnostic text before credential redaction and the single upload,
+including failed runs. Redaction failure removes the unsanitized artifact tree
+and fails the job. The prepackaged Maestro job captures raw iOS system archives
+after its last hook; that later capture can contain synthetic identifiers, so
+it cannot provide this upload boundary. JUnit, screenshots and sanitized app
+logs remain under ignored `.maestro/artifacts/device/`.
+`device-smoke.yml` manually checks a verified CI build on either platform; select
+the authenticated flow to diagnose login without repeating exports and repacks.
+Its full suite excludes the tagged negative control. Disposable iOS simulators
+disable and verify password AutoFill before testing because Maestro cannot inspect
+the iOS password-save sheet; application password behavior stays unchanged.
+
+`Automated review coverage` reports a completed CodeRabbit review separately
+from its provider status. A skipped, rate-limited, missing, or unknown result
+stays pending even if the provider reports success. This informational status
+does not replace the required independent reviews.
+
+Biome owns general linting and formatting for application/backend source, root
+configuration, tests, ESLint rules, scripts, plugins, and local modules. Its
+coverage fixtures must reject invalid code in each of these locations. Generated
+Convex files and installer-owned `skills-lock.json` remain excluded; repository
+skill validation checks the latter.
+
+ESLint owns the React Hooks/Compiler, Dayova UI, and Convex rules. The UI rules
+use syntax-only parsing; Convex retains TypeScript project services because its
+query and explicit-table rules require type information. Keep the integration
+fixtures green when changing either boundary, and retain the independent full
+TypeScript check. Knip remains the unused-code/dependency gate. Replacing an
+engine requires proving equivalent coverage for its specialized rules first.
 
 ## Release Environment
 
@@ -85,6 +197,36 @@ Do not add optional public envs to the required release-key list unless the app
 cannot function without them. The analytics client must stay disabled gracefully
 when the PostHog key is absent.
 
+## SDK 58 runtime boundary
+
+The subsequent symbols-complete release uses shared app/runtime `1.0.8`.
+`expo-symbols` adds iOS `SymbolModule`; the earlier distributed 1.0.6 graph
+and previously used 1.0.7 test runtime must not receive this candidate's OTA.
+The verified production baseline remains on 1.0.5 until replacement store
+artifacts and staging OTA launches are verified on both platforms.
+
+The SDK 58 / React Native 0.88 upgrade uses app/runtime `1.0.6` on both platforms.
+Keep the distributed SDK 57 baseline immutable; this graph requires new native
+binaries and must not be published to runtime `1.0.5`. Patch ownership and upstream
+removals are documented in `patches/README.md`. The SDK upgrade retains the CI
+quality gates introduced by #846; it does not replace that tooling change.
+
+`jest-expo` 58 uses Jest 30 transforms, environments and watch plugins. Keep the
+root Jest, globals and types on 30 even while Expo's version recommendation still
+lists Jest 29. Only `jest` and `@types/jest` are excluded from that recommendation;
+the full UI suite and dependency peer checks remain required.
+
+Clerk 4 supports SDK 58 and exposes `__experimental_disableNativeClientSync`.
+Dayova's custom JS authentication uses that provider option instead of mutating
+the TurboModule registry. Do not enable native sync without introducing Clerk
+native auth components and verifying session ownership on both platforms.
+
+SDK 58 Router's `repeat()` injects a child source when a parent-targeted action
+has no source. The nested-stack integration test reproduces the resulting blocked
+replacement. `useBackIntent` disables prevention explicitly and dispatches the
+original action through the root ref, preserving its target/source. Recheck this
+workaround when Router changes; retain protection if another guard cancels removal.
+
 ## Validation Analytics Runtime Contract
 
 Every allowed custom event receives `analytics_schema_version` and may receive
@@ -117,6 +259,23 @@ and tests throw on unknown keys or invalid values. Production omits invalid
 optional values, drops events with invalid required values, and records only the
 event/property name in diagnostics. `before_send` repeats the custom-key guard
 as defense in depth without filtering PostHog SDK/system properties.
+
+## TypeScript Toolchain
+
+Use stable TypeScript 7 through `@typescript/native` (an npm alias of
+`typescript`) for `tsc`, local watch mode, the app and Convex CI typechecks, and
+Convex CLI typechecking. Convex 1.43.0 is the minimum version that resolves this
+native alias. Keep its development and deployment typechecks enabled.
+
+Keep the root `typescript` dependency aliased to Microsoft's
+`@typescript/typescript6` compatibility package while ESLint and Expo still
+need the TypeScript 6 JavaScript API. It exports that API and `tsc6`; the native
+alias owns `tsc`, avoiding executable conflicts. Preserve both aliases when
+upgrading dependencies, and verify lint, both tsconfigs, Expo config loading,
+and a frozen install. The decision and compatibility rationale live in the
+[Notion developer handbook](https://www.notion.so/3dc2e87228bf818a9547f588e2cf0386).
+See [README](../../../README.md#typescript-tooling) for commands, editor setup,
+and timing comparisons.
 
 ## Package Manager Toolchain
 
@@ -247,15 +406,18 @@ purpose strings.
 
 ## iOS Deployment Target
 
-Dayova currently requires iOS 17.0 because the native Clerk Expo SDK requires
-it. The `@clerk/expo` config plugin writes that target to the generated Xcode
-project and `Podfile.properties.json` during prebuild. This requirement predates
-the Expo SDK 57 upgrade even though Expo SDK 57 itself supports iOS 16.4 and
-newer.
+SDK 58 generates an iOS 16.4 application deployment target in both the Xcode
+project and the Podfile default. Clerk 4's JavaScript authentication package no
+longer includes the native Clerk pod that raised the SDK 57 application target
+to iOS 17.0. Its config plugin applies native SDK configuration only when the
+optional `@clerk/expo-native-components` package is installed; Dayova does not
+install that package.
 
 Keep Dayova-owned native modules compatible with Expo's 16.4 baseline unless a
-higher target is intentional and documented. Re-evaluate the app-wide iOS 17.0
-minimum when Clerk lowers its native SDK requirement or Clerk is replaced.
+higher target is intentional and documented. Recheck the generated application
+target when adding native authentication components. The deployment target is
+not evidence of runtime verification on iOS 16.4; the SDK 58 native smoke and
+appearance evidence covers iOS 27 simulators.
 
 See `modules/dayova-system-appearance/README.md` for the appearance module's
 runtime design, React Native coupling, compatibility policy, test matrix, and

@@ -1,11 +1,10 @@
 import { describe, expect, test } from "vitest";
-import { ONBOARDING_DURATION_OPTIONS } from "./onboarding-learning-times";
 import { getStudyTimeFactBody } from "./study-time-fact";
 
 describe("getStudyTimeFactBody", () => {
-	test.each(
-		ONBOARDING_DURATION_OPTIONS,
-	)("uses the selected %i-minute duration", (minutes) => {
+	test.each([
+		15, 30, 45, 60, 90, 120, 150, 180, 210, 240,
+	])("uses the selected %i-minute duration", (minutes) => {
 		expect(getStudyTimeFactBody(`${minutes} min`)).toContain(
 			`${minutes} Minuten`,
 		);

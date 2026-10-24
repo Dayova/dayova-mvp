@@ -2,10 +2,11 @@ import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
+import { assertAccountActive } from "./accountDeletion";
 import { throwUserFacingError } from "./errors";
 import {
-	MAX_PERSONAL_SUBJECT_REFERENCES,
 	listPersonalSubjectReferences,
+	MAX_PERSONAL_SUBJECT_REFERENCES,
 } from "./personalSubjectReferences";
 
 const MAX_PERSONAL_SUBJECTS = 100;
@@ -48,6 +49,7 @@ const builtInSubjectByNormalizedName = new Map(
 const requireOwnerTokenIdentifier = async (ctx: QueryCtx | MutationCtx) => {
 	const identity = await ctx.auth.getUserIdentity();
 	if (!identity) throwUserFacingError("Nicht authentifiziert.");
+	await assertAccountActive(ctx, identity.tokenIdentifier);
 	return identity.tokenIdentifier;
 };
 

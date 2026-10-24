@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import {
 	ActivityIndicator,
 	Keyboard,
-	type TextInput,
+	type TextInputInstance,
 	View,
 } from "react-native";
 import { AddOptionButton } from "~/components/ui/add-option-button";
@@ -125,7 +125,7 @@ function SubjectAddFlow({
 	onSelect: (selection: SubjectSelection) => void;
 	onSavePermanent: (name: string) => Promise<SubjectSelection>;
 }) {
-	const inputRef = useRef<TextInput>(null);
+	const inputRef = useRef<TextInputInstance>(null);
 	const savingRef = useRef(false);
 	const [name, setName] = useState("");
 	const [isBusy, setIsBusy] = useState(false);

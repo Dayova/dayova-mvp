@@ -1,0 +1,25 @@
+name: Provision isolated candidate backend
+outputs:
+  url:
+    value: ${{ steps.preview.outputs.url }}
+  name:
+    value: ${{ steps.preview.outputs.name }}
+  source_sha:
+    value: ${{ steps.preview.outputs.source_sha }}
+runs:
+  steps:
+    - uses: eas/checkout
+    - uses: eas/install_node_modules
+    - id: preview
+      name: Provision and deploy the checked-out backend
+      run: |
+        node scripts/ci-convex-preview.mjs
+        set-output url "$(node -p 'JSON.parse(require("fs").readFileSync(".maestro/artifacts/ci/convex-preview.json", "utf8")).url')"
+        set-output name "$(node -p 'JSON.parse(require("fs").readFileSync(".maestro/artifacts/ci/convex-preview.json", "utf8")).previewName')"
+        set-output source_sha "$(node -p 'JSON.parse(require("fs").readFileSync(".maestro/artifacts/ci/convex-preview.json", "utf8")).sourceSha')"
+    - uses: eas/upload_artifact
+      if: ${{ always() }}
+      with:
+        type: other
+        name: candidate-backend-provenance
+        path: .maestro/artifacts/ci

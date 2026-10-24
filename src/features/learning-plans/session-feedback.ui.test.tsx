@@ -32,8 +32,6 @@ describe("session feedback", () => {
 });
 
 let mockReduceMotion = false;
-const mockFade = jest.fn(() => "fade");
-const mockSuccessAccent = jest.fn(() => "success-accent");
 jest.mock("react-native-reanimated", () => {
 	const Native =
 		jest.requireActual<typeof import("react-native")>("react-native");
@@ -41,9 +39,9 @@ jest.mock("react-native-reanimated", () => {
 		__esModule: true,
 		default: { View: Native.View },
 		useReducedMotion: () => mockReduceMotion,
-		FadeIn: { duration: () => mockFade() },
+		FadeIn: { duration: () => undefined },
 		ZoomIn: {
-			duration: () => ({ withInitialValues: () => mockSuccessAccent() }),
+			duration: () => ({ withInitialValues: () => undefined }),
 		},
 	};
 });
@@ -76,10 +74,9 @@ test.each<{ rating: SessionAnswerAttempt["rating"]; title: string }>([
 	expect(screen.getByRole("header", { name: title })).toBeOnTheScreen();
 	expect(screen.getByText(baseAttempt.feedback)).toBeOnTheScreen();
 	expect(screen.getByText(baseAttempt.perfectAnswer)).toBeOnTheScreen();
-	expect(mockSuccessAccent).toHaveBeenCalledTimes(rating === "correct" ? 1 : 0);
 });
 
-test("reduced motion retains feedback without entrance or success motion", async () => {
+test("reduced motion retains the accessible evaluation and ideal answer", async () => {
 	mockReduceMotion = true;
 	const screen = await render(<FeedbackView attempt={baseAttempt} />);
 	expect(
@@ -87,6 +84,31 @@ test("reduced motion retains feedback without entrance or success motion", async
 	).toBeOnTheScreen();
 	expect(screen.getByText(baseAttempt.feedback)).toBeOnTheScreen();
 	expect(screen.getByText(baseAttempt.perfectAnswer)).toBeOnTheScreen();
-	expect(mockFade).not.toHaveBeenCalled();
-	expect(mockSuccessAccent).not.toHaveBeenCalled();
+});
+
+test("a new attempt replaces the previous rating and explanation", async () => {
+	const screen = await render(<FeedbackView attempt={baseAttempt} />);
+
+	await screen.rerender(
+		<FeedbackView
+			attempt={{
+				...baseAttempt,
+				id: "attempt_2" as SessionAnswerAttempt["id"],
+				rating: "notCorrect",
+				feedback: "Multipliziere die beiden Seitenlängen.",
+				perfectAnswer: "3 cm × 4 cm = 12 cm².",
+			}}
+		/>,
+	);
+
+	expect(
+		screen.getByRole("header", { name: "Noch nicht gewusst" }),
+	).toBeOnTheScreen();
+	expect(
+		screen.getByText("Multipliziere die beiden Seitenlängen."),
+	).toBeOnTheScreen();
+	expect(screen.getByText("3 cm × 4 cm = 12 cm².")).toBeOnTheScreen();
+	expect(screen.queryByText("Richtige Antwort")).toBeNull();
+	expect(screen.queryByText(baseAttempt.feedback)).toBeNull();
+	expect(screen.queryByText(baseAttempt.perfectAnswer)).toBeNull();
 });

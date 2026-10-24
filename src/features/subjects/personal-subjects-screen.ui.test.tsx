@@ -29,7 +29,10 @@ const mockQueryError = new Error(
 	"[CONVEX Q(personalSubjects:list)] Server Error",
 );
 let mockResponse: unknown = mockQueryError;
-const mockMutation = jest.fn<(args: { name: string }) => Promise<unknown>>();
+const mockMutation =
+	jest.fn<
+		(args: { name: string; id?: string } | { id: string }) => Promise<unknown>
+	>();
 beforeEach(() => {
 	mockResponse = mockQueryError;
 	mockMutation.mockReset();

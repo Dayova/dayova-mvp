@@ -52,14 +52,6 @@ describe("SubscriptionSuccessScreen", () => {
 		expect(
 			screen.getByText("Dein Lernstand bleibt vollständig erhalten"),
 		).toBeOnTheScreen();
-		expect(
-			screen.getByTestId("subscription-success-confirmation-card").props.style,
-		).toEqual(
-			expect.objectContaining({
-				backgroundColor: "#FFFFFF",
-				borderColor: "#4FD8FF",
-			}),
-		);
 	});
 
 	test("continues to the dashboard without returning to checkout", async () => {

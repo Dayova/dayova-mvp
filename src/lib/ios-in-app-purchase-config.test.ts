@@ -3,15 +3,10 @@ import type { ExpoConfig } from "expo/config";
 import { describe, expect, test, vi } from "vitest";
 
 const require = createRequire(import.meta.url);
-const {
-	enableIosInAppPurchase,
-	IN_APP_PURCHASE_CAPABILITY,
-	STORE_KIT_FRAMEWORK,
-} = require("../../plugins/withIosInAppPurchase.js") as {
-	enableIosInAppPurchase: (project: MockXcodeProject) => MockXcodeProject;
-	IN_APP_PURCHASE_CAPABILITY: string;
-	STORE_KIT_FRAMEWORK: string;
-};
+const { enableIosInAppPurchase } =
+	require("../../plugins/withIosInAppPurchase.js") as {
+		enableIosInAppPurchase: (project: MockXcodeProject) => MockXcodeProject;
+	};
 
 type MockXcodeProject = ReturnType<typeof createMockProject>;
 
@@ -41,9 +36,9 @@ describe("iOS In-App Purchase configuration", () => {
 		expect(
 			project.targetAttributes[project.targetId]?.SystemCapabilities,
 		).toEqual({
-			[IN_APP_PURCHASE_CAPABILITY]: { enabled: 1 },
+			"com.apple.InAppPurchase": { enabled: 1 },
 		});
-		expect(project.addFramework).toHaveBeenCalledWith(STORE_KIT_FRAMEWORK, {
+		expect(project.addFramework).toHaveBeenCalledWith("StoreKit.framework", {
 			target: project.targetId,
 		});
 	});

@@ -213,6 +213,10 @@ test("large adjusted budgets stay within the calendar slot limit", () => {
 			endTime: "18:00",
 		})),
 	});
+	expect(slots.length).toBeGreaterThan(0);
+	expect(slots.reduce((total, slot) => total + slot.durationMinutes, 0)).toBe(
+		2700,
+	);
 	expect(slots.length).toBeLessThanOrEqual(180);
 	expect(validatePreparationSlots(slots, "2027-01-25")).toBeNull();
 });

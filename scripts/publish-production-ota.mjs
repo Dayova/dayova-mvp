@@ -4,6 +4,10 @@ import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createReport } from "./ota-safety.mjs";
+import {
+	productionExportContext,
+	verifyProductionExport,
+} from "./production-export.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
@@ -66,28 +70,33 @@ export function verifyPublication(updates, sourceSha, runtimeVersion) {
 }
 
 // Keep command execution at one boundary so failure paths can be tested without publishing.
+/** @param {{sourceSha?: string, runtimeVersion: string, run: any, guard: any, log: any, preparedExport?: {directory: string, context: ReturnType<typeof productionExportContext>}}} options */
 export function publishProductionOta({
 	sourceSha,
 	runtimeVersion,
 	run,
 	guard,
 	log,
+	preparedExport = undefined,
 }) {
 	const verifySource = (phase) => {
 		const actualSha = run("git", ["rev-parse", "HEAD"]).trim();
 		const gitStatus = run("git", ["status", "--porcelain"]).trimEnd();
-		log(JSON.stringify({
-			status: "source-verification",
-			phase,
-			expectedSha: sourceSha ?? null,
-			actualSha,
-			gitStatus,
-		}));
+		log(
+			JSON.stringify({
+				status: "source-verification",
+				phase,
+				expectedSha: sourceSha ?? null,
+				actualSha,
+				gitStatus,
+			}),
+		);
 		const failures = [];
 		if (!/^[0-9a-f]{40}$/.test(sourceSha ?? "")) {
 			failures.push("OTA_SOURCE_SHA is missing or invalid");
 		}
-		if (actualSha !== sourceSha) failures.push("HEAD does not match OTA_SOURCE_SHA");
+		if (actualSha !== sourceSha)
+			failures.push("HEAD does not match OTA_SOURCE_SHA");
 		if (gitStatus.trim()) failures.push("working tree is dirty");
 		if (failures.length) {
 			throw new Error(
@@ -101,7 +110,22 @@ export function publishProductionOta({
 	};
 	verifySource("before-export");
 	verifyGuard();
-	run("expo", ["export", "--platform", "all", "--output-dir", "dist"], false);
+	let exportDirectory = "dist";
+	if (preparedExport) {
+		if (
+			preparedExport.context.sourceSha !== sourceSha ||
+			preparedExport.context.runtimeVersion !== runtimeVersion
+		)
+			throw new Error(
+				"Prepared export context must match the publication source and runtime",
+			);
+		exportDirectory = verifyProductionExport(
+			preparedExport.directory,
+			preparedExport.context,
+		);
+	} else {
+		run("expo", ["export", "--platform", "all", "--output-dir", "dist"], false);
+	}
 	verifySource("after-export");
 	verifyGuard();
 	verifyChannel(
@@ -113,12 +137,23 @@ export function publishProductionOta({
 		// a read-then-write check. Leave this empty branch on any uncertain result
 		// or worker cancellation; no catch/finally/signal handler may release it.
 		const lock = JSON.parse(
-			run("eas", ["branch:create", publicationLockBranch, "--json", "--non-interactive"]),
+			run("eas", [
+				"branch:create",
+				publicationLockBranch,
+				"--json",
+				"--non-interactive",
+			]),
 		);
 		if (!lock.id || lock.name !== publicationLockBranch) {
 			throw new Error("Publication lock acquisition was not confirmed.");
 		}
-		log(JSON.stringify({ status: "publication-locked", lockId: lock.id, sourceSha }));
+		log(
+			JSON.stringify({
+				status: "publication-locked",
+				lockId: lock.id,
+				sourceSha,
+			}),
+		);
 		verifyChannel(
 			JSON.parse(run("eas", ["channel:view", "production", "--json"])),
 		);
@@ -131,7 +166,7 @@ export function publishProductionOta({
 			"--platform",
 			"all",
 			"--input-dir",
-			"dist",
+			exportDirectory,
 			"--skip-bundler",
 			"--message",
 			`Production OTA from ${sourceSha}`,
@@ -147,10 +182,17 @@ export function publishProductionOta({
 		);
 		log(JSON.stringify({ status: "publication-verified", updates: summary }));
 		const released = JSON.parse(
-			run("eas", ["branch:delete", publicationLockBranch, "--json", "--non-interactive"]),
+			run("eas", [
+				"branch:delete",
+				publicationLockBranch,
+				"--json",
+				"--non-interactive",
+			]),
 		);
 		if (released.id !== lock.id) {
-			throw new Error("Publication lock release was not confirmed; inspect EAS before further publication.");
+			throw new Error(
+				"Publication lock release was not confirmed; inspect EAS before further publication.",
+			);
 		}
 		log(JSON.stringify({ status: "published", updates: summary }));
 		return summary;
@@ -206,6 +248,16 @@ if (
 			run,
 			guard: createReport,
 			log: console.log,
+			preparedExport: process.env.OTA_EXPORT_DIRECTORY
+				? {
+						directory: process.env.OTA_EXPORT_DIRECTORY,
+						context: productionExportContext({
+							sourceSha: process.env.OTA_SOURCE_SHA,
+							runtimeVersion: baseline.runtimeVersion,
+							env,
+						}),
+					}
+				: undefined,
 		});
 	} catch (error) {
 		console.error(error.message);

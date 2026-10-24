@@ -122,6 +122,7 @@ const answerDiagnostic = async (
 		sessionId,
 	});
 	const items = content.items;
+	expect(items).toHaveLength(5);
 	for (const item of items) {
 		if (item.kind === "multipleChoice") {
 			const selectedChoiceId = correct
@@ -356,6 +357,7 @@ test("keeps question topic references aligned when topic IDs are normalized", as
 		id: learningPlanId,
 	});
 	expect(snapshot?.plan.topicMap?.[0]?.id).toBe("lineare-funktionen");
+	expect(snapshot?.plan.knowledgeQuestions).toHaveLength(5);
 	expect(
 		snapshot?.plan.knowledgeQuestions.every(
 			(question) => question.topicId === "lineare-funktionen",

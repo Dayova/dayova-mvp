@@ -16,6 +16,8 @@ export const examEntryResumePath = (params: {
 	examDateKey: string;
 	durationMinutes: number;
 	topicDescription: string;
+	topicItems?: string[];
+	topicAdditionalInfo?: string;
 }) =>
 	`${ROUTES.createExam}&${buildRouteQuery([
 		["step", "basics"],
@@ -27,6 +29,13 @@ export const examEntryResumePath = (params: {
 		["dayKey", params.examDateKey],
 		["durationMinutes", String(params.durationMinutes)],
 		["topicDescription", params.topicDescription],
+		[
+			"topicItems",
+			params.topicItems === undefined
+				? undefined
+				: JSON.stringify(params.topicItems),
+		],
+		["topicAdditionalInfo", params.topicAdditionalInfo],
 	])}` as const;
 
 export const examEntrySuccessPath = ({
@@ -67,23 +76,6 @@ export const learningPlanResumePath = (
 	}
 
 	return `/learning-plans/${id}` as const;
-};
-
-export const learningPlanTopicsPath = (
-	id: Id<"learningPlans">,
-	params: {
-		topicDescription?: string;
-		errorMessage?: string;
-	} = {},
-) => {
-	const query = buildRouteQuery([
-		["learningPlanId", id],
-		["step", "topic"],
-		["topicDescription", params.topicDescription],
-		["errorMessage", params.errorMessage],
-	]);
-
-	return `${ROUTES.createLearningPlan}?${query}` as const;
 };
 
 export const learningPlanMaterialPath = (

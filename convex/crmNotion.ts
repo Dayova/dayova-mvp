@@ -8,6 +8,8 @@ export const CRM_PROPERTIES = {
 	"Clerk User ID": "rich_text",
 	"Convex User ID": "rich_text",
 	"Identity Status": "select",
+	"App Account Status": "select",
+	"App Account Deleted At": "date",
 	"Entitlement State": "select",
 	"Subscription Product": "rich_text",
 	"Payment Status": "select",
@@ -44,6 +46,8 @@ export type StudentRow = {
 	email?: string;
 	lastEditedAt?: string;
 	markedPaid: boolean;
+	appAccountStatus?: string;
+	appAccountDeletedAt?: number;
 };
 
 export function parseStudent(value: unknown, dataSourceId: string): StudentRow {
@@ -76,7 +80,19 @@ export function parseStudent(value: unknown, dataSourceId: string): StudentRow {
 	const payment = properties["Payment Status"]
 		? object(properties["Payment Status"]).select
 		: undefined;
+	const accountStatus = properties["App Account Status"]
+		? object(properties["App Account Status"]).select
+		: null;
+	const deletedDate = properties["App Account Deleted At"]
+		? object(properties["App Account Deleted At"]).date
+		: null;
 	return {
+		...(accountStatus && typeof object(accountStatus).name === "string"
+			? { appAccountStatus: object(accountStatus).name as string }
+			: {}),
+		...(deletedDate && typeof object(deletedDate).start === "string"
+			? { appAccountDeletedAt: Date.parse(object(deletedDate).start as string) }
+			: {}),
 		pageId: page.id,
 		clerkId,
 		...(typeof email === "string" && email.trim()
@@ -101,6 +117,8 @@ export function projectionProperties(projection: CrmProjection, now: number) {
 		Email: { email: projection.email },
 		"Convex User ID": richText(projection.userId),
 		"Identity Status": { select: { name: "matched" } },
+		"App Account Status": { select: { name: "active" } },
+		"App Account Deleted At": date(null),
 		"Entitlement State": { select: { name: projection.state } },
 		"Subscription Product": richText(projection.product),
 		"Payment Status": { select: { name: projection.paymentStatus } },
@@ -113,6 +131,30 @@ export function projectionProperties(projection: CrmProjection, now: number) {
 		"Will Renew": { checkbox: projection.willRenew },
 		"Last Synced At": date(now),
 		"Sync Source": richText("Convex effective access / DAY-366"),
+		"Sync Error": { select: null },
+	};
+}
+// Contact/profile/research fields, tags, relationships and manual CRM status/history
+// are deliberately absent. Only the current app link/access projection is cleared.
+export function deletedAccountProperties(deletedAt: number, now: number) {
+	return {
+		"Clerk User ID": richText(null),
+		"Convex User ID": richText(null),
+		"Identity Status": { select: { name: "unmatched" } },
+		"App Account Status": { select: { name: "deleted" } },
+		"App Account Deleted At": date(deletedAt),
+		"Entitlement State": { select: { name: "none" } },
+		"Payment Status": { select: { name: "None" } },
+		"Subscription Plan": { select: { name: "None" } },
+		"Subscription Product": richText(null),
+		"Subscription Store": richText(null),
+		"Subscription Expires At": date(null),
+		"Billing Grace Expires At": date(null),
+		"Trial Started At": date(null),
+		"Trial Expires At": date(null),
+		"Will Renew": { checkbox: false },
+		"Last Synced At": date(now),
+		"Sync Source": richText("Convex account deletion / DAY-528"),
 		"Sync Error": { select: null },
 	};
 }
@@ -300,6 +342,12 @@ export function createNotionClient(token: string, dataSourceId: string) {
 		async readStudent(pageId: string) {
 			if (!uuid(pageId)) throw new CrmFailure("schema");
 			return parseStudent(await request(`pages/${pageId}`), dataSourceId);
+		},
+		async clearStudentAccount(pageId: string, deletedAt: number) {
+			if (!uuid(pageId)) throw new CrmFailure("schema");
+			await request(`pages/${pageId}`, "PATCH", {
+				properties: deletedAccountProperties(deletedAt, Date.now()),
+			});
 		},
 		async writeStudent(pageId: string, projection: CrmProjection, now: number) {
 			if (!uuid(pageId)) throw new CrmFailure("schema");

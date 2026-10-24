@@ -5,22 +5,22 @@ import { ActivityIndicator, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import { EntryCompletionAction } from "~/components/entry/entry-completion-action";
 import { BackButton, Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import {
 	Attachment,
 	BookOpen,
 	CalendarDays,
-	Check,
 	Clock3,
 	NotebookPen,
 	Timer,
-	Trash2,
 } from "~/components/ui/icon";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
+import { optimisticEntryCompletion } from "~/features/entries/optimistic-entry-completion";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { formatGermanUiText } from "~/lib/german-ui-text";
@@ -66,7 +66,7 @@ function DetailTile({
 	if (!value) return null;
 
 	return (
-		<View className="flex-1 rounded-[24px] border border-border bg-card px-5 py-5">
+		<View className="rounded-[24px] border border-border bg-card px-5 py-5">
 			<View className="mb-3 flex-row items-center">
 				{icon}
 				<Text className="ml-2 font-poppins font-semibold text-body-5 text-text/50 uppercase">
@@ -129,7 +129,9 @@ export default function EntryDetailScreen() {
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const deleteDayEntry = useMutation(api.dayEntries.remove);
-	const setDayEntryCompleted = useMutation(api.dayEntries.setCompleted);
+	const setDayEntryCompleted = useMutation(
+		api.dayEntries.setCompleted,
+	).withOptimisticUpdate(optimisticEntryCompletion);
 	const params = useLocalSearchParams<{
 		id?: string;
 		title?: string;
@@ -248,23 +250,26 @@ export default function EntryDetailScreen() {
 		setDeleteError(null);
 	};
 
-	const toggleCompleted = () => {
-		if (!canToggleCompleted || !id || !user || !isConvexAuthenticated) return;
+	const changeCompleted = async (completed: boolean) => {
+		if (!canToggleCompleted || !id || !user || !isConvexAuthenticated) {
+			throw new Error("Entry completion unavailable");
+		}
 		const interaction =
 			entry?.kind === "Hausaufgabe"
-				? isCompleted
+				? !completed
 					? "homework.reopen"
 					: "homework.complete"
-				: isCompleted
+				: !completed
 					? "entry.reopen"
 					: "entry.complete";
 		trackFeature(interaction, "attempted", id);
-		void setDayEntryCompleted({
-			id: id as Id<"dayEntries">,
-			completed: !isCompleted,
-		})
-			.then(() => trackFeature(interaction, "succeeded", id))
-			.catch(() => trackFeature(interaction, "failed", id));
+		try {
+			await setDayEntryCompleted({ id: id as Id<"dayEntries">, completed });
+			trackFeature(interaction, "succeeded", id);
+		} catch (error) {
+			trackFeature(interaction, "failed", id);
+			throw error;
+		}
 	};
 
 	const openLearningPlan = () => {
@@ -435,24 +440,15 @@ export default function EntryDetailScreen() {
 					</Button>
 				) : null}
 				{canToggleCompleted ? (
-					<Button
-						className="mt-5"
-						variant={isCompleted ? "neutral" : "default"}
-						onPress={toggleCompleted}
-					>
-						<Check
-							size={18}
-							color={isCompleted ? "#1A1A1A" : "#FFFFFF"}
-							strokeWidth={2.3}
-						/>
-						<Text>
-							{isCompleted ? "Als offen markieren" : "Als erledigt markieren"}
-						</Text>
-					</Button>
+					<EntryCompletionAction
+						key={id}
+						completed={isCompleted}
+						disabled={!user || !isConvexAuthenticated}
+						onChange={changeCompleted}
+					/>
 				) : null}
 				{canDelete ? (
 					<Button className="mt-5" variant="destructive" onPress={handleDelete}>
-						<Trash2 size={18} color="#FFFFFF" strokeWidth={2.3} />
 						<Text>Eintrag löschen</Text>
 					</Button>
 				) : null}

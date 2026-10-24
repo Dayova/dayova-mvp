@@ -85,6 +85,7 @@ jest.mock("react-native-keyboard-controller", () => {
 	return {
 		KeyboardAvoidingView: View,
 		KeyboardAwareScrollView: ScrollView,
+		useKeyboardState: () => 0,
 	};
 });
 jest.mock("~/components/ui/button", () => {

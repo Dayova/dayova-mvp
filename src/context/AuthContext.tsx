@@ -4,7 +4,7 @@ import {
 	useSignIn,
 	useUser,
 } from "@clerk/expo";
-import { useConvexAuth, useMutation } from "convex/react";
+import { useConvex, useConvexAuth, useMutation } from "convex/react";
 import { usePostHog } from "posthog-react-native";
 import type React from "react";
 import {
@@ -20,6 +20,11 @@ import {
 import { Platform } from "react-native";
 import { api } from "#convex/_generated/api";
 import { useOnboarding } from "~/context/OnboardingContext";
+import {
+	AccountDeletionResponseError,
+	readAccountDeletionResponse,
+	submitAccountDeletion,
+} from "~/lib/account-deletion-request";
 import {
 	createValidationAnalytics,
 	isPostHogConfigured,
@@ -81,6 +86,7 @@ import {
 	finalizeCompletedRegistration,
 	IncompleteRegistrationIdentityError,
 } from "~/lib/registration-verification";
+import { env } from "~/lib/runtime-config";
 import {
 	isSupportedSchoolType,
 	normalizeLegacySchoolType,
@@ -174,7 +180,7 @@ interface AccountActionsContextType {
 	verifyProfileEmailCode: (code: string) => Promise<void>;
 	changePassword: (input: PasswordChangeInput) => Promise<void>;
 	completeForcedPasswordReset: (password: string) => Promise<void>;
-	deleteAccount: () => Promise<void>;
+	deleteAccount: (currentPassword: string) => Promise<void>;
 	logout: () => Promise<void>;
 }
 
@@ -442,9 +448,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		api.validationAnalytics.markActivity,
 	);
 	const updateConvexProfile = useMutation(api.users.updateProfile);
-	const deleteCurrentUserDataBatch = useMutation(
-		api.accountDeletion.deleteCurrentUserDataBatch,
-	);
+	const convex = useConvex();
 	const { clearAnswers } = useOnboarding();
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const passwordResetHasRemoteAttemptRef = useRef(false);
@@ -1645,24 +1649,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		);
 	};
 
-	const deleteAccount = async () => {
-		if (!clerkUser) {
-			throw new Error("Das Konto ist nicht mehr verfügbar.");
-		}
-
-		while (true) {
-			const deletion = await deleteCurrentUserDataBatch({});
-			if (deletion.done) break;
-		}
-
+	const deleteAccount = async (currentPassword: string) => {
 		try {
-			await clerkUser.delete();
-			await logout();
+			const session = clerk.session;
+			if (!session) throw new Error("Bitte melde dich erneut an.");
+			await submitAccountDeletion(
+				{
+					session,
+					request: async (token) => {
+						const siteUrl = env.EXPO_PUBLIC_CONVEX_SITE_URL?.trim();
+						const endpoint = new URL(siteUrl || convex.url);
+						if (!siteUrl) {
+							endpoint.hostname = endpoint.hostname.replace(
+								/\.convex\.cloud$/,
+								".convex.site",
+							);
+						}
+						endpoint.pathname = "/account-deletion";
+						const response = await fetch(endpoint.toString(), {
+							signal: AbortSignal.timeout(20_000),
+							method: "POST",
+							headers: {
+								Authorization: `Bearer ${token}`,
+								"Content-Type": "application/json",
+							},
+							body: JSON.stringify({ password: currentPassword }),
+						});
+						return readAccountDeletionResponse(response);
+					},
+					logout,
+				},
+				currentPassword,
+			);
 		} catch (error) {
+			if (error instanceof AccountDeletionResponseError) throw error;
+			if (error instanceof Error && error.name === "TimeoutError") {
+				throw new Error(
+					"Die Kontolöschung hat zu lange gedauert. Bitte prüfe deine Verbindung und versuche es erneut.",
+				);
+			}
+			if (
+				isClerkAPIResponseError(error) &&
+				error.errors.some(({ code }) => code === "form_password_incorrect")
+			) {
+				throw new Error("Das aktuelle Passwort ist falsch.");
+			}
 			throw new Error(
 				getClerkErrorMessage(
 					error,
-					"Das Konto konnte nicht vollständig gelöscht werden. Bitte versuche es erneut.",
+					"Die Kontolöschung konnte nicht bestätigt werden. Bitte versuche es erneut.",
 				),
 			);
 		}

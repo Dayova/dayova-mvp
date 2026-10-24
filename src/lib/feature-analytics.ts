@@ -92,6 +92,7 @@ export const ANALYTICS_SCREENS = {
 	"learning-plans/[planId]/analysis": "plan_setup_analysis",
 	"learning-plans/[planId]/generating": "plan_generating",
 	"learning-plans/[planId]/success": "plan_success",
+	"learning-plans/[planId]/preparation": "plan_preparation",
 	"learning-plans/[planId]/sessions/[sessionId]": "learning_session",
 	"learning-plans/[planId]/sessions/[sessionId]/edit": "session_editor",
 	"analyse/wissensstand": "analysis_knowledge",

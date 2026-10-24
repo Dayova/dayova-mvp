@@ -1,6 +1,7 @@
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
+import { assertAccountActive } from "./accountDeletion";
 import { advanceRollingLearningPlan } from "./adaptiveLearningPlan";
 import { throwUserFacingError } from "./errors";
 import {
@@ -36,6 +37,7 @@ const getSessionExecutionStatus = (session: Doc<"learningPlanSessions">) =>
 const requireOwnerTokenIdentifier = async (ctx: QueryCtx) => {
 	const identity = await ctx.auth.getUserIdentity();
 	if (!identity) throwUserFacingError("Nicht authentifiziert.");
+	await assertAccountActive(ctx, identity.tokenIdentifier);
 	return identity.tokenIdentifier;
 };
 const advanceOwnedRollingLearningPlan = (

@@ -1,0 +1,37 @@
+import { useRef } from "react";
+import type { TextInputInstance } from "react-native";
+import { Field, FieldControl, FieldLabel } from "~/components/ui/field";
+import { Input } from "~/components/ui/input";
+
+export function AccountDeletionPasswordField({
+	value,
+	onChangeText,
+	disabled,
+}: {
+	value: string;
+	onChangeText: (value: string) => void;
+	disabled: boolean;
+}) {
+	const label = "Aktuelles Passwort zur Bestätigung";
+	const inputRef = useRef<TextInputInstance>(null);
+	return (
+		<Field>
+			<FieldLabel onPress={() => inputRef.current?.focus()}>{label}</FieldLabel>
+			<FieldControl>
+				<Input
+					ref={inputRef}
+					className="min-h-16 self-stretch"
+					accessibilityLabel={label}
+					value={value}
+					onChangeText={onChangeText}
+					secureTextEntry
+					autoCapitalize="none"
+					autoCorrect={false}
+					autoComplete="current-password"
+					textContentType="password"
+					editable={!disabled}
+				/>
+			</FieldControl>
+		</Field>
+	);
+}

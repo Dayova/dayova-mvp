@@ -1,9 +1,10 @@
 import { usePathname, useRootNavigationState, useRouter } from "expo-router";
 import { type ReactNode, useEffect } from "react";
 import { View } from "react-native";
+import { AccessVerificationRecovery } from "~/components/access-verification-recovery";
 import { useAccess } from "~/context/AccessContext";
 import { useAuthSession } from "~/context/AuthContext";
-import { resolveAccessRoute } from "~/lib/access-policy";
+import { isAccessBypassPath, resolveAccessRoute } from "~/lib/access-policy";
 import { getAuthNavigationTarget } from "~/lib/auth-routing";
 import { cn } from "~/lib/utils";
 
@@ -21,7 +22,22 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 		pendingSessionTask,
 		onboardingCompletionStatus,
 	} = useAuthSession();
-	const { access, isAccessLoading } = useAccess();
+	const {
+		access,
+		isAccessLoading,
+		isAccessUnavailable,
+		isAccessRetrying,
+		retryAccess,
+	} = useAccess();
+	const needsAccessVerification = !isAccessBypassPath(pathname);
+	const showAccessRecovery = Boolean(
+		user &&
+			!isSessionLoading &&
+			pendingSessionTask === null &&
+			onboardingCompletionStatus === "none" &&
+			isAccessUnavailable &&
+			needsAccessVerification,
+	);
 	const authTargetRoute = getAuthNavigationTarget({
 		hasUser: Boolean(user),
 		isSessionLoading,
@@ -44,7 +60,10 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 	const shouldMaskRoute =
 		isSessionLoading ||
 		onboardingCompletionStatus === "loading" ||
-		(onboardingCompletionStatus === "none" && isAccessLoading) ||
+		(onboardingCompletionStatus === "none" &&
+			needsAccessVerification &&
+			isAccessLoading) ||
+		showAccessRecovery ||
 		targetRoute !== null;
 
 	useEffect(() => {
@@ -77,7 +96,14 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 					importantForAccessibility="no"
 					pointerEvents="auto"
 					className="absolute inset-0 bg-background"
-				/>
+				>
+					{showAccessRecovery ? (
+						<AccessVerificationRecovery
+							isRetrying={isAccessRetrying}
+							onRetry={retryAccess}
+						/>
+					) : null}
+				</View>
 			) : null}
 		</View>
 	);

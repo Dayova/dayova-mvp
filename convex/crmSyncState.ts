@@ -9,6 +9,7 @@ import {
 	internalQuery,
 	type QueryCtx,
 } from "./_generated/server";
+import { getClerkIdentity } from "./clerkIdentity";
 import { crmBilling } from "./crmBilling";
 import {
 	type CrmMatch,
@@ -25,6 +26,12 @@ async function project(
 	user: Doc<"users">,
 	now: number,
 ): Promise<CrmProjection | null> {
+	const clerkIdentity = await getClerkIdentity(ctx, user.tokenIdentifier);
+	if (
+		clerkIdentity &&
+		(clerkIdentity.deletedAt !== undefined || !clerkIdentity.verifiedEmail)
+	)
+		return null;
 	const rows = await ctx.db
 		.query("accessEntitlements")
 		.withIndex("by_ownerTokenIdentifier", (q) =>
@@ -214,7 +221,11 @@ export const begin = internalMutation({
 	args: {
 		runId: v.string(),
 		dataSourceId: v.string(),
-		mode: v.union(v.literal("dry-run"), v.literal("live")),
+		mode: v.union(
+			v.literal("dry-run"),
+			v.literal("live"),
+			v.literal("cleanup"),
+		),
 		countAsAudit: v.optional(v.boolean()),
 	},
 	returns: v.boolean(),
@@ -226,6 +237,28 @@ export const begin = internalMutation({
 		const now = Date.now();
 		// Longer than Convex's 10-minute action limit: an expired worker cannot overlap its successor.
 		if (state?.running && now < state.startedAt + 11 * 60_000) return false;
+		if (args.mode === "cleanup") {
+			if (state) {
+				await ctx.db.patch("crmSyncState", state._id, {
+					runId: args.runId,
+					running: true,
+					startedAt: now,
+					cleanupLease: true,
+				});
+			} else {
+				await ctx.db.insert("crmSyncState", {
+					key: "students",
+					runId: args.runId,
+					running: true,
+					startedAt: now,
+					cleanupLease: true,
+					mode: "cleanup",
+					dataSourceId: args.dataSourceId,
+					counts: emptyCounts(),
+				});
+			}
+			return true;
+		}
 		if (
 			args.mode === "live" &&
 			(state?.dataSourceId !== args.dataSourceId ||
@@ -237,6 +270,7 @@ export const begin = internalMutation({
 				"CRM requires a successful dry run within 24 hours before enabling live sync.",
 			);
 		const value = {
+			cleanupLease: undefined,
 			runId: args.runId,
 			dataSourceId: args.dataSourceId,
 			mode: args.mode,
@@ -310,6 +344,13 @@ export const finish = internalMutation({
 			.withIndex("by_key", (q) => q.eq("key", "students"))
 			.unique();
 		if (!state || state.runId !== args.runId) return null;
+		if (state.cleanupLease) {
+			await ctx.db.patch("crmSyncState", state._id, {
+				running: false,
+				cleanupLease: undefined,
+			});
+			return null;
+		}
 		const now = Date.now();
 		const auditRun = state.mode === "live" && args.countAsAudit !== false;
 		const auditFailed = (state.auditFailed ?? 0) + args.counts.failed;

@@ -20,6 +20,36 @@ if (!["development", "preview", "production"].includes(APP_VARIANT)) {
 }
 
 const isProduction = APP_VARIANT === "production";
+const isCiValidation = process.env.DAYOVA_CI_VALIDATION === "true";
+if (isCiValidation) {
+	const {
+		previewConfiguration,
+	}: typeof import("./scripts/ci-preview-config.cjs") = require("./scripts/ci-preview-config.cjs");
+	previewConfiguration(process.env);
+}
+const isInternalValidation = process.env.DAYOVA_INTERNAL_VALIDATION === "true";
+const isValidationTestFlight =
+	isInternalValidation &&
+	process.env.DAYOVA_VALIDATION_DISTRIBUTION === "testflight";
+if (isInternalValidation && isProduction) {
+	throw new Error("Internal validation cannot use the production app variant.");
+}
+if (
+	isInternalValidation &&
+	(!process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.startsWith("pk_test_") ||
+		Boolean(process.env.EXPO_PUBLIC_POSTHOG_API_KEY?.trim()) ||
+		(isValidationTestFlight
+			? !process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY?.startsWith("appl_")
+			: !process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY?.startsWith(
+					"test_",
+				)) ||
+		process.env.EXPO_PUBLIC_CONVEX_URL !==
+			"https://kindred-canary-599.eu-west-1.convex.cloud")
+) {
+	throw new Error(
+		"Internal validation requires the reviewed development backend, Clerk test instance and distribution-appropriate RevenueCat public SDK key.",
+	);
+}
 const isReleaseConfig =
 	process.env.EAS_BUILD === "true" || process.env.NODE_ENV === "production";
 const releasePlatform =
@@ -32,7 +62,7 @@ if (isReleaseConfig) {
 	validatePublicEnvForRelease(undefined, { platform: releasePlatform });
 }
 
-const APP_VERSION = "1.0.5";
+const APP_VERSION = "1.0.8";
 const BACKGROUND_COLOR = "#ffffff";
 // Keep this native launch color aligned with DARK_THEME_VARIABLES["--background"].
 // theme-css.test.ts prevents the values from drifting.
@@ -180,7 +210,29 @@ const config: ExpoConfig = {
 	],
 	updates: {
 		url: `https://u.expo.dev/${PROJECT_ID}`,
+		...(isCiValidation ? { enabled: false } : {}),
 	},
 };
+
+if (isInternalValidation) {
+	config.name = "Dayova Test";
+	config.scheme = "dayova-validation";
+	config.android = { ...config.android, package: "com.dayova.validation" };
+	if (isValidationTestFlight) {
+		// TestFlight signs the existing App Store app; only this explicit profile
+		// uses its identifier with the isolated validation backend and pinned JS.
+		config.ios = { ...config.ios, bundleIdentifier: "de.dayova.app" };
+		// Match the current TestFlight train without changing regular releases.
+		config.version = "1.0.7";
+		config.ios.runtimeVersion = config.version;
+	}
+	config.extra = { ...config.extra, internalHintValidation: true };
+	// Pin the embedded revision. No unrelated channel may change a study session.
+	config.updates = { ...config.updates, enabled: false };
+	config.plugins = [
+		...(config.plugins ?? []),
+		"./plugins/withInternalValidation",
+	];
+}
 
 module.exports = config;

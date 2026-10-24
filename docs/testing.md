@@ -8,11 +8,77 @@ Dayova uses two complementary test environments:
   rendered component behavior and accessibility queries.
 - `pnpm test` runs both suites in that order.
 
-Prefer observable behavior over source scanning for new or modified contracts.
-Pure transition and validation logic should be extracted into small modules;
-native rendering, controls, labels, and lifecycle interactions belong in
-`*.ui.test.tsx`. Source-file tests remain appropriate for assets, configuration,
-and generated artifact contracts that have no runtime behavior to render.
+Tests protect observable behavior through a public interface. A test should
+survive an internal rename, a component wrapper, or an equivalent implementation.
+Pure/domain decisions belong in Vitest; controls, labels, accessibility, and
+lifecycle interactions belong in `*.ui.test.tsx`. Choose meaningful existing
+seams; extracting a trivial helper solely to give it a test adds coupling.
+
+For every test, identify the requirement, an independent expected result, and a
+plausible regression that would fail it. For example, German text repair must
+convert `Fuer` to `Für`; checking only already-correct German also passes if repair
+is deleted. When strengthening a weak test, introduce that regression temporarily,
+run the focused test, restore the implementation, and record the result.
+
+Avoid these patterns:
+
+- Comparing an exported constant to its current value, copying a formula into
+  the assertion, or treating a mocked result as proof that the mocked behavior
+  works. Checking the real consumer's handling of an external response is valid.
+- Checking classes, style/animation props, wrappers, child order, or source text
+  to claim visual correctness. Jest does not lay out a native screen. Use device
+  evidence for clipping, safe areas, motion, and visual composition.
+- Asserting private collaborator calls or replacing the behavior under test.
+  Public callbacks, navigation/RPC boundaries, and native API calls can be
+  observed when they are the module's contract. Keep app logic real where it
+  determines the outcome, and exercise errors/rejections at external boundaries.
+- Tests of parsers/helpers declared only in the test, assertion-free runtime
+  tests, early returns when an artifact is absent, and loops over results whose
+  non-empty precondition is never asserted.
+
+Configuration and artifact tests must exercise the consumer contract: resolve
+Expo config, execute a workflow guard, or check Git's actual byte filtering.
+Comparing independently maintained config surfaces can protect interoperability;
+matching shell snippets, filenames of deleted assets, or documentation wording
+does not prove behavior. Architectural policy belongs in ESLint RuleTester.
+Type-only assertions run under `pnpm typecheck`, outside runtime test cases.
+
+Review test quality independently from green checks: name what would break each
+new or changed test, and check that a harmless refactor would leave it green.
+Do not use test count or coverage percentage as a reason to retain a weak test.
+
+### Test and CI timing
+
+`pnpm test:ci` runs the same maintained Vitest, Node, and Jest suites while
+retaining JUnit/JSON results and source-tagged stage timings under ignored
+`.maestro/artifacts/ci/`. `pnpm test:coverage` additionally collects coverage;
+weekly CI and the manual EAS `test-coverage.yml` retain its HTML, lcov, and JSON
+reports. Coverage does not call real network services or enforce a numeric gate.
+
+Vitest owns maintained `.ts` application and Convex source, excluding test/type
+files and generated Convex code. Jest owns rendered `.tsx` source, excluding UI
+test files. Configuration fixtures and source-contract tests live outside those
+source include sets. Read the two reports separately to avoid double-counting.
+
+`node scripts/benchmark-checks.mjs` runs the CI commands sequentially: lint,
+typecheck, then three full test runs. It prints `DAYOVA_BENCHMARK` JSON records
+with elapsed seconds, trial, runtime, and exit status. A failed check stops the
+comparison. Keep raw logs outside Git; compare identical machines and commands,
+report each sample and the median, and separate cold transforms from warm runs.
+
+The manual EAS workflow `test-benchmark.yml` uses the same Node/pnpm versions and
+`linux-medium` runner as CI, with no deployment jobs. Run it against explicit
+commits using `eas workflow:run test-benchmark.yml --ref <sha> --non-interactive`.
+Set `--input jest_workers=1` or `--input jest_workers=2` for matched worker
+comparisons. `export-benchmark.yml` accepts `--input mode=separate` or
+`--input mode=combined`, repeats three exports, and never publishes an update.
+Report test time separately from install/queue time and the whole quality job;
+local timing cannot establish a remote CI speedup. See [PR #901](https://github.com/Dayova/dayova-mvp/pull/901) for the October 2026 audit, raw samples, and fault checks.
+
+Jest's Hugeicons adapter loads the real per-icon package assets on demand. It
+avoids loading the entire catalog while retaining the real Dayova icon wrapper
+and native SVG renderer. It does not replace icons with mock shapes. Native
+rendering/performance and visual correctness still require device evidence.
 
 Automated tests do not replace phone/tablet acceptance evidence. Auth session
 persistence, remote revocation, keyboard layout, and platform-native surfaces
@@ -39,7 +105,7 @@ messages or bypass the navigation assertions.
 | `app-launch.yaml` | Welcome → Login, reachable form controls, Login → registration intro | `smoke` |
 | `login-validation.yaml` | Empty/malformed email, missing password, password reveal/hide | `smoke`, `auth` |
 | `password-recovery.yaml` | Email prefill, malformed/empty email rejection, cancellation, clean reopening | `smoke`, `auth` |
-| `onboarding-navigation.yaml` | Three intro pages, name validation, explicit duration/day choices, answer retention on back navigation | `smoke`, `onboarding` |
+| `onboarding-navigation.yaml` | Four intro pages, name validation, explicit duration/day choices, answer retention on back navigation | `smoke`, `onboarding` |
 
 These flows use synthetic input and stop before a valid auth submission. They
 do not sign in, create accounts, send reset emails, or verify backend behavior.
@@ -47,7 +113,7 @@ The login flow deliberately leaves the password empty for its valid-format
 email submission; its later synthetic password is used only for visibility.
 Authenticated Clerk/Convex coverage belongs to DAY-321.
 
-See [DAY-410 Android validation](validation/day-410-android.md) for device results
+See [DAY-410 Android validation](https://github.com/Dayova/dayova-mvp/pull/594#issuecomment-6252191871) for device results
 and known limits. Its full-suite pass used a warm development Metro started with
 `--minify`; unminified startup was intermittent on that Windows host (DAY-412).
 Minification keeps development mode and the existing test-service configuration;
@@ -56,6 +122,19 @@ journeys await DAY-411 validation.
 
 These device tests are opt-in and are not part of `pnpm test`. They need a native
 artifact and a running virtual device. Jest and Vitest do not require Maestro.
+
+Reusable capture checks live in `scripts/native-qa/`:
+
+- `assert-safe-area.mjs` takes a UIAutomator XML path, exact accessible text/label,
+  and the permitted top/bottom pixel coordinates. Run it with Node after obtaining
+  those boundaries from the tested device.
+- `assert-above-keyboard.py` checks a live focused Android control against the
+  visible IME. Use `--help` for label/input matching, `--adb` and `--serial`.
+
+Keep generated dumps and recordings in ignored `.maestro/artifacts/` or a
+temporary directory. Publish dated results and media on the relevant PR or
+Linear issue; reusable internal lessons belong in Notion. These tools do not
+certify current device behavior without a new run on the actual tested build.
 
 Both `test:smoke:*` scripts run all four flows. Add `--include-tags auth` for
 login/recovery or `--include-tags onboarding` for registration. To run one flow

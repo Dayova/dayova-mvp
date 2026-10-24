@@ -13,6 +13,8 @@ import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { env, mutation, query } from "./_generated/server";
+import { assertAccountActive } from "./accountDeletion";
+import { getClerkIdentity } from "./clerkIdentity";
 import { operatingSystem } from "./crmContract";
 import { enqueueCrmUpdate } from "./crmUpdates";
 import { throwUserFacingError } from "./errors";
@@ -180,6 +182,7 @@ const requireIdentity = async (ctx: QueryCtx | MutationCtx) => {
 	if (!identity) {
 		throwUserFacingError("Nicht authentifiziert.");
 	}
+	await assertAccountActive(ctx, identity.tokenIdentifier);
 	return identity;
 };
 
@@ -429,9 +432,11 @@ export const syncCurrentUser = mutation({
 				q.eq("tokenIdentifier", identity.tokenIdentifier),
 			)
 			.unique();
-
-		const email = normalizeEmail(identity.email) || existingUser?.email;
-
+		const clerkIdentity = await getClerkIdentity(ctx, identity.tokenIdentifier);
+		// Once Clerk has supplied an authoritative snapshot, a cached JWT cannot undo it.
+		const email = clerkIdentity
+			? clerkIdentity.verifiedEmail
+			: normalizeEmail(identity.email) || existingUser?.email;
 		if (!email) {
 			throwUserFacingError("Beim angemeldeten Konto fehlt die E-Mail-Adresse.");
 		}

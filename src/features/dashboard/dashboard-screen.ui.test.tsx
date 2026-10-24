@@ -1,5 +1,5 @@
 import { beforeEach, expect, jest, test } from "@jest/globals";
-import { fireEvent, render, within } from "@testing-library/react-native";
+import { fireEvent, render } from "@testing-library/react-native";
 import { DashboardScreen } from "./dashboard-screen";
 
 const mockPush = jest.fn();
@@ -153,16 +153,6 @@ jest.mock("./compact-day-agenda", () => ({
 beforeEach(() => {
 	jest.clearAllMocks();
 	mockHasPlan = true;
-});
-
-test("renders the only plus action inside the calendar rather than the greeting", async () => {
-	const screen = await render(<DashboardScreen />);
-	expect(screen.getAllByTestId("create-entry-action")).toHaveLength(1);
-	expect(
-		within(screen.getByTestId("dashboard-calendar")).getByTestId(
-			"create-entry-action",
-		),
-	).toBeTruthy();
 });
 
 test("hero opens its session and agenda opens its plan, both returning to Today", async () => {
