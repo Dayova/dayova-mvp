@@ -2,6 +2,17 @@ import { beforeEach, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render } from "@testing-library/react-native";
 import LearningSessionContentScreen from "~/app/learning-plans/[planId]/sessions/[sessionId]/index";
 
+jest.mock("react-native-reanimated", () => {
+	const Native =
+		jest.requireActual<typeof import("react-native")>("react-native");
+	return {
+		__esModule: true,
+		default: { View: Native.View },
+		FadeIn: { duration: () => undefined },
+		useReducedMotion: () => true,
+	};
+});
+
 const mockCapture = jest.fn();
 const mockRouter = { dismissTo: jest.fn() };
 const mockDismissBack = jest.fn();

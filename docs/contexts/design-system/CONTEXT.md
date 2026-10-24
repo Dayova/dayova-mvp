@@ -442,11 +442,29 @@ are empty; example selections belong only in historical screenshot evidence.
 The duration explanation adapts to the chosen value; an additional explanation
 between weekdays and start time brings the profile flow to twelve steps.
 
+## In-session feedback motion
+
+Answer evaluations fade in over 220 ms. Only a correct answer receives a small
+status-icon scale from 94% to 100%; partial and incorrect answers retain their
+existing wording and colors without a success or punitive motion. The rating
+is a semantic heading with a polite accessibility live region.
+New question content fades in over 180 ms, keyed by item identity so typing or
+selection changes do not restart it. Newly expanded theory explanations use
+the same short fade. All contents and actions remain available immediately;
+there are no exit delays, timed navigation, or additional haptics.
+Reduced motion suppresses these entrances. Existing theory-card transitions,
+choice feedback, progress animations, and submission success haptics remain
+unchanged. See [DAY-509](https://linear.app/dayova/issue/DAY-509).
+
+Theory disclosures also animate their chevron over 180 ms and their section
+layout over 200 ms when expanding/collapsing. Reduced motion leaves both static.
+
 ## Search selections in exam setup
 
 Topic and hint suggestions reuse `SelectionOptionRow`, the same rounded card used by exam-type and subject selection. Search choices use checkbox semantics for multiple selections; existing subject/exam choices retain radio semantics. The optional leading icon, wrapping label, subject metadata, selected accent surface and indicator are owned by the shared row. `SearchSuggestion` supplies the custom-entry wording and a concise accessible title; it does not clone the visual treatment.
 
 Keep neutral removable `SearchSelectionChip` controls below the input, one question and one search per page, and topics → optional hints → material navigation. Show four catalog topic alternatives and six contextual hints initially. Additional hints are revealed with “Weitere Hinweise”. Preserve disabled semantics and explicit remove labels. Existing hint lines remain removable and custom hints can be added through search. This supersedes DAY-530's earlier transparent plus-row treatment following the user's PR #884 feedback on 18 October 2026. See https://linear.app/dayova/issue/DAY-530 and the [decision record](https://app.notion.com/p/3fb2e87228bf817a880dde6127a1996a).
+
 ## Press feedback
 
 Shared Buttons (including icons and links) and custom actions use
