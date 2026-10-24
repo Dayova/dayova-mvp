@@ -112,14 +112,16 @@ function CollapsibleTheorySection({
 	const reduceMotion = useReducedMotion();
 	const rotation = useSharedValue(0);
 	useEffect(() => {
-		rotation.value = reduceMotion
-			? isExpanded
-				? 180
-				: 0
-			: withTiming(isExpanded ? 180 : 0, { duration: 180 });
+		rotation.set(
+			reduceMotion
+				? isExpanded
+					? 180
+					: 0
+				: withTiming(isExpanded ? 180 : 0, { duration: 180 }),
+		);
 	}, [isExpanded, reduceMotion, rotation]);
 	const chevronStyle = useAnimatedStyle(() => ({
-		transform: [{ rotate: `${rotation.value}deg` }],
+		transform: [{ rotate: `${rotation.get()}deg` }],
 	}));
 
 	return (
