@@ -22,6 +22,7 @@ function fixture(body = report()) {
 	const comment = { id: 12, user: { login: "expo[bot]" }, body };
 	const pr = {
 		state: "open",
+		draft: false,
 		base: { ref: "main", repo: { id: 1 } },
 		head: { sha: headSha, repo: { id: 1 } },
 		html_url: "https://github.com/Dayova/dayova-mvp/pull/740",
@@ -51,6 +52,27 @@ function fixture(body = report()) {
 }
 
 describe("OTA report freshness status", () => {
+	it.each([
+		"pull_request_target",
+		"issue_comment",
+	])("does not publish a status for a draft through %s", async (eventName) => {
+		const f = fixture();
+		f.pr.draft = true;
+		f.context.eventName = eventName;
+		await reconcile(f.github, f.context);
+		expect(f.createCommitStatus).not.toHaveBeenCalled();
+	});
+
+	it("stops if the PR returns to draft while comments are read", async () => {
+		const f = fixture();
+		f.github.paginate.mockImplementation(async () => {
+			f.pr.draft = true;
+			return [structuredClone(f.comment)];
+		});
+		await reconcile(f.github, f.context);
+		expect(f.createCommitStatus).not.toHaveBeenCalled();
+	});
+
 	it("marks a stale Expo report pending on the latest commit", async () => {
 		const f = fixture();
 		await reconcile(f.github, f.context);
@@ -63,6 +85,49 @@ describe("OTA report freshness status", () => {
 			description: expect.stringContaining("compatibility unconfirmed"),
 			target_url: `${f.pr.html_url}/checks`,
 		});
+	});
+
+	it.each([
+		"draft",
+		"closed",
+	])("does not publish when the PR becomes %s during individual comment retrieval", async (state) => {
+		const f = fixture(report(headSha));
+		f.github.rest.issues.getComment.mockImplementation(async () => {
+			if (state === "draft") f.pr.draft = true;
+			else f.pr.state = "closed";
+			return { data: structuredClone(f.comment) };
+		});
+		await reconcile(f.github, f.context);
+		expect(f.createCommitStatus).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		"current",
+		"stale",
+	])("assesses a %s report against a head pushed during individual comment retrieval", async (reportState) => {
+		const f = fixture(report(reportState === "current" ? newerSha : headSha));
+		f.github.rest.issues.getComment.mockImplementation(async () => {
+			f.pr.head.sha = newerSha;
+			return { data: structuredClone(f.comment) };
+		});
+		await reconcile(f.github, f.context);
+		expect(f.createCommitStatus).toHaveBeenCalledWith(
+			expect.objectContaining({
+				sha: newerSha,
+				state: reportState === "current" ? "success" : "pending",
+			}),
+		);
+	});
+
+	it("fails closed if PR eligibility cannot be refreshed after reading a comment", async () => {
+		const f = fixture(report(headSha));
+		const unavailable = new Error("GitHub unavailable");
+		f.github.rest.issues.getComment.mockImplementation(async () => {
+			f.github.rest.pulls.get.mockRejectedValue(unavailable);
+			return { data: structuredClone(f.comment) };
+		});
+		await expect(reconcile(f.github, f.context)).rejects.toThrow(unavailable);
+		expect(f.createCommitStatus).not.toHaveBeenCalled();
 	});
 
 	it("marks a report current when Expo assesses the PR head", async () => {

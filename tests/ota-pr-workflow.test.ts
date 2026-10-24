@@ -158,6 +158,27 @@ const event = (eventName: string, association = "MEMBER", fork = false) => ({
 });
 
 describe("repository quality gates", () => {
+	it.each([
+		"opened",
+		"reopened",
+		"synchronize",
+		"ready_for_review",
+	])("starts %s events only for open, non-draft PRs", (action) => {
+		for (const [state, draft, expected] of [
+			["open", true, false],
+			["open", false, true],
+			["closed", false, false],
+		] as const) {
+			const github = event("pull_request");
+			Object.assign(github.event.pull_request, { state, draft });
+			const trigger = workflow.on.pull_request;
+			const starts =
+				trigger.types.includes(action) &&
+				(trigger.if === undefined || Boolean(evaluate(trigger.if, { github })));
+			expect(starts).toBe(expected);
+		}
+	});
+
 	it("starts CI for pull requests targeting stack parents as well as main", () => {
 		expect(workflow.on.pull_request.branches).toBeUndefined();
 		expect(workflow.on.pull_request["branches-ignore"]).toBeUndefined();
@@ -451,6 +472,27 @@ describe("required CI acceptance", () => {
 		});
 		expect(result.error).toBeUndefined();
 		expect(result.status).toBe(expected);
+	});
+});
+
+// Execute the job conditions so draft PR events cannot allocate a status runner.
+describe("GitHub status reporter scheduling", () => {
+	it.each([
+		["ota-report-freshness", "reconcile"],
+		["review-coverage", "coverage"],
+	])("skips draft PR events for %s", (name, job) => {
+		const reporter = parse(
+			readFileSync(`.github/workflows/${name}.yml`, "utf8"),
+		);
+		expect(reporter.on.pull_request_target.types).toContain("ready_for_review");
+		for (const draft of [true, false]) {
+			const github = {
+				event_name: "pull_request_target",
+				event: { pull_request: { state: "open", draft }, issue: {} },
+			};
+			const scheduled = runInNewContext(reporter.jobs[job].if, { github });
+			expect(Boolean(scheduled)).toBe(!draft);
+		}
 	});
 });
 

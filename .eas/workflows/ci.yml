@@ -2,10 +2,12 @@ name: Continuous Integration
 
 on:
   pull_request:
+    if: ${{ github.event.pull_request.state == 'open' && !github.event.pull_request.draft }}
     types:
       - opened
       - reopened
       - synchronize
+      - ready_for_review
   push:
     branches:
       - main
@@ -48,7 +50,6 @@ jobs:
     name: Production native fingerprints
     type: fingerprint
     environment: production
-    # quality supplies contributor trust; production inputs stay off forks.
     needs:
       - quality
     if: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_name == 'main' && github.event.before) }}
