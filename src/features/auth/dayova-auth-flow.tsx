@@ -566,7 +566,10 @@ export function OnboardingScreen() {
 	);
 
 	const handleIntroBack = useCallback(() => {
-		if (activeIntroIndex === 0) return false;
+		if (activeIntroIndex === 0) {
+			router.replace("/");
+			return true;
+		}
 		updateIntroIndex(Math.max(activeIntroIndex - 1, 0));
 		return true;
 	}, [activeIntroIndex, updateIntroIndex]);
@@ -592,6 +595,7 @@ export function OnboardingScreen() {
 				topInset={insets.top}
 				bottomInset={insets.bottom}
 				onActiveIndexChange={updateIntroIndex}
+				onBack={handleIntroBack}
 				onNext={continueFromIntro}
 			/>
 		</View>
@@ -987,12 +991,14 @@ function IntroStepView({
 	topInset,
 	bottomInset,
 	onActiveIndexChange,
+	onBack,
 	onNext,
 }: {
 	activeIndex: number;
 	topInset: number;
 	bottomInset: number;
 	onActiveIndexChange: (index: number) => void;
+	onBack: () => boolean;
 	onNext: () => void;
 }) {
 	const { colors: COLORS } = useDayovaTheme();
@@ -1067,6 +1073,16 @@ function IntroStepView({
 						paddingHorizontal: contentSizeLayout.horizontalPadding,
 					}}
 				>
+					<View className="w-full pb-4">
+						<BackButton
+							accessibilityHint={
+								introIndex === 0
+									? "Zurück zur Anmeldung"
+									: "Zur vorherigen Einführungsseite"
+							}
+							onPress={() => onBack()}
+						/>
+					</View>
 					<IntroPageContent item={item} accessibleLayout />
 
 					<View className="mt-8 w-full">
@@ -1102,6 +1118,17 @@ function IntroStepView({
 				paddingBottom: Math.max(bottomInset + 20, 28),
 			}}
 		>
+			<View className="flex-row items-center px-6">
+				<BackButton
+					accessibilityHint={
+						introIndex === 0
+							? "Zurück zur Anmeldung"
+							: "Zur vorherigen Einführungsseite"
+					}
+					onPress={() => onBack()}
+				/>
+			</View>
+
 			<Animated.FlatList
 				ref={listRef}
 				testID="intro-pager"
