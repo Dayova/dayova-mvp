@@ -61,6 +61,9 @@ Notion is Dayova's main internal documentation and knowledge workspace. Keep thi
   exercises these contracts through the real auth, access, and navigation providers.
 - Native Clerk tokens always use Clerk's secure persistent Expo token cache.
   There is no `Angemeldet bleiben` preference or memory-only cache path.
+  An unresolved initial Clerk load shows online-start recovery after ten seconds.
+  Its restart action uses Expo's same-bundle reload, then still requires fresh
+  server access verification; cached identity never grants a new access lease.
 - Pending onboarding persistence uses a separate outbox. Native builds store it
   in encrypted SecureStore. Production web rejects durable recovery until an
   encrypted web-storage design is accepted. Development web may use

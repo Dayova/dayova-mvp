@@ -10,6 +10,7 @@ import { AuthNavigationGate } from "./auth-navigation-gate";
 const mockReplace = jest.fn();
 const mockPush = jest.fn();
 const mockRetryAccess = jest.fn(async () => {});
+const mockReloadApp = jest.fn(async () => {});
 const mockRouterState = {
 	pathname: "/",
 	rootNavigationState: { key: "root" } as { key: string } | undefined,
@@ -42,6 +43,11 @@ jest.mock("expo-router", () => ({
 	useRouter: () => ({ replace: mockReplace, push: mockPush }),
 }));
 
+jest.mock("expo", () => ({
+	...jest.requireActual<typeof import("expo")>("expo"),
+	reloadAppAsync: () => mockReloadApp(),
+}));
+
 jest.mock("~/context/AuthContext", () => ({
 	useAuthSession: () => mockSession,
 }));
@@ -57,6 +63,7 @@ describe("AuthNavigationGate", () => {
 		mockReplace.mockReset();
 		mockPush.mockReset();
 		mockRetryAccess.mockClear();
+		mockReloadApp.mockReset();
 		mockAccess.isVerificationRequired = false;
 		mockRouterState.pathname = "/";
 		mockRouterState.rootNavigationState = { key: "root" };
@@ -72,6 +79,92 @@ describe("AuthNavigationGate", () => {
 			return animationFrames.length;
 		};
 		global.cancelAnimationFrame = jest.fn();
+	});
+
+	test("a cold offline start offers a same-bundle restart when identity cannot load", async () => {
+		jest.useFakeTimers();
+		try {
+			mockSession.user = null;
+			mockSession.isSessionLoading = true;
+			mockAccess.access = undefined;
+			const screen = await render(
+				<AuthNavigationGate>
+					<Text>Lerninhalt</Text>
+				</AuthNavigationGate>,
+			);
+			expect(
+				screen.queryByRole("button", { name: "App neu starten" }),
+			).toBeNull();
+			await act(async () => jest.advanceTimersByTime(10_000));
+			expect(screen.getByText("Zugang online prüfen")).toBeOnTheScreen();
+			expect(screen.queryByText("Lerninhalt")).toBeNull();
+			expect(
+				screen.queryByRole("button", { name: "Konto verwalten" }),
+			).toBeNull();
+			await fireEvent.press(
+				screen.getByRole("button", { name: "App neu starten" }),
+			);
+			expect(mockReloadApp).toHaveBeenCalledTimes(1);
+			expect(mockRetryAccess).not.toHaveBeenCalled();
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	test("a failed cold-start restart explains manual recovery and allows another attempt", async () => {
+		jest.useFakeTimers();
+		try {
+			mockSession.user = null;
+			mockSession.isSessionLoading = true;
+			mockAccess.access = undefined;
+			mockReloadApp.mockRejectedValueOnce(
+				new Error("native reload unavailable"),
+			);
+			const screen = await render(
+				<AuthNavigationGate>
+					<Text>Lerninhalt</Text>
+				</AuthNavigationGate>,
+			);
+			await act(async () => jest.advanceTimersByTime(10_000));
+			await fireEvent.press(
+				screen.getByRole("button", { name: "App neu starten" }),
+			);
+			expect(screen.getByRole("alert")).toHaveTextContent(/Schließe Dayova/);
+			expect(
+				screen.getByRole("button", { name: "App neu starten" }),
+			).not.toBeDisabled();
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	test("a session restored before the timeout never shows the restart fallback", async () => {
+		jest.useFakeTimers();
+		try {
+			mockSession.user = null;
+			mockSession.isSessionLoading = true;
+			const screen = await render(
+				<AuthNavigationGate>
+					<Text>Lerninhalt</Text>
+				</AuthNavigationGate>,
+			);
+			await act(async () => jest.advanceTimersByTime(5_000));
+			mockSession.user = { clerkId: "user_123" };
+			mockSession.isSessionLoading = false;
+			mockRouterState.pathname = "/home";
+			await screen.rerender(
+				<AuthNavigationGate>
+					<Text>Lerninhalt</Text>
+				</AuthNavigationGate>,
+			);
+			await act(async () => jest.advanceTimersByTime(10_000));
+			expect(screen.getByText("Lerninhalt")).toBeOnTheScreen();
+			expect(
+				screen.queryByRole("button", { name: "App neu starten" }),
+			).toBeNull();
+		} finally {
+			jest.useRealTimers();
+		}
 	});
 
 	const flushAnimationFrames = () => {

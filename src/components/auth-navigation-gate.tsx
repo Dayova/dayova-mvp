@@ -1,3 +1,4 @@
+import { reloadAppAsync } from "expo";
 import { usePathname, useRootNavigationState, useRouter } from "expo-router";
 import { type ReactNode, useEffect, useState } from "react";
 import { ScrollView, View } from "react-native";
@@ -32,6 +33,17 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 	} = useAccess();
 	const [retrying, setRetrying] = useState(false);
 	const [retryError, setRetryError] = useState<string | null>(null);
+	const [sessionRestoreTimedOut, setSessionRestoreTimedOut] = useState(false);
+	const sessionRecoveryRequired = isSessionLoading && sessionRestoreTimedOut;
+	if (!isSessionLoading && sessionRestoreTimedOut) {
+		setSessionRestoreTimedOut(false);
+	}
+	useEffect(() => {
+		if (!isSessionLoading) return;
+		// Clerk may not finish its initial load offline, before an identity is known.
+		const timeout = setTimeout(() => setSessionRestoreTimedOut(true), 10_000);
+		return () => clearTimeout(timeout);
+	}, [isSessionLoading]);
 	const authTargetRoute = getAuthNavigationTarget({
 		hasUser: Boolean(user),
 		isSessionLoading,
@@ -94,7 +106,7 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 					pointerEvents="auto"
 					className="absolute inset-0 bg-background"
 				>
-					{isVerificationRequired ? (
+					{isVerificationRequired || sessionRecoveryRequired ? (
 						<SafeAreaView className="flex-1">
 							<ScrollView
 								className="flex-1"
@@ -102,8 +114,9 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 							>
 								<Text variant="h2">Zugang online prüfen</Text>
 								<Text className="mt-3 text-body-3 text-secondary-text">
-									Bitte verbinde dich mit dem Internet, damit Dayova deinen
-									Zugang prüfen kann. Dein Lernstand bleibt erhalten.
+									{sessionRecoveryRequired
+										? "Verbinde dich mit dem Internet und starte Dayova erneut, damit deine Anmeldung geladen und dein Zugang geprüft werden können. Dein Lernstand bleibt erhalten."
+										: "Bitte verbinde dich mit dem Internet, damit Dayova deinen Zugang prüfen kann. Dein Lernstand bleibt erhalten."}
 								</Text>
 								{retryError ? (
 									<Text
@@ -122,7 +135,9 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 										setRetryError(null);
 										let timeout: ReturnType<typeof setTimeout>;
 										void Promise.race([
-											retryAccessVerification(),
+											sessionRecoveryRequired
+												? reloadAppAsync()
+												: retryAccessVerification(),
 											new Promise<never>((_resolve, reject) => {
 												timeout = setTimeout(
 													() => reject(new Error("Verification timed out")),
@@ -132,7 +147,9 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 										])
 											.catch(() =>
 												setRetryError(
-													"Die Prüfung hat nicht geklappt. Prüfe deine Internetverbindung und versuche es erneut.",
+													sessionRecoveryRequired
+														? "Der Neustart hat nicht geklappt. Schließe Dayova und öffne die App mit Internetverbindung erneut."
+														: "Die Prüfung hat nicht geklappt. Prüfe deine Internetverbindung und versuche es erneut.",
 												),
 											)
 											.finally(() => {
@@ -141,15 +158,25 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 											});
 									}}
 								>
-									<Text>{retrying ? "Wird geprüft …" : "Erneut prüfen"}</Text>
+									<Text>
+										{sessionRecoveryRequired
+											? retrying
+												? "Wird neu gestartet …"
+												: "App neu starten"
+											: retrying
+												? "Wird geprüft …"
+												: "Erneut prüfen"}
+									</Text>
 								</Button>
-								<Button
-									variant="ghost"
-									className="mt-2"
-									onPress={() => router.push("/profile")}
-								>
-									<Text>Konto verwalten</Text>
-								</Button>
+								{!sessionRecoveryRequired ? (
+									<Button
+										variant="ghost"
+										className="mt-2"
+										onPress={() => router.push("/profile")}
+									>
+										<Text>Konto verwalten</Text>
+									</Button>
+								) : null}
 							</ScrollView>
 						</SafeAreaView>
 					) : null}
