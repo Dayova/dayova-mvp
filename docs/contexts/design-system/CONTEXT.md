@@ -442,11 +442,23 @@ are empty; example selections belong only in historical screenshot evidence.
 The duration explanation adapts to the chosen value; an additional explanation
 between weekdays and start time brings the profile flow to twelve steps.
 
+## Learning-plan progress updates
+
+The existing gradient fill in `LearningPlanCardFooter` transitions between
+reactive progress values over 260 ms. Initial rendering shows the saved value
+immediately; unrelated rerenders do not replay progress. Zero remains empty,
+and positive values retain the existing minimum visible fill. Accessible values
+update immediately, independently of the visual transition. Reduced motion and
+onboarding artwork mode use static updates. Existing FlowProgressBar and
+learning-path breathing animations remain unchanged. See
+[DAY-511](https://linear.app/dayova/issue/DAY-511).
+
 ## Search selections in exam setup
 
 Topic and hint suggestions reuse `SelectionOptionRow`, the same rounded card used by exam-type and subject selection. Search choices use checkbox semantics for multiple selections; existing subject/exam choices retain radio semantics. The optional leading icon, wrapping label, subject metadata, selected accent surface and indicator are owned by the shared row. `SearchSuggestion` supplies the custom-entry wording and a concise accessible title; it does not clone the visual treatment.
 
 Keep neutral removable `SearchSelectionChip` controls below the input, one question and one search per page, and topics → optional hints → material navigation. Show four catalog topic alternatives and six contextual hints initially. Additional hints are revealed with “Weitere Hinweise”. Preserve disabled semantics and explicit remove labels. Existing hint lines remain removable and custom hints can be added through search. This supersedes DAY-530's earlier transparent plus-row treatment following the user's PR #884 feedback on 18 October 2026. See https://linear.app/dayova/issue/DAY-530 and the [decision record](https://app.notion.com/p/3fb2e87228bf817a880dde6127a1996a).
+
 ## Press feedback
 
 Shared Buttons (including icons and links) and custom actions use
