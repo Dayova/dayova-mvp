@@ -23,6 +23,40 @@ test("extracts a delivered Dayova notification", () => {
 	});
 });
 
+test("normalizes the iOS native seconds timestamp before server reconciliation", () => {
+	expect(
+		getDeliveredNotificationInput(
+			{ ...notification, date: 1790422020.229497 },
+			"user-1",
+			"seconds",
+		),
+	).toEqual({
+		registrationId: "registration-1",
+		triggeredAt: "2026-09-26T11:27:00.229Z",
+	});
+});
+
+test("keeps Android millisecond timestamps unchanged", () => {
+	expect(
+		getDeliveredNotificationInput(notification, "user-1", "milliseconds")
+			?.triggeredAt,
+	).toBe("2026-06-09T18:06:21.750Z");
+});
+
+test.each([
+	NaN,
+	Infinity,
+	-Infinity,
+])("rejects an invalid native timestamp %s", (date) => {
+	expect(
+		getDeliveredNotificationInput(
+			{ ...notification, date },
+			"user-1",
+			"seconds",
+		),
+	).toBeNull();
+});
+
 test("ignores notifications scheduled for another account", () => {
 	expect(getDeliveredNotificationInput(notification, "user-2")).toBeNull();
 });

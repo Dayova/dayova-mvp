@@ -20,6 +20,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 export const getDeliveredNotificationInput = (
 	notification: NotificationLike,
 	expectedOwnerId?: string,
+	dateUnit: "milliseconds" | "seconds" = "milliseconds",
 ): DeliveredNotificationInput | null => {
 	const data = notification.request.content.data;
 	if (!isRecord(data)) return null;
@@ -35,7 +36,10 @@ export const getDeliveredNotificationInput = (
 		return null;
 	}
 
-	const triggeredAt = new Date(notification.date);
+	// Expo's iOS NotificationRecord emits seconds; Android emits milliseconds.
+	const triggeredAt = new Date(
+		dateUnit === "seconds" ? notification.date * 1000 : notification.date,
+	);
 	if (!Number.isFinite(triggeredAt.getTime())) return null;
 
 	return {
