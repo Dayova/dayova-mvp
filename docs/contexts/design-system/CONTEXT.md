@@ -442,6 +442,19 @@ are empty; example selections belong only in historical screenshot evidence.
 The duration explanation adapts to the chosen value; an additional explanation
 between weekdays and start time brings the profile flow to twelve steps.
 
+## Learning-session completion accent
+
+`CompletionAccent` adds a decorative one-shot outline over the existing phase
+illustration or Praxis score ring. It expands gently and fades away within
+700 ms, using the illustration's existing semantic color and geometry. It
+occupies no layout space, ignores touches, and is hidden from accessibility.
+Existing icons, score values, headings, actions, and screen entrance animations
+stay intact. Completion does not claim secure knowledge, and the Praxis result
+keeps its existing score-dependent presentation. No new haptics or navigation
+delays are introduced. Reduced motion omits the accent entirely; ordinary
+rerenders and color updates do not replay it. See
+[DAY-510](https://linear.app/dayova/issue/DAY-510).
+
 ## Search selections in exam setup
 
 Topic and hint suggestions reuse `SelectionOptionRow`, the same rounded card used by exam-type and subject selection. Search choices use checkbox semantics for multiple selections; existing subject/exam choices retain radio semantics. The optional leading icon, wrapping label, subject metadata, selected accent surface and indicator are owned by the shared row. `SearchSuggestion` supplies the custom-entry wording and a concise accessible title; it does not clone the visual treatment.
