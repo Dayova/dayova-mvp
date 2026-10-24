@@ -33,6 +33,9 @@ jobs:
               : await github.paginate(github.rest.repos.listPullRequestsAssociatedWithCommit, {
                   ...context.repo, commit_sha: sha, per_page: 100,
                 });
+            const statuses = await github.paginate(github.rest.repos.listCommitStatusesForRef, {
+              ...context.repo, ref: sha, per_page: 100,
+            });
             let eligible = false;
             for (const candidate of candidates) {
               const { data: pr } = await github.rest.pulls.get({
@@ -44,9 +47,6 @@ jobs:
               }
             }
             if (!eligible) return;
-            const statuses = await github.paginate(github.rest.repos.listCommitStatusesForRef, {
-              ...context.repo, ref: sha, per_page: 100,
-            });
             const latest = statuses.find(status => status.context === 'CodeRabbit');
             const completed = latest?.state === 'success' &&
               /^Review completed\b/i.test(latest.description ?? '');

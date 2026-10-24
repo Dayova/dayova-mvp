@@ -87,6 +87,49 @@ describe("OTA report freshness status", () => {
 		});
 	});
 
+	it.each([
+		"draft",
+		"closed",
+	])("does not publish when the PR becomes %s during individual comment retrieval", async (state) => {
+		const f = fixture(report(headSha));
+		f.github.rest.issues.getComment.mockImplementation(async () => {
+			if (state === "draft") f.pr.draft = true;
+			else f.pr.state = "closed";
+			return { data: structuredClone(f.comment) };
+		});
+		await reconcile(f.github, f.context);
+		expect(f.createCommitStatus).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		"current",
+		"stale",
+	])("assesses a %s report against a head pushed during individual comment retrieval", async (reportState) => {
+		const f = fixture(report(reportState === "current" ? newerSha : headSha));
+		f.github.rest.issues.getComment.mockImplementation(async () => {
+			f.pr.head.sha = newerSha;
+			return { data: structuredClone(f.comment) };
+		});
+		await reconcile(f.github, f.context);
+		expect(f.createCommitStatus).toHaveBeenCalledWith(
+			expect.objectContaining({
+				sha: newerSha,
+				state: reportState === "current" ? "success" : "pending",
+			}),
+		);
+	});
+
+	it("fails closed if PR eligibility cannot be refreshed after reading a comment", async () => {
+		const f = fixture(report(headSha));
+		const unavailable = new Error("GitHub unavailable");
+		f.github.rest.issues.getComment.mockImplementation(async () => {
+			f.github.rest.pulls.get.mockRejectedValue(unavailable);
+			return { data: structuredClone(f.comment) };
+		});
+		await expect(reconcile(f.github, f.context)).rejects.toThrow(unavailable);
+		expect(f.createCommitStatus).not.toHaveBeenCalled();
+	});
+
 	it("marks a report current when Expo assesses the PR head", async () => {
 		const f = fixture(report(headSha));
 		await reconcile(f.github, f.context);

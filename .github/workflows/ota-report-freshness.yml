@@ -49,15 +49,13 @@ jobs:
             const comments = await github.paginate(github.rest.issues.listComments, {
               ...repo, issue_number: number, per_page: 100,
             });
-            const latest = await readPr();
-            if (!eligible(latest)) return;
-            const sha = latest.head.sha;
             const eventComment = context.payload.comment;
             const deletedId = context.payload.action === 'deleted' ? eventComment?.id : undefined;
-            let current = context.eventName === 'issue_comment' &&
+            const reportedShas = new Set();
+            if (context.eventName === 'issue_comment' &&
               context.payload.action !== 'deleted' &&
               context.payload.sender?.login === 'expo[bot]' &&
-              isReport(eventComment) && checkedSha(eventComment.body) === sha;
+              isReport(eventComment)) reportedShas.add(checkedSha(eventComment.body));
             for (const candidate of comments.filter(isReport)) {
               if (candidate.id === deletedId) continue;
               let comment;
@@ -69,9 +67,13 @@ jobs:
                 if (error.status === 404) continue;
                 throw error;
               }
-              if (isReport(comment) && checkedSha(comment.body) === sha) current = true;
+              if (isReport(comment)) reportedShas.add(checkedSha(comment.body));
             }
 
+            const latest = await readPr();
+            if (!eligible(latest)) return;
+            const sha = latest.head.sha;
+            const current = reportedShas.has(sha);
             await github.rest.repos.createCommitStatus({
               ...repo,
               sha,

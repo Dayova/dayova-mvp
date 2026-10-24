@@ -101,6 +101,44 @@ describe("automated review coverage status reconciliation", () => {
 		);
 	});
 
+	it.each([
+		"draft",
+		"closed",
+		"stale",
+	])("does not publish if the PR becomes %s while provider statuses are read", async (kind) => {
+		const f = fixture([], true);
+		const paginate = f.github.paginate.getMockImplementation();
+		if (!paginate) throw new Error("Missing pagination fixture");
+		f.github.paginate.mockImplementation(async (endpoint) => {
+			if (endpoint === f.github.rest.repos.listCommitStatusesForRef) {
+				if (kind === "draft") f.pr.draft = true;
+				if (kind === "closed") f.pr.state = "closed";
+				if (kind === "stale") f.pr.head.sha = "newer-commit";
+			}
+			return paginate(endpoint);
+		});
+		await run(f.context, f.github);
+		expect(f.write).not.toHaveBeenCalled();
+	});
+
+	it("fails closed when live PR refresh fails after provider status retrieval", async () => {
+		const f = fixture([], true);
+		const paginate = f.github.paginate.getMockImplementation();
+		if (!paginate) throw new Error("Missing pagination fixture");
+		f.github.paginate.mockImplementation(async (endpoint) => {
+			if (endpoint === f.github.rest.repos.listCommitStatusesForRef) {
+				f.github.rest.pulls.get.mockRejectedValue(
+					new Error("GitHub unavailable"),
+				);
+			}
+			return paginate(endpoint);
+		});
+		await expect(run(f.context, f.github)).rejects.toThrow(
+			"GitHub unavailable",
+		);
+		expect(f.write).not.toHaveBeenCalled();
+	});
+
 	it("fails without a status if the current PR cannot be read", async () => {
 		const f = fixture([], true);
 		f.github.rest.pulls.get.mockRejectedValue(new Error("GitHub unavailable"));

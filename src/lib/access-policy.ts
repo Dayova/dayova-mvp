@@ -67,6 +67,9 @@ const ACCESS_BYPASS_PATHS = new Set([
 ]);
 const SUBSCRIPTION_SUCCESS_PATH = "/subscription-success";
 
+export const isAccessBypassPath = (pathname: string) =>
+	ACCESS_BYPASS_PATHS.has(pathname) || isOnboardingPath(pathname);
+
 export const resolveAccessRoute = ({
 	accessState,
 	isSessionLoading,
@@ -83,8 +86,7 @@ export const resolveAccessRoute = ({
 	const isAuthRoute =
 		PUBLIC_AUTH_PATHS.has(pathname) || isOnboardingPath(pathname);
 	if (!user) return isAuthRoute ? null : "/";
-	if (ACCESS_BYPASS_PATHS.has(pathname) || isOnboardingPath(pathname))
-		return null;
+	if (isAccessBypassPath(pathname)) return null;
 	if (!accessState) return null;
 
 	if (accessState === "needsActivation") {

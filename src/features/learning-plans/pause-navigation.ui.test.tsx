@@ -118,7 +118,9 @@ async function renderCreation() {
 				unstable_settings: { anchor: "learning-plans/index" },
 			},
 			"learning-plans/index": Overview,
-			creation: NewLearningPlanScreen,
+			"creation/_layout": () => <Stack />,
+			"creation/index": NewLearningPlanScreen,
+			"entry/[entryId]": () => <Text>Gespeicherte Prüfung</Text>,
 			"entry/success": () => <Text>Prüfung erstellt</Text>,
 		},
 		{ initialUrl: `/creation?${new URLSearchParams(mockParams)}` },
@@ -182,7 +184,7 @@ test("pause keeps native protection until edited topics have saved", async () =>
 });
 
 test("failed pause retains the route, native protection and edited text", async () => {
-	mockSave.mockRejectedValue(new Error("offline"));
+	mockSave.mockRejectedValueOnce(new Error("offline"));
 	const result = await renderCreation();
 	await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 	await fireEvent.changeText(
@@ -200,6 +202,16 @@ test("failed pause retains the route, native protection and edited text", async 
 	expect(screen.getByText("Auch Inventur.")).toBeOnTheScreen();
 	expect(screen.getByText("Ohne Hilfsmittel")).toBeOnTheScreen();
 	expect(screen.getByText("offline")).toBeOnTheScreen();
+	await fireEvent.press(screen.getByText("Später fortsetzen"));
+	await waitFor(() => expect(result.getPathname()).toBe("/learning-plans"));
+	expect(screen.getByText("Lernplanübersicht")).toBeVisible();
+	expect(mockSave).toHaveBeenCalledTimes(2);
+	expect(mockSave).toHaveBeenLastCalledWith({
+		id: "plan-native-pause",
+		topicItems: ["Bilanz"],
+		topicAdditionalInfo: "Ohne Hilfsmittel\nAuch Inventur.",
+		topicDescription: "Bilanz\nOhne Hilfsmittel\nAuch Inventur.",
+	});
 });
 
 test("the deliberate material-later replacement is allowed while back stays protected", async () => {
@@ -212,9 +224,30 @@ test("the deliberate material-later replacement is allowed while back stays prot
 	const result = await renderCreation();
 	await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 	expect(result.getPathname()).toBe("/creation");
+	expect(screen.getByLabelText("Hinweise suchen")).toBeOnTheScreen();
+	await testRouter.back();
+	expect(result.getPathname()).toBe("/creation");
+	expect(screen.getByLabelText("Themen suchen")).toBeOnTheScreen();
+	await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 	await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 	await fireEvent.press(screen.getByText("Ohne Lernmaterial erstellen"));
 	await waitFor(() => expect(result.getPathname()).toBe("/entry/success"));
 	expect(screen.getByText("Prüfung erstellt")).toBeVisible();
 	expect(screen.queryByText("Schulmaterial hinzufügen")).toBeNull();
+});
+
+test("closing unsaved setup leaves the nested guarded stack for its saved exam", async () => {
+	mockParams = {
+		examDayEntryId: "exam-native-close",
+		subject: "Rechnungswesen",
+		topicDescription: "Bilanz",
+		step: "topic",
+	};
+	const result = await renderCreation();
+	await act(() => mockClose());
+	await waitFor(() =>
+		expect(result.getPathname()).toBe("/entry/exam-native-close"),
+	);
+	expect(screen.getByText("Gespeicherte Prüfung")).toBeVisible();
+	expect(screen.queryByLabelText("Themen suchen")).toBeNull();
 });

@@ -27,7 +27,7 @@ if (!forced && event !== "workflow_dispatch") {
 		.filter(Boolean);
 }
 const relevant = paths.filter((path) =>
-	/^(app\.config\.cts|eas\.json|package\.json|metro\.config\.js|babel\.config\.js|index\.ts|pnpm-(lock\.yaml|workspace\.yaml)|(?:assets|plugins|modules|patches|\.maestro)\/|src\/(?:app|context|features\/auth)\/|src\/lib\/(?:clerk|auth|access|session|onboarding|pending-onboarding-sync|post-auth-sync-failure|runtime-config)|src\/components\/(?:auth-navigation-gate\.tsx|onboarding\/)|convex\/(?:auth\.config|users|clerkIdentity|entitlements)\.ts|\.eas\/(?:workflows\/ci\.yml|functions\/device-smoke\/)|scripts\/(?:ci-(?:native-changes|prepare-maestro|sanitize-maestro|run-maestro)|auth-smoke)\.mjs)/.test(
+	/^(app\.config\.cts|eas\.json|package\.json|metro\.config\.js|babel\.config\.js|index\.ts|pnpm-(lock\.yaml|workspace\.yaml)|(?:assets|plugins|modules|patches|\.maestro)\/|src\/(?:app|context|features\/auth)\/|src\/lib\/(?:clerk|auth|access|session|onboarding|pending-onboarding-sync|post-auth-sync-failure|runtime-config)|src\/components\/(?:auth-navigation-gate\.tsx|onboarding\/)|convex\/(?:auth\.config|users|clerkIdentity|entitlements)\.ts|\.eas\/(?:workflows\/ci\.yml|functions\/(?:device-smoke|convex-preview)\/)|scripts\/(?:ci-(?:native-changes|prepare-maestro|sanitize-maestro|run-maestro|convex-preview|preview-config)|auth-smoke)\.(?:mjs|cjs))/.test(
 		path,
 	),
 );

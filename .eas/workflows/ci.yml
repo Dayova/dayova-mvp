@@ -33,7 +33,6 @@ jobs:
   source_gate:
     name: CI source eligibility
     type: doc
-    # Keep the repository boundary separate to fit EAS's 250-character conditions.
     if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.id && github.event.pull_request.head.repo.id == github.event.pull_request.base.repo.id) }}
     params:
       md: 'CI source is eligible: pull requests must originate from this repository.'
@@ -43,7 +42,6 @@ jobs:
     type: doc
     needs:
       - source_gate
-    # Separate contributor trust from branch routing to fit EAS's condition limit.
     if: ${{ github.event_name != 'pull_request' || contains('OWNER,MEMBER,COLLABORATOR', github.event.pull_request.author_association) }}
     params:
       md: 'CI contributor is eligible: pull requests must come from trusted contributors.'
@@ -52,7 +50,6 @@ jobs:
     name: Production native fingerprints
     type: fingerprint
     environment: production
-    # quality supplies contributor trust; production inputs stay off forks.
     needs:
       - quality
     if: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_name == 'main' && github.event.before) }}
@@ -153,7 +150,9 @@ jobs:
       - android_smoke
       - ios_smoke
       - authenticated_smoke
+      - preview_backend
     env:
+      PREVIEW_STATUS: ${{ after.preview_backend.status }}
       QUALITY_STATUS: ${{ after.quality.status }}
       FINGERPRINT_STATUS: ${{ after.production_fingerprint.status }}
       OTA_STATUS: ${{ after.ota_checks.status }}
@@ -176,6 +175,7 @@ jobs:
             test "$OTA_STATUS" = success
           fi
           if [ "$REQUIRE_NATIVE" = true ]; then
+            test "$PREVIEW_STATUS" = success
             test "$ANDROID_STATUS" = success
             test "$IOS_STATUS" = success
             test "$AUTH_STATUS" = success
@@ -191,55 +191,44 @@ jobs:
         if: ${{ success() && env.REQUIRE_OTA == 'true' }}
         run: node scripts/ci-verify-export.mjs "${{ steps.verified_export.outputs.artifact_path }}"
 
+  pr_ota_report_data:
+    name: Render PR OTA compatibility report
+    type: custom
+    environment: development
+    runs_on: linux-medium
+    after:
+      - contributor_gate
+      - production_fingerprint
+      - ota_checks
+    if: ${{ github.event_name == 'pull_request' && after.contributor_gate.status == 'success' }}
+    env:
+      CI_OTA_CONTEXT: ${{ toJSON(after) }}
+      CI_OTA_SOURCE_SHA: ${{ github.sha }}
+      CI_OTA_RUN_URL: ${{ workflow.url }}
+    outputs:
+      markdown: ${{ steps.render.outputs.markdown }}
+    steps:
+      - uses: eas/checkout
+      - id: render
+        run: |
+          report="$(node scripts/ci-pr-ota-report.mjs)"
+          set-output markdown "$report"
+
   pr_ota_report:
     name: PR OTA compatibility report
     type: doc
-    after: &pr_ota_report_dependencies
-      - production_fingerprint
-      - ota_checks
+    needs: &pr_ota_report_dependencies [pr_ota_report_data]
     if: ${{ github.event_name == 'pull_request' }}
     params:
-      md: &pr_ota_report_markdown |
-        <!-- dayova-ota-report -->
-        ## 📱 OTA compatibility
-
-        **Checked commit:** `${{ github.sha }}` · 🔎 [View EAS run](${{ workflow.url }})
-
-        **This report applies only to the checked commit.** If the PR's latest commit differs, this result is **outdated** and OTA compatibility for the latest commit is **unconfirmed** until this comment updates.
-
-        ### ${{ after.ota_checks.status == 'success' && (after.ota_checks.outputs.ota_safe == 'true' && '✅ OTA-compatible' || after.ota_checks.outputs.ota_safe == 'false' && '⚠️ Not OTA-compatible') || '❓ Compatibility not confirmed' }}
-
-
-        | Check | Status |
-        | --- | --- |
-        | 🧬 Native fingerprints | ${{ after.production_fingerprint.status == 'success' && '✅ Completed' || after.production_fingerprint.status == 'failure' && '❌ Failed' || '⏭️ Not completed' }} |
-        | 📦 iOS & Android exports + OTA assessment | ${{ after.ota_checks.status == 'success' && '✅ Completed' || after.ota_checks.status == 'failure' && '❌ Failed' || '⏭️ Not completed' }} |
-
-        💡 **Advisory for merging.** Native changes can still merge. Nothing is published by this PR check; main rechecks the merged commit before publishing.
-
-        <details>
-        <summary>🛠️ Technical details — reason, builds & fingerprints</summary>
-
-        **Reason:** ${{ after.ota_checks.outputs.ota_reason || 'Assessment did not complete. Production checks run only for trusted, same-repository PRs after quality checks pass.' }}
-
-        **📦 Distributed builds:** `${{ after.ota_checks.outputs.ota_baseline || 'Not assessed' }}`
-
-        **🧬 Current fingerprints**
-
-        | Platform | Fingerprint |
-        | --- | --- |
-        | iOS | `${{ after.production_fingerprint.outputs.ios_fingerprint_hash || 'Not assessed' }}` |
-        | Android | `${{ after.production_fingerprint.outputs.android_fingerprint_hash || 'Not assessed' }}` |
-
-        </details>
+      md: ${{ needs.pr_ota_report_data.outputs.markdown }}
 
   pr_ota_comment:
     name: Post OTA report to GitHub PR
     type: github-comment
-    after: *pr_ota_report_dependencies
+    needs: *pr_ota_report_dependencies
     if: ${{ github.event_name == 'pull_request' }}
     params:
-      payload: *pr_ota_report_markdown
+      payload: ${{ needs.pr_ota_report_data.outputs.markdown }}
 
   deploy_convex:
     name: Deploy Convex
@@ -302,15 +291,37 @@ jobs:
         **Current fingerprints:** ${{ needs.ota_checks.outputs.ota_current_fingerprints }}
 
         This block persists across later commits until the production manifest and native fingerprints match verified distributed binaries.
+  preview_backend:
+    name: Deploy isolated candidate Convex backend
+    type: custom
+    environment: development
+    runs_on: linux-medium
+    needs:
+      - quality
+    if: ${{ needs.quality.outputs.native_required == 'true' }}
+    env:
+      CI_SOURCE_SHA: ${{ github.sha || 'unavailable' }}
+    outputs:
+      url: ${{ steps.preview.outputs.url }}
+      name: ${{ steps.preview.outputs.name }}
+      source_sha: ${{ steps.preview.outputs.source_sha }}
+    steps:
+      - id: preview
+        uses: ./.eas/functions/convex-preview
+
   native_fingerprint:
     name: Test native fingerprints
     type: fingerprint
     environment: development
     needs:
+      - preview_backend
       - quality
       - authenticated_smoke
     if: ${{ needs.quality.outputs.native_required == 'true' }}
-    env:
+    env: &ci_preview_env
+      EXPO_PUBLIC_CONVEX_URL: ${{ needs.preview_backend.outputs.url }}
+      CI_CONVEX_PREVIEW_NAME: ${{ needs.preview_backend.outputs.name }}
+      CI_CONVEX_SOURCE_SHA: ${{ needs.preview_backend.outputs.source_sha }}
       APP_VARIANT: preview
       DAYOVA_CI_VALIDATION: 'true'
       EXPO_NO_DOTENV: '1'
@@ -325,23 +336,27 @@ jobs:
       fingerprint_hash: ${{ needs.native_fingerprint.outputs.android_fingerprint_hash }}
       wait_for_in_progress: true
   android_build:
+    hooks: &ci_preview_hooks
+      before_install_node_modules:
+        - run: node scripts/ci-preview-config.cjs pin-build
     name: android native compile
+    env: *ci_preview_env
     type: build
     needs:
+      - preview_backend
       - android_get_build
     if: ${{ !needs.android_get_build.outputs.build_id }}
     params:
       platform: android
       profile: ci
   android_repack:
+    hooks: *ci_preview_hooks
     name: android current bundle on verified native runtime
     type: repack
     environment: development
-    env:
-      APP_VARIANT: preview
-      DAYOVA_CI_VALIDATION: 'true'
-      EXPO_NO_DOTENV: '1'
+    env: *ci_preview_env
     needs:
+      - preview_backend
       - android_get_build
     if: ${{ needs.android_get_build.outputs.build_id }}
     params:
@@ -353,11 +368,18 @@ jobs:
     environment: development
     runs_on: linux-medium-nested-virtualization
     after:
+      - preview_backend
       - native_fingerprint
       - android_build
       - android_repack
     if: ${{ after.native_fingerprint.status == 'success' }}
     env:
+      APP_VARIANT: preview
+      DAYOVA_CI_VALIDATION: 'true'
+      EXPO_NO_DOTENV: '1'
+      EXPO_PUBLIC_CONVEX_URL: ${{ after.preview_backend.outputs.url }}
+      CI_CONVEX_PREVIEW_NAME: ${{ after.preview_backend.outputs.name }}
+      CI_CONVEX_SOURCE_SHA: ${{ after.preview_backend.outputs.source_sha }}
       MAESTRO_APP_ID: com.dayova.dev
     steps:
       - uses: eas/checkout
@@ -377,23 +399,25 @@ jobs:
       simulator: true
       wait_for_in_progress: true
   ios_build:
+    hooks: *ci_preview_hooks
     name: ios native compile
+    env: *ci_preview_env
     type: build
     needs:
+      - preview_backend
       - ios_get_build
     if: ${{ !needs.ios_get_build.outputs.build_id }}
     params:
       platform: ios
       profile: ci
   ios_repack:
+    hooks: *ci_preview_hooks
     name: ios current bundle on verified native runtime
     type: repack
     environment: development
-    env:
-      APP_VARIANT: preview
-      DAYOVA_CI_VALIDATION: 'true'
-      EXPO_NO_DOTENV: '1'
+    env: *ci_preview_env
     needs:
+      - preview_backend
       - ios_get_build
     if: ${{ needs.ios_get_build.outputs.build_id }}
     params:
@@ -405,11 +429,18 @@ jobs:
     environment: development
     runs_on: macos-medium
     after:
+      - preview_backend
       - native_fingerprint
       - ios_build
       - ios_repack
     if: ${{ after.native_fingerprint.status == 'success' }}
     env:
+      APP_VARIANT: preview
+      DAYOVA_CI_VALIDATION: 'true'
+      EXPO_NO_DOTENV: '1'
+      EXPO_PUBLIC_CONVEX_URL: ${{ after.preview_backend.outputs.url }}
+      CI_CONVEX_PREVIEW_NAME: ${{ after.preview_backend.outputs.name }}
+      CI_CONVEX_SOURCE_SHA: ${{ after.preview_backend.outputs.source_sha }}
       MAESTRO_APP_ID: de.dayova.app-dev
     steps:
       - uses: eas/checkout
@@ -419,10 +450,12 @@ jobs:
           build_id: ${{ after.ios_repack.outputs.build_id || after.ios_build.outputs.build_id }}
   authenticated_smoke:
     name: Clerk and deployed Convex smoke
+    env: *ci_preview_env
     type: custom
     runs_on: linux-medium
     environment: development
     needs:
+      - preview_backend
       - quality
     if: ${{ needs.quality.outputs.native_required == 'true' }}
     steps:
