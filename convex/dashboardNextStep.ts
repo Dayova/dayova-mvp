@@ -3,10 +3,10 @@ import {
 	paginationResultValidator,
 } from "convex/server";
 import { v } from "convex/values";
-import { query } from "./_generated/server";
 import { assertAccountActive } from "./accountDeletion";
 import { getBerlinDayKey } from "./dayKeyVariants";
 import { throwUserFacingError } from "./errors";
+import { learningQuery } from "./learningFunctions";
 import schema from "./schema";
 
 const sessionFields = schema.tables.learningPlanSessions.validator.fields;
@@ -23,7 +23,7 @@ const sessionValidator = v.object({
 });
 
 /** Switch query arguments only after this owner's backfill is complete, resetting pagination. */
-export const isDayIndexReady = query({
+export const isDayIndexReady = learningQuery({
 	args: {},
 	returns: v.boolean(),
 	handler: async (ctx) => {
@@ -43,7 +43,7 @@ export const isDayIndexReady = query({
 });
 
 /** Indexed pages are chronological. Legacy clients retain the full-scan contract. */
-export const listCandidates = query({
+export const listCandidates = learningQuery({
 	args: {
 		todayKey: v.string(),
 		paginationOpts: paginationOptsValidator,

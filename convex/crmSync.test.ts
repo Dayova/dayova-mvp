@@ -1027,11 +1027,13 @@ test("profile changes schedule live reconciliation once, while unchanged sign-in
 		const scheduled = await t.run((ctx) =>
 			ctx.db.system.query("_scheduled_functions").take(10),
 		);
-		expect(scheduled).toHaveLength(1);
+		expect(
+			scheduled.filter((job) => job.name.includes("crmSync")),
+		).toHaveLength(1);
 		expect(
 			await t.run((ctx) => ctx.db.query("crmStudentUpdates").take(5)),
 		).toMatchObject([{ revision: 3, status: "pending" }]);
-		expect(scheduled.every((job) => job.name.includes("crmSync"))).toBe(true);
+
 		await t.finishAllScheduledFunctions(vi.runAllTimers);
 	} finally {
 		vi.useRealTimers();

@@ -1,4 +1,4 @@
-import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useMutation } from "convex/react";
 import {
 	Stack,
 	useFocusEffect,
@@ -45,6 +45,7 @@ import type {
 } from "~/features/learning-plans/types";
 import { usePrepareSessionContent } from "~/features/learning-plans/use-prepare-session-content";
 import { getErrorMessage } from "~/features/learning-plans/utils";
+import { useLearningQuery } from "~/hooks/use-learning-query";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import { dismissToOrReplace, useBackIntent } from "~/lib/navigation";
@@ -227,7 +228,7 @@ export default function LearningSessionContentScreen() {
 		null,
 	);
 
-	const content = (useQuery(
+	const content = (useLearningQuery(
 		api.learningSessionContent.getSessionContent,
 		user && isConvexAuthenticated && sessionId ? { sessionId } : "skip",
 	) ?? null) as LearningSessionContentSnapshot | null;

@@ -4,6 +4,7 @@ import { beforeEach, expect, test, vi } from "vitest";
 import { api } from "./_generated/api";
 import { createManagedReadUrl } from "./fileStorage";
 import schema from "./schema";
+import { grantTestLearningAccess } from "./testing/access";
 
 // The storage service is external. Exercise the real public authorization boundary.
 vi.mock("./fileStorage", async (importOriginal) => ({
@@ -18,6 +19,7 @@ beforeEach(() => {
 async function setup(fileType = "image/jpeg") {
 	const t = convexTest(schema, modules);
 	const owner = t.withIdentity({ tokenIdentifier: "test:owner" });
+	await grantTestLearningAccess(owner);
 	const id = await t.run(async (ctx) => {
 		const learningPlanId = await ctx.db.insert("learningPlans", {
 			ownerTokenIdentifier: "test:owner",
@@ -54,9 +56,11 @@ test("only the material owner can request a protected preview", async () => {
 		t.mutation(api.learningPlans.getDocumentPreviewUrl, { id }),
 	).rejects.toThrow();
 	await expect(
-		t
-			.withIdentity({ tokenIdentifier: "test:other" })
-			.mutation(api.learningPlans.getDocumentPreviewUrl, { id }),
+		(
+			await grantTestLearningAccess(
+				t.withIdentity({ tokenIdentifier: "test:other" }),
+			)
+		).mutation(api.learningPlans.getDocumentPreviewUrl, { id }),
 	).resolves.toBeNull();
 	expect(createManagedReadUrl).not.toHaveBeenCalled();
 	await expect(

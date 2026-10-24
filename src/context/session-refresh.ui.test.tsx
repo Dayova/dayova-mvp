@@ -7,7 +7,7 @@ import {
 	test,
 } from "@jest/globals";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
-import { Text } from "react-native";
+import { AppState, Text } from "react-native";
 import { AuthNavigationGate } from "~/components/auth-navigation-gate";
 import {
 	type AccessSnapshot,
@@ -37,6 +37,11 @@ let mockPathname = "/learning-plans/example";
 let mockAuthenticated = true;
 let mockServerAccess: AccessSnapshot | undefined;
 const mockQueryArgs = jest.fn();
+const mockVerify = jest.fn(async (_args: Record<string, never>) =>
+	mockServerAccess
+		? { access: mockServerAccess, serverNow: Date.now() }
+		: await Promise.reject(new Error("offline")),
+);
 
 jest.mock("@clerk/expo", () => ({
 	useClerk: () => mockClerk,
@@ -47,8 +52,16 @@ jest.mock("@clerk/expo", () => ({
 }));
 jest.mock("convex/react", () => ({
 	useConvex: () => ({ url: "https://test.convex.cloud" }),
-	useMutation: () => mockSync,
+	useMutation: (ref: unknown) => {
+		const { getFunctionName } =
+			jest.requireActual<typeof import("convex/server")>("convex/server");
+		return getFunctionName(ref as Parameters<typeof getFunctionName>[0]) ===
+			"accessState:refreshMyAccess"
+			? mockVerify
+			: mockSync;
+	},
 	useAction: () => mockEntitlementSync,
+	useConvexConnectionState: () => ({ isWebSocketConnected: true }),
 	useConvexAuth: () => ({ isAuthenticated: mockAuthenticated }),
 	useQuery: (_query: unknown, args: unknown) => {
 		mockQueryArgs(args);
@@ -58,9 +71,6 @@ jest.mock("convex/react", () => ({
 		mockQueryArgs(queries.access?.args ?? "skip");
 		return { access: queries.access ? mockServerAccess : undefined };
 	},
-}));
-jest.mock("react-native-safe-area-context", () => ({
-	useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 jest.mock("posthog-react-native", () => ({ usePostHog: () => null }));
 jest.mock("~/context/OnboardingContext", () => ({
@@ -142,6 +152,7 @@ const openApp = async () => {
 
 describe("session refresh across the app", () => {
 	beforeEach(() => {
+		AppState.currentState = "active";
 		mockClerkUser = makeUser();
 		mockAuthenticated = true;
 		mockServerAccess = { canUseApp: true, state: "paid" };
@@ -203,13 +214,13 @@ describe("session refresh across the app", () => {
 		mockServerAccess = undefined;
 		const screen = await render(<App />);
 		await act(async () => jest.advanceTimersByTime(1_501));
-		expect(screen.getByText("Zugang gerade nicht prüfbar")).toBeOnTheScreen();
+		expect(screen.getByText("Zugang online prüfen")).toBeOnTheScreen();
 		expect(screen.queryByText("Lernplan")).toBeNull();
 		expect(mockReplace).not.toHaveBeenCalled();
 		await fireEvent.press(
 			screen.getByRole("button", { name: "Erneut prüfen" }),
 		);
-		expect(screen.getByText("Zugang wird geprüft …")).toBeOnTheScreen();
+		expect(screen.getByRole("alert")).toBeOnTheScreen();
 		mockServerAccess = {
 			canUseApp: true,
 			state: "trial",
@@ -217,19 +228,23 @@ describe("session refresh across the app", () => {
 		};
 		await screen.rerender(<App />);
 		expectVisible(screen);
-		expect(screen.queryByText("Zugang gerade nicht prüfbar")).toBeNull();
+		expect(screen.queryByText("Zugang online prüfen")).toBeNull();
 		expect(mockEntitlementSync).not.toHaveBeenCalled();
 	});
 
 	test("refreshes access after a purchase without blanking the current screen", async () => {
 		jest.useFakeTimers();
 		const screen = await openApp();
-		const initialArgs = mockQueryArgs.mock.lastCall?.[0];
+		mockVerify.mockClear();
 		await act(async () => jest.advanceTimersByTime(100));
 		mockServerAccess = undefined;
+		mockVerify.mockResolvedValueOnce({
+			access: { canUseApp: true, state: "paid" },
+			serverNow: Date.now(),
+		});
 		await fireEvent.press(screen.getByText("Refresh access"));
 		expect(mockEntitlementSync).toHaveBeenCalledWith({});
-		expect(mockQueryArgs.mock.lastCall?.[0]).not.toEqual(initialArgs);
+		expect(mockVerify).toHaveBeenCalledWith({});
 		expectVisible(screen);
 	});
 
@@ -267,7 +282,7 @@ describe("session refresh across the app", () => {
 		expect(screen.getByTestId("auth-bootstrap-mask")).toBeOnTheScreen();
 		expect(
 			screen.getByTestId("access-state", { includeHiddenElements: true }),
-		).toHaveTextContent("unknown");
+		).toHaveTextContent("expired");
 	});
 
 	test("bounds retained access by the existing offline window", async () => {
@@ -275,8 +290,9 @@ describe("session refresh across the app", () => {
 		const screen = await openApp();
 		mockServerAccess = undefined;
 		await screen.rerender(<App />);
-		jest.setSystemTime(Date.now() + OFFLINE_ACCESS_WINDOW_MS + 1);
-		await act(async () => jest.advanceTimersByTime(30_000));
+		await act(async () =>
+			jest.advanceTimersByTime(OFFLINE_ACCESS_WINDOW_MS + 1),
+		);
 		expect(screen.getByTestId("auth-bootstrap-mask")).toBeOnTheScreen();
 		expect(
 			screen.getByTestId("access-state", { includeHiddenElements: true }),
@@ -370,5 +386,20 @@ describe("session refresh across the app", () => {
 		mockAuthenticated = false;
 		await screen.rerender(<App />);
 		expect(screen.getByTestId("auth-bootstrap-mask")).toBeOnTheScreen();
+	});
+	test("an offline cold-start profile sync offers online verification instead of an indefinite blank mask", async () => {
+		jest.useFakeTimers();
+		const finishSync = deferSync();
+		const screen = await render(<App />);
+		try {
+			expect(
+				screen.getByTestId("profile-state", { includeHiddenElements: true }),
+			).toHaveTextContent("pending/syncing");
+			await act(async () => jest.advanceTimersByTime(1501));
+			expect(screen.getByText("Zugang online prüfen")).toBeOnTheScreen();
+		} finally {
+			await finishSync();
+		}
+		expectVisible(screen);
 	});
 });

@@ -1,4 +1,4 @@
-import { useConvexAuth, useQuery } from "convex/react";
+import { useConvexAuth } from "convex/react";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
@@ -10,6 +10,7 @@ import { CreateEntryButton } from "~/components/create-entry-button";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
+import { useLearningQuery } from "~/hooks/use-learning-query";
 import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { ROUTES, withReturnTo } from "~/lib/routes";
@@ -115,7 +116,7 @@ export function DashboardScreen() {
 		selectedDayKey,
 		todayKey,
 	});
-	const queriedEntriesByDay = useQuery(
+	const queriedEntriesByDay = useLearningQuery(
 		api.dayEntries.listByDayKeys,
 		user && isConvexAuthenticated ? { dayKeys: queriedDayKeys } : "skip",
 	);
@@ -128,7 +129,7 @@ export function DashboardScreen() {
 						getVisibleDashboardEntries(entries),
 					]),
 				);
-	const learningPlans = useQuery(
+	const learningPlans = useLearningQuery(
 		api.learningPlans.listOverview,
 		user && isConvexAuthenticated ? {} : "skip",
 	);

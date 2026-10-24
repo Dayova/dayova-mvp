@@ -1,4 +1,4 @@
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
@@ -24,6 +24,7 @@ import { Text } from "~/components/ui/text";
 import { PreparationAcceptAction } from "~/features/learning-plans/preparation-accept-action";
 import { PreparationSlotEditor } from "~/features/learning-plans/preparation-slot-editor";
 import { getErrorMessage } from "~/features/learning-plans/utils";
+import { useLearningQuery } from "~/hooks/use-learning-query";
 
 type Slot = PreparationSlot & {
 	locked: boolean;
@@ -49,11 +50,11 @@ export default function PreparationScreen() {
 	});
 	const { isAuthenticated } = useConvexAuth();
 	const [proposalTime] = useState(() => berlinNow());
-	const schedule = useQuery(
+	const schedule = useLearningQuery(
 		api.learningPlans.getPreparationSchedule,
 		isAuthenticated && id ? { learningPlanId: id, now: proposalTime } : "skip",
 	);
-	const snapshot = useQuery(
+	const snapshot = useLearningQuery(
 		api.learningPlans.getSnapshot,
 		isAuthenticated && id ? { id } : "skip",
 	);

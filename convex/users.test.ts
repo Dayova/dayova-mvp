@@ -1,3 +1,4 @@
+import { grantTestLearningAccess } from "./testing/access";
 /// <reference types="vite/client" />
 
 import { convexTest } from "convex-test";
@@ -105,6 +106,7 @@ test("onboarding persists canonical learning times visible to settings and plans
 		[],
 	);
 
+	await grantTestLearningAccess(t);
 	const examDayEntryId = await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-08-01",
 		title: "Mathe Klausur",

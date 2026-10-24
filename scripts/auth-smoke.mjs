@@ -144,6 +144,21 @@ export async function authenticatedSmoke(env = process.env, request = fetch) {
 			throw new Error(
 				"The deployed Convex backend did not return the authenticated synthetic user",
 			);
+		stage = "access-verification-mutation";
+		const verified = await rpc(
+			"mutation",
+			"accessState:refreshMyAccess",
+			{},
+			token.jwt,
+		);
+		if (
+			verified.status !== "success" ||
+			!Number.isFinite(verified.value?.serverNow) ||
+			typeof verified.value?.access?.canUseApp !== "boolean"
+		)
+			throw new Error(
+				"The preview backend does not support server access verification.",
+			);
 		stage = "access-bootstrap-query";
 		const access = await rpc(
 			"query",
@@ -153,7 +168,8 @@ export async function authenticatedSmoke(env = process.env, request = fetch) {
 		);
 		if (
 			access.status !== "success" ||
-			typeof access.value?.canUseApp !== "boolean"
+			typeof access.value?.canUseApp !== "boolean" ||
+			access.value.canUseApp !== verified.value.access.canUseApp
 		)
 			throw new Error(
 				"The preview backend does not support the app access bootstrap contract.",
@@ -170,7 +186,8 @@ export async function authenticatedSmoke(env = process.env, request = fetch) {
 				"The preview backend does not support notification preferences.",
 			);
 		// Exercise the planner's real argument contract as well as free preferences.
-		// This candidate exposes the planner before activation; user-facing errors are failures.
+		// A fresh learner must get the distinct eligibility denial, never a trial regrant.
+		// Generic user-facing/auth/deletion errors are still failed preflight contracts.
 		const dayKey = new Date().toISOString().slice(0, 10);
 		const entries = await rpc(
 			"query",
@@ -179,8 +196,15 @@ export async function authenticatedSmoke(env = process.env, request = fetch) {
 			token.jwt,
 		);
 		const planningAllowed =
-			entries.status === "success" && Array.isArray(entries.value?.[dayKey]);
-		if (!planningAllowed)
+			access.value.canUseApp === true &&
+			entries.status === "success" &&
+			Array.isArray(entries.value?.[dayKey]);
+		const planningDenied =
+			access.value.canUseApp === false &&
+			entries.status === "error" &&
+			entries.errorData?.kind === "userFacing" &&
+			entries.errorData?.code === "learningAccessRequired";
+		if (!planningAllowed && !planningDenied)
 			throw new Error(
 				"The preview backend does not support the notification planning contract.",
 			);
@@ -189,7 +213,8 @@ export async function authenticatedSmoke(env = process.env, request = fetch) {
 			authenticatedConvexQuery: "success",
 			unauthenticatedConvexQuery: "denied",
 			notificationBootstrapQuery: "success",
-			notificationPlanningQuery: "success",
+			notificationPlanningQuery: planningDenied ? "access-denied" : "success",
+			accessVerificationMutation: "success",
 			accessBootstrapQuery: "success",
 			syntheticUserInitialization: "success",
 		};

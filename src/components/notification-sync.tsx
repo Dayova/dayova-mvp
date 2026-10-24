@@ -5,7 +5,9 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { AppState, Platform } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import { useAccess } from "~/context/AccessContext";
 import { useAuthSession } from "~/context/AuthContext";
+import { useLearningQuery } from "~/hooks/use-learning-query";
 import { addDays, getDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { getDeliveredNotificationInput } from "~/lib/delivered-notification";
 import { logDiagnosticError } from "~/lib/diagnostics";
@@ -45,6 +47,7 @@ const ensureNotificationChannel = async (
 
 export function NotificationSync() {
 	const router = useRouter();
+	const { access } = useAccess();
 	const { user, isSessionLoading } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const today = useCurrentLocalDay();
@@ -68,13 +71,26 @@ export function NotificationSync() {
 			),
 		[today],
 	);
-	const entriesByDay = (useQuery(
+	const entriesByDay = (useLearningQuery(
 		api.dayEntries.listByDayKeys,
-		user && isConvexAuthenticated
+		user && isConvexAuthenticated && access?.canUseApp
 			? { dayKeys, cacheScope: "notificationPlanning" }
 			: "skip",
 	) ?? null) as Record<string, DayEntry[]> | null;
 	const latestSyncKeyRef = useRef<string | null>(null);
+	const localSyncRef = useRef<Promise<unknown>>(Promise.resolve());
+	const syncLocalNotifications = useCallback(
+		(...args: Parameters<typeof syncPlannedLocalNotifications>) => {
+			// Finish an in-flight native write before applying a newer plan or denial.
+			const request = localSyncRef.current
+				.catch(() => {})
+				.then(() => syncPlannedLocalNotifications(...args));
+			localSyncRef.current = request;
+			return request;
+		},
+		[],
+	);
+	const isAccessDenied = access?.canUseApp === false;
 	const recordSystemNotification = useCallback(
 		async (notification: ExpoNotifications.Notification) => {
 			if (!user || !isConvexAuthenticated) return;
@@ -163,30 +179,38 @@ export function NotificationSync() {
 	}, [reconcilePresentedNotifications, recordSystemNotificationSafely, router]);
 
 	useEffect(() => {
-		if (isSessionLoading || user) return;
+		if (!isAccessDenied && (isSessionLoading || user)) return;
+		latestSyncKeyRef.current = null;
 		const notifications = getNotificationsModule();
 		if (!notifications) return;
 
-		void syncPlannedLocalNotifications(notifications, []).catch(
-			(error: unknown) => {
-				logDiagnosticError(
-					"Failed to clear scheduled notifications after logout.",
-					error,
-					{
-						source: "notifications.clearAfterLogout",
-						level: "warn",
-					},
-				);
-			},
-		);
-	}, [isSessionLoading, user]);
+		void syncLocalNotifications(notifications, []).catch((error: unknown) => {
+			logDiagnosticError(
+				"Failed to clear ineligible scheduled notifications.",
+				error,
+				{
+					source: "notifications.clearIneligible",
+					level: "warn",
+				},
+			);
+		});
+	}, [isAccessDenied, isSessionLoading, syncLocalNotifications, user]);
 
 	useEffect(() => {
-		if (!user || !isConvexAuthenticated || !preferences || !entriesByDay) {
+		if (
+			!access?.canUseApp ||
+			!user ||
+			!isConvexAuthenticated ||
+			!preferences ||
+			!entriesByDay
+		) {
+			latestSyncKeyRef.current = null;
 			return;
 		}
 
-		const syncNotifications = async () => {
+		let cancelled = false;
+		let latestAttempt = 0;
+		const syncNotifications = async (attempt: number) => {
 			const now = new Date();
 			const localDayKey = getDayKey(now);
 			const localMinutes = getLocalMinutes(now);
@@ -195,18 +219,20 @@ export function NotificationSync() {
 				localDayKey,
 				localMinutes,
 			});
+			if (cancelled || attempt !== latestAttempt) return;
 
 			const notifications = getNotificationsModule();
 			if (!notifications) return;
 			await reconcilePresentedNotifications(notifications);
 
 			const permissions = await notifications.getPermissionsAsync();
+			if (cancelled || attempt !== latestAttempt) return;
 			const canScheduleSystemNotifications =
 				preferences.systemNotificationsEnabled &&
 				hasNotificationPermission(notifications, permissions);
 
 			if (!canScheduleSystemNotifications) {
-				await syncPlannedLocalNotifications(notifications, []);
+				await syncLocalNotifications(notifications, []);
 				return;
 			}
 
@@ -219,6 +245,7 @@ export function NotificationSync() {
 			const registrations = await registerLocalNotificationPlan(
 				buildLocalNotificationRegistrationInput(plan),
 			);
+			if (cancelled || attempt !== latestAttempt) return;
 			const registrationBySchedule = new Map(
 				registrations.map((registration) => [
 					`${registration.eventKey}\0${registration.scheduledFor}`,
@@ -234,11 +261,7 @@ export function NotificationSync() {
 				}
 				return { ...notification, registrationId };
 			});
-			await syncPlannedLocalNotifications(
-				notifications,
-				registeredPlan,
-				user.clerkId,
-			);
+			await syncLocalNotifications(notifications, registeredPlan, user.clerkId);
 		};
 
 		const syncKey = JSON.stringify({
@@ -247,18 +270,40 @@ export function NotificationSync() {
 			dayKeys,
 			ownerId: user.clerkId,
 		});
-		if (latestSyncKeyRef.current !== syncKey) {
+		let syncCompleted = latestSyncKeyRef.current === syncKey;
+		const reportSyncFailure = (error: unknown) => {
+			logDiagnosticError("Failed to sync local notifications.", error, {
+				source: "notifications.syncLocalPlan",
+				level: "warn",
+			});
+		};
+		const startSync = () => {
+			if (cancelled) return;
+			const attempt = ++latestAttempt;
+			syncCompleted = false;
+			void syncNotifications(attempt).then(() => {
+				if (!cancelled && attempt === latestAttempt) syncCompleted = true;
+			}, reportSyncFailure);
+		};
+		if (!syncCompleted) {
 			latestSyncKeyRef.current = syncKey;
-			void syncNotifications();
+			startSync();
 		}
 
 		const subscription = AppState.addEventListener("change", (state) => {
-			if (state !== "active") return;
-			void syncNotifications();
+			if (state === "active") startSync();
 		});
 
-		return () => subscription.remove();
+		return () => {
+			cancelled = true;
+			// An interrupted verification/registration must not suppress the next plan.
+			if (!syncCompleted && latestSyncKeyRef.current === syncKey) {
+				latestSyncKeyRef.current = null;
+			}
+			subscription.remove();
+		};
 	}, [
+		access?.canUseApp,
 		dayKeys,
 		entriesByDay,
 		isConvexAuthenticated,
@@ -266,6 +311,7 @@ export function NotificationSync() {
 		reconcilePresentedNotifications,
 		registerLocalNotificationPlan,
 		syncDueNotifications,
+		syncLocalNotifications,
 		user,
 	]);
 

@@ -61,6 +61,9 @@ Notion is Dayova's main internal documentation and knowledge workspace. Keep thi
   exercises these contracts through the real auth, access, and navigation providers.
 - Native Clerk tokens always use Clerk's secure persistent Expo token cache.
   There is no `Angemeldet bleiben` preference or memory-only cache path.
+  An unresolved initial Clerk load shows online-start recovery after ten seconds.
+  Its restart action uses Expo's same-bundle reload, then still requires fresh
+  server access verification; cached identity never grants a new access lease.
 - Pending onboarding persistence uses a separate outbox. Native builds store it
   in encrypted SecureStore. Production web rejects durable recovery until an
   encrypted web-storage design is accepted. Development web may use
@@ -98,3 +101,7 @@ Notion is Dayova's main internal documentation and knowledge workspace. Keep thi
 - DAY-90 and DAY-178 require real-device evidence before closure. DAY-178 also
   requires persistence across process/device restart and remote-revocation
   behavior, not merely a successful unit test.
+
+- [DAY-556](https://linear.app/dayova/issue/DAY-556): access queries ignore legacy client time and read a server-owned projection. Paid learning mutations/actions check current server eligibility; scheduled boundaries update subscriptions. Cold process start and return from background require fresh online verification. A successful response anchors at request-start monotonic time; continuous foreground offline access is capped at 72 hours and the confirmed entitlement deadline. Persisted access caches cannot authorize a new process. Account changes invalidate in-flight replies; same-account foreground refreshes retain only a still-valid grant. Recovery/settings remain reachable while verification is pending or access is expired.
+
+- The [approved DAY-556 compatibility boundary](https://app.notion.com/p/3fb2e87228bf81d8a5d2ce018cf138a9) scopes the new offline guarantee to native builds containing the fix; legacy local caches are excluded. Server learning checks apply to every client. A transient iOS inactive interruption preserves a verified foreground lease; actual background/resume requires a fresh verification. The complete account-security flow (including password change and forced reset) remains reachable during verification and before trial consent.

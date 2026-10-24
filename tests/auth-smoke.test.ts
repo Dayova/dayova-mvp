@@ -15,6 +15,13 @@ const env = {
 	MAESTRO_CI_PASSWORD: "fixture-password",
 };
 function services(fault = "") {
+	const canUseApp = [
+		"eligible",
+		"unexpected-eligibility-denial",
+		"stale-notification-validator",
+		"malformed-notification-result",
+	].includes(fault);
+	const access = { state: canUseApp ? "paid" : "needsActivation", canUseApp };
 	let initialized = false,
 		onboarding = false,
 		removed = false;
@@ -54,6 +61,21 @@ function services(fault = "") {
 					},
 				});
 			}
+			if (path === "accessState:refreshMyAccess")
+				return Response.json(
+					fault === "missing-refresh-api"
+						? {
+								status: "error",
+								errorMessage: "Could not find public function",
+							}
+						: {
+								status: "success",
+								value: {
+									serverNow: 1792800000000,
+									access,
+								},
+							},
+				);
 			if (path === "entitlements:getMyAccess")
 				return Response.json(
 					fault === "missing-access-api"
@@ -63,7 +85,7 @@ function services(fault = "") {
 							}
 						: {
 								status: "success",
-								value: { state: "needsActivation", canUseApp: false },
+								value: access,
 							},
 				);
 			if (path === "dayEntries:listByDayKeys") {
@@ -72,6 +94,25 @@ function services(fault = "") {
 					return Response.json({
 						status: "error",
 						errorData: { kind: "userFacing", message: "No app eligibility" },
+					});
+				if (
+					![
+						"eligible",
+						"stale-notification-validator",
+						"malformed-notification-result",
+						"unguarded-planning",
+					].includes(fault)
+				)
+					return Response.json({
+						status: "error",
+						errorData: {
+							kind: fault === "wrong-denial-kind" ? "internal" : "userFacing",
+							code:
+								fault === "unknown-denial-code"
+									? "otherFailure"
+									: "learningAccessRequired",
+							message: "No app eligibility",
+						},
 					});
 				if (fault === "stale-notification-validator")
 					return Response.json({
@@ -118,7 +159,8 @@ describe("real-service authentication probe consumer", () => {
 			authenticatedConvexQuery: "success",
 			unauthenticatedConvexQuery: "denied",
 			notificationBootstrapQuery: "success",
-			notificationPlanningQuery: "success",
+			notificationPlanningQuery: "access-denied",
+			accessVerificationMutation: "success",
 			accessBootstrapQuery: "success",
 			syntheticUserInitialization: "success",
 		});
@@ -131,8 +173,22 @@ describe("real-service authentication probe consumer", () => {
 			.filter(([url]) => String(url).endsWith("/api/mutation"))
 			.map(([, init]) => JSON.parse(String(init?.body)).path);
 		expect(new Set(mutations)).toEqual(
-			new Set(["users:syncCurrentUser", "users:saveOnboardingAnswers"]),
+			new Set([
+				"users:syncCurrentUser",
+				"users:saveOnboardingAnswers",
+				"accessState:refreshMyAccess",
+			]),
 		);
+	});
+	it("requires a successful planner result when access is confirmed", async () => {
+		const boundary = services("eligible");
+		await expect(
+			authenticatedSmoke(env, boundary.request),
+		).resolves.toMatchObject({
+			notificationPlanningQuery: "success",
+			accessVerificationMutation: "success",
+		});
+		expect(boundary.state().removed).toBe(true);
 	});
 	it.each([
 		"anonymous-access",
@@ -140,6 +196,11 @@ describe("real-service authentication probe consumer", () => {
 		"sync-failure",
 		"onboarding-failure",
 		"missing-access-api",
+		"missing-refresh-api",
+		"wrong-denial-kind",
+		"unknown-denial-code",
+		"unexpected-eligibility-denial",
+		"unguarded-planning",
 		"missing-notification-api",
 		"stale-notification-validator",
 		"malformed-notification-result",

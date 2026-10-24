@@ -1,3 +1,4 @@
+import { grantTestLearningAccess } from "./testing/access";
 /// <reference types="vite/client" />
 
 import { convexTest } from "convex-test";
@@ -13,6 +14,7 @@ const user = {
 
 test("a reviewed timetable becomes active and appears as dated school lessons", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const timetableId = await t.mutation(api.timetables.createDraft, {});
 
 	await t.mutation(api.timetables.saveAndActivate, {
@@ -66,6 +68,7 @@ test("a reviewed timetable becomes active and appears as dated school lessons", 
 
 test("draft lessons never appear in the daily agenda", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 
 	await t.mutation(api.timetables.createDraft, {});
 	const agenda = await t.query(api.dayEntries.listByDayKeys, {
@@ -77,6 +80,7 @@ test("draft lessons never appear in the daily agenda", async () => {
 
 test("an active school lesson blocks overlapping appointments", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const timetableId = await t.mutation(api.timetables.createDraft, {});
 	await t.mutation(api.timetables.saveAndActivate, {
 		timetableId,
@@ -102,6 +106,7 @@ test("an active school lesson blocks overlapping appointments", async () => {
 
 test("timetable conflicts normalize legacy ISO day keys", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const timetableId = await t.mutation(api.timetables.createDraft, {});
 	await t.mutation(api.timetables.saveAndActivate, {
 		timetableId,
@@ -127,6 +132,7 @@ test("timetable conflicts normalize legacy ISO day keys", async () => {
 
 test("activating a replacement archives the previous timetable", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const firstId = await t.mutation(api.timetables.createDraft, {});
 	await t.mutation(api.timetables.saveAndActivate, {
 		timetableId: firstId,

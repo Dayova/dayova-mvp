@@ -1,4 +1,4 @@
-import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useMutation } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, View } from "react-native";
@@ -29,6 +29,7 @@ import {
 	parseDateKey,
 	timeFromMinutes,
 } from "~/features/learning-plans/utils";
+import { useLearningQuery } from "~/hooks/use-learning-query";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
 import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
@@ -251,7 +252,7 @@ export default function LearningPlanSessionEditScreen() {
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 
-	const snapshot = (useQuery(
+	const snapshot = (useLearningQuery(
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
 	) ?? null) as LearningPlanSnapshot | null;

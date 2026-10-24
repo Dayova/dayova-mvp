@@ -1,380 +1,289 @@
-import {
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	jest,
-	test,
-} from "@jest/globals";
-import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
+import { afterEach, beforeEach, expect, jest, test } from "@jest/globals";
+import { act, render } from "@testing-library/react-native";
 import * as SecureStore from "expo-secure-store";
-import { Platform, Text } from "react-native";
+import { AppState, Text } from "react-native";
+import { api } from "#convex/_generated/api";
+import { useLearningQuery } from "~/hooks/use-learning-query";
+import type { AccessSnapshot } from "~/lib/access-policy";
 import { AccessProvider, useAccess } from "./AccessContext";
 
-const mockUseQuery = jest.fn<(query: unknown, args: unknown) => unknown>(
-	() => undefined,
-);
-const mockActivateTrial = jest.fn();
-const mockSyncPaidAccess = jest.fn();
+const serverNow = Date.parse("2026-11-19T12:00:00Z");
 const mockSession = {
-	isConvexUserSynced: false,
+	user: { clerkId: "user_a" },
 	isSessionLoading: false,
+	isConvexUserSynced: true,
+	isPostAuthSyncing: false,
 	onboardingCompletionStatus: "none",
-	user: { clerkId: "user_123" },
 };
-
-jest.mock("convex/react", () => ({
-	useAction: () => mockSyncPaidAccess,
-	useConvexAuth: () => ({ isAuthenticated: true }),
-	useMutation: () => mockActivateTrial,
-	useQuery: (query: unknown, args: unknown) => mockUseQuery(query, args),
-	useQueries: (queries: Record<string, { query: unknown; args: unknown }>) => ({
-		access: mockUseQuery(queries.access?.query, queries.access?.args ?? "skip"),
-	}),
+const mockVerify =
+	jest.fn<() => Promise<{ access: AccessSnapshot; serverNow: number }>>();
+const mockQuery = jest.fn<() => AccessSnapshot | undefined>(() => undefined);
+let mockElapsed = 0;
+const mockConnection = { isWebSocketConnected: true };
+const mockLearningQuery = jest.fn<() => unknown>();
+jest.mock("~/context/AuthContext", () => ({
+	useAuthSession: () => mockSession,
+	useOnboardingHandoff: () => ({ retryPostAuthSync: () => {} }),
 }));
-
-jest.mock("~/lib/diagnostics", () => ({ logDiagnosticError: jest.fn() }));
-
+jest.mock("convex/react", () => ({
+	useQueries: () => ({ access: mockQuery() }),
+	useConvexConnectionState: () => mockConnection,
+	useConvexAuth: () => ({ isAuthenticated: true }),
+	useAction: () => jest.fn(),
+	useMutation: (ref: unknown) => {
+		const { getFunctionName } =
+			jest.requireActual<typeof import("convex/server")>("convex/server");
+		return getFunctionName(ref as Parameters<typeof getFunctionName>[0]) ===
+			"accessState:refreshMyAccess"
+			? mockVerify
+			: jest.fn();
+	},
+	useQuery: (ref: unknown, args: unknown) => {
+		const { getFunctionName } =
+			jest.requireActual<typeof import("convex/server")>("convex/server");
+		return getFunctionName(
+			ref as Parameters<typeof getFunctionName>[0],
+		).startsWith("dayEntries:")
+			? args === "skip"
+				? undefined
+				: mockLearningQuery()
+			: mockQuery();
+	},
+}));
 jest.mock("expo-secure-store", () => ({
 	getItemAsync: jest.fn(async () => null),
 	setItemAsync: jest.fn(async () => undefined),
 }));
-
-jest.mock("~/context/AuthContext", () => ({
-	useAuthSession: () => mockSession,
-}));
-
-describe("AccessProvider", () => {
-	beforeEach(() => {
-		mockUseQuery.mockReset().mockReturnValue(undefined);
-		mockActivateTrial.mockClear();
-		mockSyncPaidAccess.mockClear();
-		jest.mocked(SecureStore.getItemAsync).mockReset().mockResolvedValue(null);
-		jest.mocked(SecureStore.setItemAsync).mockClear();
-		mockSession.isConvexUserSynced = false;
-		mockSession.onboardingCompletionStatus = "none";
-		mockSession.user = { clerkId: "user_123" };
-	});
-
-	afterEach(() => {
-		jest.useRealTimers();
-	});
-
-	const AccessProbe = () => {
-		const {
-			access,
-			isAccessLoading,
-			isAccessUnavailable,
-			isAccessRetrying,
-			retryAccess,
-		} = useAccess();
-		return (
-			<>
-				<Text>
-					{isAccessLoading
-						? "loading"
-						: isAccessUnavailable
-							? "unavailable"
-							: (access?.state ?? "idle")}
-				</Text>
-				<Text onPress={retryAccess}>Retry</Text>
-				{isAccessRetrying ? <Text>retrying</Text> : null}
-			</>
-		);
-	};
-
-	test.each([
-		"missing",
-		"stale",
-		"expired",
-	])("does not invent an expired trial when verification times out with %s cached access", async (cache) => {
-		jest.useFakeTimers();
-		mockSession.isConvexUserSynced = true;
-		if (cache !== "missing") {
-			jest.mocked(SecureStore.getItemAsync).mockResolvedValue(
-				JSON.stringify({
-					access: {
-						state: cache === "expired" ? "expired" : "trial",
-						canUseApp: cache !== "expired",
-						trialExpiresAt:
-							cache === "expired"
-								? Date.now() - 1
-								: Date.now() + 14 * 24 * 60 * 60 * 1000,
-					},
-					verifiedAt:
-						cache === "stale" ? Date.now() - 73 * 60 * 60 * 1000 : Date.now(),
-				}),
-			);
-		}
-		const screen = await render(
-			<AccessProvider>
-				<AccessProbe />
-			</AccessProvider>,
-		);
-		await act(async () => jest.advanceTimersByTime(1_501));
-		expect(screen.getByText("unavailable")).toBeOnTheScreen();
-		expect(screen.queryByText("expired")).toBeNull();
-		mockUseQuery.mockReturnValue({
-			canUseApp: true,
+function Probe() {
+	const { access, isAccessLoading, isVerificationRequired } = useAccess();
+	return (
+		<Text>
+			{isVerificationRequired
+				? "verification-required"
+				: isAccessLoading
+					? "loading"
+					: (access?.state ?? "idle")}
+		</Text>
+	);
+}
+function App() {
+	return (
+		<AccessProvider>
+			<Probe />
+		</AccessProvider>
+	);
+}
+beforeEach(() => {
+	jest.useFakeTimers();
+	jest.spyOn(performance, "now").mockImplementation(() => mockElapsed);
+	mockElapsed = 0;
+	AppState.currentState = "active";
+	mockConnection.isWebSocketConnected = true;
+	mockLearningQuery.mockReset();
+	mockSession.user = { clerkId: "user_a" };
+	mockSession.isConvexUserSynced = true;
+	mockQuery.mockReset().mockReturnValue(undefined);
+	mockVerify.mockReset().mockResolvedValue({
+		access: {
 			state: "trial",
-			trialExpiresAt: Date.now() + 100_000,
-		});
-		await screen.rerender(
-			<AccessProvider>
-				<AccessProbe />
-			</AccessProvider>,
-		);
-		expect(screen.getByText("trial")).toBeOnTheScreen();
+			canUseApp: true,
+			trialExpiresAt: serverNow + 1000,
+		},
+		serverNow,
 	});
+});
+afterEach(() => {
+	jest.restoreAllMocks();
+	jest.useRealTimers();
+});
 
-	test("retries access verification without a purchase or trial activation", async () => {
-		jest.useFakeTimers();
-		mockSession.isConvexUserSynced = true;
-		const screen = await render(
-			<AccessProvider>
-				<AccessProbe />
-			</AccessProvider>,
-		);
-		await act(async () => jest.advanceTimersByTime(1_501));
-		const previousArgs = mockUseQuery.mock.lastCall?.[1];
-		await fireEvent.press(screen.getByText("Retry"));
-		expect(mockUseQuery.mock.lastCall?.[1]).not.toEqual(previousArgs);
-		expect(screen.getByText("unavailable")).toBeOnTheScreen();
-		expect(screen.getByText("retrying")).toBeOnTheScreen();
-		await act(async () => jest.advanceTimersByTime(1_501));
-		expect(screen.getByText("unavailable")).toBeOnTheScreen();
-		expect(screen.queryByText("retrying")).toBeNull();
-		await fireEvent.press(screen.getByText("Retry"));
-		expect(screen.getByText("retrying")).toBeOnTheScreen();
-		expect(mockActivateTrial).not.toHaveBeenCalled();
-		expect(mockSyncPaidAccess).not.toHaveBeenCalled();
+test("a cold process cannot authorize from the old persisted cache or a cached positive query", async () => {
+	jest.mocked(SecureStore.getItemAsync).mockResolvedValue(
+		JSON.stringify({
+			access: { state: "paid", canUseApp: true },
+			verifiedAt: Date.now(),
+		}),
+	);
+	mockQuery.mockReturnValue({ state: "paid", canUseApp: true });
+	mockVerify.mockRejectedValue(new Error("offline"));
+	const screen = await render(<App />);
+	expect(screen.getByText("loading")).toBeOnTheScreen();
+	await act(async () => jest.advanceTimersByTime(1501));
+	expect(screen.getByText("verification-required")).toBeOnTheScreen();
+});
+test("online server time grants valid access even when the device clock is years ahead", async () => {
+	jest.setSystemTime(new Date("2100-01-01T00:00:00Z"));
+	const screen = await render(<App />);
+	expect(screen.getByText("trial")).toBeOnTheScreen();
+});
+test("rewinding device time cannot extend a verified trial while offline", async () => {
+	mockQuery.mockReturnValue({
+		state: "trial",
+		canUseApp: true,
+		trialExpiresAt: serverNow + 1000,
 	});
-
-	test("does not carry an unavailable verification into another account", async () => {
-		jest.useFakeTimers();
-		mockSession.isConvexUserSynced = true;
-		const screen = await render(
-			<AccessProvider>
-				<AccessProbe />
-			</AccessProvider>,
-		);
-		await act(async () => jest.advanceTimersByTime(1_501));
-		expect(screen.getByText("unavailable")).toBeOnTheScreen();
-		mockSession.user = { clerkId: "user_other" };
-		await screen.rerender(
-			<AccessProvider>
-				<AccessProbe />
-			</AccessProvider>,
-		);
-		expect(screen.getByText("loading")).toBeOnTheScreen();
+	const screen = await render(<App />);
+	expect(screen.getByText("trial")).toBeOnTheScreen();
+	mockVerify.mockRejectedValue(new Error("offline"));
+	jest.setSystemTime(new Date("2000-01-01T00:00:00Z"));
+	mockElapsed = 1000;
+	await act(async () => jest.advanceTimersByTime(1000));
+	expect(screen.getByText("expired")).toBeOnTheScreen();
+});
+test("offline access ends at 72 elapsed hours even for indefinite paid access", async () => {
+	mockVerify.mockResolvedValue({
+		access: { state: "paid", canUseApp: true },
+		serverNow,
 	});
-
-	test("makes a failed query recoverable without exposing its diagnostic error", async () => {
-		mockSession.isConvexUserSynced = true;
-		mockUseQuery.mockReturnValue(new Error("Internal diagnostic detail"));
-		const screen = await render(
-			<AccessProvider>
-				<AccessProbe />
-			</AccessProvider>,
-		);
-		expect(screen.getByText("unavailable")).toBeOnTheScreen();
-		expect(screen.queryByText("Internal diagnostic detail")).toBeNull();
-		mockUseQuery.mockReturnValue({ canUseApp: false, state: "expired" });
-		await screen.rerender(
-			<AccessProvider>
-				<AccessProbe />
-			</AccessProvider>,
-		);
-		expect(screen.getByText("expired")).toBeOnTheScreen();
+	const screen = await render(<App />);
+	expect(screen.getByText("paid")).toBeOnTheScreen();
+	mockVerify.mockRejectedValue(new Error("offline"));
+	mockElapsed = 72 * 60 * 60 * 1000;
+	await act(async () => jest.advanceTimersByTime(30_000));
+	expect(screen.getByText("verification-required")).toBeOnTheScreen();
+});
+test("a confirmed denial replaces the retained positive grant", async () => {
+	const screen = await render(<App />);
+	mockVerify.mockResolvedValue({
+		access: { state: "expired", canUseApp: false },
+		serverNow,
 	});
-
-	test("keeps fresh verified offline trial access available", async () => {
-		jest.useFakeTimers();
-		mockSession.isConvexUserSynced = true;
-		jest.mocked(SecureStore.getItemAsync).mockResolvedValue(
-			JSON.stringify({
-				access: {
-					canUseApp: true,
-					state: "trial",
-					trialExpiresAt: Date.now() + 14 * 24 * 60 * 60 * 1000,
-				},
-				verifiedAt: Date.now(),
+	mockQuery.mockReturnValue({ state: "expired", canUseApp: false });
+	await screen.rerender(<App />);
+	expect(screen.getByText("expired")).toBeOnTheScreen();
+});
+test("an old account's in-flight response cannot authorize a switched account", async () => {
+	let resolve!: (value: { access: AccessSnapshot; serverNow: number }) => void;
+	mockVerify.mockImplementationOnce(
+		() =>
+			new Promise((settle) => {
+				resolve = settle;
 			}),
-		);
-		const screen = await render(
-			<AccessProvider>
-				<AccessProbe />
-			</AccessProvider>,
-		);
-		await act(async () => jest.advanceTimersByTime(1_501));
-		expect(screen.getByText("trial")).toBeOnTheScreen();
-	});
+	);
+	const screen = await render(<App />);
+	mockSession.user = { clerkId: "user_b" };
+	mockVerify.mockRejectedValue(new Error("offline"));
+	await screen.rerender(<App />);
+	await act(async () =>
+		resolve({ access: { state: "paid", canUseApp: true }, serverNow }),
+	);
+	await act(async () => jest.advanceTimersByTime(1501));
+	expect(screen.getByText("verification-required")).toBeOnTheScreen();
+});
+test("remounting offline requires verification again, despite a grant in the earlier mount", async () => {
+	const first = await render(<App />);
+	expect(first.getByText("trial")).toBeOnTheScreen();
+	await first.unmount();
+	mockVerify.mockRejectedValue(new Error("offline"));
+	const second = await render(<App />);
+	await act(async () => jest.advanceTimersByTime(1501));
+	expect(second.getByText("verification-required")).toBeOnTheScreen();
+});
 
-	test("waits for the authenticated user to be synced before querying access", async () => {
-		const screen = await render(
-			<AccessProvider>
-				<Text>App</Text>
-			</AccessProvider>,
-		);
-
-		try {
-			expect(mockUseQuery.mock.calls[0]?.[1]).toBe("skip");
-		} finally {
-			screen.unmount();
-		}
-	});
-
-	test("queries access after the authenticated user has been synced", async () => {
-		mockSession.isConvexUserSynced = true;
-		const screen = await render(
-			<AccessProvider>
-				<Text>App</Text>
-			</AccessProvider>,
-		);
-
-		try {
-			expect(mockUseQuery.mock.calls[0]?.[1]).toEqual({
-				now: expect.any(Number),
-			});
-		} finally {
-			screen.unmount();
-		}
-	});
-
-	test("uses a SecureStore-compatible cache key", async () => {
-		const screen = await render(
-			<AccessProvider>
-				<Text>App</Text>
-			</AccessProvider>,
-		);
-
-		try {
-			await waitFor(() =>
-				expect(SecureStore.getItemAsync).toHaveBeenCalledWith(
-					"dayova-access.user_123",
-				),
-			);
-		} finally {
-			screen.unmount();
-		}
-	});
-
-	test("starts the access timeout only after onboarding allows the query", async () => {
-		jest.useFakeTimers();
-		mockSession.isConvexUserSynced = true;
-		mockSession.onboardingCompletionStatus = "pending";
-		const screen = await render(
-			<AccessProvider>
-				<AccessProbe />
-			</AccessProvider>,
-		);
-
-		try {
-			await act(async () => {
-				jest.advanceTimersByTime(2_000);
-			});
-			mockSession.onboardingCompletionStatus = "ready_for_trial";
-			await screen.rerender(
-				<AccessProvider>
-					<AccessProbe />
-				</AccessProvider>,
-			);
-
-			expect(screen.getByText("loading")).toBeOnTheScreen();
-		} finally {
-			screen.unmount();
-		}
-	});
-
-	test("clears an earlier access timeout while onboarding blocks the query", async () => {
-		jest.useFakeTimers();
-		mockSession.isConvexUserSynced = true;
-		const screen = await render(
-			<AccessProvider>
-				<AccessProbe />
-			</AccessProvider>,
-		);
-
-		try {
-			await act(async () => {
-				jest.advanceTimersByTime(2_000);
-			});
-			expect(screen.getByText("unavailable")).toBeOnTheScreen();
-
-			mockSession.onboardingCompletionStatus = "pending";
-			await screen.rerender(
-				<AccessProvider>
-					<AccessProbe />
-				</AccessProvider>,
-			);
-			mockSession.onboardingCompletionStatus = "ready_for_trial";
-			await screen.rerender(
-				<AccessProvider>
-					<AccessProbe />
-				</AccessProvider>,
-			);
-
-			expect(screen.getByText("loading")).toBeOnTheScreen();
-		} finally {
-			screen.unmount();
-		}
-	});
-
-	test("migrates the legacy web cache key to the SecureStore-compatible prefix", async () => {
-		const originalPlatform = Platform.OS;
-		const values = new Map<string, string>([
-			[
-				"dayova-access:user_123",
-				JSON.stringify({
-					access: { canUseApp: true, state: "paid" },
-					verifiedAt: Date.now(),
-				}),
-			],
-		]);
-		const localStorage = {
-			getItem: jest.fn((key: string) => values.get(key) ?? null),
-			setItem: jest.fn((key: string, value: string) => values.set(key, value)),
-			removeItem: jest.fn((key: string) => values.delete(key)),
-		};
-		const originalStorage = Object.getOwnPropertyDescriptor(
-			globalThis,
-			"localStorage",
-		);
-		Object.defineProperty(Platform, "OS", {
-			configurable: true,
-			value: "web",
+test("backgrounding invalidates the lease and returning offline cannot restore it", async () => {
+	let change!: Parameters<typeof AppState.addEventListener>[1];
+	jest
+		.spyOn(AppState, "addEventListener")
+		.mockImplementation((_event, listener) => {
+			change = listener;
+			return { remove: () => {} };
 		});
-		Object.defineProperty(globalThis, "localStorage", {
-			configurable: true,
-			value: localStorage,
-		});
-		const screen = await render(
-			<AccessProvider>
-				<Text>App</Text>
-			</AccessProvider>,
-		);
-
-		try {
-			await waitFor(() =>
-				expect(localStorage.setItem).toHaveBeenCalledWith(
-					"dayova-access.user_123",
-					expect.any(String),
-				),
-			);
-			expect(localStorage.removeItem).toHaveBeenCalledWith(
-				"dayova-access:user_123",
-			);
-		} finally {
-			screen.unmount();
-			Object.defineProperty(Platform, "OS", {
-				configurable: true,
-				value: originalPlatform,
-			});
-			if (originalStorage) {
-				Object.defineProperty(globalThis, "localStorage", originalStorage);
-			} else {
-				Reflect.deleteProperty(globalThis, "localStorage");
-			}
-		}
+	const screen = await render(<App />);
+	expect(screen.getByText("trial")).toBeOnTheScreen();
+	mockVerify.mockRejectedValue(new Error("offline"));
+	await act(async () => change("background"));
+	await act(async () => change("active"));
+	await act(async () => jest.advanceTimersByTime(1501));
+	expect(screen.getByText("verification-required")).toBeOnTheScreen();
+	mockVerify.mockResolvedValue({
+		access: { state: "paid", canUseApp: true },
+		serverNow,
 	});
+	await act(async () => jest.advanceTimersByTime(30_000));
+	expect(screen.getByText("paid")).toBeOnTheScreen();
+});
+
+test("protected data subscriptions wait for the real provider's online verification", async () => {
+	let resolve!: (value: { access: AccessSnapshot; serverNow: number }) => void;
+	mockVerify.mockImplementationOnce(
+		() =>
+			new Promise((settle) => {
+				resolve = settle;
+			}),
+	);
+	mockLearningQuery.mockImplementation(() => {
+		throw new Error("A hidden route subscribed before access verification");
+	});
+	function LearningProbe() {
+		const data = useLearningQuery(api.dayEntries.listByDayKeys, {
+			dayKeys: ["2026-11-19"],
+		});
+		return <Text>{data ? "learning-ready" : "learning-waiting"}</Text>;
+	}
+	const screen = await render(
+		<AccessProvider>
+			<LearningProbe />
+		</AccessProvider>,
+	);
+	expect(screen.getByText("learning-waiting")).toBeOnTheScreen();
+	mockLearningQuery.mockReturnValue({ "2026-11-19": [] });
+	await act(async () =>
+		resolve({ access: { state: "paid", canUseApp: true }, serverNow }),
+	);
+	expect(screen.getByText("learning-ready")).toBeOnTheScreen();
+});
+test("reconnecting starts a fresh server verification after an offline cold start", async () => {
+	mockConnection.isWebSocketConnected = false;
+	const screen = await render(<App />);
+	await act(async () => jest.advanceTimersByTime(1501));
+	expect(screen.getByText("verification-required")).toBeOnTheScreen();
+	mockConnection.isWebSocketConnected = true;
+	await screen.rerender(<App />);
+	expect(screen.getByText("trial")).toBeOnTheScreen();
+});
+
+test("an inactive foreground interruption preserves the verified offline lease", async () => {
+	let change!: Parameters<typeof AppState.addEventListener>[1];
+	jest
+		.spyOn(AppState, "addEventListener")
+		.mockImplementation((_event, listener) => {
+			change = listener;
+			return { remove: () => {} };
+		});
+	mockVerify.mockResolvedValue({
+		access: {
+			state: "trial",
+			canUseApp: true,
+			trialExpiresAt: Date.parse("2026-11-20T12:00:00Z"),
+		},
+		serverNow,
+	});
+	const screen = await render(<App />);
+	expect(screen.getByText("trial")).toBeOnTheScreen();
+	mockVerify.mockRejectedValue(new Error("offline"));
+	await act(async () => change("inactive"));
+	await act(async () => change("active"));
+	await act(async () => jest.advanceTimersByTime(1501));
+	expect(screen.getByText("trial")).toBeOnTheScreen();
+});
+
+test("a process mounted in the background waits for foreground verification", async () => {
+	AppState.currentState = "background";
+	let change!: Parameters<typeof AppState.addEventListener>[1];
+	jest
+		.spyOn(AppState, "addEventListener")
+		.mockImplementation((_event, listener) => {
+			change = listener;
+			return { remove: () => {} };
+		});
+	mockVerify.mockResolvedValue({
+		access: { state: "paid", canUseApp: true },
+		serverNow,
+	});
+	const screen = await render(<App />);
+	expect(screen.getByText("loading")).toBeOnTheScreen();
+	await act(async () => jest.advanceTimersByTime(1501));
+	expect(screen.getByText("verification-required")).toBeOnTheScreen();
+	await act(async () => change("active"));
+	expect(screen.getByText("paid")).toBeOnTheScreen();
 });

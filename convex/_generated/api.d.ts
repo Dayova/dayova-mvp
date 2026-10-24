@@ -8,11 +8,14 @@
  * @module
  */
 
+import type * as accessMigrations from "../accessMigrations.js";
+import type * as accessState from "../accessState.js";
 import type * as accountDeletion from "../accountDeletion.js";
 import type * as accountDeletionActions from "../accountDeletionActions.js";
 import type * as adaptiveLearningPlan from "../adaptiveLearningPlan.js";
 import type * as adaptiveLearningPlanPolicy from "../adaptiveLearningPlanPolicy.js";
 import type * as aiConsent from "../aiConsent.js";
+import type * as aiObservability from "../aiObservability.js";
 import type * as answerEvaluation from "../answerEvaluation.js";
 import type * as clerkIdentity from "../clerkIdentity.js";
 import type * as clerkLifecycle from "../clerkLifecycle.js";
@@ -36,6 +39,7 @@ import type * as dayEntries from "../dayEntries.js";
 import type * as dayKeyVariants from "../dayKeyVariants.js";
 import type * as deletionPasswordHttp from "../deletionPasswordHttp.js";
 import type * as diagnosticReadiness from "../diagnosticReadiness.js";
+import type * as entitlementPolicy from "../entitlementPolicy.js";
 import type * as entitlements from "../entitlements.js";
 import type * as env from "../env.js";
 import type * as errors from "../errors.js";
@@ -44,7 +48,9 @@ import type * as fileStorage from "../fileStorage.js";
 import type * as generatedGermanText from "../generatedGermanText.js";
 import type * as generatedGermanTextRepair from "../generatedGermanTextRepair.js";
 import type * as http from "../http.js";
+import type * as learningActions from "../learningActions.js";
 import type * as learningContentPlan from "../learningContentPlan.js";
+import type * as learningFunctions from "../learningFunctions.js";
 import type * as learningPlanAi from "../learningPlanAi.js";
 import type * as learningPlanAiCost from "../learningPlanAiCost.js";
 import type * as learningPlanAiUsage from "../learningPlanAiUsage.js";
@@ -73,6 +79,7 @@ import type * as preparationSchedule from "../preparationSchedule.js";
 import type * as questionNovelty from "../questionNovelty.js";
 import type * as revenueCat from "../revenueCat.js";
 import type * as scheduleConflicts from "../scheduleConflicts.js";
+import type * as testing_access from "../testing/access.js";
 import type * as theoryContent from "../theoryContent.js";
 import type * as timetableAi from "../timetableAi.js";
 import type * as timetableOccurrences from "../timetableOccurrences.js";
@@ -94,11 +101,14 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  accessMigrations: typeof accessMigrations;
+  accessState: typeof accessState;
   accountDeletion: typeof accountDeletion;
   accountDeletionActions: typeof accountDeletionActions;
   adaptiveLearningPlan: typeof adaptiveLearningPlan;
   adaptiveLearningPlanPolicy: typeof adaptiveLearningPlanPolicy;
   aiConsent: typeof aiConsent;
+  aiObservability: typeof aiObservability;
   answerEvaluation: typeof answerEvaluation;
   clerkIdentity: typeof clerkIdentity;
   clerkLifecycle: typeof clerkLifecycle;
@@ -122,6 +132,7 @@ declare const fullApi: ApiFromModules<{
   dayKeyVariants: typeof dayKeyVariants;
   deletionPasswordHttp: typeof deletionPasswordHttp;
   diagnosticReadiness: typeof diagnosticReadiness;
+  entitlementPolicy: typeof entitlementPolicy;
   entitlements: typeof entitlements;
   env: typeof env;
   errors: typeof errors;
@@ -130,7 +141,9 @@ declare const fullApi: ApiFromModules<{
   generatedGermanText: typeof generatedGermanText;
   generatedGermanTextRepair: typeof generatedGermanTextRepair;
   http: typeof http;
+  learningActions: typeof learningActions;
   learningContentPlan: typeof learningContentPlan;
+  learningFunctions: typeof learningFunctions;
   learningPlanAi: typeof learningPlanAi;
   learningPlanAiCost: typeof learningPlanAiCost;
   learningPlanAiUsage: typeof learningPlanAiUsage;
@@ -159,6 +172,7 @@ declare const fullApi: ApiFromModules<{
   questionNovelty: typeof questionNovelty;
   revenueCat: typeof revenueCat;
   scheduleConflicts: typeof scheduleConflicts;
+  "testing/access": typeof testing_access;
   theoryContent: typeof theoryContent;
   timetableAi: typeof timetableAi;
   timetableOccurrences: typeof timetableOccurrences;

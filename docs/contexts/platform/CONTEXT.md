@@ -83,7 +83,11 @@ The real-service probe initializes only the configured synthetic Clerk test user
 through authenticated app mutations, prepares onboarding, checks anonymous denial
 and authenticated user/access/notification contracts, and closes its Clerk session.
 It does not accept trial terms, grant access, buy a subscription or import an
-existing cohort. Fresh preview data deliberately replaces dependence on shared
+existing cohort. The server-time client additionally requires `accessState:refreshMyAccess`
+and its server timestamp. For an unactivated learner, protected planning must
+return `userFacing` with code `learningAccessRequired`; other errors fail preflight.
+An allowed learner must receive the requested day-key arrays.
+Fresh preview data deliberately replaces dependence on shared
 QA user state. Sensitive synthetic credentials remain `MAESTRO_CI_EMAIL` and
 `MAESTRO_CI_PASSWORD`. Native compile misses use EAS Build credits; fingerprints,
 repacks and custom device jobs consume workflow VM time.

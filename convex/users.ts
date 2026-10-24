@@ -13,6 +13,7 @@ import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { env, mutation, query } from "./_generated/server";
+import { refreshOwnerAccess } from "./accessState";
 import { assertAccountActive } from "./accountDeletion";
 import { getClerkIdentity } from "./clerkIdentity";
 import { operatingSystem } from "./crmContract";
@@ -486,6 +487,7 @@ export const syncCurrentUser = mutation({
 			ownerTokenIdentifier: identity.tokenIdentifier,
 			currentVersion: existingUser?.learningTimesBackfillVersion,
 		});
+		await refreshOwnerAccess(ctx, identity.tokenIdentifier);
 		return userId;
 	},
 });

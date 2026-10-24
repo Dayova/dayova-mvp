@@ -5,6 +5,7 @@ import { api, internal } from "./_generated/api";
 import { calculateAvailableStudyMinutes } from "./learningPlanAvailability";
 import { parseLearningTimeToMinutes } from "./learningSessionScheduleFormatting";
 import schema from "./schema";
+import { grantTestLearningAccess } from "./testing/access";
 
 const modules = import.meta.glob("./**/*.ts");
 test("midnight is an exclusive planning boundary", () => {
@@ -24,6 +25,7 @@ test("no manual times: availability and AI context remain empty even with a grad
 		subject: "defaults",
 		email: "defaults@example.com",
 	});
+	await grantTestLearningAccess(t);
 	await t.mutation(api.users.syncCurrentUser, { grade: "9" });
 	expect(await t.query(api.learningTimes.listMine, {})).toEqual([]);
 	expect(
@@ -66,7 +68,9 @@ test("no manual times: availability and AI context remain empty even with a grad
 test("personal times remain isolated by owner", async () => {
 	const backend = convexTest(schema, modules);
 	const owner = backend.withIdentity({ tokenIdentifier: "test:owner" });
+	await grantTestLearningAccess(owner);
 	const other = backend.withIdentity({ tokenIdentifier: "test:other" });
+	await grantTestLearningAccess(other);
 	await owner.mutation(api.learningTimes.upsertMine, {
 		dayOfWeek: 2,
 		startTime: "18:00",

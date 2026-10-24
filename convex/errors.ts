@@ -2,7 +2,10 @@ import { ConvexError } from "convex/values";
 
 export const USER_FACING_ERROR_KIND = "userFacing";
 
+type UserFacingBackendErrorCode = "learningAccessRequired";
+
 type UserFacingBackendErrorData = {
+	code?: UserFacingBackendErrorCode;
 	kind: typeof USER_FACING_ERROR_KIND;
 	message: string;
 };
@@ -21,19 +24,26 @@ const serializeError = (error: unknown) => {
 	};
 };
 
-export const userFacingError = (message: string) => {
+export const userFacingError = (
+	message: string,
+	code?: UserFacingBackendErrorCode,
+) => {
 	const error = new ConvexError(
 		message,
 	) as unknown as ConvexError<UserFacingBackendErrorData>;
 	error.data = {
+		...(code ? { code } : {}),
 		kind: USER_FACING_ERROR_KIND,
 		message,
 	};
 	return error;
 };
 
-export function throwUserFacingError(message: string): never {
-	throw userFacingError(message);
+export function throwUserFacingError(
+	message: string,
+	code?: UserFacingBackendErrorCode,
+): never {
+	throw userFacingError(message, code);
 }
 
 export const getUserFacingBackendErrorMessage = (error: unknown) => {

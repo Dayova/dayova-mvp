@@ -278,6 +278,9 @@ export default defineSchema({
 		.index("by_clerkId", ["clerkId"])
 		.index("by_email", ["email"]),
 	accessEntitlements: defineTable({
+		// Derived server projection only; never changes a stored trial/subscription deadline.
+		accessEvaluatedAt: v.optional(v.number()),
+		accessCheckAt: v.optional(v.number()),
 		ownerTokenIdentifier: v.string(),
 		userId: v.id("users"),
 		trialStartedAt: v.optional(v.number()),

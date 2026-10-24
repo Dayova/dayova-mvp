@@ -1,3 +1,4 @@
+import { grantTestLearningAccess } from "./testing/access";
 /// <reference types="vite/client" />
 
 import { convexTest } from "convex-test";
@@ -11,6 +12,7 @@ const identity = { tokenIdentifier: "test:analytics-user" };
 const seedAnalyticsData = async () => {
 	const backend = convexTest(schema, modules);
 	const t = backend.withIdentity(identity);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await t.run(async (ctx) => {
 		const now = Date.UTC(2026, 6, 28, 12);
 		return await ctx.db.insert("learningPlans", {
@@ -616,6 +618,7 @@ test("does not expose another learner's analytics", async () => {
 	const otherUser = backend.withIdentity({
 		tokenIdentifier: "test:other-user",
 	});
+	await grantTestLearningAccess(otherUser);
 
 	await expect(
 		otherUser.query(api.userAnalytics.getOverview, {
@@ -691,6 +694,7 @@ test("keeps future outcomes out of the selected reporting period", async () => {
 
 test("rejects malformed calendar and timezone inputs", async () => {
 	const t = convexTest(schema, modules).withIdentity(identity);
+	await grantTestLearningAccess(t);
 
 	await expect(
 		t.query(api.userAnalytics.getOverview, {

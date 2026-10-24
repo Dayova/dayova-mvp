@@ -1,17 +1,20 @@
 import { afterEach, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render } from "@testing-library/react-native";
 import { ConvexProvider, type ConvexReactClient } from "convex/react";
-import { Text } from "react-native";
+import { AppState, Text } from "react-native";
 import type { AccessSnapshot } from "~/lib/access-policy";
 import { AccessProvider, useAccess } from "./AccessContext";
 
 // Keep the real Convex useQueries/useSubscription implementation. A mocked
 // useQueries would miss render loops caused by unstable subscription requests.
+const mockVerify =
+	jest.fn<() => Promise<{ access: AccessSnapshot; serverNow: number }>>();
 jest.mock("convex/react", () => ({
 	...jest.requireActual<typeof import("convex/react")>("convex/react"),
 	useConvexAuth: () => ({ isAuthenticated: true }),
 	useAction: () => jest.fn(),
-	useMutation: () => jest.fn(),
+	useMutation: () => mockVerify,
+	useConvexConnectionState: () => ({ isWebSocketConnected: true }),
 }));
 jest.mock("~/context/AuthContext", () => ({
 	useAuthSession: () => ({
@@ -20,6 +23,7 @@ jest.mock("~/context/AuthContext", () => ({
 		isConvexUserSynced: true,
 		onboardingCompletionStatus: "none",
 	}),
+	useOnboardingHandoff: () => ({ retryPostAuthSync: () => {} }),
 }));
 jest.mock("expo-secure-store", () => ({
 	getItemAsync: jest.fn(async () => null),
@@ -27,13 +31,16 @@ jest.mock("expo-secure-store", () => ({
 }));
 
 function Probe() {
-	const { access, isAccessUnavailable, retryAccess } = useAccess();
+	const { access, isVerificationRequired, retryAccessVerification } =
+		useAccess();
 	return (
 		<>
 			<Text>
-				{isAccessUnavailable ? "unavailable" : (access?.state ?? "loading")}
+				{isVerificationRequired ? "unavailable" : (access?.state ?? "loading")}
 			</Text>
-			<Text onPress={retryAccess}>Retry</Text>
+			<Text onPress={() => void retryAccessVerification().catch(() => {})}>
+				Retry
+			</Text>
 		</>
 	);
 }
@@ -42,9 +49,16 @@ afterEach(() => {
 	jest.useRealTimers();
 });
 
-test("the real Convex subscription mounts, times out and recovers without a render loop", async () => {
+test.each([
+	false,
+	true,
+])("the real Convex subscription recovers through fresh verification (query error: %s)", async (queryFails) => {
 	jest.useFakeTimers();
-	let result: AccessSnapshot | undefined;
+	AppState.currentState = "active";
+	mockVerify.mockReset().mockRejectedValue(new Error("offline"));
+	let result: AccessSnapshot | Error | undefined = queryFails
+		? new Error("query unavailable")
+		: undefined;
 	const listeners = new Set<() => void>();
 	const onUpdate = jest.fn((callback: () => void) => {
 		listeners.add(callback);
@@ -54,7 +68,10 @@ test("the real Convex subscription mounts, times out and recovers without a rend
 	});
 	const client = {
 		watchQuery: () => ({
-			localQueryResult: () => result,
+			localQueryResult: () => {
+				if (result instanceof Error) throw result;
+				return result;
+			},
 			onUpdate,
 			journal: () => undefined,
 		}),
@@ -71,16 +88,23 @@ test("the real Convex subscription mounts, times out and recovers without a rend
 	expect(screen.getByText("unavailable")).toBeOnTheScreen();
 	await fireEvent.press(screen.getByText("Retry"));
 	expect(screen.getByText("unavailable")).toBeOnTheScreen();
+	const recoveredAccess: AccessSnapshot = {
+		canUseApp: true,
+		state: "trial",
+		trialExpiresAt: Date.now() + 86_400_000,
+	};
+	expect(listeners.size).toBeGreaterThan(0);
 	await act(async () => {
-		result = {
-			canUseApp: true,
-			state: "trial",
-			trialExpiresAt: Date.now() + 86_400_000,
-		};
+		result = recoveredAccess;
 		for (const notify of listeners) notify();
 	});
+	expect(screen.queryByText("trial")).toBeNull();
+	mockVerify.mockResolvedValue({
+		access: recoveredAccess,
+		serverNow: Date.now(),
+	});
+	await fireEvent.press(screen.getByText("Retry"));
 	expect(screen.getByText("trial")).toBeOnTheScreen();
-	expect(onUpdate).toHaveBeenCalledTimes(2);
 	await screen.unmount();
 	expect(listeners.size).toBe(0);
 });

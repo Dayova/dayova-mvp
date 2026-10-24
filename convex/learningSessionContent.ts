@@ -4,9 +4,7 @@ import {
 	internalMutation,
 	internalQuery,
 	type MutationCtx,
-	mutation,
 	type QueryCtx,
-	query,
 } from "./_generated/server";
 import { assertAccountActive } from "./accountDeletion";
 import {
@@ -20,6 +18,7 @@ import {
 	type LearningQuestionBlueprint,
 	type LearningTopic,
 } from "./learningContentPlan";
+import { learningMutation, learningQuery } from "./learningFunctions";
 import {
 	getLearningSessionComposition,
 	isLearningSessionCompositionEligible,
@@ -1438,7 +1437,7 @@ export const ensureFallbackSessionContent = internalMutation({
 	},
 });
 
-export const extendSessionContent = mutation({
+export const extendSessionContent = learningMutation({
 	args: {
 		sessionId: v.id("learningPlanSessions"),
 		durationMinutes: v.number(),
@@ -1527,7 +1526,7 @@ export const extendSessionContent = mutation({
 	},
 });
 
-export const ensureSessionContent = mutation({
+export const ensureSessionContent = learningMutation({
 	args: {
 		sessionId: v.id("learningPlanSessions"),
 	},
@@ -1568,7 +1567,7 @@ export const ensureSessionContent = mutation({
 	},
 });
 
-export const getSessionContent = query({
+export const getSessionContent = learningQuery({
 	args: {
 		sessionId: v.id("learningPlanSessions"),
 	},
@@ -1728,7 +1727,7 @@ export const storeEvaluatedWrittenAnswer = internalMutation({
 	},
 });
 
-export const submitAnswer = mutation({
+export const submitAnswer = learningMutation({
 	args: {
 		itemId: v.id("learningSessionContentItems"),
 		selectedChoiceId: v.optional(v.string()),
@@ -1783,7 +1782,7 @@ export const submitAnswer = mutation({
 	},
 });
 
-export const finishSessionContent = mutation({
+export const finishSessionContent = learningMutation({
 	args: {
 		sessionId: v.id("learningPlanSessions"),
 		knowledgeValidationConfidence: v.optional(
@@ -1868,7 +1867,7 @@ export const finishSessionContent = mutation({
 	},
 });
 
-export const deferTheoryValidation = mutation({
+export const deferTheoryValidation = learningMutation({
 	args: {
 		sessionId: v.id("learningPlanSessions"),
 	},

@@ -37,7 +37,7 @@ import {
 } from "../ai/observability";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { type ActionCtx, action } from "./_generated/server";
+import type { ActionCtx } from "./_generated/server";
 import { traceAiAction } from "./aiObservability";
 import { isUnknownWrittenAnswer } from "./answerEvaluation";
 import { readBooleanEnv, readOptionalEnv, readRequiredEnv } from "./env";
@@ -51,6 +51,7 @@ import {
 	isInvalidGeneratedGermanTextError,
 	normalizeGeneratedGermanText,
 } from "./generatedGermanText";
+import { learningAction } from "./learningActions";
 import {
 	createLearningContentPlan,
 	type LearningContentBlock,
@@ -2444,7 +2445,7 @@ const mapWithConcurrency = async <TItem, TResult>(
 	return results;
 };
 
-export const evaluateWrittenAnswer = action({
+export const evaluateWrittenAnswer = learningAction({
 	args: {
 		itemId: v.id("learningSessionContentItems"),
 		answerText: v.string(),
@@ -2552,7 +2553,7 @@ export const evaluateWrittenAnswer = action({
 	},
 });
 
-export const ensureSessionContent = action({
+export const ensureSessionContent = learningAction({
 	args: {
 		sessionId: v.id("learningPlanSessions"),
 	},
@@ -2632,7 +2633,7 @@ export const ensureSessionContent = action({
 	},
 });
 
-export const retryFailedSessionContent = action({
+export const retryFailedSessionContent = learningAction({
 	args: { learningPlanId: v.id("learningPlans") },
 	handler: async (
 		ctx,
@@ -2722,7 +2723,7 @@ export const retryFailedSessionContent = action({
 	},
 });
 
-export const addSessionWithContent = action({
+export const addSessionWithContent = learningAction({
 	args: { learningPlanId: v.id("learningPlans") },
 	handler: async (
 		ctx,
@@ -2767,7 +2768,7 @@ export const addSessionWithContent = action({
 	},
 });
 
-export const generateKnowledgeQuestions = action({
+export const generateKnowledgeQuestions = learningAction({
 	args: {
 		learningPlanId: v.id("learningPlans"),
 	},
@@ -2926,7 +2927,7 @@ export const generateKnowledgeQuestions = action({
 	},
 });
 
-export const generatePlan = action({
+export const generatePlan = learningAction({
 	args: {
 		learningPlanId: v.id("learningPlans"),
 		sessionCompositionVariant: v.optional(

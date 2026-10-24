@@ -1,3 +1,4 @@
+import { grantTestLearningAccess } from "./testing/access";
 /// <reference types="vite/client" />
 
 import { convexTest } from "convex-test";
@@ -161,6 +162,7 @@ afterEach(() => {
 
 test("materializes the 5-10 question diagnostic and exactly one provisional preview", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	await storeDiagnostic(t, learningPlanId);
 	await t.mutation(api.learningPlans.setTargetStudyMinutes, {
@@ -282,6 +284,7 @@ test("materializes the 5-10 question diagnostic and exactly one provisional prev
 
 test("rejects an undersized diagnostic without mutating the draft", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	await expect(
 		t.mutation(internal.learningPlans.storeKnowledgeQuestions, {
@@ -301,6 +304,7 @@ test("rejects an undersized diagnostic without mutating the draft", async () => 
 
 test("accepts ten diagnostic questions and rejects eleven", async () => {
 	const acceptedBackend = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(acceptedBackend);
 	const acceptedPlanId = await createPlan(acceptedBackend);
 	await expect(
 		acceptedBackend.mutation(internal.learningPlans.storeKnowledgeQuestions, {
@@ -318,6 +322,7 @@ test("accepts ten diagnostic questions and rejects eleven", async () => {
 	expect(acceptedSnapshot?.plan.knowledgeQuestions).toHaveLength(10);
 
 	const rejectedBackend = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(rejectedBackend);
 	const rejectedPlanId = await createPlan(rejectedBackend);
 	await expect(
 		rejectedBackend.mutation(internal.learningPlans.storeKnowledgeQuestions, {
@@ -332,6 +337,7 @@ test("accepts ten diagnostic questions and rejects eleven", async () => {
 
 test("keeps question topic references aligned when topic IDs are normalized", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	const inputTopicId = "Lineare Funktionen";
 	await t.mutation(internal.learningPlans.storeKnowledgeQuestions, {
@@ -367,6 +373,7 @@ test("keeps question topic references aligned when topic IDs are normalized", as
 
 test("requires two dated slots before replacing an existing diagnostic window", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	await storeDiagnostic(t, learningPlanId);
 	const replaceArgs = {
@@ -401,6 +408,7 @@ test("requires two dated slots before replacing an existing diagnostic window", 
 
 test("does not count an unattempted provisional target as already taught", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	await t.mutation(api.learningTimes.upsertMine, {
 		dayOfWeek: 2,
@@ -460,6 +468,7 @@ test("does not count an unattempted provisional target as already taught", async
 
 test("completing one answered diagnostic twice advances only once", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	await t.mutation(api.learningTimes.upsertMine, {
 		dayOfWeek: 2,
@@ -513,6 +522,7 @@ test("completing one answered diagnostic twice advances only once", async () => 
 
 test("does not append a new rolling appointment without saved learning times", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	await storeDiagnostic(t, learningPlanId);
 	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
@@ -560,6 +570,7 @@ test("does not append a new rolling appointment without saved learning times", a
 
 test("requires every diagnostic answer before the rolling plan can advance", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	await storeDiagnostic(t, learningPlanId);
 	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
@@ -612,6 +623,7 @@ test("requires every diagnostic answer before the rolling plan can advance", asy
 
 test("keeps previews non-interactive and regenerates leaked content on promotion", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	await storeDiagnostic(t, learningPlanId);
 	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
@@ -743,6 +755,7 @@ test("keeps previews non-interactive and regenerates leaked content on promotion
 
 test("keeps a future same-day preview and appends the next same-day slot", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	await storeDiagnostic(t, learningPlanId);
 	await t.mutation(api.learningTimes.upsertMine, {
@@ -805,6 +818,7 @@ test("keeps a future same-day preview and appends the next same-day slot", async
 
 test("never schedules outside saved learning windows", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	const learningPlanId = await createPlan(t);
 	await storeDiagnostic(t, learningPlanId);
 	await t.mutation(api.learningTimes.upsertMine, {
@@ -875,6 +889,7 @@ test("uses diagnostic correctness to choose a different evidence target", async 
 	}));
 	const runDiagnostic = async (correct: boolean) => {
 		const t = convexTest(schema, modules).withIdentity(user);
+		await grantTestLearningAccess(t);
 		const learningPlanId = await createPlan(t);
 		await t.mutation(internal.learningPlans.storeKnowledgeQuestions, {
 			learningPlanId,
@@ -930,8 +945,16 @@ test("uses diagnostic correctness to choose a different evidence target", async 
 
 test("does not start diagnostic generation from required topics without material", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	await t.run(async (ctx) => {
-		await ctx.db.insert("users", {
+		const fixtureUser = await ctx.db
+			.query("users")
+			.withIndex("by_tokenIdentifier", (q) =>
+				q.eq("tokenIdentifier", user.tokenIdentifier),
+			)
+			.unique();
+		if (!fixtureUser) throw new Error("Missing eligible learner");
+		await ctx.db.patch("users", fixtureUser._id, {
 			tokenIdentifier: user.tokenIdentifier,
 			clerkId: "first-session-diagnostic",
 			email: "student@example.com",

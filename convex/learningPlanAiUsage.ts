@@ -1,7 +1,8 @@
 import { v } from "convex/values";
-import { internalMutation, query } from "./_generated/server";
+import { internalMutation } from "./_generated/server";
 import { assertAccountActive } from "./accountDeletion";
 import { throwUserFacingError } from "./errors";
+import { learningQuery } from "./learningFunctions";
 
 const operationValidator = v.union(
 	v.literal("diagnostic"),
@@ -45,7 +46,7 @@ export const record = internalMutation({
 	},
 });
 
-export const getPlanCostSummary = query({
+export const getPlanCostSummary = learningQuery({
 	args: { learningPlanId: v.id("learningPlans") },
 	handler: async (ctx, args) => {
 		const identity = await ctx.auth.getUserIdentity();
@@ -82,7 +83,7 @@ export const getPlanCostSummary = query({
 	},
 });
 
-export const getMyMonthlyCostSummary = query({
+export const getMyMonthlyCostSummary = learningQuery({
 	args: { monthStart: v.number() },
 	handler: async (ctx, args) => {
 		const identity = await ctx.auth.getUserIdentity();

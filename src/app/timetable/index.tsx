@@ -1,4 +1,4 @@
-import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useMutation } from "convex/react";
 import { fetch } from "expo/fetch";
 import * as DocumentPicker from "expo-document-picker";
 import { File } from "expo-file-system";
@@ -40,6 +40,7 @@ import {
 } from "~/features/timetable/timetable-editor";
 import { TimetableEntry } from "~/features/timetable/timetable-entry";
 import { TimetableWeekEditor } from "~/features/timetable/timetable-week-editor";
+import { useLearningQuery } from "~/hooks/use-learning-query";
 import { ROUTES } from "~/lib/routes";
 import { triggerSuccessHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
@@ -158,7 +159,7 @@ export default function TimetableScreen() {
 	const { user } = useAuthSession();
 	const { requestAiConsent } = useAiConsent();
 	const { isAuthenticated } = useConvexAuth();
-	const timetableState = useQuery(
+	const timetableState = useLearningQuery(
 		api.timetables.getMine,
 		user && isAuthenticated ? {} : "skip",
 	);

@@ -5,6 +5,16 @@ import { afterEach, expect, test, vi } from "vitest";
 import { api, internal } from "./_generated/api";
 import schema from "./schema";
 
+// Exercise server time independently of ignored legacy query hints.
+async function accessAt(
+	t: ReturnType<ReturnType<typeof convexTest>["withIdentity"]>,
+	now: number,
+) {
+	if (!vi.isFakeTimers()) vi.useFakeTimers();
+	vi.setSystemTime(now);
+	await t.mutation(api.accessState.refreshMyAccess, {});
+	return await t.query(api.entitlements.getMyAccess, { now: 0 });
+}
 const modules = import.meta.glob("./**/*.ts");
 
 const user = {
@@ -61,9 +71,7 @@ test.each([
 		},
 	});
 	await expect(
-		t.query(api.entitlements.getMyAccess, {
-			now: Date.parse("2026-10-21T12:00:00.000Z"),
-		}),
+		accessAt(t, Date.parse("2026-10-21T12:00:00.000Z")),
 	).resolves.toEqual({ canUseApp: false, state: "needsActivation" });
 
 	await expect(
@@ -101,9 +109,7 @@ test("authenticated account without an entitlement requires activation", async (
 	await t.mutation(api.users.syncCurrentUser, {});
 
 	await expect(
-		t.query(api.entitlements.getMyAccess, {
-			now: Date.parse("2026-07-28T10:00:00.000Z"),
-		}),
+		accessAt(t, Date.parse("2026-07-28T10:00:00.000Z")),
 	).resolves.toEqual({
 		canUseApp: false,
 		state: "needsActivation",
@@ -122,16 +128,15 @@ test.each([
 	await t.mutation(api.entitlements.activateMyTrial, {
 		termsVersion: "2026-10-16-30d-v1",
 	});
-	await expect(
-		t.query(api.entitlements.getMyAccess, { now: Date.parse(end) - 1 }),
-	).resolves.toMatchObject({
+	await expect(accessAt(t, Date.parse(end) - 1)).resolves.toMatchObject({
 		state: "trial",
 		canUseApp: true,
 		trialExpiresAt: Date.parse(end),
 	});
-	await expect(
-		t.query(api.entitlements.getMyAccess, { now: Date.parse(end) }),
-	).resolves.toMatchObject({ state: "expired", canUseApp: false });
+	await expect(accessAt(t, Date.parse(end))).resolves.toMatchObject({
+		state: "expired",
+		canUseApp: false,
+	});
 });
 
 test.each([
@@ -203,9 +208,16 @@ test.each([
 			t.mutation(api.entitlements.activateMyTrial, { termsVersion }),
 		).resolves.toMatchObject({ state, canUseApp: state !== "expired" });
 	}
-	expect(
-		await t.run((ctx) => ctx.db.get("accessEntitlements", before._id)),
-	).toEqual(before);
+	const after = await t.run((ctx) =>
+		ctx.db.get("accessEntitlements", before._id),
+	);
+	if (!after) throw new Error("Missing preserved entitlement");
+	const {
+		accessEvaluatedAt: _evaluated,
+		accessCheckAt: _check,
+		...storedPolicy
+	} = after;
+	expect(storedPolicy).toEqual(before);
 });
 
 test("CRM receives the same new trial deadline and expiry state as the app", async () => {
@@ -246,9 +258,7 @@ test("trial access expires exactly 30 days after activation", async () => {
 	});
 
 	await expect(
-		t.query(api.entitlements.getMyAccess, {
-			now: Date.parse("2026-08-27T10:00:00.000Z"),
-		}),
+		accessAt(t, Date.parse("2026-08-27T10:00:00.000Z")),
 	).resolves.toMatchObject({
 		canUseApp: false,
 		state: "expired",
@@ -293,9 +303,7 @@ test("verified RevenueCat subscription unlocks a new account without starting a 
 	await t.action(api.revenueCat.syncMyEntitlement, {});
 
 	await expect(
-		t.query(api.entitlements.getMyAccess, {
-			now: Date.parse("2026-08-12T10:00:00.000Z"),
-		}),
+		accessAt(t, Date.parse("2026-08-12T10:00:00.000Z")),
 	).resolves.toMatchObject({
 		canUseApp: true,
 		managementUrl: "https://apps.apple.com/account/subscriptions",
@@ -314,9 +322,7 @@ test("verified RevenueCat subscription unlocks a new account without starting a 
 	expect(storedEntitlement).not.toHaveProperty("trialStartedAt");
 	expect(storedEntitlement).not.toHaveProperty("trialExpiresAt");
 	await expect(
-		t.query(api.entitlements.getMyAccess, {
-			now: Date.parse("2026-08-29T10:00:00.000Z"),
-		}),
+		accessAt(t, Date.parse("2026-08-29T10:00:00.000Z")),
 	).resolves.toMatchObject({
 		canUseApp: false,
 		state: "expired",
@@ -360,9 +366,7 @@ test("RevenueCat web billing does not unlock mobile app access", async () => {
 		},
 	);
 	await expect(
-		t.query(api.entitlements.getMyAccess, {
-			now: Date.parse("2026-08-12T10:00:00.000Z"),
-		}),
+		accessAt(t, Date.parse("2026-08-12T10:00:00.000Z")),
 	).resolves.toEqual({
 		canUseApp: false,
 		state: "needsActivation",
@@ -409,9 +413,7 @@ test("RevenueCat subscription grace keeps full access during a billing issue", a
 	await t.action(api.revenueCat.syncMyEntitlement, {});
 
 	await expect(
-		t.query(api.entitlements.getMyAccess, {
-			now: Date.parse("2026-08-12T10:00:00.000Z"),
-		}),
+		accessAt(t, Date.parse("2026-08-12T10:00:00.000Z")),
 	).resolves.toMatchObject({
 		canUseApp: true,
 		state: "billingGrace",
@@ -475,9 +477,7 @@ test("authorized RevenueCat webhook refreshes access while the app is closed", a
 
 	expect(response.status).toBe(200);
 	await expect(
-		t.query(api.entitlements.getMyAccess, {
-			now: Date.parse("2026-08-12T10:00:00.000Z"),
-		}),
+		accessAt(t, Date.parse("2026-08-12T10:00:00.000Z")),
 	).resolves.toMatchObject({
 		canUseApp: true,
 		productId: "dayova_annual",
@@ -563,14 +563,10 @@ test("TRANSFER webhook grants the destination and revokes the source account", a
 
 	expect(response.status).toBe(200);
 	await expect(
-		destination.query(api.entitlements.getMyAccess, {
-			now: Date.parse("2026-08-28T10:00:00.000Z"),
-		}),
+		accessAt(destination, Date.parse("2026-08-28T10:00:00.000Z")),
 	).resolves.toMatchObject({ canUseApp: true, state: "paid" });
 	await expect(
-		source.query(api.entitlements.getMyAccess, {
-			now: Date.parse("2026-08-28T10:00:00.000Z"),
-		}),
+		accessAt(source, Date.parse("2026-08-28T10:00:00.000Z")),
 	).resolves.toMatchObject({ canUseApp: false, state: "expired" });
 });
 

@@ -2,10 +2,10 @@ import {
 	type RequestForQueries,
 	useAction,
 	useConvexAuth,
+	useConvexConnectionState,
 	useMutation,
 	useQueries,
 } from "convex/react";
-import * as SecureStore from "expo-secure-store";
 import {
 	createContext,
 	type ReactNode,
@@ -13,357 +13,299 @@ import {
 	useContext,
 	useEffect,
 	useMemo,
+	useRef,
 	useState,
 } from "react";
-import { Platform } from "react-native";
+import { AppState } from "react-native";
 import { api } from "#convex/_generated/api";
-import { useAuthSession } from "~/context/AuthContext";
+import { useAuthSession, useOnboardingHandoff } from "~/context/AuthContext";
 import {
 	type AccessSnapshot,
 	getNextAccessRefreshAt,
 	getOfflineAccess,
+	OFFLINE_ACCESS_WINDOW_MS,
 } from "~/lib/access-policy";
 import { isOnboardingSettled } from "~/lib/auth-routing";
-import { logDiagnosticError } from "~/lib/diagnostics";
-
-// SecureStore keys may only contain alphanumeric characters, `.`, `-`, and `_`.
-const ACCESS_CACHE_PREFIX = "dayova-access.";
-const LEGACY_WEB_ACCESS_CACHE_PREFIX = "dayova-access:";
-const ACCESS_QUERY_TIMEOUT_MS = 1_500;
-const ACCESS_CLOCK_INTERVAL_MS = 30_000;
-const MAX_TIMER_DELAY_MS = 2_147_000_000;
-
-type CachedAccess = {
-	access: AccessSnapshot;
-	verifiedAt: number;
-};
 
 type AccessContextValue = {
 	access: AccessSnapshot | undefined;
 	activateTrial: (termsVersion: string) => Promise<void>;
 	isAccessLoading: boolean;
-	isAccessUnavailable: boolean;
-	isAccessRetrying: boolean;
-	retryAccess: () => void;
+	isVerificationRequired: boolean;
+	retryAccessVerification: () => Promise<void>;
 	refreshPaidAccess: () => Promise<boolean>;
 };
-
+type Verification = {
+	appUserId: string;
+	access: AccessSnapshot;
+	serverNow: number;
+	monotonicAt: number;
+};
 const AccessContext = createContext<AccessContextValue | null>(null);
-
-const cacheKey = (appUserId: string) => `${ACCESS_CACHE_PREFIX}${appUserId}`;
-
-const readCachedAccess = async (appUserId: string) => {
-	const key = cacheKey(appUserId);
-	let serialized =
-		Platform.OS === "web"
-			? globalThis.localStorage?.getItem(key)
-			: await SecureStore.getItemAsync(key);
-	if (!serialized && Platform.OS === "web") {
-		const legacyKey = `${LEGACY_WEB_ACCESS_CACHE_PREFIX}${appUserId}`;
-		serialized = globalThis.localStorage?.getItem(legacyKey) ?? null;
-		if (serialized) {
-			try {
-				globalThis.localStorage?.setItem(key, serialized);
-				globalThis.localStorage?.removeItem(legacyKey);
-			} catch (error) {
-				logDiagnosticError("Unable to migrate cached web access.", error, {
-					source: "access.cache.migrate",
-					level: "warn",
-				});
-			}
-		}
-	}
-	if (!serialized) return null;
-
-	try {
-		return JSON.parse(serialized) as CachedAccess;
-	} catch {
-		return null;
-	}
-};
-
-const writeCachedAccess = async (
-	appUserId: string,
-	cachedAccess: CachedAccess,
-) => {
-	const key = cacheKey(appUserId);
-	const serialized = JSON.stringify(cachedAccess);
-	if (Platform.OS === "web") {
-		globalThis.localStorage?.setItem(key, serialized);
-		return;
-	}
-	await SecureStore.setItemAsync(key, serialized);
-};
 
 export function AccessProvider({ children }: { children: ReactNode }) {
 	const {
 		user,
 		isSessionLoading,
 		isConvexUserSynced,
+		isPostAuthSyncing,
 		onboardingCompletionStatus,
 	} = useAuthSession();
+	const { retryPostAuthSync } = useOnboardingHandoff();
 	const appUserId = user?.clerkId ?? null;
-	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
-	const [now, setNow] = useState(Date.now);
-	const [queryNow, setQueryNow] = useState(Date.now);
-	const [loadedCache, setLoadedCache] = useState<{
-		appUserId: string;
-		value: CachedAccess | null;
-	} | null>(null);
-	const [failedVerification, setFailedVerification] = useState<{
-		appUserId: string;
-		queryNow: number;
-	} | null>(null);
-	const [lastVerified, setLastVerified] = useState<{
-		appUserId: string | null;
-		value: CachedAccess | null;
-	}>({ appUserId, value: null });
-	const activateMyTrial = useMutation(api.entitlements.activateMyTrial);
-	const syncMyEntitlement = useAction(api.revenueCat.syncMyEntitlement);
+	const canWaitForVerification = Boolean(appUserId && !isSessionLoading);
+	const { isAuthenticated } = useConvexAuth();
+	const { isWebSocketConnected } = useConvexConnectionState();
 	const canQuery = Boolean(
-		user &&
-			isConvexAuthenticated &&
+		appUserId &&
+			isAuthenticated &&
 			isConvexUserSynced &&
 			isOnboardingSettled(onboardingCompletionStatus),
 	);
-	// Unlike useQuery, useQueries returns query errors so this boundary can
-	// recover without treating an unavailable verification as an expired trial.
-	const accessQueries = useMemo((): RequestForQueries => {
-		if (!canQuery) return {};
-		return {
-			access: { query: api.entitlements.getMyAccess, args: { now: queryNow } },
-		};
-	}, [canQuery, queryNow]);
+	const activateMyTrial = useMutation(api.entitlements.activateMyTrial);
+	const verifyAccess = useMutation(api.accessState.refreshMyAccess);
+	const syncMyEntitlement = useAction(api.revenueCat.syncMyEntitlement);
+	// Reactive changes trigger a fresh clock verification. Cached queries can never start an offline lease.
+	// Keep request identity stable; useQueries returns failures instead of throwing
+	// through the recovery surface. Only a fresh mutation can grant a lease.
+	const accessQueries = useMemo(
+		(): RequestForQueries =>
+			canQuery
+				? { access: { query: api.entitlements.getMyAccess, args: {} } }
+				: {},
+		[canQuery],
+	);
 	const accessResult = useQueries(accessQueries).access as
 		| AccessSnapshot
 		| Error
 		| undefined;
-	const accessError = accessResult instanceof Error ? accessResult : null;
 	const serverAccess = accessResult instanceof Error ? undefined : accessResult;
-	// Keep recovery visible during retries, but reset it when this account's
-	// verification succeeds or querying is suspended (e.g. account switching).
-	if (
-		failedVerification &&
-		(serverAccess || !canQuery || failedVerification.appUserId !== appUserId)
-	) {
-		setFailedVerification(null);
-	} else if (
-		accessError &&
-		appUserId &&
-		failedVerification?.queryNow !== queryNow
-	) {
-		setFailedVerification({ appUserId, queryNow });
+	const [verification, setVerification] = useState<Verification | null>(null);
+	const [timedOut, setTimedOut] = useState<{
+		appUserId: string;
+		epoch: number;
+	} | null>(null);
+	const [monotonicNow, setMonotonicNow] = useState(() => performance.now());
+	const [accountScope, setAccountScope] = useState(appUserId);
+	const [observedQuery, setObservedQuery] = useState(serverAccess);
+	const identity = useRef(appUserId);
+	const generation = useRef(0);
+	const foreground = useRef(
+		AppState.currentState === "active" || AppState.currentState === "inactive",
+	);
+	const pending = useRef<{ appUserId: string; request: Promise<void> } | null>(
+		null,
+	);
+	const [verificationEpoch, setVerificationEpoch] = useState(0);
+	if (accountScope !== appUserId) {
+		setAccountScope(appUserId);
+		setVerification(null);
+		setTimedOut(null);
 	}
-	// Retain only results observed for this account in this mounted session.
-	// Reset during render so an account change cannot expose the previous result.
-	if (lastVerified.appUserId !== appUserId) {
-		setLastVerified({ appUserId, value: null });
-	} else if (
-		canQuery &&
-		serverAccess &&
-		serverAccess !== lastVerified.value?.access
-	) {
-		setLastVerified({
-			appUserId,
-			value: { access: serverAccess, verifiedAt: now },
-		});
+	if (observedQuery !== serverAccess) {
+		setObservedQuery(serverAccess);
+		if (
+			canQuery &&
+			serverAccess &&
+			!serverAccess.canUseApp &&
+			verification?.appUserId === appUserId
+		) {
+			setVerification({
+				...verification,
+				access: serverAccess,
+			});
+		}
 	}
-	const retainedAccess =
-		canQuery && lastVerified.appUserId === appUserId
-			? lastVerified.value
-			: null;
-
-	useEffect(() => {
-		const interval = setInterval(
-			() => setNow(Date.now()),
-			ACCESS_CLOCK_INTERVAL_MS,
-		);
-		return () => clearInterval(interval);
+	const invalidateRequests = useCallback(() => {
+		generation.current++;
+		pending.current = null;
 	}, []);
-
 	useEffect(() => {
-		const refreshAt = getNextAccessRefreshAt(
-			serverAccess ?? retainedAccess?.access,
-		);
-		if (refreshAt === null) return;
-
-		let timeout: ReturnType<typeof setTimeout>;
-		const scheduleRefresh = () => {
-			const remaining = refreshAt - Date.now();
-			if (remaining <= 0) {
-				const refreshedAt = Date.now();
-				setNow(refreshedAt);
-				setQueryNow(refreshedAt);
-				return;
-			}
-			timeout = setTimeout(
-				scheduleRefresh,
-				Math.min(remaining + 1, MAX_TIMER_DELAY_MS),
-			);
-		};
-		scheduleRefresh();
-		return () => clearTimeout(timeout);
-	}, [retainedAccess, serverAccess]);
-
-	useEffect(() => {
-		if (!appUserId) return;
-
-		let isActive = true;
-		void readCachedAccess(appUserId)
-			.then((value) => {
-				if (isActive) {
-					setLoadedCache({ appUserId, value });
+		identity.current = appUserId;
+		invalidateRequests();
+		return invalidateRequests;
+	}, [appUserId, invalidateRequests]);
+	const refresh = useCallback(async () => {
+		if (!canQuery || !appUserId || !foreground.current || !isWebSocketConnected)
+			return;
+		if (pending.current?.appUserId === appUserId)
+			return pending.current.request;
+		const requestGeneration = ++generation.current;
+		// Start before the request: round-trip latency shortens, never extends, the lease.
+		const monotonicAt = performance.now();
+		const request = verifyAccess({})
+			.then((result) => {
+				if (
+					foreground.current &&
+					identity.current === appUserId &&
+					generation.current === requestGeneration
+				) {
+					setMonotonicNow(performance.now());
+					setVerification({
+						appUserId,
+						access: result.access,
+						serverNow: result.serverNow,
+						monotonicAt,
+					});
 				}
 			})
-			.catch((error: unknown) => {
-				logDiagnosticError("Unable to read cached access.", error, {
-					source: "access.cache.read",
-					level: "warn",
-				});
-				if (isActive) {
-					setLoadedCache({ appUserId, value: null });
-				}
+			.finally(() => {
+				if (pending.current?.request === request) pending.current = null;
 			});
-
-		return () => {
-			isActive = false;
-		};
-	}, [appUserId]);
+		pending.current = { appUserId, request };
+		return request;
+	}, [appUserId, canQuery, isWebSocketConnected, verifyAccess]);
 
 	useEffect(() => {
-		if (serverAccess || !appUserId || !canQuery) return;
-		if (accessError) {
-			logDiagnosticError("Unable to verify access.", accessError, {
-				source: "access.verify",
-				level: "warn",
-			});
-			return;
+		if (!canQuery) return;
+		if (serverAccess && !serverAccess.canUseApp) {
+			invalidateRequests();
 		}
-		const timeout = setTimeout(
-			() => setFailedVerification({ appUserId, queryNow }),
-			ACCESS_QUERY_TIMEOUT_MS,
-		);
-		return () => clearTimeout(timeout);
-	}, [accessError, appUserId, canQuery, queryNow, serverAccess]);
-
+		void refresh().catch(() => {
+			/* A failed request cannot grant or renew access. */
+		});
+	}, [canQuery, invalidateRequests, refresh, serverAccess]);
 	useEffect(() => {
-		if (!appUserId || !canQuery || !serverAccess) return;
-		const nextCachedAccess = {
-			access: serverAccess,
-			verifiedAt: Date.now(),
-		};
-		void writeCachedAccess(appUserId, nextCachedAccess).catch(
-			(error: unknown) => {
-				logDiagnosticError("Unable to cache verified access.", error, {
-					source: "access.cache.write",
-					level: "warn",
-				});
-			},
+		if (!appUserId || !canWaitForVerification) return;
+		const timer = setTimeout(
+			() => setTimedOut({ appUserId, epoch: verificationEpoch }),
+			1500,
 		);
-	}, [appUserId, canQuery, serverAccess]);
-
-	const cachedAccess =
-		user && loadedCache && loadedCache.appUserId === user.clerkId
-			? loadedCache.value
-			: null;
-	const isCacheLoaded =
-		!user || (loadedCache !== null && loadedCache.appUserId === user.clerkId);
-	const hasVerificationFailed =
-		canQuery && failedVerification?.appUserId === appUserId;
-	const offlineAccess = useMemo(() => {
-		if (!cachedAccess) return null;
-		return getOfflineAccess({
-			access: cachedAccess.access,
-			now,
-			verifiedAt: cachedAccess.verifiedAt,
-		})
-			? cachedAccess.access
-			: null;
-	}, [cachedAccess, now]);
-
-	const refreshAccess = retainedAccess
-		? !retainedAccess.access.canUseApp ||
-			getOfflineAccess({ ...retainedAccess, now })
-			? retainedAccess.access
-			: undefined
-		: undefined;
-	const access =
-		(canQuery ? serverAccess : undefined) ??
-		refreshAccess ??
-		(isCacheLoaded && (hasVerificationFailed || accessError)
-			? (offlineAccess ?? undefined)
-			: undefined);
-	const isAccessUnavailable = Boolean(
-		canQuery &&
-			isCacheLoaded &&
-			!access &&
-			(hasVerificationFailed || accessError),
+		return () => clearTimeout(timer);
+	}, [appUserId, canWaitForVerification, verificationEpoch]);
+	useEffect(() => {
+		if (!canQuery) return;
+		// Retry offline failures and renew the lease only when a real server response arrives.
+		const interval = setInterval(() => {
+			setMonotonicNow(performance.now());
+			void refresh().catch(() => {});
+		}, 30_000);
+		return () => clearInterval(interval);
+	}, [canQuery, refresh]);
+	useEffect(() => {
+		const listener = AppState.addEventListener("change", (state) => {
+			if (state === "background") {
+				foreground.current = false;
+				// JS monotonic clocks may pause in device sleep. A background transition ends this lease.
+				invalidateRequests();
+				setVerification(null);
+				setTimedOut(null);
+			} else if (state === "active" && !foreground.current) {
+				foreground.current = true;
+				setVerificationEpoch((value) => value + 1);
+				setMonotonicNow(performance.now());
+				void refresh().catch(() => {});
+			}
+		});
+		return () => listener.remove();
+	}, [invalidateRequests, refresh]);
+	const current = verification?.appUserId === appUserId ? verification : null;
+	// Never read Date.now() or a persisted access cache to authorize this process.
+	const elapsed = current ? monotonicNow - current.monotonicAt : 0;
+	const trustedNow = current ? current.serverNow + elapsed : 0;
+	const entitlementExpiresAt = getNextAccessRefreshAt(current?.access);
+	const knownExpired =
+		entitlementExpiresAt !== null && trustedNow >= entitlementExpiresAt;
+	const verifiedAccess =
+		current && elapsed >= 0 && Number.isFinite(elapsed)
+			? !current.access.canUseApp
+				? current.access
+				: knownExpired
+					? {
+							...current.access,
+							state: "expired" as const,
+							canUseApp: false as const,
+						}
+					: getOfflineAccess({
+								access: current.access,
+								verifiedAt: current.serverNow,
+								now: trustedNow,
+							})
+						? current.access
+						: undefined
+			: undefined;
+	const access = canQuery ? verifiedAccess : undefined;
+	const isVerificationRequired =
+		canWaitForVerification &&
+		!verifiedAccess &&
+		timedOut?.appUserId === appUserId &&
+		timedOut?.epoch === verificationEpoch;
+	useEffect(() => {
+		if (!current?.access.canUseApp) return;
+		const expiry = getNextAccessRefreshAt(current.access);
+		const remaining =
+			Math.min(
+				expiry ?? Infinity,
+				current.serverNow + OFFLINE_ACCESS_WINDOW_MS,
+			) - trustedNow;
+		if (remaining <= 0) return;
+		const timer = setTimeout(
+			() => {
+				setMonotonicNow(performance.now());
+				void refresh().catch(() => {});
+			},
+			Math.min(remaining, 2_147_000_000),
+		);
+		return () => clearTimeout(timer);
+	}, [current, trustedNow, refresh]);
+	const activateTrial = useCallback(
+		async (termsVersion: string) => {
+			await activateMyTrial({ termsVersion });
+			await pending.current?.request.catch(() => {});
+			await refresh();
+		},
+		[activateMyTrial, refresh],
 	);
-	const isAccessRetrying =
-		isAccessUnavailable &&
-		!accessError &&
-		failedVerification?.queryNow !== queryNow;
+	const refreshPaidAccess = useCallback(async () => {
+		const result = await syncMyEntitlement({});
+		await pending.current?.request.catch(() => {});
+		await refresh();
+		return result.active;
+	}, [refresh, syncMyEntitlement]);
+	const retryAccessVerification = useCallback(async () => {
+		if (!isWebSocketConnected)
+			throw new Error("Online-Verbindung erforderlich");
+		if (!canQuery) {
+			if (!isPostAuthSyncing) retryPostAuthSync();
+			throw new Error("Anmeldung oder Profilabgleich noch nicht bestätigt");
+		}
+		await refresh();
+	}, [
+		canQuery,
+		isPostAuthSyncing,
+		isWebSocketConnected,
+		refresh,
+		retryPostAuthSync,
+	]);
 	const isAccessLoading =
 		Boolean(user) &&
 		!isSessionLoading &&
 		isOnboardingSettled(onboardingCompletionStatus) &&
-		!access &&
-		!isAccessUnavailable;
-
-	const retryAccess = useCallback(() => {
-		const refreshedAt = Date.now();
-		setNow(refreshedAt);
-		setQueryNow((previous) => Math.max(refreshedAt, previous + 1));
-	}, []);
-
-	const activateTrial = useCallback(
-		async (termsVersion: string) => {
-			await activateMyTrial({ termsVersion });
-			const refreshedAt = Date.now();
-			setNow(refreshedAt);
-			setQueryNow(refreshedAt);
-		},
-		[activateMyTrial],
-	);
-
-	const refreshPaidAccess = useCallback(async () => {
-		const result = await syncMyEntitlement({});
-		const refreshedAt = Date.now();
-		setNow(refreshedAt);
-		setQueryNow(refreshedAt);
-		return result.active;
-	}, [syncMyEntitlement]);
-
+		!access;
 	const value = useMemo(
 		() => ({
 			access,
 			activateTrial,
 			isAccessLoading,
-			isAccessUnavailable,
-			isAccessRetrying,
-			retryAccess,
+			isVerificationRequired,
+			retryAccessVerification,
 			refreshPaidAccess,
 		}),
 		[
 			access,
 			activateTrial,
 			isAccessLoading,
-			isAccessUnavailable,
-			isAccessRetrying,
-			retryAccess,
+			isVerificationRequired,
+			retryAccessVerification,
 			refreshPaidAccess,
 		],
 	);
-
 	return (
 		<AccessContext.Provider value={value}>{children}</AccessContext.Provider>
 	);
 }
-
-export const useAccess = () => {
+export function useAccess() {
 	const value = useContext(AccessContext);
-	if (!value) {
-		throw new Error("useAccess must be used within AccessProvider");
-	}
+	if (!value) throw new Error("useAccess must be used within AccessProvider");
 	return value;
-};
+}

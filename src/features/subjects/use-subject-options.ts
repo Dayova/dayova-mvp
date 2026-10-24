@@ -3,6 +3,7 @@ import type { FunctionReturnType } from "convex/server";
 import { useEffect } from "react";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import { useAccess } from "~/context/AccessContext";
 import {
 	BUILT_IN_SUBJECT_OPTIONS,
 	getSubjectIcon,
@@ -23,11 +24,12 @@ type SubjectOption = SubjectSelection & {
 };
 
 function useSubjectOptions() {
+	const { access } = useAccess();
 	const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth();
 	// Unlike useQuery, useQueries returns query errors instead of throwing during
 	// render. A subject-list outage must not unmount the learner's creation form.
 	const results = useQueries(
-		isAuthenticated
+		isAuthenticated && access?.canUseApp
 			? { subjects: { query: api.personalSubjects.list, args: {} } }
 			: {},
 	);

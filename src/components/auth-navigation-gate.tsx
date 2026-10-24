@@ -1,10 +1,13 @@
+import { reloadAppAsync } from "expo";
 import { usePathname, useRootNavigationState, useRouter } from "expo-router";
-import { type ReactNode, useEffect } from "react";
-import { View } from "react-native";
-import { AccessVerificationRecovery } from "~/components/access-verification-recovery";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+import { ScrollView, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Button } from "~/components/ui/button";
+import { Text } from "~/components/ui/text";
 import { useAccess } from "~/context/AccessContext";
 import { useAuthSession } from "~/context/AuthContext";
-import { isAccessBypassPath, resolveAccessRoute } from "~/lib/access-policy";
+import { isAccessRecoveryPath, resolveAccessRoute } from "~/lib/access-policy";
 import { getAuthNavigationTarget } from "~/lib/auth-routing";
 import { cn } from "~/lib/utils";
 
@@ -25,19 +28,31 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 	const {
 		access,
 		isAccessLoading,
-		isAccessUnavailable,
-		isAccessRetrying,
-		retryAccess,
+		isVerificationRequired,
+		retryAccessVerification,
 	} = useAccess();
-	const needsAccessVerification = !isAccessBypassPath(pathname);
-	const showAccessRecovery = Boolean(
-		user &&
-			!isSessionLoading &&
-			pendingSessionTask === null &&
-			onboardingCompletionStatus === "none" &&
-			isAccessUnavailable &&
-			needsAccessVerification,
-	);
+	const [retrying, setRetrying] = useState(false);
+	const retryingRef = useRef(false);
+	const [retryError, setRetryError] = useState<{
+		message: string;
+		sessionRecovery: boolean;
+	} | null>(null);
+	const [sessionRestoreTimedOut, setSessionRestoreTimedOut] = useState(false);
+	const sessionRecoveryRequired = isSessionLoading && sessionRestoreTimedOut;
+	const retryErrorMessage =
+		retryError?.sessionRecovery === sessionRecoveryRequired
+			? retryError.message
+			: null;
+	if (!isSessionLoading && sessionRestoreTimedOut) {
+		setSessionRestoreTimedOut(false);
+		setRetryError(null);
+	}
+	useEffect(() => {
+		if (!isSessionLoading) return;
+		// Clerk may not finish its initial load offline, before an identity is known.
+		const timeout = setTimeout(() => setSessionRestoreTimedOut(true), 10_000);
+		return () => clearTimeout(timeout);
+	}, [isSessionLoading]);
 	const authTargetRoute = getAuthNavigationTarget({
 		hasUser: Boolean(user),
 		isSessionLoading,
@@ -53,17 +68,20 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 				user: { id: user.clerkId },
 			})
 		: null;
-	const targetRoute =
-		pendingSessionTask !== null || onboardingCompletionStatus !== "none"
+	const recoveringAccount =
+		user && pendingSessionTask === null && isAccessRecoveryPath(pathname);
+	const targetRoute = recoveringAccount
+		? accessTargetRoute
+		: pendingSessionTask !== null || onboardingCompletionStatus !== "none"
 			? authTargetRoute
 			: (accessTargetRoute ?? authTargetRoute);
 	const shouldMaskRoute =
 		isSessionLoading ||
-		onboardingCompletionStatus === "loading" ||
+		(onboardingCompletionStatus === "loading" &&
+			!isAccessRecoveryPath(pathname)) ||
 		(onboardingCompletionStatus === "none" &&
-			needsAccessVerification &&
-			isAccessLoading) ||
-		showAccessRecovery ||
+			isAccessLoading &&
+			!isAccessRecoveryPath(pathname)) ||
 		targetRoute !== null;
 
 	useEffect(() => {
@@ -97,11 +115,89 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 					pointerEvents="auto"
 					className="absolute inset-0 bg-background"
 				>
-					{showAccessRecovery ? (
-						<AccessVerificationRecovery
-							isRetrying={isAccessRetrying}
-							onRetry={retryAccess}
-						/>
+					{isVerificationRequired || sessionRecoveryRequired ? (
+						<SafeAreaView className="flex-1">
+							<ScrollView
+								className="flex-1"
+								contentContainerClassName="grow justify-center px-7 py-10"
+							>
+								<Text variant="h2">Zugang online prüfen</Text>
+								<Text className="mt-3 text-body-3 text-secondary-text">
+									{sessionRecoveryRequired
+										? "Verbinde dich mit dem Internet und starte Dayova erneut, damit deine Anmeldung geladen und dein Zugang geprüft werden können. Dein Lernstand bleibt erhalten."
+										: "Bitte verbinde dich mit dem Internet, damit Dayova deinen Zugang prüfen kann. Dein Lernstand bleibt erhalten."}
+								</Text>
+								{retryErrorMessage ? (
+									<Text
+										accessibilityRole="alert"
+										className="mt-3 text-body-3 text-destructive"
+									>
+										{retryErrorMessage}
+									</Text>
+								) : null}
+								<Button
+									className="mt-6"
+									disabled={retrying}
+									accessibilityState={{ busy: retrying, disabled: retrying }}
+									onPress={() => {
+										if (retryingRef.current) return;
+										retryingRef.current = true;
+										setRetrying(true);
+										setRetryError(null);
+										let timeout: ReturnType<typeof setTimeout>;
+										let restartAccepted = false;
+										void Promise.race([
+											sessionRecoveryRequired
+												? reloadAppAsync()
+												: retryAccessVerification(),
+											new Promise<never>((_resolve, reject) => {
+												timeout = setTimeout(
+													() => reject(new Error("Verification timed out")),
+													10_000,
+												);
+											}),
+										])
+											.then(() => {
+												restartAccepted = sessionRecoveryRequired;
+											})
+											.catch(() =>
+												setRetryError({
+													sessionRecovery: sessionRecoveryRequired,
+													message: sessionRecoveryRequired
+														? "Der Neustart hat nicht geklappt. Schließe Dayova und öffne die App mit Internetverbindung erneut."
+														: "Die Prüfung hat nicht geklappt. Prüfe deine Internetverbindung und versuche es erneut.",
+												}),
+											)
+											.finally(() => {
+												clearTimeout(timeout);
+												if (!restartAccepted) {
+													retryingRef.current = false;
+													setRetrying(false);
+												}
+											});
+									}}
+								>
+									<Text>
+										{sessionRecoveryRequired
+											? retrying
+												? "Wird neu gestartet …"
+												: "App neu starten"
+											: retrying
+												? "Wird geprüft …"
+												: "Erneut prüfen"}
+									</Text>
+								</Button>
+								{!sessionRecoveryRequired ? (
+									<Button
+										variant="ghost"
+										className="mt-2"
+										onPress={() => router.push("/profile")}
+									>
+										<Text>Konto verwalten</Text>
+									</Button>
+								) : null}
+							</ScrollView>
+						</SafeAreaView>
 					) : null}
 				</View>
 			) : null}

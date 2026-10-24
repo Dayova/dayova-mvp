@@ -3,6 +3,7 @@ import { convexTest } from "convex-test";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "./_generated/api";
 import schema from "./schema";
+import { grantTestLearningAccess } from "./testing/access";
 import { searchWloTopics } from "./wloTopics";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -74,6 +75,7 @@ describe("WLO topic search", () => {
 		const t = convexTest(schema, modules).withIdentity({
 			subject: "search-cache-test",
 		});
+		await grantTestLearningAccess(t);
 		const first = await t.action(api.wloTopics.search, {
 			query: "Vektor",
 			subject: "Mathe LK",
@@ -95,6 +97,7 @@ describe("WLO topic search", () => {
 		const t = convexTest(schema, modules).withIdentity({
 			subject: "search-cache-test",
 		});
+		await grantTestLearningAccess(t);
 		await expect(
 			t.action(api.wloTopics.search, { query: "Zelle", subject: "Biologie" }),
 		).rejects.toThrow();
@@ -119,6 +122,7 @@ describe("WLO topic search", () => {
 		vi.stubGlobal("fetch", fetcher);
 		const base = convexTest(schema, modules);
 		const t = base.withIdentity({ subject: "search-cache-test" });
+		await grantTestLearningAccess(t);
 		const args = { query: "Bilanz", subject: "Rechnungswesen" };
 		await t.action(api.wloTopics.search, args);
 		await expect(base.action(api.wloTopics.search, args)).rejects.toThrow();
@@ -179,6 +183,7 @@ describe("WLO topic search", () => {
 		const t = convexTest(schema, modules).withIdentity({
 			subject: "topic-search-validation-test",
 		});
+		await grantTestLearningAccess(t);
 		await expect(t.action(api.wloTopics.search, args)).resolves.toEqual({
 			topics: [],
 			truncated: false,

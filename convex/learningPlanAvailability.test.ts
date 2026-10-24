@@ -1,3 +1,4 @@
+import { grantTestLearningAccess } from "./testing/access";
 /// <reference types="vite/client" />
 
 import { convexTest } from "convex-test";
@@ -15,6 +16,7 @@ const availabilityArgs = {
 
 test("reports saved learning time as occupied after an appointment fills it", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	await t.mutation(api.learningTimes.upsertMine, {
 		dayOfWeek: 2,
 		startTime: "17:00",
@@ -45,6 +47,7 @@ test("reports saved learning time as occupied after an appointment fills it", as
 
 test("subtracts active timetable lessons from learning-plan availability", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	await t.mutation(api.learningTimes.upsertMine, {
 		dayOfWeek: 2,
 		startTime: "08:00",
@@ -73,6 +76,7 @@ test("subtracts active timetable lessons from learning-plan availability", async
 
 test("uses the remaining portion of a learning window today", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
+	await grantTestLearningAccess(t);
 	await t.mutation(api.learningTimes.upsertMine, {
 		dayOfWeek: 2,
 		startTime: "17:00",
