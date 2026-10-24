@@ -141,10 +141,10 @@ semantics and reduced motion; screens own immediate selected state. See the
 subscription plan cards: 90ms press compression to 0.98, a 180ms selection
 transition, and a 240ms spring for the check and release. Animate presentation
 inside a stationary native touch target; commit selection only from `onPress`.
-Reduced motion assigns final values directly. The subscription cards retain
-their documented fixed-light glass surface, dark selected outline, and white
-check on a dark indicator. They share the interaction curve, reflow at larger
-text sizes, and disable selection while Store plans load or a purchase runs.
+Reduced motion assigns final values directly. Subscription cards compose the
+shared `SelectionControl` and `SelectionIndicator`, using theme-aware surfaces,
+a cyan selected outline, and `onPrimary` checks. They reflow at larger text
+sizes and disable selection while Store plans load or a purchase runs.
 Single-choice weekday and plan lists expose a radio group; independently
 toggleable learning days retain checkbox semantics.
 
@@ -283,22 +283,24 @@ the subscription route; it must not offer payer selection, QR codes, website
 checkout links, or other purchase steering. Both routes use the shared
 `primaryInteractive` gradient as the view's only gradient, white text on the
 saturated outer surface, and theme-independent light surfaces for content that
-needs primary and secondary text. On the subscription route, plan choices use a
-translucent white surface with a thin border, restrained inset highlight, and
-shadow, while their text stays dark in every app theme. The selected plan uses a
-dark outline and checked indicator instead of a tinted fill. Prices and billing
-periods always come from the native Store: the complete charge is prominent and
-an annual monthly equivalent is secondary when the Store provides one. The
-subscription checkout action uses the standard black treatment, and purchase
-restoration is an underlined white link. Reusing shared semantic values keeps
-both ends of the trial flow synchronized with future Dayova color changes. This
-treatment is limited to focused access-setup moments and is not a third
-general-purpose light-mode button appearance. The trial-activation screen may
-use its white primary button for legible contrast on that saturated surface;
-this does not introduce a reusable third button appearance. The expired-trial
-screen passes the fixed shared light tokens through the native style API because
-the tracked Fabric variable-invalidation issue can otherwise leave newly mounted
+needs primary and secondary text. This treatment is limited to focused
+access-setup moments and is not a third general-purpose light-mode button
+appearance. The trial-activation screen may use its white primary button for
+legible contrast on that saturated surface. The expired-trial screen passes the
+fixed shared light tokens through the native style API because the tracked
+Fabric variable-invalidation issue can otherwise leave newly mounted
 descendants with mixed light and dark tokens.
+
+The subscription route follows the ordinary app theme, including when opened
+from Settings. Use the semantic background, text and secondary-text tokens,
+unboxed benefits, shared selection cards and the standard gradient primary
+button. Plan choices use theme-aware surfaces with an accent fill, cyan outline
+and readable `onPrimary` check when selected. Prices and billing periods always
+come from the native Store: the complete charge is prominent and an annual
+monthly equivalent is secondary when the Store provides one. Keep the monthly
+default, Store purchase/restore behavior, renewal disclosure and accessible
+legal/support actions. Bound content to the shared portrait width and allow
+vertical reflow with system text sizing. See [DAY-562](https://linear.app/dayova/issue/DAY-562).
 
 The post-purchase confirmation route extends this focused access-flow exception:
 it uses the same `primaryInteractive` gradient and fixed light surfaces, then

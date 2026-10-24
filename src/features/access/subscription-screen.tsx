@@ -1,14 +1,17 @@
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BackButton, Button } from "~/components/ui/button";
 import { FeedbackPressable } from "~/components/ui/feedback-pressable";
 import { Check } from "~/components/ui/icon";
+import {
+	PortraitContent,
+	useContentSizeLayout,
+} from "~/components/ui/portrait-content";
 import { SupportContact } from "~/components/ui/support-contact";
 import { Text } from "~/components/ui/text";
+import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAccess } from "~/context/AccessContext";
 import { useAuthSession } from "~/context/AuthContext";
 import { SubscriptionPlanCard } from "~/features/access/subscription-plan-card";
@@ -22,24 +25,9 @@ import {
 } from "~/lib/revenuecat-client";
 import { env } from "~/lib/runtime-config";
 import { getStoreName, getStoreSubscribeLabel } from "~/lib/store-subscription";
+import { useDayovaTheme } from "~/lib/theme";
 import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
-const SUBSCRIPTION_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
-const BRAND_COLORS = DAYOVA_DESIGN_SYSTEM.colors;
-const WHITE = BRAND_COLORS.light1;
-// LinearGradient accepts its full-bleed geometry only through the native style API.
-const gradientFillStyle = StyleSheet.absoluteFill;
-// Fixed native design tokens keep Fabric descendants on this branded light
-// surface legible when the system theme changes.
-const errorSurfaceStyle = { backgroundColor: BRAND_COLORS.surface };
-const errorTextStyle = { color: BRAND_COLORS.destructive };
-const onDarkActionTextStyle = { color: WHITE };
-// Button state styles are merged natively, so the branded Store action uses
-// fixed design tokens instead of CSS variables.
-const subscribeActionStyle = {
-	backgroundColor: BRAND_COLORS.text,
-	borderColor: BRAND_COLORS.border,
-};
 const STORE_NAME = getStoreName(process.env.EXPO_OS);
 
 const getStoreApiKey = () =>
@@ -70,6 +58,9 @@ export function SubscriptionScreen() {
 	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
+	const { horizontalPadding } = useContentSizeLayout({
+		requestedHorizontalPadding: 28,
+	});
 	const { refreshPaidAccess } = useAccess();
 	const { user } = useAuthSession();
 	const storeApiKey = getStoreApiKey();
@@ -235,15 +226,8 @@ export function SubscriptionScreen() {
 		: "Store-Käufe sind auf diesem Gerät noch nicht verfügbar.";
 
 	return (
-		<View className="flex-1 bg-primary-strong">
-			<StatusBar style="light" />
-			<LinearGradient
-				pointerEvents="none"
-				colors={SUBSCRIPTION_GRADIENT.colors}
-				start={SUBSCRIPTION_GRADIENT.start}
-				end={SUBSCRIPTION_GRADIENT.end}
-				style={gradientFillStyle}
-			/>
+		<View className="flex-1 bg-background">
+			<ThemedStatusBar />
 			<ScrollView
 				alwaysBounceVertical={false}
 				className="flex-1"
@@ -255,7 +239,11 @@ export function SubscriptionScreen() {
 					paddingTop: insets.top,
 				}}
 			>
-				<View className="px-7 pt-4">
+				<PortraitContent
+					className="pt-4"
+					// Horizontal padding follows the shared viewport/text-size calculation.
+					style={{ paddingHorizontal: horizontalPadding }}
+				>
 					<BackButton
 						accessibilityHint="Kehrt zur vorherigen Seite zurück."
 						onPress={goBack}
@@ -264,23 +252,27 @@ export function SubscriptionScreen() {
 					<View className="gap-3 pt-5 pb-6" testID="subscription-page-intro">
 						<Text
 							variant="h1"
-							className="text-left font-semibold text-body-1 text-white"
+							className="text-left font-semibold text-heading-2 text-text"
 						>
 							Dayova abonnieren
 						</Text>
-						<Text className="max-w-[340px] text-body-3 text-white/90">
+						<Text className="text-body-3 text-secondary-text">
 							Wähle deinen Tarif. Der Kauf und die Verlängerung werden sicher
 							über {STORE_NAME} abgewickelt.
 						</Text>
 					</View>
 
-					<View className="mb-5 gap-2 rounded-3xl bg-white/15 px-4 py-4">
+					<View className="mb-6 gap-3">
 						<Benefit>Persönliche Lernpläne für deine Prüfungen</Benefit>
 						<Benefit>Dein Lernstand und deine Pläne bleiben erhalten</Benefit>
 						<Benefit>Auf allen Geräten mit deinem Dayova-Konto nutzbar</Benefit>
 					</View>
 
-					<View className="gap-3" accessibilityRole="radiogroup">
+					<View
+						className="gap-3"
+						accessibilityRole="radiogroup"
+						accessibilityLabel="Tarif auswählen"
+					>
 						<SubscriptionPlanCard
 							disabled={isLoadingPlans || isPurchasing || !annualPlan}
 							description={getPlanDescription(annualPlan, isLoadingPlans)}
@@ -318,15 +310,11 @@ export function SubscriptionScreen() {
 					</View>
 
 					{error || !storeClient || (!isLoadingPlans && plans.length === 0) ? (
-						<View
-							className="mt-4 gap-3 rounded-3xl px-4 py-4"
-							style={errorSurfaceStyle}
-						>
+						<View className="mt-4 gap-3 rounded-3xl border border-border bg-card px-4 py-4">
 							<Text
 								accessibilityLiveRegion="polite"
 								accessibilityRole="alert"
-								className="text-center text-body-3"
-								style={errorTextStyle}
+								className="text-center text-body-3 text-destructive"
 								selectable
 							>
 								{error ??
@@ -340,16 +328,13 @@ export function SubscriptionScreen() {
 										ref={buttonRef}
 										variant="neutral"
 										size="sm"
-										style={subscribeActionStyle}
 										accessibilityLabel="Support kontaktieren"
 										accessibilityHint="Öffnet einen E-Mail-Entwurf an das Dayova-Team."
 										accessibilityState={{ busy }}
 										disabled={busy}
 										onPress={onPress}
 									>
-										<Text style={onDarkActionTextStyle}>
-											Support kontaktieren
-										</Text>
+										<Text>Support kontaktieren</Text>
 									</Button>
 								)}
 							</SupportContact>
@@ -362,13 +347,11 @@ export function SubscriptionScreen() {
 						disabled={
 							isLoadingPlans || isPurchasing || !storeClient || !selectedPlan
 						}
-						variant="neutral"
-						style={subscribeActionStyle}
 						testID="subscription-checkout-button"
 						onPress={() => void purchase()}
 					>
 						{isLoadingPlans || isPurchasing ? (
-							<ActivityIndicator color={WHITE} />
+							<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
 						) : (
 							<Text className="text-white">
 								{getStoreSubscribeLabel(process.env.EXPO_OS)}
@@ -376,7 +359,7 @@ export function SubscriptionScreen() {
 						)}
 					</Button>
 
-					<Text className="mt-3 text-center text-body-4 text-white/85">
+					<Text className="mt-3 text-center text-body-4 text-secondary-text">
 						Das Abo verlängert sich automatisch, sofern du es nicht spätestens
 						24 Stunden vor Ablauf in {STORE_NAME} kündigst.
 					</Text>
@@ -393,12 +376,12 @@ export function SubscriptionScreen() {
 						onPress={() => void restore()}
 						testID="restore-purchases-link"
 					>
-						<Text className="text-body-4 text-white underline">
+						<Text className="text-body-4 text-secondary-text underline">
 							Käufe wiederherstellen
 						</Text>
 					</FeedbackPressable>
 
-					<View className="flex-row flex-wrap justify-center gap-x-4 gap-y-2 px-2 pt-5">
+					<View className="flex-row flex-wrap items-center justify-center gap-x-4 border-border border-t pt-3">
 						<SupportContact context="Abonnement">
 							{({ onPress, busy, buttonRef }) => (
 								<FeedbackPressable
@@ -410,7 +393,7 @@ export function SubscriptionScreen() {
 									className="min-h-12 justify-center"
 									onPress={onPress}
 								>
-									<Text className="text-body-4 text-white underline">
+									<Text className="text-body-4 text-secondary-text underline">
 										Support
 									</Text>
 								</FeedbackPressable>
@@ -432,19 +415,20 @@ export function SubscriptionScreen() {
 							onOpen={openLink}
 						/>
 					</View>
-				</View>
+				</PortraitContent>
 			</ScrollView>
 		</View>
 	);
 }
 
 function Benefit({ children }: { children: string }) {
+	const { colors } = useDayovaTheme();
 	return (
 		<View className="flex-row items-start gap-3">
-			<View className="mt-0.5 h-5 w-5 items-center justify-center rounded-full bg-white">
-				<Check size={13} color={BRAND_COLORS.primaryStrong} strokeWidth={3} />
+			<View className="mt-0.5 h-5 w-5 items-center justify-center">
+				<Check size={13} color={colors.primary} strokeWidth={3} />
 			</View>
-			<Text className="flex-1 text-body-4 text-white">{children}</Text>
+			<Text className="flex-1 text-body-3 text-text">{children}</Text>
 		</View>
 	);
 }
@@ -461,11 +445,12 @@ function LegalLink({
 	return (
 		<FeedbackPressable
 			accessibilityRole="link"
+			className="min-h-12 justify-center"
 			disabled={!url}
 			hitSlop={8}
 			onPress={() => void onOpen(url)}
 		>
-			<Text className="text-body-4 text-white underline">{label}</Text>
+			<Text className="text-body-4 text-secondary-text underline">{label}</Text>
 		</FeedbackPressable>
 	);
 }
