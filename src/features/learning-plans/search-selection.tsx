@@ -16,7 +16,7 @@ import { useDayovaTheme } from "~/lib/theme";
 
 const ChipWidthContext = createContext<number | undefined>(undefined);
 
-/** Keep selections on one row and reveal newly appended choices after layout. */
+/** Reveal appended choices and keep the viewport in bounds after removals. */
 export function SearchSelectionRow({
 	children,
 	count,
@@ -28,6 +28,7 @@ export function SearchSelectionRow({
 }) {
 	const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
 	const previousCount = useRef(count);
+	const offset = useRef(0);
 	const [width, setWidth] = useState<number>();
 	const reduceMotion = useReducedMotion();
 	return (
@@ -40,10 +41,24 @@ export function SearchSelectionRow({
 			className="mt-1 grow-0"
 			contentContainerStyle={{ alignItems: "center", gap: 8 }}
 			onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
-			onContentSizeChange={() => {
+			onScroll={(event) => {
+				offset.current = event.nativeEvent.contentOffset.x;
+			}}
+			scrollEventThrottle={16}
+			onContentSizeChange={(contentWidth) => {
 				const added = count > previousCount.current;
+				const removed = count < previousCount.current;
 				previousCount.current = count;
 				if (added) scroll.current?.scrollToEnd({ animated: !reduceMotion });
+				else if (removed && width !== undefined) {
+					// Android can retain the old offset after content shrinks, leaving
+					// the remaining chips clipped or entirely outside the viewport.
+					offset.current = Math.max(
+						0,
+						Math.min(offset.current, contentWidth - width),
+					);
+					scroll.current?.scrollTo({ x: offset.current, animated: false });
+				}
 			}}
 		>
 			<ChipWidthContext value={width}>{children}</ChipWidthContext>
