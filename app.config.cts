@@ -21,17 +21,11 @@ if (!["development", "preview", "production"].includes(APP_VARIANT)) {
 
 const isProduction = APP_VARIANT === "production";
 const isCiValidation = process.env.DAYOVA_CI_VALIDATION === "true";
-if (
-	isCiValidation &&
-	(isProduction ||
-		!process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.startsWith("pk_test_") ||
-		process.env.EXPO_PUBLIC_CONVEX_URL !==
-			"https://resilient-pika-316.eu-west-1.convex.cloud" ||
-		Boolean(process.env.EXPO_PUBLIC_POSTHOG_API_KEY?.trim()))
-) {
-	throw new Error(
-		"CI validation requires the reviewed development Clerk/Convex configuration with analytics disabled.",
-	);
+if (isCiValidation) {
+	const {
+		previewConfiguration,
+	}: typeof import("./scripts/ci-preview-config.cjs") = require("./scripts/ci-preview-config.cjs");
+	previewConfiguration(process.env);
 }
 const isInternalValidation = process.env.DAYOVA_INTERNAL_VALIDATION === "true";
 const isValidationTestFlight =
