@@ -1,10 +1,8 @@
 import { View } from "react-native";
 import { IntroPhoneFrame } from "~/components/onboarding/intro-phone-frame";
 import { Text } from "~/components/ui/text";
-import {
-	MaterialUploadActionCard,
-	MaterialUploadStepLead,
-} from "~/features/learning-plans/learning-plan-setup-steps";
+import { MaterialUploadStepLead } from "~/features/learning-plans/learning-plan-setup-steps";
+import { MaterialUploadGrid } from "~/features/learning-plans/material-upload-grid";
 export function IntroUploadArtwork({
 	width = 345,
 	height = 550,
@@ -38,14 +36,7 @@ export function IntroUploadArtwork({
 				</View>
 			</View>
 			<MaterialUploadStepLead mode="artwork" />
-			<MaterialUploadActionCard hasSchoolMaterial={false} mode="artwork" />
-			<Text
-				allowFontScaling={false}
-				className="mt-4 font-poppins text-body-4 text-secondary-text"
-			>
-				Dein Lernplan-Entwurf bleibt gespeichert. Schulmaterial kannst du später
-				ergänzen.
-			</Text>
+			<MaterialUploadGrid mode="artwork" />
 		</IntroPhoneFrame>
 	);
 }

@@ -1,4 +1,10 @@
-import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
+import {
+	type RequestForQueries,
+	useAction,
+	useConvexAuth,
+	useMutation,
+	useQueries,
+} from "convex/react";
 import * as SecureStore from "expo-secure-store";
 import {
 	createContext,
@@ -27,8 +33,6 @@ const ACCESS_QUERY_TIMEOUT_MS = 1_500;
 const ACCESS_CLOCK_INTERVAL_MS = 30_000;
 const MAX_TIMER_DELAY_MS = 2_147_000_000;
 
-export type { AccessSnapshot } from "~/lib/access-policy";
-
 type CachedAccess = {
 	access: AccessSnapshot;
 	verifiedAt: number;
@@ -38,6 +42,9 @@ type AccessContextValue = {
 	access: AccessSnapshot | undefined;
 	activateTrial: (termsVersion: string) => Promise<void>;
 	isAccessLoading: boolean;
+	isAccessUnavailable: boolean;
+	isAccessRetrying: boolean;
+	retryAccess: () => void;
 	refreshPaidAccess: () => Promise<boolean>;
 };
 
@@ -88,16 +95,6 @@ const writeCachedAccess = async (
 	await SecureStore.setItemAsync(key, serialized);
 };
 
-const getExpiredOfflineSnapshot = (
-	cachedAccess: CachedAccess | null,
-): AccessSnapshot => ({
-	canUseApp: false,
-	state: "expired",
-	...(cachedAccess?.access.trialExpiresAt
-		? { trialExpiresAt: cachedAccess.access.trialExpiresAt }
-		: {}),
-});
-
 export function AccessProvider({ children }: { children: ReactNode }) {
 	const {
 		user,
@@ -113,9 +110,10 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 		appUserId: string;
 		value: CachedAccess | null;
 	} | null>(null);
-	const [timedOutAppUserId, setTimedOutAppUserId] = useState<string | null>(
-		null,
-	);
+	const [failedVerification, setFailedVerification] = useState<{
+		appUserId: string;
+		queryNow: number;
+	} | null>(null);
 	const [lastVerified, setLastVerified] = useState<{
 		appUserId: string | null;
 		value: CachedAccess | null;
@@ -128,10 +126,34 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 			isConvexUserSynced &&
 			isOnboardingSettled(onboardingCompletionStatus),
 	);
-	const serverAccess = useQuery(
-		api.entitlements.getMyAccess,
-		canQuery ? { now: queryNow } : "skip",
-	) as AccessSnapshot | undefined;
+	// Unlike useQuery, useQueries returns query errors so this boundary can
+	// recover without treating an unavailable verification as an expired trial.
+	const accessQueries = useMemo((): RequestForQueries => {
+		if (!canQuery) return {};
+		return {
+			access: { query: api.entitlements.getMyAccess, args: { now: queryNow } },
+		};
+	}, [canQuery, queryNow]);
+	const accessResult = useQueries(accessQueries).access as
+		| AccessSnapshot
+		| Error
+		| undefined;
+	const accessError = accessResult instanceof Error ? accessResult : null;
+	const serverAccess = accessResult instanceof Error ? undefined : accessResult;
+	// Keep recovery visible during retries, but reset it when this account's
+	// verification succeeds or querying is suspended (e.g. account switching).
+	if (
+		failedVerification &&
+		(serverAccess || !canQuery || failedVerification.appUserId !== appUserId)
+	) {
+		setFailedVerification(null);
+	} else if (
+		accessError &&
+		appUserId &&
+		failedVerification?.queryNow !== queryNow
+	) {
+		setFailedVerification({ appUserId, queryNow });
+	}
 	// Retain only results observed for this account in this mounted session.
 	// Reset during render so an account change cannot expose the previous result.
 	if (lastVerified.appUserId !== appUserId) {
@@ -210,17 +232,19 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
 	useEffect(() => {
 		if (serverAccess || !appUserId || !canQuery) return;
+		if (accessError) {
+			logDiagnosticError("Unable to verify access.", accessError, {
+				source: "access.verify",
+				level: "warn",
+			});
+			return;
+		}
 		const timeout = setTimeout(
-			() => setTimedOutAppUserId(appUserId),
+			() => setFailedVerification({ appUserId, queryNow }),
 			ACCESS_QUERY_TIMEOUT_MS,
 		);
-		return () => {
-			clearTimeout(timeout);
-			setTimedOutAppUserId((current) =>
-				current === appUserId ? null : current,
-			);
-		};
-	}, [appUserId, canQuery, serverAccess]);
+		return () => clearTimeout(timeout);
+	}, [accessError, appUserId, canQuery, queryNow, serverAccess]);
 
 	useEffect(() => {
 		if (!appUserId || !canQuery || !serverAccess) return;
@@ -244,8 +268,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 			: null;
 	const isCacheLoaded =
 		!user || (loadedCache !== null && loadedCache.appUserId === user.clerkId);
-	const didQueryTimeout =
-		canQuery && Boolean(user) && timedOutAppUserId === user?.clerkId;
+	const hasVerificationFailed =
+		canQuery && failedVerification?.appUserId === appUserId;
 	const offlineAccess = useMemo(() => {
 		if (!cachedAccess) return null;
 		return getOfflineAccess({
@@ -254,27 +278,43 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 			verifiedAt: cachedAccess.verifiedAt,
 		})
 			? cachedAccess.access
-			: getExpiredOfflineSnapshot(cachedAccess);
+			: null;
 	}, [cachedAccess, now]);
 
 	const refreshAccess = retainedAccess
 		? !retainedAccess.access.canUseApp ||
 			getOfflineAccess({ ...retainedAccess, now })
 			? retainedAccess.access
-			: getExpiredOfflineSnapshot(retainedAccess)
+			: undefined
 		: undefined;
 	const access =
 		(canQuery ? serverAccess : undefined) ??
 		refreshAccess ??
-		(isCacheLoaded && didQueryTimeout
-			? (offlineAccess ?? getExpiredOfflineSnapshot(null))
+		(isCacheLoaded && (hasVerificationFailed || accessError)
+			? (offlineAccess ?? undefined)
 			: undefined);
+	const isAccessUnavailable = Boolean(
+		canQuery &&
+			isCacheLoaded &&
+			!access &&
+			(hasVerificationFailed || accessError),
+	);
+	const isAccessRetrying =
+		isAccessUnavailable &&
+		!accessError &&
+		failedVerification?.queryNow !== queryNow;
 	const isAccessLoading =
 		Boolean(user) &&
 		!isSessionLoading &&
 		isOnboardingSettled(onboardingCompletionStatus) &&
 		!access &&
-		(!isCacheLoaded || !didQueryTimeout);
+		!isAccessUnavailable;
+
+	const retryAccess = useCallback(() => {
+		const refreshedAt = Date.now();
+		setNow(refreshedAt);
+		setQueryNow((previous) => Math.max(refreshedAt, previous + 1));
+	}, []);
 
 	const activateTrial = useCallback(
 		async (termsVersion: string) => {
@@ -299,9 +339,20 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 			access,
 			activateTrial,
 			isAccessLoading,
+			isAccessUnavailable,
+			isAccessRetrying,
+			retryAccess,
 			refreshPaidAccess,
 		}),
-		[access, activateTrial, isAccessLoading, refreshPaidAccess],
+		[
+			access,
+			activateTrial,
+			isAccessLoading,
+			isAccessUnavailable,
+			isAccessRetrying,
+			retryAccess,
+			refreshPaidAccess,
+		],
 	);
 
 	return (

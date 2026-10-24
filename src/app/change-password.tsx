@@ -1,6 +1,10 @@
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
-import { ActivityIndicator, Keyboard, type TextInput } from "react-native";
+import {
+	ActivityIndicator,
+	Keyboard,
+	type TextInputInstance,
+} from "react-native";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
 import { ErrorMessage } from "~/components/ui/error-message";
@@ -34,8 +38,8 @@ export default function ChangePasswordScreen() {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isComplete, setIsComplete] = useState(false);
 	const requestInFlightRef = useRef(false);
-	const newPasswordInputRef = useRef<TextInput | null>(null);
-	const confirmPasswordInputRef = useRef<TextInput | null>(null);
+	const newPasswordInputRef = useRef<TextInputInstance | null>(null);
+	const confirmPasswordInputRef = useRef<TextInputInstance | null>(null);
 	const isBusy = isLoading || isSubmitting;
 	const canSubmit =
 		currentPassword.length > 0 &&

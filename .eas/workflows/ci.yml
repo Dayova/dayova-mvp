@@ -2,88 +2,116 @@ name: Continuous Integration
 
 on:
   pull_request:
-    branches:
-      - main
     types:
       - opened
-      - ready_for_review
       - reopened
       - synchronize
   push:
     branches:
       - main
       - gh-readonly-queue/main/**
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      native_checks:
+        type: boolean
+        default: false
+  schedule:
+    - cron: '23 3 * * 1'
 
 concurrency:
   cancel_in_progress: true
-  group: ${{ workflow.filename }}-${{ github.ref }}
+  group: ${{ workflow.filename }}-${{ github.event_name }}-${{ github.ref }}
 
 defaults:
   tools:
-    node: "24.18.0"
-    pnpm: "11.15.1"
+    node: '24.18.0'
+    pnpm: '11.15.1'
 
 jobs:
   source_gate:
     name: CI source eligibility
     type: doc
-    # Keep the repository boundary separate to fit EAS's 250-character conditions.
     if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.id && github.event.pull_request.head.repo.id == github.event.pull_request.base.repo.id) }}
     params:
-      md: "CI source is eligible: pull requests must originate from this repository."
+      md: 'CI source is eligible: pull requests must originate from this repository.'
 
   contributor_gate:
     name: CI contributor eligibility
     type: doc
     needs:
       - source_gate
-    # Separate contributor trust from branch routing to fit EAS's condition limit.
     if: ${{ github.event_name != 'pull_request' || contains('OWNER,MEMBER,COLLABORATOR', github.event.pull_request.author_association) }}
     params:
-      md: "CI contributor is eligible: pull requests must come from trusted contributors."
+      md: 'CI contributor is eligible: pull requests must come from trusted contributors.'
 
   production_fingerprint:
     name: Production native fingerprints
     type: fingerprint
     environment: production
-    # checks supplies the contributor trust gate; production inputs stay off forks.
+    # quality supplies contributor trust; production inputs stay off forks.
     needs:
-      - checks
-    if: ${{ (github.event_name == 'push' && github.ref_name == 'main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.id && github.event.pull_request.head.repo.id == github.event.pull_request.base.repo.id) }}
+      - quality
+    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_name == 'main' && github.event.before) }}
 
-  checks:
-    name: Lint, typecheck, and test
+  quality:
+    name: Quality checks
     type: custom
     runs_on: linux-medium
     needs:
       - contributor_gate
+    env:
+      CI_EVENT_NAME: ${{ github.event_name == 'push' && !github.event.before && !startsWith(github.ref_name || 'manual', 'gh-readonly-queue/main/') && 'workflow_dispatch' || github.event_name }}
+      CI_REF_NAME: ${{ github.ref_name || 'manual' }}
+      CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || 'unavailable' }}
+      CI_NATIVE_FORCE: ${{ (inputs.native_checks == true || inputs.native_checks == 'true') && 'true' || 'false' }}
+      CI_COVERAGE: ${{ github.event_name == 'schedule' && 'true' || 'false' }}
+      CI_JEST_WORKERS: "2"
+    outputs:
+      native_required: ${{ steps.native_scope.outputs.required }}
     # This custom job uses production scope; fork code must not reach checkout.
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || (github.event_name == 'push' && (github.ref_name == 'main' || startsWith(github.ref_name, 'gh-readonly-queue/main/'))) }}
+    if: ${{ github.event_name != 'push' || github.ref_name == github.sha || github.ref_name == 'main' || startsWith(github.ref_name || 'manual', 'gh-readonly-queue/main/') }}
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules
+      - id: native_scope
+        name: Determine native validation scope
+        run: |
+          mkdir -p .maestro/artifacts/ci
+          node scripts/ci-native-changes.mjs > .maestro/artifacts/ci/native-scope.json
+          cat .maestro/artifacts/ci/native-scope.json
+          set-output required "$(node -p 'JSON.parse(require("fs").readFileSync(".maestro/artifacts/ci/native-scope.json", "utf8")).required')"
+      - name: Check formatting
+        run: pnpm format:check
       - name: Run lint
         run: pnpm lint
+      - name: Check unused code and dependencies
+        run: pnpm check:unused
+      - name: Validate repository skills
+        run: pnpm skills:validate
       - name: Run typecheck
         run: pnpm typecheck
       - name: Run tests
         env:
-          EAS_BUILD: "false"
-        run: pnpm test
+          EAS_BUILD: 'false'
+        run: pnpm test:ci
+      - uses: eas/upload_artifact
+        if: ${{ always() }}
+        with:
+          type: other
+          name: quality-test-results
+          path: .maestro/artifacts/ci
 
   ota_checks:
     name: Production OTA gates
     type: custom
     runs_on: linux-medium
     needs:
-      - checks
+      - quality
       - production_fingerprint
-    if: ${{ (github.event_name == 'push' && github.ref_name == 'main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.id && github.event.pull_request.head.repo.id == github.event.pull_request.base.repo.id) }}
+    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_name == 'main' && github.event.before) }}
     environment: production
     env:
       APP_VARIANT: production
-      EAS_BUILD_PLATFORM: ios
       OTA_ANDROID_FINGERPRINT: ${{ needs.production_fingerprint.outputs.android_fingerprint_hash }}
       OTA_IOS_FINGERPRINT: ${{ needs.production_fingerprint.outputs.ios_fingerprint_hash }}
     outputs:
@@ -94,111 +122,112 @@ jobs:
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules
-      - name: Verify iOS production export
-        run: pnpm exec expo export --platform ios --output-dir dist/ios
-      - name: Verify Android production export
-        env:
-          EAS_BUILD_PLATFORM: android
-        run: pnpm exec expo export --platform android --output-dir dist/android
+      - name: Export and verify both production platforms
+        run: node scripts/production-export.mjs
       - id: ota_guard
         name: Check OTA safety against distributed binaries
+        run: |-
+          source scripts/ci-ota-report.sh
+      - name: Require a completed OTA assessment
+        run: test "${{ steps.ota_guard.outputs.ota_failure_kind }}" != "preflight"
+      - uses: eas/upload_artifact
+        with:
+          type: other
+          name: production-export
+          path: dist/production
+
+  checks:
+    # Preserve the required Expo check context; skipped prerequisites must fail.
+    name: Lint, typecheck, and test
+    type: custom
+    environment: production
+    runs_on: linux-medium
+    after:
+      - quality
+      - production_fingerprint
+      - ota_checks
+      - android_smoke
+      - ios_smoke
+      - authenticated_smoke
+      - preview_backend
+    env:
+      PREVIEW_STATUS: ${{ after.preview_backend.status }}
+      QUALITY_STATUS: ${{ after.quality.status }}
+      FINGERPRINT_STATUS: ${{ after.production_fingerprint.status }}
+      OTA_STATUS: ${{ after.ota_checks.status }}
+      REQUIRE_OTA: ${{ (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_name == 'main' && github.event.before)) && 'true' || 'false' }}
+      REQUIRE_NATIVE: ${{ after.quality.outputs.native_required || 'false' }}
+      ANDROID_STATUS: ${{ after.android_smoke.status }}
+      IOS_STATUS: ${{ after.ios_smoke.status }}
+      AUTH_STATUS: ${{ after.authenticated_smoke.status }}
+      APP_VARIANT: production
+      CI_SOURCE_SHA: ${{ github.sha || 'unavailable' }}
+      OTA_IOS_FINGERPRINT: ${{ after.production_fingerprint.outputs.ios_fingerprint_hash || 'unavailable' }}
+      OTA_ANDROID_FINGERPRINT: ${{ after.production_fingerprint.outputs.android_fingerprint_hash || 'unavailable' }}
+    steps:
+      - name: Require successful validation
         run: |
           set -euo pipefail
-          ota_exit_code=0
-          if ota_report="$(node scripts/ota-safety.mjs --json)"; then
-            ota_safe=true
-          else
-            ota_exit_code=$?
-            ota_safe=false
+          test "$QUALITY_STATUS" = success
+          if [ "$REQUIRE_OTA" = true ]; then
+            test "$FINGERPRINT_STATUS" = success
+            test "$OTA_STATUS" = success
           fi
+          if [ "$REQUIRE_NATIVE" = true ]; then
+            test "$PREVIEW_STATUS" = success
+            test "$ANDROID_STATUS" = success
+            test "$IOS_STATUS" = success
+            test "$AUTH_STATUS" = success
+          fi
+      - uses: eas/checkout
+        if: ${{ success() && env.REQUIRE_OTA == 'true' }}
+      - uses: eas/download_artifact
+        id: verified_export
+        if: ${{ success() && env.REQUIRE_OTA == 'true' }}
+        with:
+          name: production-export
+      - name: Verify artifact transfer and provenance
+        if: ${{ success() && env.REQUIRE_OTA == 'true' }}
+        run: node scripts/ci-verify-export.mjs "${{ steps.verified_export.outputs.artifact_path }}"
 
-          # Validate the complete consumer contract before exposing any verdict.
-          OTA_REPORT="$ota_report" OTA_EXIT_CODE="$ota_exit_code" node -e '
-            const report = JSON.parse(process.env.OTA_REPORT);
-            if (!report || typeof report !== "object" ||
-                typeof report.safe !== "boolean" ||
-                ![null, "compatibility", "preflight"].includes(report.failureKind) ||
-                report.safe !== (report.failureKind === null) ||
-                Number(process.env.OTA_EXIT_CODE) !== (report.safe ? 0 : 1) ||
-                ["reason", "baseline", "currentFingerprints"].some(key =>
-                  typeof report[key] !== "string" || report[key].trim() === "")) {
-              throw new Error("Invalid or incomplete OTA safety report");
-            }
-          '
-
-          printf '%s\n' "$ota_report"
-          ota_reason="$(OTA_REPORT="$ota_report" node -p 'JSON.parse(process.env.OTA_REPORT).reason.replace(/\b[a-f0-9]{40}\b/g, hash => "`" + hash + "`")')"
-          ota_baseline="$(OTA_REPORT="$ota_report" node -p 'JSON.parse(process.env.OTA_REPORT).baseline')"
-          ota_current_fingerprints="$(OTA_REPORT="$ota_report" node -p 'JSON.parse(process.env.OTA_REPORT).currentFingerprints')"
-          ota_failure_kind="$(OTA_REPORT="$ota_report" node -p 'JSON.parse(process.env.OTA_REPORT).failureKind')"
-
-          set-output ota_safe "$ota_safe"
-          set-output ota_reason "$ota_reason"
-          set-output ota_baseline "$ota_baseline"
-          set-output ota_current_fingerprints "$ota_current_fingerprints"
-
-          # Native incompatibility is advisory on PRs; an incomplete check is not.
-          set-output ota_failure_kind "$ota_failure_kind"
-      - name: Require a completed PR OTA assessment
-        if: ${{ github.event_name == 'pull_request' }}
-        run: test "${{ steps.ota_guard.outputs.ota_failure_kind }}" != "preflight"
+  pr_ota_report_data:
+    name: Render PR OTA compatibility report
+    type: custom
+    environment: development
+    runs_on: linux-medium
+    after:
+      - contributor_gate
+      - production_fingerprint
+      - ota_checks
+    if: ${{ github.event_name == 'pull_request' && after.contributor_gate.status == 'success' }}
+    env:
+      CI_OTA_CONTEXT: ${{ toJSON(after) }}
+      CI_OTA_SOURCE_SHA: ${{ github.sha }}
+      CI_OTA_RUN_URL: ${{ workflow.url }}
+    outputs:
+      markdown: ${{ steps.render.outputs.markdown }}
+    steps:
+      - uses: eas/checkout
+      - id: render
+        run: |
+          report="$(node scripts/ci-pr-ota-report.mjs)"
+          set-output markdown "$report"
 
   pr_ota_report:
     name: PR OTA compatibility report
     type: doc
-    after: &pr_ota_report_dependencies
-      - production_fingerprint
-      - ota_checks
+    needs: &pr_ota_report_dependencies [pr_ota_report_data]
     if: ${{ github.event_name == 'pull_request' }}
     params:
-      md: &pr_ota_report_markdown |
-        <!-- dayova-ota-report -->
-        ## 📱 OTA compatibility
-
-        **Checked commit:** `${{ github.sha }}` · 🔎 [View EAS run](${{ workflow.url }})
-
-        **This report applies only to the checked commit.** If the PR's latest commit differs, this result is **outdated** and OTA compatibility for the latest commit is **unconfirmed** until this comment updates.
-
-        ### ${{ after.ota_checks.status == 'success' && (after.ota_checks.outputs.ota_safe == 'true' && '✅ OTA-compatible' || after.ota_checks.outputs.ota_safe == 'false' && '⚠️ Not OTA-compatible') || '❓ Compatibility not confirmed' }}
-
-        ${{ after.ota_checks.status == 'success' && (after.ota_checks.outputs.ota_safe == 'true' && 'This commit is compatible with the recorded app builds.' || after.ota_checks.outputs.ota_safe == 'false' && 'This commit cannot ship via OTA to the recorded app builds. A verified native release or compatibility review is needed.') || 'The assessment failed or was skipped. Open the EAS run to see what needs attention.' }}
-
-        | Check | Status |
-        | --- | --- |
-        | 🧬 Native fingerprints | ${{ after.production_fingerprint.status == 'success' && '✅ Completed' || after.production_fingerprint.status == 'failure' && '❌ Failed' || '⏭️ Not completed' }} |
-        | 📦 iOS & Android exports + OTA assessment | ${{ after.ota_checks.status == 'success' && '✅ Completed' || after.ota_checks.status == 'failure' && '❌ Failed' || '⏭️ Not completed' }} |
-
-        💡 **Advisory for merging.** Native changes can still merge. Nothing is published by this PR check; main rechecks the merged commit before publishing.
-
-        <details>
-        <summary>🛠️ Technical details — reason, builds & fingerprints</summary>
-
-        **Reason:** ${{ after.ota_checks.outputs.ota_reason || 'Assessment did not complete. Production checks run only for trusted, same-repository PRs after quality checks pass.' }}
-
-        **📦 Distributed builds:** `${{ after.ota_checks.outputs.ota_baseline || 'Not assessed' }}`
-
-        **🧬 Current fingerprints**
-
-        | Platform | Fingerprint |
-        | --- | --- |
-        | iOS | `${{ after.production_fingerprint.outputs.ios_fingerprint_hash || 'Not assessed' }}` |
-        | Android | `${{ after.production_fingerprint.outputs.android_fingerprint_hash || 'Not assessed' }}` |
-
-        **📂 Repositories**
-
-        | Source | Target |
-        | --- | --- |
-        | `${{ github.event.pull_request.head.repo.full_name || 'Unavailable' }}` | `${{ github.event.pull_request.base.repo.full_name || 'Unavailable' }}` |
-
-        </details>
+      md: ${{ needs.pr_ota_report_data.outputs.markdown }}
 
   pr_ota_comment:
     name: Post OTA report to GitHub PR
     type: github-comment
-    after: *pr_ota_report_dependencies
+    needs: *pr_ota_report_dependencies
     if: ${{ github.event_name == 'pull_request' }}
     params:
-      payload: *pr_ota_report_markdown
+      payload: ${{ needs.pr_ota_report_data.outputs.markdown }}
 
   deploy_convex:
     name: Deploy Convex
@@ -206,7 +235,7 @@ jobs:
     runs_on: linux-medium
     needs:
       - checks
-    if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+    if: ${{ github.event_name == 'push' && github.ref_name == 'main' && github.event.before }}
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules
@@ -221,7 +250,7 @@ jobs:
       - ota_checks
       - production_fingerprint
       - deploy_convex
-    if: ${{ github.event_name == 'push' && github.ref_name == 'main' && needs.ota_checks.outputs.ota_safe == 'true' }}
+    if: ${{ github.event_name == 'push' && github.ref_name == 'main' && github.event.before && needs.ota_checks.outputs.ota_safe == 'true' }}
     environment: production
     env:
       APP_VARIANT: production
@@ -231,17 +260,23 @@ jobs:
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules
+      - uses: eas/download_artifact
+        id: verified_export
+        with:
+          name: production-export
       - name: Verify production manifest and distributed-binary compatibility
         run: node scripts/ota-safety.mjs
-      - name: Export and publish both production platforms
-        run: node scripts/publish-production-ota.mjs
+      - name: Publish the verified production export
+        run: |
+          export OTA_EXPORT_DIRECTORY="${{ steps.verified_export.outputs.artifact_path }}"
+          node scripts/publish-production-ota.mjs
 
   ota_skipped:
     name: OTA update skipped
     type: doc
     needs:
       - ota_checks
-    if: ${{ github.event_name == 'push' && github.ref_name == 'main' && needs.ota_checks.outputs.ota_safe != 'true' }}
+    if: ${{ github.event_name == 'push' && github.ref_name == 'main' && github.event.before && needs.ota_checks.outputs.ota_safe != 'true' }}
     params:
       md: |
         ## OTA update skipped
@@ -255,3 +290,180 @@ jobs:
         **Current fingerprints:** ${{ needs.ota_checks.outputs.ota_current_fingerprints }}
 
         This block persists across later commits until the production manifest and native fingerprints match verified distributed binaries.
+  preview_backend:
+    name: Deploy isolated candidate Convex backend
+    type: custom
+    environment: development
+    runs_on: linux-medium
+    needs:
+      - quality
+    if: ${{ needs.quality.outputs.native_required == 'true' }}
+    env:
+      CI_SOURCE_SHA: ${{ github.sha || 'unavailable' }}
+    outputs:
+      url: ${{ steps.preview.outputs.url }}
+      name: ${{ steps.preview.outputs.name }}
+      source_sha: ${{ steps.preview.outputs.source_sha }}
+    steps:
+      - id: preview
+        uses: ./.eas/functions/convex-preview
+
+  native_fingerprint:
+    name: Test native fingerprints
+    type: fingerprint
+    environment: development
+    needs:
+      - preview_backend
+      - quality
+      - authenticated_smoke
+    if: ${{ needs.quality.outputs.native_required == 'true' }}
+    env: &ci_preview_env
+      EXPO_PUBLIC_CONVEX_URL: ${{ needs.preview_backend.outputs.url }}
+      CI_CONVEX_PREVIEW_NAME: ${{ needs.preview_backend.outputs.name }}
+      CI_CONVEX_SOURCE_SHA: ${{ needs.preview_backend.outputs.source_sha }}
+      APP_VARIANT: preview
+      DAYOVA_CI_VALIDATION: 'true'
+      EXPO_NO_DOTENV: '1'
+  android_get_build:
+    name: android matching native artifact
+    type: get-build
+    needs:
+      - native_fingerprint
+    params:
+      platform: android
+      profile: ci
+      fingerprint_hash: ${{ needs.native_fingerprint.outputs.android_fingerprint_hash }}
+      wait_for_in_progress: true
+  android_build:
+    hooks: &ci_preview_hooks
+      before_install_node_modules:
+        - run: node scripts/ci-preview-config.cjs pin-build
+    name: android native compile
+    env: *ci_preview_env
+    type: build
+    needs:
+      - preview_backend
+      - android_get_build
+    if: ${{ !needs.android_get_build.outputs.build_id }}
+    params:
+      platform: android
+      profile: ci
+  android_repack:
+    hooks: *ci_preview_hooks
+    name: android current bundle on verified native runtime
+    type: repack
+    environment: development
+    env: *ci_preview_env
+    needs:
+      - preview_backend
+      - android_get_build
+    if: ${{ needs.android_get_build.outputs.build_id }}
+    params:
+      build_id: ${{ needs.android_get_build.outputs.build_id }}
+      embed_bundle_assets: true
+  android_smoke:
+    name: android embedded app smoke
+    type: custom
+    environment: development
+    runs_on: linux-medium-nested-virtualization
+    after:
+      - preview_backend
+      - native_fingerprint
+      - android_build
+      - android_repack
+    if: ${{ after.native_fingerprint.status == 'success' }}
+    env:
+      APP_VARIANT: preview
+      DAYOVA_CI_VALIDATION: 'true'
+      EXPO_NO_DOTENV: '1'
+      EXPO_PUBLIC_CONVEX_URL: ${{ after.preview_backend.outputs.url }}
+      CI_CONVEX_PREVIEW_NAME: ${{ after.preview_backend.outputs.name }}
+      CI_CONVEX_SOURCE_SHA: ${{ after.preview_backend.outputs.source_sha }}
+      MAESTRO_APP_ID: com.dayova.dev
+    steps:
+      - uses: eas/checkout
+      - uses: ./.eas/functions/device-smoke
+        with:
+          platform: android
+          build_id: ${{ after.android_repack.outputs.build_id || after.android_build.outputs.build_id }}
+  ios_get_build:
+    name: ios matching native artifact
+    type: get-build
+    needs:
+      - native_fingerprint
+    params:
+      platform: ios
+      profile: ci
+      fingerprint_hash: ${{ needs.native_fingerprint.outputs.ios_fingerprint_hash }}
+      simulator: true
+      wait_for_in_progress: true
+  ios_build:
+    hooks: *ci_preview_hooks
+    name: ios native compile
+    env: *ci_preview_env
+    type: build
+    needs:
+      - preview_backend
+      - ios_get_build
+    if: ${{ !needs.ios_get_build.outputs.build_id }}
+    params:
+      platform: ios
+      profile: ci
+  ios_repack:
+    hooks: *ci_preview_hooks
+    name: ios current bundle on verified native runtime
+    type: repack
+    environment: development
+    env: *ci_preview_env
+    needs:
+      - preview_backend
+      - ios_get_build
+    if: ${{ needs.ios_get_build.outputs.build_id }}
+    params:
+      build_id: ${{ needs.ios_get_build.outputs.build_id }}
+      embed_bundle_assets: true
+  ios_smoke:
+    name: ios embedded app smoke
+    type: custom
+    environment: development
+    runs_on: macos-medium
+    after:
+      - preview_backend
+      - native_fingerprint
+      - ios_build
+      - ios_repack
+    if: ${{ after.native_fingerprint.status == 'success' }}
+    env:
+      APP_VARIANT: preview
+      DAYOVA_CI_VALIDATION: 'true'
+      EXPO_NO_DOTENV: '1'
+      EXPO_PUBLIC_CONVEX_URL: ${{ after.preview_backend.outputs.url }}
+      CI_CONVEX_PREVIEW_NAME: ${{ after.preview_backend.outputs.name }}
+      CI_CONVEX_SOURCE_SHA: ${{ after.preview_backend.outputs.source_sha }}
+      MAESTRO_APP_ID: de.dayova.app-dev
+    steps:
+      - uses: eas/checkout
+      - uses: ./.eas/functions/device-smoke
+        with:
+          platform: ios
+          build_id: ${{ after.ios_repack.outputs.build_id || after.ios_build.outputs.build_id }}
+  authenticated_smoke:
+    name: Clerk and deployed Convex smoke
+    env: *ci_preview_env
+    type: custom
+    runs_on: linux-medium
+    environment: development
+    needs:
+      - preview_backend
+      - quality
+    if: ${{ needs.quality.outputs.native_required == 'true' }}
+    steps:
+      - uses: eas/checkout
+      - name: Verify real authentication and rejected anonymous access
+        run: node scripts/auth-smoke.mjs
+      - uses: eas/upload_artifact
+        if: ${{ always() }}
+        with:
+          type: other
+          name: authenticated-smoke-results
+          path: .maestro/artifacts/ci/auth-smoke.json

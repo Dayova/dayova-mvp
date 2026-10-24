@@ -30,12 +30,12 @@ import {
 	StyleSheet,
 	useWindowDimensions,
 	View,
+	type ViewInstance,
 } from "react-native";
-import { CloseButton } from "~/components/ui/close-button";
+import { DayovaSheetHeader } from "~/components/ui/dayova-sheet-header";
 import { InputComponentContext } from "~/components/ui/input";
 import { useSheetAccessibility } from "~/components/ui/sheet-accessibility";
 import { useSheetSafeAreaInsets } from "~/components/ui/sheet-safe-area";
-import { Text } from "~/components/ui/text";
 import { getContentSizeLayout } from "~/lib/content-size-layout";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
@@ -64,7 +64,7 @@ type DayovaSheetFrameProps = {
 	scrollable?: boolean;
 	closeAccessibilityLabel?: string;
 	accessibilityLabel?: string;
-	returnFocusRef?: RefObject<View | null>;
+	returnFocusRef?: RefObject<ViewInstance | null>;
 	contentClassName?: string;
 	maxWidth?: number;
 };
@@ -85,6 +85,10 @@ function SheetModalContainer({ children }: { children?: ReactNode }) {
 	);
 }
 
+/**
+ * Owns app-sheet sizing, scrolling, keyboard handling, dismissal, and modal focus.
+ * Shares compact, content-aware header chrome across app-owned sheets.
+ */
 function DayovaSheetFrame({
 	visible,
 	onClose,
@@ -105,7 +109,7 @@ function DayovaSheetFrame({
 	maxWidth = DEFAULT_MAX_SHEET_WIDTH,
 }: DayovaSheetFrameProps) {
 	const sheetRef = useRef<BottomSheetModal>(null);
-	const initialFocusRef = useRef<View>(null);
+	const initialFocusRef = useRef<ViewInstance>(null);
 	const initialFocusFrameRef = useRef<number | null>(null);
 	const didMoveFocusRef = useRef(false);
 	const didStartOpeningRef = useRef(false);
@@ -153,10 +157,11 @@ function DayovaSheetFrame({
 		accessibilityLabel ?? (typeof title === "string" ? title : "Dialog");
 
 	const moveAccessibilityFocus = useCallback(
-		(target: View | null | undefined) => {
+		(target: ViewInstance | null | undefined) => {
 			if (!target) return;
 			const reactTag = findNodeHandle(target);
-			if (reactTag !== null) AccessibilityInfo.setAccessibilityFocus(reactTag);
+			if (typeof reactTag === "number")
+				AccessibilityInfo.setAccessibilityFocus(reactTag);
 		},
 		[],
 	);
@@ -337,7 +342,6 @@ function DayovaSheetFrame({
 
 	const canShowCloseButton = showCloseButton && dismissible;
 	const hasHeader = Boolean(title || description || canShowCloseButton);
-	const hasSeparateCloseRow = fontScale >= 1.5 && canShowCloseButton;
 	const actions = useMemo(
 		() =>
 			footer ? (
@@ -391,49 +395,17 @@ function DayovaSheetFrame({
 					/>
 				) : null}
 				{hasHeader ? (
-					<View className="mb-6 gap-3" testID="dayova-sheet-header">
-						{hasSeparateCloseRow ? (
-							<View className="self-end">
-								<CloseButton
-									accessibilityLabel={closeAccessibilityLabel}
-									onPress={dismiss}
-								/>
-							</View>
-						) : null}
-						<View className="min-h-12 flex-row items-start gap-4">
-							{title ? (
-								<View
-									ref={initialFocusRef}
-									accessible
-									accessibilityLabel={accessibleTitle}
-									accessibilityRole="header"
-									className="min-w-0 flex-1"
-									collapsable={false}
-								>
-									<Text
-										accessible={false}
-										accessibilityRole="header"
-										className="pt-1 font-poppins font-semibold text-body-1 text-text"
-									>
-										{title}
-									</Text>
-								</View>
-							) : (
-								<View className="flex-1" />
-							)}
-							{canShowCloseButton && !hasSeparateCloseRow ? (
-								<CloseButton
-									accessibilityLabel={closeAccessibilityLabel}
-									onPress={dismiss}
-								/>
-							) : null}
-						</View>
-						{description ? (
-							<Text className="font-poppins text-body-3 text-secondary-text">
-								{description}
-							</Text>
-						) : null}
-					</View>
+					<DayovaSheetHeader
+						// Recheck native text fit when content, chrome or system sizing changes.
+						key={`${typeof title === "string" ? title : accessibleTitle}:${sheetWidth}:${fontScale}:${canShowCloseButton}`}
+						title={title}
+						description={description}
+						accessibleTitle={accessibleTitle}
+						initialFocusRef={initialFocusRef}
+						showCloseButton={canShowCloseButton}
+						closeAccessibilityLabel={closeAccessibilityLabel}
+						onClose={dismiss}
+					/>
 				) : null}
 				{children ? (
 					<View className={cn(contentClassName)}>{children}</View>

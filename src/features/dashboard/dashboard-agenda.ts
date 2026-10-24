@@ -15,44 +15,6 @@ export type DashboardAgendaItem = {
 	endMinutes: number | null;
 };
 
-export type DashboardWeekProgress = {
-	completedLearningSessions: number;
-	completedMinutesToday: number;
-	completionPercent: number;
-	remainingLearningSessions: number;
-	totalLearningSessions: number;
-};
-
-export const getNextLearningStepAccessibilityLabel = ({
-	isStarted,
-	title,
-	dateLabel,
-	timeLabel,
-}: {
-	isStarted: boolean;
-	title: string;
-	dateLabel: string | null;
-	timeLabel: string | null;
-}) => {
-	const details = [dateLabel, timeLabel]
-		.filter((label): label is string => Boolean(label))
-		.join(", ");
-	return `${isStarted ? "Weiterlernen" : "Nächsten Lernschritt öffnen"}: ${title}${details ? `. ${details}` : ""}`;
-};
-
-export const getAdjacentDashboardDayKey = ({
-	selectedDayKey,
-	direction,
-}: {
-	selectedDayKey: string;
-	direction: "next" | "previous";
-}) => {
-	const selectedDate = parseDayKey(selectedDayKey);
-	if (!selectedDate) return selectedDayKey;
-
-	return getDayKey(addDays(selectedDate, direction === "next" ? 1 : -1));
-};
-
 /** Returns Monday through Sunday around a valid day key, preserving invalid input as a singleton. */
 export const getDashboardWeekDayKeys = (selectedDayKey: string) => {
 	const selectedDate = parseDayKey(selectedDayKey);
@@ -146,40 +108,6 @@ export const getDashboardRelevantDayKeys = ({
 	return [...keys].sort();
 };
 
-export const getDashboardWeekProgress = ({
-	items,
-	todayKey,
-}: {
-	items: DashboardAgendaItem[];
-	todayKey: string;
-}): DashboardWeekProgress => {
-	const weekDayKeys = new Set(getDashboardWeekDayKeys(todayKey));
-	const learningSessions = items.filter(
-		(item) => item.kind === "learningSession" && weekDayKeys.has(item.dayKey),
-	);
-	const completedLearningSessions = learningSessions.filter(
-		(item) =>
-			item.entry.completed === true ||
-			item.entry.executionStatus === "completed",
-	);
-	const completedMinutesToday = completedLearningSessions
-		.filter((item) => item.dayKey === todayKey)
-		.reduce((total, item) => total + (item.entry.durationMinutes ?? 0), 0);
-	const totalLearningSessions = learningSessions.length;
-	const completedCount = completedLearningSessions.length;
-
-	return {
-		completedLearningSessions: completedCount,
-		completedMinutesToday,
-		completionPercent:
-			totalLearningSessions === 0
-				? 0
-				: Math.round((completedCount / totalLearningSessions) * 100),
-		remainingLearningSessions: totalLearningSessions - completedCount,
-		totalLearningSessions,
-	};
-};
-
 const SCHOOL_LESSON_PATTERN =
 	/\b(unterricht|schulstunde|stunde|school lesson|lesson)\b/i;
 const LEARNING_SESSION_PATTERN =
@@ -192,7 +120,7 @@ export const getAgendaEntryTitle = (entry: DayEntry) =>
 		? entry.title.trim()
 		: "Aufgabe";
 
-export const parseAgendaTime = (time?: string) => {
+const parseAgendaTime = (time?: string) => {
 	if (!time || time.trim().toLowerCase() === "ganztägig") return null;
 	const match = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
 	if (!match) return null;
@@ -249,61 +177,6 @@ export const sortDashboardAgendaItems = (
 		if (right.startMinutes === null) return 1;
 		return left.startMinutes - right.startMinutes;
 	});
-
-export const isDashboardAgendaItemPast = ({
-	item,
-	todayKey,
-	currentMinutes,
-}: {
-	item: DashboardAgendaItem;
-	todayKey: string;
-	currentMinutes: number;
-}) => {
-	if (item.entry.completed) return true;
-	if (item.dayKey < todayKey) return true;
-	if (item.dayKey > todayKey || item.endMinutes === null) return false;
-	return item.endMinutes < currentMinutes;
-};
-
-export const findNextActionableAgendaItemId = ({
-	items,
-	todayKey,
-	currentMinutes,
-}: {
-	items: DashboardAgendaItem[];
-	todayKey: string;
-	currentMinutes: number;
-}) =>
-	findNextActionableAgendaItem({
-		items,
-		todayKey,
-		currentMinutes,
-	})?.entry.id;
-
-/** Finds the earliest unfinished learning session from today, including elapsed times today. */
-export const findNextActionableAgendaItem = ({
-	items,
-	todayKey,
-}: {
-	items: DashboardAgendaItem[];
-	todayKey: string;
-	currentMinutes: number;
-}) =>
-	[...items]
-		.sort((left, right) => {
-			if (left.dayKey !== right.dayKey) {
-				return left.dayKey.localeCompare(right.dayKey);
-			}
-			return (left.startMinutes ?? -1) - (right.startMinutes ?? -1);
-		})
-		.find(
-			(item) =>
-				item.kind === "learningSession" &&
-				item.dayKey >= todayKey &&
-				(item.entry.executionStatus
-					? item.entry.executionStatus !== "completed"
-					: item.entry.completed !== true),
-		);
 
 /** Filters timetable-origin entries only; homework and exams remain visible. */
 export const getVisibleDashboardEntries = (entries: DayEntry[]): DayEntry[] =>

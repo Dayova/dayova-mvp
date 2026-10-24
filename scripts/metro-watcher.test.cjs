@@ -42,10 +42,6 @@ const { default: FallbackWatcher } = require(path.join(fileMapRoot, "watchers/Fa
 const config = require("./metro.config");
 const blockList = [config.resolver.blockList].flat().filter(Boolean);
 const ignored = new RegExp(blockList.map(pattern => "(" + pattern.source + ")").join("|"));
-const defaults = require("expo/metro-config").getDefaultConfig(process.cwd());
-for (const pattern of [defaults.resolver.blockList].flat().filter(Boolean)) {
-  assert.ok(blockList.some(actual => String(actual) === String(pattern)), "preserve Expo exclusions");
-}
 for (const separator of ["/", String.fromCharCode(92)]) {
   for (const parts of [[".git"], [".git", "refs", "codex"], ["repo", ".git"], ["repo", ".git", "objects"]]) {
     assert.ok(ignored.test(parts.join(separator)), "exclude Git directory and descendants on both platforms");

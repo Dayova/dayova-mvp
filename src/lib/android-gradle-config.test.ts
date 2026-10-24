@@ -3,12 +3,11 @@ import type { ExpoConfig } from "expo/config";
 import { describe, expect, test } from "vitest";
 
 const require = createRequire(import.meta.url);
-const { applyAndroidGradleJvmMemory, DAYOVA_GRADLE_JVM_ARGS } =
+const { applyAndroidGradleJvmMemory } =
 	require("../../plugins/withAndroidGradleJvmMemory.js") as {
 		applyAndroidGradleJvmMemory: (
 			properties: GradleProperty[],
 		) => GradleProperty[];
-		DAYOVA_GRADLE_JVM_ARGS: string;
 	};
 
 type GradleProperty = {
@@ -31,7 +30,7 @@ describe("Android Gradle build configuration", () => {
 			{
 				type: "property",
 				key: "org.gradle.jvmargs",
-				value: DAYOVA_GRADLE_JVM_ARGS,
+				value: "-Xmx4096m -XX:MaxMetaspaceSize=1024m",
 			},
 		]);
 	});
@@ -46,7 +45,7 @@ describe("Android Gradle build configuration", () => {
 			{
 				type: "property",
 				key: "org.gradle.jvmargs",
-				value: DAYOVA_GRADLE_JVM_ARGS,
+				value: "-Xmx4096m -XX:MaxMetaspaceSize=1024m",
 			},
 		]);
 	});

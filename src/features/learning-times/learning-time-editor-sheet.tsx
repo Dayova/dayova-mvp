@@ -54,6 +54,10 @@ const parseTimeToMinutes = (time: string) => {
 	return (hours || 0) * 60 + (minutes || 0);
 };
 
+/**
+ * Edits a recurring learning window and confirms removal in the same sheet.
+ * Native dismissal gates time-picker handoffs; mutations retain busy/error state.
+ */
 export function LearningTimeEditorSheet({
 	day,
 	id,
@@ -246,7 +250,7 @@ export function LearningTimeEditorSheet({
 				}
 				description={
 					isRemoveConfirmationVisible
-						? undefined
+						? removeDescription
 						: "Wähle den Wochentag und das Zeitfenster, in dem du regelmäßig lernen kannst."
 				}
 				closeAccessibilityLabel="Lernzeit schließen"
@@ -266,8 +270,7 @@ export function LearningTimeEditorSheet({
 			>
 				{isRemoveConfirmationVisible ? (
 					<ConfirmationSheetContent
-						actionAppearance="outlined"
-						description={removeDescription}
+						description={undefined}
 						confirmLabel="Löschen"
 						isBusy={isSaving}
 						errorMessage={errorMessage}

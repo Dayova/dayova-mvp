@@ -6,7 +6,7 @@ import {
 	jest,
 	test,
 } from "@jest/globals";
-import { act, render, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import * as SecureStore from "expo-secure-store";
 import { Platform, Text } from "react-native";
 import { AccessProvider, useAccess } from "./AccessContext";
@@ -14,6 +14,8 @@ import { AccessProvider, useAccess } from "./AccessContext";
 const mockUseQuery = jest.fn<(query: unknown, args: unknown) => unknown>(
 	() => undefined,
 );
+const mockActivateTrial = jest.fn();
+const mockSyncPaidAccess = jest.fn();
 const mockSession = {
 	isConvexUserSynced: false,
 	isSessionLoading: false,
@@ -22,11 +24,16 @@ const mockSession = {
 };
 
 jest.mock("convex/react", () => ({
-	useAction: () => jest.fn(),
+	useAction: () => mockSyncPaidAccess,
 	useConvexAuth: () => ({ isAuthenticated: true }),
-	useMutation: () => jest.fn(),
+	useMutation: () => mockActivateTrial,
 	useQuery: (query: unknown, args: unknown) => mockUseQuery(query, args),
+	useQueries: (queries: Record<string, { query: unknown; args: unknown }>) => ({
+		access: mockUseQuery(queries.access?.query, queries.access?.args ?? "skip"),
+	}),
 }));
+
+jest.mock("~/lib/diagnostics", () => ({ logDiagnosticError: jest.fn() }));
 
 jest.mock("expo-secure-store", () => ({
 	getItemAsync: jest.fn(async () => null),
@@ -39,11 +46,14 @@ jest.mock("~/context/AuthContext", () => ({
 
 describe("AccessProvider", () => {
 	beforeEach(() => {
-		mockUseQuery.mockClear();
-		jest.mocked(SecureStore.getItemAsync).mockClear();
+		mockUseQuery.mockReset().mockReturnValue(undefined);
+		mockActivateTrial.mockClear();
+		mockSyncPaidAccess.mockClear();
+		jest.mocked(SecureStore.getItemAsync).mockReset().mockResolvedValue(null);
 		jest.mocked(SecureStore.setItemAsync).mockClear();
 		mockSession.isConvexUserSynced = false;
 		mockSession.onboardingCompletionStatus = "none";
+		mockSession.user = { clerkId: "user_123" };
 	});
 
 	afterEach(() => {
@@ -51,11 +61,154 @@ describe("AccessProvider", () => {
 	});
 
 	const AccessProbe = () => {
-		const { access, isAccessLoading } = useAccess();
+		const {
+			access,
+			isAccessLoading,
+			isAccessUnavailable,
+			isAccessRetrying,
+			retryAccess,
+		} = useAccess();
 		return (
-			<Text>{isAccessLoading ? "loading" : (access?.state ?? "idle")}</Text>
+			<>
+				<Text>
+					{isAccessLoading
+						? "loading"
+						: isAccessUnavailable
+							? "unavailable"
+							: (access?.state ?? "idle")}
+				</Text>
+				<Text onPress={retryAccess}>Retry</Text>
+				{isAccessRetrying ? <Text>retrying</Text> : null}
+			</>
 		);
 	};
+
+	test.each([
+		"missing",
+		"stale",
+		"expired",
+	])("does not invent an expired trial when verification times out with %s cached access", async (cache) => {
+		jest.useFakeTimers();
+		mockSession.isConvexUserSynced = true;
+		if (cache !== "missing") {
+			jest.mocked(SecureStore.getItemAsync).mockResolvedValue(
+				JSON.stringify({
+					access: {
+						state: cache === "expired" ? "expired" : "trial",
+						canUseApp: cache !== "expired",
+						trialExpiresAt:
+							cache === "expired"
+								? Date.now() - 1
+								: Date.now() + 14 * 24 * 60 * 60 * 1000,
+					},
+					verifiedAt:
+						cache === "stale" ? Date.now() - 73 * 60 * 60 * 1000 : Date.now(),
+				}),
+			);
+		}
+		const screen = await render(
+			<AccessProvider>
+				<AccessProbe />
+			</AccessProvider>,
+		);
+		await act(async () => jest.advanceTimersByTime(1_501));
+		expect(screen.getByText("unavailable")).toBeOnTheScreen();
+		expect(screen.queryByText("expired")).toBeNull();
+		mockUseQuery.mockReturnValue({
+			canUseApp: true,
+			state: "trial",
+			trialExpiresAt: Date.now() + 100_000,
+		});
+		await screen.rerender(
+			<AccessProvider>
+				<AccessProbe />
+			</AccessProvider>,
+		);
+		expect(screen.getByText("trial")).toBeOnTheScreen();
+	});
+
+	test("retries access verification without a purchase or trial activation", async () => {
+		jest.useFakeTimers();
+		mockSession.isConvexUserSynced = true;
+		const screen = await render(
+			<AccessProvider>
+				<AccessProbe />
+			</AccessProvider>,
+		);
+		await act(async () => jest.advanceTimersByTime(1_501));
+		const previousArgs = mockUseQuery.mock.lastCall?.[1];
+		await fireEvent.press(screen.getByText("Retry"));
+		expect(mockUseQuery.mock.lastCall?.[1]).not.toEqual(previousArgs);
+		expect(screen.getByText("unavailable")).toBeOnTheScreen();
+		expect(screen.getByText("retrying")).toBeOnTheScreen();
+		await act(async () => jest.advanceTimersByTime(1_501));
+		expect(screen.getByText("unavailable")).toBeOnTheScreen();
+		expect(screen.queryByText("retrying")).toBeNull();
+		await fireEvent.press(screen.getByText("Retry"));
+		expect(screen.getByText("retrying")).toBeOnTheScreen();
+		expect(mockActivateTrial).not.toHaveBeenCalled();
+		expect(mockSyncPaidAccess).not.toHaveBeenCalled();
+	});
+
+	test("does not carry an unavailable verification into another account", async () => {
+		jest.useFakeTimers();
+		mockSession.isConvexUserSynced = true;
+		const screen = await render(
+			<AccessProvider>
+				<AccessProbe />
+			</AccessProvider>,
+		);
+		await act(async () => jest.advanceTimersByTime(1_501));
+		expect(screen.getByText("unavailable")).toBeOnTheScreen();
+		mockSession.user = { clerkId: "user_other" };
+		await screen.rerender(
+			<AccessProvider>
+				<AccessProbe />
+			</AccessProvider>,
+		);
+		expect(screen.getByText("loading")).toBeOnTheScreen();
+	});
+
+	test("makes a failed query recoverable without exposing its diagnostic error", async () => {
+		mockSession.isConvexUserSynced = true;
+		mockUseQuery.mockReturnValue(new Error("Internal diagnostic detail"));
+		const screen = await render(
+			<AccessProvider>
+				<AccessProbe />
+			</AccessProvider>,
+		);
+		expect(screen.getByText("unavailable")).toBeOnTheScreen();
+		expect(screen.queryByText("Internal diagnostic detail")).toBeNull();
+		mockUseQuery.mockReturnValue({ canUseApp: false, state: "expired" });
+		await screen.rerender(
+			<AccessProvider>
+				<AccessProbe />
+			</AccessProvider>,
+		);
+		expect(screen.getByText("expired")).toBeOnTheScreen();
+	});
+
+	test("keeps fresh verified offline trial access available", async () => {
+		jest.useFakeTimers();
+		mockSession.isConvexUserSynced = true;
+		jest.mocked(SecureStore.getItemAsync).mockResolvedValue(
+			JSON.stringify({
+				access: {
+					canUseApp: true,
+					state: "trial",
+					trialExpiresAt: Date.now() + 14 * 24 * 60 * 60 * 1000,
+				},
+				verifiedAt: Date.now(),
+			}),
+		);
+		const screen = await render(
+			<AccessProvider>
+				<AccessProbe />
+			</AccessProvider>,
+		);
+		await act(async () => jest.advanceTimersByTime(1_501));
+		expect(screen.getByText("trial")).toBeOnTheScreen();
+	});
 
 	test("waits for the authenticated user to be synced before querying access", async () => {
 		const screen = await render(
@@ -146,7 +299,7 @@ describe("AccessProvider", () => {
 			await act(async () => {
 				jest.advanceTimersByTime(2_000);
 			});
-			expect(screen.getByText("expired")).toBeOnTheScreen();
+			expect(screen.getByText("unavailable")).toBeOnTheScreen();
 
 			mockSession.onboardingCompletionStatus = "pending";
 			await screen.rerender(

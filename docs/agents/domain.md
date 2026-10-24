@@ -8,6 +8,11 @@ Notion is Dayova's main internal documentation and knowledge workspace. Technica
 
 Repo-local context docs and ADRs are code-adjacent technical guides. They capture the stable terminology, architectural constraints, implementation contracts, and decision pointers that must evolve with this repository. They should link to the relevant Notion page and summarize only the implementation-critical detail needed to work safely; they are not a second internal knowledge base.
 
+Decision records normally live in Notion, including technical decision rationale,
+alternatives, evidence, and named acceptance. A repo-local ADR may retain a
+concise code-facing contract and a link to the canonical Notion record; do not
+duplicate the full retrospective narrative in the repository by default.
+
 ## Agent access
 
 Use the semantic Notion connector when a task depends on internal product, business, research, meeting, or decision context. Search Notion before claiming that internal guidance does not exist, and preserve the canonical Notion page URL when referencing it from Linear, GitHub, or repo-local docs. If Notion access is unavailable, state that limitation. Continue only when the task can be completed safely from the available Linear and repository evidence. If missing Notion context could materially change the implementation or decision, stop and surface the blocker rather than guessing or reconstructing the missing documentation.
@@ -20,6 +25,40 @@ Use this ownership rule consistently:
 - If it needs to be known, understood, discussed, or remembered internally, it belongs in Notion.
 - Code and implementation evidence belong in GitHub.
 - Durable code-facing contracts, architectural constraints, or significant technical decisions belong in the relevant repo-local context documentation or ADR.
+
+### Finding and saving knowledge
+
+Start with the canonical Notion entry points in `CONTEXT-MAP.md`, then read the
+relevant context doc, Linear issue, and linked PR. Search Notion by the domain,
+decision title, or issue identifier and fetch the actual page before relying on
+it. Follow explicit accepted/superseded status and source dates; a historical
+test pass does not verify today's code.
+
+Update the existing owning Notion page for reusable knowledge. Put independent
+decisions in the existing Decision Records collection, with a human-readable
+problem, decision, rationale, alternatives, source/approver, and supersession
+links when applicable. A raw report or a proposal is not an accepted decision.
+Keep only the implementation-critical contract and canonical link in this repo.
+
+Publish per-task validation reports, screenshots, recordings, capture provenance,
+and logs on the relevant GitHub PR or Linear issue. Verify the resulting URLs;
+do not commit media or report Markdown just to make evidence visible. Preserve
+the tested commit, date, environment, limitations, and historical status. The
+four retired directories `docs/evidence`, `docs/pr-screenshots`, `docs/qa`, and
+`docs/validation` must not be recreated, nor replaced by task archives elsewhere.
+`pnpm check:docs`, included in `pnpm lint` and CI, rejects tracked files in those
+four directories even when force-added past `.gitignore`.
+
+Keep maintained executable tests and reusable QA tools in the normal test/tool
+locations. Put local generated artifacts in ignored `.maestro/artifacts/` or a
+temporary directory. Before removing existing material, verify its destination
+and update inbound references; do not rewrite Git history as part of a cleanup.
+If Notion or the issue/PR system is unavailable, report the access gap and retain
+any material whose destination cannot be verified. Do not create repository
+knowledge copies as a fallback.
+
+Canonical policy and rationale:
+[knowledge and evidence storage](https://app.notion.com/p/3fd2e87228bf8140ba9be6c68d51fcaf).
 
 Do not create mirrored task databases or parallel execution workflows in Notion. Notion pages may link to or embed Linear issues, projects, and views. Confirmed actionable follow-up work discovered in Notion must be reconciled into Linear as the canonical work system. Search existing Linear work first, then link, update, or create work as appropriate; do not create duplicate issues.
 

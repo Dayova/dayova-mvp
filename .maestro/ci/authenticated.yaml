@@ -1,0 +1,50 @@
+appId: ${MAESTRO_APP_ID}
+name: Real Clerk sign-in reaches authenticated Convex access
+env:
+  APP_ID: ${MAESTRO_APP_ID}
+---
+- assertTrue: ${MAESTRO_CI_EMAIL.indexOf('+clerk_test@') > 0}
+- runFlow: ../shared/open-login.yaml
+- tapOn: E-Mail-Adresse
+- inputText:
+    text: ${MAESTRO_CI_EMAIL}
+    label: Enter the synthetic test identity
+- runFlow:
+    file: ../shared/dismiss-auth-keyboard.yaml
+    env:
+      AUTH_HEADING: Willkommen
+- scrollUntilVisible:
+    element: Passwort
+    direction: UP
+    timeout: 10000
+- tapOn: Passwort
+- inputText:
+    text: ${MAESTRO_CI_PASSWORD}
+    label: Enter the test credential from CI secrets
+- runFlow:
+    file: ../shared/dismiss-auth-keyboard.yaml
+    env:
+      AUTH_HEADING: Willkommen
+- scrollUntilVisible:
+    element: LOGIN
+    direction: DOWN
+    timeout: 10000
+- tapOn: LOGIN
+- extendedWaitUntil:
+    visible: 'Bestätigungscode|So läuft deine Testphase|Einstellungen'
+    timeout: 60000
+- runFlow:
+    when:
+      visible: Bestätigungscode
+    commands:
+      - tapOn: Bestätigungscode
+      - inputText:
+          text: '424242'
+          label: Verify the Clerk test-email code
+# This reusable synthetic identity may already have trial/paid access.
+# The app must then open its authenticated tabs instead of granting another trial.
+- extendedWaitUntil:
+    visible: 'So läuft deine Testphase|Einstellungen'
+    timeout: 60000
+- assertNotVisible: Login
+- takeScreenshot: authenticated-convex-access
